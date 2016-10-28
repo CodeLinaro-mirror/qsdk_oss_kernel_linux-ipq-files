@@ -22,8 +22,16 @@
 
 #include "skbuff_debug.h"
 #include "skbuff_notifier.h"
+#include "skbuff_recycle.h"
 
 static int skbuff_debugobj_enabled __read_mostly = 1;
+
+static int skbuff_debug_event_handler(struct notifier_block *nb,
+				      unsigned long action, void *data);
+static struct notifier_block skbuff_debug_notify = {
+	.notifier_call = skbuff_debug_event_handler,
+	.priority = 0
+};
 
 inline u32 skbuff_debugobj_sum(struct sk_buff *skb)
 {
@@ -142,7 +150,6 @@ static int skbuff_debugobj_fixup(void *addr, enum debug_obj_state state)
 	ftrace_dump(DUMP_ALL);
 	WARN(1, "skb_debug: state = %d, skb = 0x%p sum = %d (now %d)\n",
 	     state, skb, skb->sum, skbuff_debugobj_sum(skb));
-	skbuff_debugobj_print_skb(skb);
 	skb_recycler_notifier_send_event(SKB_RECYCLER_NOTIFIER_FSM, skb);
 
 #ifdef CONFIG_ARM64
@@ -180,7 +187,6 @@ err_act:
 	ftrace_dump(DUMP_ALL);
 	WARN(1, "skb_debug: failed to activate err = %d skb = 0x%p sum = %d (now %d)\n",
 	     ret, skb, skb->sum, skbuff_debugobj_sum(skb));
-	skbuff_debugobj_print_skb(skb);
 	skb_recycler_notifier_send_event(SKB_RECYCLER_NOTIFIER_DBLALLOC, skb);
 }
 
@@ -218,7 +224,6 @@ inline void skbuff_debugobj_deactivate(struct sk_buff *skb)
 	ftrace_dump(DUMP_ALL);
 	WARN(1, "skb_debug: deactivating inactive object skb=0x%p state=%d sum = %d (now %d)\n",
 	     skb, obj_state, skb->sum, skbuff_debugobj_sum(skb));
-	skbuff_debugobj_print_skb(skb);
 	skb_recycler_notifier_send_event(SKB_RECYCLER_NOTIFIER_DBLFREE, skb);
 }
 
@@ -235,7 +240,6 @@ inline void _skbuff_debugobj_sum_validate(struct sk_buff *skb,
 	ftrace_dump(DUMP_ALL);
 	WARN(1, "skb_debug: skb sum changed skb = 0x%p sum = %d (now %d)\n",
 	     skb, skb->sum, skbuff_debugobj_sum(skb));
-	skbuff_debugobj_print_skb(skb);
 	pr_emerg("skb_debug: %s() checking %s in %s:%d\n", fxn, var, src, line);
 	skb_recycler_notifier_send_event(SKB_RECYCLER_NOTIFIER_SUMERR, skb);
 }
