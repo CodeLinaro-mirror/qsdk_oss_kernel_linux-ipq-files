@@ -535,6 +535,7 @@ void __init skb_recycler_init(void)
 		pr_err("Failed to preallocate SKBs for recycle list\n");
 #endif
 	cpuhp_setup_state_nocalls(CPUHP_NET_DEV_DEAD, "net/skbuff_recycler:dead:",NULL, skb_cpu_callback);
+	skbuff_debugobj_register_callback();
 	skb_recycler_init_procfs();
 }
 
