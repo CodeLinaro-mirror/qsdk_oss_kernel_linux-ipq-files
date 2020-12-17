@@ -298,15 +298,17 @@ void skbuff_debugobj_print_skb_list(const struct sk_buff *skb_list,
 				sum_i = 0;
 				sum_now = 0;
 			}
-			pr_emerg("skb_debug: [%02d] skb 0x%p, next 0x%p, prev 0x%p, state %d (%s), sum %d (now %d)\n",
-				 count, skb_i, skb_i->next, skb_i->prev,
-				 obj_state, skbuff_debugobj_state_name(skb_i),
-				 sum_i, sum_now);
+			if (sum_i != sum_now) {
+				pr_emerg("skb_debug: [%02d] skb 0x%p, next 0x%p, prev 0x%p, state %d (%s), sum %d (now %d)\n",
+					 count, skb_i, skb_i->next, skb_i->prev,
+					 obj_state, skbuff_debugobj_state_name(skb_i),
+					 sum_i, sum_now);
+			}
 			skb_i = skb_i->next;
 			count++;
 		} while (skb_list != skb_i);
 	}
-	pr_emerg("skb_debug: end skb list '%s'\n", list_title);
+	pr_emerg("skb_debug: end skb list '%s'. In total %d skbs iterated.\n", list_title, count);
 }
 
 void skbuff_debugobj_register_callback(void)

@@ -545,7 +545,9 @@ void skb_recycler_print_all_lists(void)
 	int cpu;
 #ifdef CONFIG_SKB_RECYCLER_MULTI_CPU
 	int i;
+	struct sk_buff_head *h;
 
+	cpu = get_cpu();
 	spin_lock_irqsave(&glob_recycler.lock, flags);
 	for (i = 0; i < SKB_RECYCLE_MAX_SHARED_POOLS; i++)
 		skbuff_debugobj_print_skb_list((&glob_recycler.pool[i])->next,
@@ -554,26 +556,19 @@ void skb_recycler_print_all_lists(void)
 
 	preempt_disable();
 	local_irq_save(flags);
-	for_each_possible_cpu(cpu) {
-		unsigned long flags;
-		struct sk_buff_head *h;
 
-		h = &per_cpu(recycle_spare_list, cpu);
-		skbuff_debugobj_print_skb_list(h->next, "Recycle Spare", cpu);
-	}
+	h = &per_cpu(recycle_spare_list, cpu);
+	skbuff_debugobj_print_skb_list(h->next, "Recycle Spare", cpu);
+
 	local_irq_restore(flags);
 	preempt_enable();
 #endif
 
 	preempt_disable();
 	local_irq_save(flags);
-	for_each_possible_cpu(cpu) {
-		unsigned long flags;
-		struct sk_buff_head *h;
+	h = &per_cpu(recycle_list, cpu);
+	skbuff_debugobj_print_skb_list(h->next, "Recycle List", cpu);
 
-		h = &per_cpu(recycle_list, cpu);
-		skbuff_debugobj_print_skb_list(h->next, "Recycle List", cpu);
-	}
 	local_irq_restore(flags);
 	preempt_enable();
 }
