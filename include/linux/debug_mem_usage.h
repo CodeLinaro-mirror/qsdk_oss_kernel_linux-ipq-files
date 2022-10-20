@@ -111,4 +111,6 @@ do { \
 #define  mem_debug_update_skb_list(skb_list)
 #endif
 
+#define __put_page			__wrap___put_page
+
 #endif /* __DEBUG_MEM_USAGE_H__ */

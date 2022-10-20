@@ -843,3 +843,22 @@ void *__wrap___kmalloc_node_track_caller(size_t size, gfp_t gfpflags,
 	return addr;
 }
 EXPORT_SYMBOL(__wrap___kmalloc_node_track_caller);
+
+void __wrap___put_page(struct page *page)
+{
+	struct page *actual_page;
+
+	if (unlikely(PageCompound(page))) {
+		actual_page = compound_head(page);
+	} else {
+		actual_page = page;
+	}
+
+	if (debug_mem_usage_enabled)
+		debug_object_trace_free(page_address(page));
+
+	__put_page(page);
+
+	return;
+}
+EXPORT_SYMBOL(__wrap___put_page);
