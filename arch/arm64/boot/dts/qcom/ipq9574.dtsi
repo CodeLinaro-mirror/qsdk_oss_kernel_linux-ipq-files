@@ -223,6 +223,36 @@
 			hwlocks = <&tcsr_mutex 0>;
 			no-map;
 		};
+
+		q6_region: wcnss@4ab00000 {
+			reg = <0x0 0x4ab00000 0x0 0x02b00000>;
+			no-map;
+		};
+
+	};
+
+	wcss: wcss-smp2p {
+		compatible = "qcom,smp2p";
+		qcom,smem = <435>, <428>;
+
+		interrupt-parent = <&intc>;
+		interrupts = <GIC_SPI 322 IRQ_TYPE_EDGE_RISING>;
+
+		mboxes = <&apcs_glb 9>;
+
+		qcom,local-pid = <0>;
+		qcom,remote-pid = <1>;
+
+		wcss_smp2p_out: master-kernel {
+			qcom,entry-name = "master-kernel";
+			#qcom,smem-state-cells = <1>;
+		};
+
+		wcss_smp2p_in: slave-kernel {
+			qcom,entry-name = "slave-kernel";
+			interrupt-controller;
+			#interrupt-cells = <2>;
+		};
 	};
 
 	rpm-glink {
@@ -1629,6 +1659,122 @@
 			compatible = "qcom,ess-uniphy";
 			reg = <0x7a00000 0x30000>;
 			uniphy_access_mode = "local bus";
+		};
+
+		q6v5_wcss: remoteproc@cd00000 {
+			compatible = "qcom,ipq9574-q6-mpd";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges;
+			reg = <0x0cd00000 0x4040>;
+			interrupts-extended = <&intc GIC_SPI 325 IRQ_TYPE_EDGE_RISING>,
+					      <&wcss_smp2p_in 0 0>,
+					      <&wcss_smp2p_in 1 0>,
+					      <&wcss_smp2p_in 2 0>,
+					      <&wcss_smp2p_in 3 0>;
+			interrupt-names = "wdog",
+					  "fatal",
+					  "ready",
+					  "handover",
+					  "stop-ack";
+
+			clocks = <&gcc GCC_ANOC_WCSS_AXI_M_CLK>,
+				 <&gcc GCC_WCSS_AHB_S_CLK>,
+				 <&gcc GCC_WCSS_ECAHB_CLK>,
+				 <&gcc GCC_WCSS_ACMT_CLK>,
+				 <&gcc GCC_WCSS_AXI_M_CLK>,
+				 <&gcc GCC_Q6_AXIM_CLK>,
+				 <&gcc GCC_Q6_AXIM2_CLK>,
+				 <&gcc GCC_Q6_AHB_CLK>,
+				 <&gcc GCC_Q6_AHB_S_CLK>,
+				 <&gcc GCC_Q6SS_BOOT_CLK>,
+				 <&gcc GCC_WCSS_DBG_IFC_APB_BDG_CLK>,
+				 <&gcc GCC_WCSS_DBG_IFC_ATB_BDG_CLK>,
+				 <&gcc GCC_WCSS_DBG_IFC_DAPBUS_BDG_CLK>,
+				 <&gcc GCC_WCSS_DBG_IFC_NTS_BDG_CLK>,
+				 <&gcc GCC_WCSS_DBG_IFC_APB_CLK>,
+				 <&gcc GCC_WCSS_DBG_IFC_ATB_CLK>,
+				 <&gcc GCC_WCSS_DBG_IFC_DAPBUS_CLK>,
+				 <&gcc GCC_WCSS_DBG_IFC_NTS_CLK>,
+				 <&gcc GCC_Q6_TSCTR_1TO2_CLK>,
+				 <&gcc GCC_Q6SS_ATBM_CLK>,
+				 <&gcc GCC_Q6SS_PCLKDBG_CLK>,
+				 <&gcc GCC_Q6SS_TRIG_CLK>,
+				 <&gcc GCC_MEM_NOC_Q6_AXI_CLK>,
+				 <&gcc GCC_WCSS_Q6_TBU_CLK>,
+				 <&gcc GCC_SYS_NOC_WCSS_AHB_CLK>;
+
+			clock-names = "anoc_wcss_axi_m",
+				      "wcss_ahb_s",
+				      "wcss_ecahb",
+				      "wcss_acmt",
+				      "wcss_axi_m",
+				      "q6_axim",
+				      "q6_axim2",
+				      "q6_ahb",
+				      "q6_ahb_s",
+				      "q6ss_boot",
+				      "dbg-apb-bdg",
+				      "dbg-atb-bdg",
+				      "dbg-dapbus-bdg",
+				      "dbg-nts-bdg",
+				      "dbg-apb",
+				      "dbg-atb",
+				      "dbg-dapbus",
+				      "dbg-nts",
+				      "q6_tsctr_1to2_clk",
+				      "q6ss_atbm_clk",
+				      "q6ss_pclkdbg_clk",
+				      "q6ss_trig_clk",
+				      "mem_noc_q6_axi",
+				      "wcss_q6_tbu",
+				      "sys_noc_wcss_ahb";
+
+			assigned-clocks = <&gcc GCC_ANOC_WCSS_AXI_M_CLK>,
+				 <&gcc GCC_WCSS_AHB_S_CLK>,
+				 <&gcc GCC_WCSS_ECAHB_CLK>,
+				 <&gcc GCC_WCSS_ACMT_CLK>,
+				 <&gcc GCC_WCSS_AXI_M_CLK>,
+				 <&gcc GCC_Q6_AXIM_CLK>,
+				 <&gcc GCC_Q6_AXIM2_CLK>,
+				 <&gcc GCC_Q6_AHB_CLK>,
+				 <&gcc GCC_Q6_AHB_S_CLK>,
+				 <&gcc GCC_Q6SS_BOOT_CLK>,
+				 <&gcc GCC_MEM_NOC_Q6_AXI_CLK>,
+				 <&gcc GCC_WCSS_Q6_TBU_CLK>,
+				 <&gcc GCC_SYS_NOC_WCSS_AHB_CLK>;
+
+			assigned-clock-rates = <266666667>,
+						<133333333>,
+						<133333333>,
+						<133333333>,
+						<266666667>,
+						<533000000>,
+						<342857143>,
+						<133333333>,
+						<133333333>,
+						<342857143>,
+						<533000000>,
+						<533000000>,
+						<133333333>;
+
+			qcom,smem-states = <&wcss_smp2p_out 0>,
+					   <&wcss_smp2p_out 1>;
+			qcom,smem-state-names = "shutdown",
+						"stop";
+
+			memory-region = <&q6_region>;
+
+			glink-edge {
+				interrupts = <GIC_SPI 321 IRQ_TYPE_EDGE_RISING>;
+				label = "rtr";
+				qcom,remote-pid = <1>;
+				mboxes = <&apcs_glb 8>;
+			};
+
+			q6_wcss_pd1: remoteproc_pd1 {
+				compatible = "qcom,ipq9574-wcss-ahb-mpd";
+			};
 		};
 
 		timer@b120000 {
