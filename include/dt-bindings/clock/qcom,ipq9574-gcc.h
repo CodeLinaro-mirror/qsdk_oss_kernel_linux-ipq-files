@@ -215,4 +215,6 @@
 #define GCC_PCIE1_PIPE_CLK                              205
 #define GCC_PCIE2_PIPE_CLK                              206
 #define GCC_PCIE3_PIPE_CLK                              207
+#define GCC_USB0_PIPE_CLK				208
+#define GCC_USB0_SLEEP_CLK				209
 #endif
