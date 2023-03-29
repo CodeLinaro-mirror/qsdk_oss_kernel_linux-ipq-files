@@ -1688,6 +1688,128 @@
 				status = "disabled";
 			};
 		};
+
+		edma@3ab00000 {
+			compatible = "qcom,edma";
+			reg = <0x3ab00000 0xef800>;
+			reg-names = "edma-reg-base";
+			resets = <&nsscc EDMA_HW_RESET>;
+			reset-names = "edma_rst";
+			clocks = <&nsscc NSS_CC_NSS_CSR_CLK>,
+				 <&nsscc NSS_CC_NSSNOC_NSS_CSR_CLK>,
+				 <&nsscc NSS_CC_IMEM_QSB_CLK>,
+				 <&nsscc NSS_CC_NSSNOC_IMEM_QSB_CLK>,
+				 <&nsscc NSS_CC_IMEM_AHB_CLK>,
+				 <&nsscc NSS_CC_NSSNOC_IMEM_AHB_CLK>,
+				 <&gcc GCC_MEM_NOC_NSSNOC_CLK>,
+				 <&gcc GCC_NSS_TBU_CLK>,
+				 <&gcc GCC_NSS_TS_CLK>,
+				 <&gcc GCC_NSSCC_CLK>,
+				 <&gcc GCC_NSSCFG_CLK>,
+				 <&gcc GCC_NSSNOC_ATB_CLK>,
+				 <&gcc GCC_NSSNOC_MEM_NOC_1_CLK>,
+				 <&gcc GCC_NSSNOC_MEMNOC_CLK>,
+				 <&gcc GCC_NSSNOC_NSSCC_CLK>,
+				 <&gcc GCC_NSSNOC_PCNOC_1_CLK>,
+				 <&gcc GCC_NSSNOC_QOSGEN_REF_CLK>,
+				 <&gcc GCC_NSSNOC_SNOC_1_CLK>,
+				 <&gcc GCC_NSSNOC_SNOC_CLK>,
+				 <&gcc GCC_NSSNOC_TIMEOUT_REF_CLK>,
+				 <&gcc GCC_NSSNOC_XO_DCD_CLK>;
+			clock-names = "nss-csr-clk", "nss-nssnoc-csr-clk",
+				      "nss-imem-qsb-clk", "nss-nssnoc-imem-qsb-clk",
+				      "nss-imem-ahb-clk", "nss-nssnoc-imem-ahb-clk",
+				      "nss-mem-noc-nssnoc-clk", "nss-tbu-clk", "nss-ts-clk",
+				      "nss-nsscc-clk", "nss-nsscfg-clk", "nss-nsscnoc-atb-clk",
+				      "nss-nssnoc-mem-noc-1-clk", "nss-nssnoc-memnoc-clk", "nss-nssnoc-nsscc-clk",
+				      "nss-nssnoc-pcnoc-1-clk", "nss-nssnoc-qosgen-ref-clk", "nss-nssnoc-snoc-1-clk",
+				      "nss-nssnoc-snoc-clk", "nss-nssnoc-timeout-ref-clk", "nss-nssnoc-xo-dcd-clk";
+		};
+
+		nss-ppe {
+			compatible = "qcom,nss-ppe";
+		};
+
+		eip: eip197@39800000 {
+			compatible = "qcom,eip";
+			reg-names = "eip_pbase";
+			reg = <0x39800000 0x7ffff>;
+			reg_offset = <0x80000>;
+			ranges;
+			clocks = <&nsscc NSS_CC_CRYPTO_CLK>,
+			<&nsscc NSS_CC_NSSNOC_CRYPTO_CLK>,
+			<&nsscc NSS_CC_CRYPTO_PPE_CLK>;
+			clock-names = "crypto_clk", "crypto_nocclk",
+			"crypto_ppeclk";
+			clock-frequency = /bits/ 64 <600000000 600000000 300000000>;
+			status = "ok";
+			interrupts = <GIC_SPI 385 IRQ_TYPE_LEVEL_HIGH>,
+				   <GIC_SPI 386 IRQ_TYPE_LEVEL_HIGH>,
+				   <GIC_SPI 387 IRQ_TYPE_LEVEL_HIGH>,
+				   <GIC_SPI 388 IRQ_TYPE_LEVEL_HIGH>;
+
+			dma0 {
+				tx_cpu = /bits/ 8 <0>;
+				rx_cpu = /bits/ 8 <3>;
+				ring-name = "lookaside";
+				ring-id = /bits/ 8 <0>;
+			};
+
+			dma1 {
+				tx_cpu = /bits/ 8 <1>;
+				rx_cpu = /bits/ 8 <2>;
+				ring-name = "lookaside";
+				ring-id = /bits/ 8 <1>;
+			};
+
+			dma2 {
+				tx_cpu = /bits/ 8 <2>;
+				rx_cpu = /bits/ 8 <1>;
+				ring-name = "lookaside";
+				ring-id = /bits/ 8 <2>;
+			};
+
+			dma3 {
+				tx_cpu = /bits/ 8 <3>;
+				rx_cpu = /bits/ 8 <0>;
+				ring-name = "lookaside";
+				ring-id = /bits/ 8 <3>;
+			};
+
+			dma4 {
+				tx_cpu = /bits/ 8 <0>;
+				rx_cpu = /bits/ 8 <0>;
+				ring-name = "hybrid";
+				ring-id = /bits/ 8 <4>;
+			};
+
+			dma5 {
+				tx_cpu = /bits/ 8 <1>;
+				rx_cpu = /bits/ 8 <1>;
+				ring-name = "hybrid";
+				ring-id = /bits/ 8 <5>;
+			};
+
+			dma6 {
+				tx_cpu = /bits/ 8 <2>;
+				rx_cpu = /bits/ 8 <2>;
+				ring-name = "hybrid";
+				ring-id = /bits/ 8 <6>;
+			};
+
+			dma7 {
+				tx_cpu = /bits/ 8 <3>;
+				rx_cpu = /bits/ 8 <3>;
+				ring-name = "hybrid";
+				ring-id = /bits/ 8 <7>;
+			};
+		};
+
+		eip_crypto: eip_crypto {
+			compatible = "qcom,eip_crypto";
+			status = "ok";
+		};
+
 	};
 
 	timer {
