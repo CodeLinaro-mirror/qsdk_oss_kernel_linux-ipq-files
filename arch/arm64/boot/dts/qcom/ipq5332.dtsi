@@ -1074,6 +1074,98 @@
 			msi-parent = <&v2m0>;
 			status = "disabled";
 		};
+
+		edma@3ab00000 {
+			compatible = "qcom,edma";
+			reg = <0x3ab00000 0xed000>;
+			reg-names = "edma-reg-base";
+			reset-names = "edma_rst";
+			clocks = <&nsscc NSS_CC_NSS_CSR_CLK>,
+			       <&nsscc NSS_CC_NSSNOC_NSS_CSR_CLK>,
+			       <&nsscc NSS_CC_CE_APB_CLK>,
+			       <&nsscc NSS_CC_CE_AXI_CLK>,
+			       <&nsscc NSS_CC_NSSNOC_CE_APB_CLK>,
+			       <&nsscc NSS_CC_NSSNOC_CE_AXI_CLK>,
+			       <&gcc GCC_NSS_TS_CLK>,
+			       <&gcc GCC_NSSCC_CLK>,
+			       <&gcc GCC_NSSCFG_CLK>,
+			       <&gcc GCC_NSSNOC_ATB_CLK>,
+			       <&gcc GCC_NSSNOC_NSSCC_CLK>,
+			       <&gcc GCC_NSSNOC_PCNOC_1_CLK>,
+			       <&gcc GCC_NSSNOC_QOSGEN_REF_CLK>,
+			       <&gcc GCC_NSSNOC_SNOC_1_CLK>,
+			       <&gcc GCC_NSSNOC_SNOC_CLK>,
+			       <&gcc GCC_NSSNOC_TIMEOUT_REF_CLK>,
+			       <&gcc GCC_NSSNOC_XO_DCD_CLK>,
+			       <&gcc GCC_SNOC_NSSNOC_CLK>,
+			       <&gcc GCC_SNOC_NSSNOC_1_CLK>,
+			       <&gcc GCC_MEM_NOC_AHB_CLK>,
+			       <&gcc GCC_MEM_NOC_APSS_AXI_CLK>,
+			       <&gcc GCC_MEM_NOC_QOSGEN_EXTREF_CLK>,
+			       <&gcc GCC_MEM_NOC_TS_CLK>;
+			clock-names = "nss-csr-clk", "nss-nssnoc-csr-clk", "nss-ce-ahb-clk",
+				"nss-ce-axi-clk", "nss-nssnoc-ce-ahb-clk", "nss-nssnoc-ce-axi-clk",
+				"nss-ts-clk", "nss-nsscc-clk", "nss-nsscfg-clk", "nss-nssnoc-atb-clk",
+				"nss-nssnoc-nsscc-clk", "nss-nssnoc-pcnoc-1-clk", "nss-nssnoc-qosgen-ref-clk",
+				"nss-nssnoc-snoc-1-clk", "nss-nssnoc-snoc-clk", "nss-nssnoc-timeout-ref-clk",
+				"nss-nssnoc-xo-dcd-clk", "nss-snoc-nssnoc-clk", "nss-snoc-nssnoc-1-clk",
+				"nss-mem-noc-ahb-clk", "nss-mem-noc-apss-axi-clk",
+				"nss-mem-noc-qosgen-extref-clk","nss-mem-noc-ts-clk";
+		};
+
+		nss-ppe {
+			compatible = "qcom,nss-ppe";
+		};
+
+		eip: eip196@39800000 {
+			compatible = "qcom,eip";
+			reg-names = "eip_pbase";
+			reg = <0x39800000 0x7ffff>;
+			reg_offset = <0x80000>;
+			ranges;
+			clocks = <&nsscc NSS_CC_EIP_CLK>,
+			       <&nsscc NSS_CC_NSSNOC_EIP_CLK>;
+			clock-names = "eip_clk", "eip_nocclk";
+			clock-frequency = /bits/ 64 <300000000 300000000>;
+			status = "ok";
+			interrupts = <GIC_SPI 107 IRQ_TYPE_LEVEL_HIGH>,
+				   <GIC_SPI 108 IRQ_TYPE_LEVEL_HIGH>,
+				   <GIC_SPI 109 IRQ_TYPE_LEVEL_HIGH>,
+				   <GIC_SPI 110 IRQ_TYPE_LEVEL_HIGH>;
+
+			dma0 {
+				tx_cpu = /bits/ 8 <0>;
+				rx_cpu = /bits/ 8 <3>;
+				ring-name = "lookaside";
+				ring-id = /bits/ 8 <0>;
+			};
+
+			dma1 {
+				tx_cpu = /bits/ 8 <1>;
+				rx_cpu = /bits/ 8 <2>;
+				ring-name = "lookaside";
+				ring-id = /bits/ 8 <1>;
+			};
+
+			dma2 {
+				tx_cpu = /bits/ 8 <2>;
+				rx_cpu = /bits/ 8 <1>;
+				ring-name = "lookaside";
+				ring-id = /bits/ 8 <2>;
+			};
+
+			dma3 {
+				tx_cpu = /bits/ 8 <3>;
+				rx_cpu = /bits/ 8 <0>;
+				ring-name = "lookaside";
+				ring-id = /bits/ 8 <3>;
+			};
+		};
+
+		eip_crypto: eip_crypto {
+			compatible = "qcom,eip_crypto";
+			status = "ok";
+		};
 	};
 
 	timer {
