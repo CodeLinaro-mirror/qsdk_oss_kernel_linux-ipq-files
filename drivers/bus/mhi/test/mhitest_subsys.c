@@ -137,7 +137,6 @@ const struct rproc_ops mhitest_rproc_ops = {
 	.stop = mhitest_ss_shutdown,
 	.load = mhitest_ss_dummy_load,
 	.parse_fw = mhitest_ss_add_ramdump_callback,
-	.report_panic = mhitest_ss_crash_shutdown,
 };
 
 int mhitest_subsystem_register(struct mhitest_platform *mplat)

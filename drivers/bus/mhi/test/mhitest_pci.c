@@ -43,7 +43,6 @@ static struct mhi_channel_config mhitest_mhi_channels[] = {
 		.offload_channel = false,
 		.doorbell_mode_switch = false,
 		.auto_queue = false,
-		.auto_start = false,
 	},
 	{
 		.num = 1,
@@ -58,7 +57,6 @@ static struct mhi_channel_config mhitest_mhi_channels[] = {
 		.offload_channel = false,
 		.doorbell_mode_switch = false,
 		.auto_queue = false,
-		.auto_start = false,
 	},
 	{
 		.num = 4,
@@ -73,7 +71,6 @@ static struct mhi_channel_config mhitest_mhi_channels[] = {
 		.offload_channel = false,
 		.doorbell_mode_switch = false,
 		.auto_queue = false,
-		.auto_start = false,
 	},
 	{
 		.num = 5,
@@ -88,7 +85,6 @@ static struct mhi_channel_config mhitest_mhi_channels[] = {
 		.offload_channel = false,
 		.doorbell_mode_switch = false,
 		.auto_queue = false,
-		.auto_start = false,
 	},
 	{
 		.num = 20,
@@ -103,7 +99,6 @@ static struct mhi_channel_config mhitest_mhi_channels[] = {
 		.offload_channel = false,
 		.doorbell_mode_switch = false,
 		.auto_queue = false,
-		.auto_start = true,
 	},
 	{
 		.num = 21,
@@ -118,7 +113,6 @@ static struct mhi_channel_config mhitest_mhi_channels[] = {
 		.offload_channel = false,
 		.doorbell_mode_switch = false,
 		.auto_queue = true,
-		.auto_start = true,
 	},
 };
 
@@ -195,7 +189,8 @@ int mhitest_dump_info(struct mhitest_platform *mplat, bool in_panic)
 	}
 
 	MHITEST_VERB("Let's dump some more things...\n");
-	mhi_debug_reg_dump(mhi_ctrl);
+	/* TODO: Need to add function in MHI */
+	//mhi_debug_reg_dump(mhi_ctrl);
 
 	rddm_img = mhi_ctrl->rddm_image;
 	fw_img = mhi_ctrl->fbc_image;
@@ -633,19 +628,16 @@ int mhitest_pci_register_mhi(struct mhitest_platform *mplat)
 	MHITEST_LOG("MHI CTRL :%p\n", mhi_ctrl);
 
 	mplat->mhi_ctrl = mhi_ctrl;
-	mhi_ctrl->dev_id = mplat->device_id;
 	dev_set_drvdata(&pci_dev->dev, mplat);
 	mhi_ctrl->cntrl_dev = &pci_dev->dev;
 
-	if (!mplat->fw_name) {
-		MHITEST_ERR("fw_name is NULLL\n");
-		return -EINVAL;
-	}
 	mhi_ctrl->fw_image = mplat->fw_name;
 
 	mhi_ctrl->regs = mplat->bar;
-	MHITEST_EMERG("BAR start at :%pa\n", &pci_resource_start(pci_dev,
-								PCI_BAR_NUM));
+	mhi_ctrl->reg_len = pci_resource_len(pci_dev, PCI_BAR_NUM);
+	MHITEST_EMERG("BAR start at :%p Size is %zx\n",
+		      &pci_resource_start(pci_dev, PCI_BAR_NUM),
+		      mhi_ctrl->reg_len);
 
 	ret  =  mhitest_pci_get_mhi_msi(mplat);
 	if (ret) {
@@ -780,7 +772,7 @@ int mhitest_pci_enable_bus(struct mhitest_platform *temp)
 		goto out2;
 	}
 
-	ret = pci_set_dma_mask(pci_dev, DMA_BIT_MASK(pci_dma_mask));
+	ret = dma_set_mask_and_coherent(&pci_dev->dev, DMA_BIT_MASK(pci_dma_mask));
 	if (ret) {
 		MHITEST_ERR("Failed to set dma mask:(%d) ret:%d\n",
 					pci_dma_mask, ret);
