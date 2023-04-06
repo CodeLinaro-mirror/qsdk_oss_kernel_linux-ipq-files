@@ -76,6 +76,17 @@
 	status = "disabled";
 };
 
+&blsp1_i2c3 {
+	pinctrl-0 = <&i2c_3_pins>;
+	pinctrl-names = "default";
+	status = "okay";
+
+	bmp390@77 {
+		compatible = "bosch,bmp390";
+		reg = <0x77>;
+	};
+};
+
 &sleep_clk {
 	clock-frequency = <32000>;
 };
@@ -121,6 +132,13 @@
 			drive-strength = <8>;
 			bias-disable;
 		};
+	};
+
+	i2c_3_pins: i2c-3-pins {
+		pins = "gpio15", "gpio16";
+		function = "blsp3_i2c";
+		drive-strength = <8>;
+		bias-disable;
 	};
 
 	sdc_default_state: sdc-default-state {
