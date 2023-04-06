@@ -66,6 +66,25 @@
 	clock-frequency = <32000>;
 };
 
+&rpm_requests {
+	regulators {
+		compatible = "qcom,rpm-mp5496-regulators";
+
+		ipq9574_s1: s1 {
+		/*
+		 * During kernel bootup, the SoC runs at 800MHz with 875mV set by the bootloaders.
+		 * During regulator registration, kernel not knowing the initial voltage,
+		 * considers it as zero and brings up the regulators with minimum supported voltage.
+		 * Updating the regulator-min-microvolt with SVS voltage of 725000uV so that
+		 * the regulators are brought up with 725000uV which is sufficient for all the
+		 * corner parts to operate at 800MHz
+		 */
+			regulator-min-microvolt = <725000>;
+			regulator-max-microvolt = <1075000>;
+		};
+	};
+};
+
 &tlmm {
 	qspi_nand_pins: qspi_nand_pins {
 		qspi_clock {
