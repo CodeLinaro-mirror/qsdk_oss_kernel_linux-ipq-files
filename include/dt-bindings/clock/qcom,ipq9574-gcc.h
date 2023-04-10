@@ -211,4 +211,8 @@
 #define GCC_SNOC_PCIE1_1LANE_S_CLK			201
 #define GCC_SNOC_PCIE2_2LANE_S_CLK			202
 #define GCC_SNOC_PCIE3_2LANE_S_CLK			203
+#define GCC_PCIE0_PIPE_CLK                              204
+#define GCC_PCIE1_PIPE_CLK                              205
+#define GCC_PCIE2_PIPE_CLK                              206
+#define GCC_PCIE3_PIPE_CLK                              207
 #endif
