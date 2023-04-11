@@ -217,4 +217,11 @@
 #define GCC_PCIE3_PIPE_CLK                              207
 #define GCC_USB0_PIPE_CLK				208
 #define GCC_USB0_SLEEP_CLK				209
+#define GCC_WCSS_AHB_S_CLK				210
+#define GCC_WCSS_AXI_M_CLK				211
+#define GCC_Q6_AXIM2_CLK				212
+#define GCC_WCSS_DBG_IFC_APB_BDG_CLK			213
+#define GCC_WCSS_DBG_IFC_ATB_BDG_CLK			214
+#define GCC_WCSS_DBG_IFC_DAPBUS_BDG_CLK			215
+#define GCC_WCSS_DBG_IFC_NTS_BDG_CLK			216
 #endif
