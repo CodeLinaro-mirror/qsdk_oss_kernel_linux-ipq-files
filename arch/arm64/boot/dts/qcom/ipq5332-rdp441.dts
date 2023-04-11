@@ -36,7 +36,7 @@
 	non-removable;
 	pinctrl-0 = <&sdc_default_state>;
 	pinctrl-names = "default";
-	status = "okay";
+	status = "disabled";
 };
 
 &sleep_clk {
@@ -45,6 +45,26 @@
 
 &xo_board {
 	clock-frequency = <24000000>;
+};
+
+&qpic_bam {
+	status = "okay";
+};
+
+&qpic_nand {
+	pinctrl-0 = <&qspi_default_state>;
+	pinctrl-names = "default";
+	status = "okay";
+
+	nandcs@0 {
+		reg = <0>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		nand-ecc-strength = <8>;
+		nand-ecc-step-size = <512>;
+		nand-bus-width = <8>;
+	};
 };
 
 /* PINCTRL */
@@ -70,6 +90,29 @@
 			function = "sdc_data";
 			drive-strength = <8>;
 			bias-pull-up;
+		};
+	};
+
+	qspi_default_state: qspi-default-state {
+		qspi_clock {
+			pins = "gpio13";
+			function = "qspi_clk";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+
+		qspi_cs {
+			pins = "gpio12";
+			function = "qspi_cs";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+
+		qspi_data {
+			pins = "gpio8", "gpio9", "gpio10", "gpio11";
+			function = "qspi_data";
+			drive-strength = <8>;
+			bias-pull-down;
 		};
 	};
 };
