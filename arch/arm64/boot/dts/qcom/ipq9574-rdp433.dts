@@ -78,6 +78,10 @@
 	};
 };
 
+&qusb_phy_0 {
+	status = "okay";
+};
+
 &blsp1_spi0 {
 	pinctrl-0 = <&spi_0_pins>;
 	pinctrl-names = "default";
@@ -117,6 +121,10 @@
 
 &sleep_clk {
 	clock-frequency = <32000>;
+};
+
+&ssphy_0 {
+	status = "okay";
 };
 
 &rpm_requests {
@@ -207,6 +215,10 @@
 		drive-strength = <8>;
 		bias-disable;
 	};
+};
+
+&usb3 {
+	status = "okay";
 };
 
 &xo_board_clk {
