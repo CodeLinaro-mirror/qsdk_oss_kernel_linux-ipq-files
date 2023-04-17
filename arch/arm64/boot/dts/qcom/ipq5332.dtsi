@@ -115,6 +115,13 @@
 	};
 
 	firmware {
+		qfprom {
+			compatible = "qcom,qfprom-sec";
+			img-addr = <0x4a100000>;
+			img-size = <0x500000>;
+			scm-cmd-id = <0x1f>;
+		};
+
 		scm {
 			compatible = "qcom,scm-ipq5332", "qcom,scm";
 			qcom,dload-mode = <&tcsr 0x6100>;
