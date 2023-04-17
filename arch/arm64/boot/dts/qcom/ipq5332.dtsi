@@ -7,6 +7,8 @@
 
 #include <dt-bindings/clock/qcom,apss-ipq.h>
 #include <dt-bindings/clock/qcom,ipq5332-gcc.h>
+#include <dt-bindings/clock/qcom,nsscc-ipq5332.h>
+#include <dt-bindings/reset/qcom,nsscc-ipq5332.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 
 / {
@@ -22,6 +24,24 @@
 
 		xo_board: xo-board-clk {
 			compatible = "fixed-clock";
+			#clock-cells = <0>;
+		};
+
+		cmn_pll_nss_clk_200m: cmn-pll-nss-clk-200m {
+			compatible = "fixed-clock";
+			clock-frequency = <200000000>;
+			#clock-cells = <0>;
+		};
+
+		cmn_pll_nss_clk_300m: cmn-pll-nss-clk-300m {
+			compatible = "fixed-clock";
+			clock-frequency = <300000000>;
+			#clock-cells = <0>;
+		};
+
+		gcc_gpll0_out_aux: gcc-gpll0-out-aux {
+			compatible = "fixed-clock";
+			clock-frequency = <800000000>;
 			#clock-cells = <0>;
 		};
 	};
@@ -170,6 +190,21 @@
 				 <0>,
 				 <0>,
 				 <0>;
+		};
+
+		nsscc: nsscc@39b00000{
+			compatible = "qcom,nsscc-ipq5332";
+			reg = <0x39b00000 0x80000>;
+			clocks = <&xo_board>,
+				<&cmn_pll_nss_clk_200m>,
+				<&cmn_pll_nss_clk_300m>,
+				<&gcc_gpll0_out_aux>;
+			clock-names = "xo",
+					"cmn_pll_nss_clk_200m",
+					"cmn_pll_nss_clk_300m",
+					"gcc_gpll0_out_aux";
+			#clock-cells = <0x1>;
+			#reset-cells = <0x1>;
 		};
 
 		tcsr_mutex: hwlock@1905000 {
