@@ -11,7 +11,7 @@
 #include "ipq5332.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. IPQ5332 MI01.2";
+	model = "Qualcomm Technologies, Inc. IPQ5332/AP-MI01.2";
 	compatible = "qcom,ipq5332-ap-mi01.2", "qcom,ipq5332";
 
 	aliases {
