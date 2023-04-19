@@ -7,6 +7,7 @@
 
 /dts-v1/;
 
+#include <dt-bindings/gpio/gpio.h>
 #include "ipq5332.dtsi"
 
 / {
@@ -74,6 +75,28 @@
 	};
 };
 
+&pcie0_phy {
+	status = "okay";
+};
+
+&pcie0 {
+	pinctrl-0 = <&pcie0_default_state>;
+	pinctrl-names = "default";
+	perst-gpios = <&tlmm 38 GPIO_ACTIVE_LOW>;
+	status = "okay";
+};
+
+&pcie1_phy_x2 {
+	status = "okay";
+};
+
+&pcie1 {
+	pinctrl-0 = <&pcie1_default_state>;
+	pinctrl-names = "default";
+	perst-gpios = <&tlmm 47 GPIO_ACTIVE_LOW>;
+	status = "okay";
+};
+
 /* PINCTRL */
 
 &tlmm {
@@ -128,5 +151,21 @@
 		function = "blsp1_i2c0";
 		drive-strength = <8>;
 		bias-pull-up;
+	};
+
+	pcie0_default_state: pcie0-default-state {
+		pins = "gpio38";
+		function = "gpio";
+		drive-strength = <8>;
+		bias-pull-up;
+		output-low;
+	};
+
+	pcie1_default_state: pcie1-default-state {
+		pins = "gpio47";
+		function = "gpio";
+		drive-strength = <8>;
+		bias-pull-up;
+		output-low;
 	};
 };
