@@ -468,6 +468,11 @@
 			status = "disabled";
 		};
 
+		seccrypt: qcom,seccrypt {
+			compatible = "qcom,seccrypt";
+			status = "okay";
+		};
+
 		intc: interrupt-controller@b000000 {
 			compatible = "qcom,msm-qgic2";
 			reg = <0x0b000000 0x1000>,	/* GICD */
