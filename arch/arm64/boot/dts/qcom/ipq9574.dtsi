@@ -273,6 +273,23 @@
 		#size-cells = <1>;
 		ranges = <0 0 0 0xffffffff>;
 
+		reg_update: reg-update@400000 {
+			compatible = "ipq,reg-update";
+			reg = <0x00400000 0x6148>,
+			      <0x39d00020 0x10>;
+			reg-names = "memnoc",
+				    "ubicore";
+			clocks = <&nsscc NSS_CC_NSS_CSR_CLK>,
+				 <&nsscc NSS_CC_NSSNOC_NSS_CSR_CLK>;
+			clock-names = "nss-csr-clk",
+				      "nss-nssnoc-csr-clk";
+			assigned-clocks = <&nsscc NSS_CC_NSS_CSR_CLK>,
+					  <&nsscc NSS_CC_NSSNOC_NSS_CSR_CLK>;
+			assigned-clock-rates = <100000000>,
+					       <100000000>;
+			status = "okay";
+		};
+
 		pcie0_phy: phy@84000 {
 			compatible = "qcom,ipq9574-qmp-gen3x1-pcie-phy";
 			reg = <0x00084000 0x1bc>; /* Serdes PLL */
