@@ -458,6 +458,15 @@
 			status = "disabled";
 		};
 
+		dcc@797f000 {
+			compatible = "qcom,dcc-v2-ipq5332";
+			reg = <0x40ff000 0x1000>,
+				<0x4080000 0x800>;
+			reg-names = "dcc-base", "dcc-ram-base";
+			dcc-ram-offset = <0x0>;
+			status = "disabled";
+		};
+
 		qpic_bam: dma-controller@7984000 {
 			compatible = "qcom,bam-v1.7.0";
 			reg = <0x7984000 0x1c000>;
