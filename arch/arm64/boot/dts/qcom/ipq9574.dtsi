@@ -1221,7 +1221,7 @@
 			clock-names = "xo";
 		};
 
-		mdio@90000 {
+		mdio: mdio@90000 {
 			compatible = "qcom,qca-mdio", "qcom,ipq40xx-mdio";
 			reg = <0x90000 0x64>;
 			#address-cells = <1>;
@@ -1231,14 +1231,17 @@
 			status = "disabled";
 		};
 
-		ess-instance {
+		ess_instance: ess-instance {
 			compatible = "qcom,ess-instance";
-			ess-switch@3a000000 {
+			num_devices = <0x1>;
+			ess_switch: ess-switch@3a000000 {
 				compatible = "qcom,ess-switch-ipq95xx";
 				reg = <0x3a000000 0x1000000>;
 				switch_access_mode = "local bus";
 				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
 				switch_inner_bmp = <0x80>; /*inner port bitmap*/
+				bm_tick_mode = <0>; /* bm tick mode */
+				tm_tick_mode = <0>; /* tm tick mode */
 				clocks = <&gcc GCC_CMN_12GPLL_AHB_CLK>,
 					<&gcc GCC_CMN_12GPLL_SYS_CLK>,
 					<&gcc GCC_UNIPHY0_AHB_CLK>,
