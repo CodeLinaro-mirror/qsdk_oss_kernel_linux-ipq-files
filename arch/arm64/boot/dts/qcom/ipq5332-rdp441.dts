@@ -8,6 +8,7 @@
 /dts-v1/;
 
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
 #include "ipq5332.dtsi"
 
 / {
@@ -59,6 +60,21 @@
 				gpios = <&tlmm 36 GPIO_ACTIVE_HIGH>;
 				linux,default-trigger = "led_2g";
 				default-state = "off";
+			};
+		};
+
+		gpio_keys {
+			compatible = "gpio-keys";
+			pinctrl-0 = <&button_pins>;
+			pinctrl-names = "default";
+			status = "okay";
+
+			button@1 {
+				label = "wps";
+				linux,code = <KEY_WPS_BUTTON>;
+				gpios = <&tlmm 35 GPIO_ACTIVE_LOW>;
+				linux,input-type = <1>;
+				debounce-interval = <60>;
 			};
 		};
 
@@ -296,6 +312,13 @@
 		function = "gpio";
 		drive-strength = <8>;
 		bias-pull-down;
+	};
+
+	button_pins: button-state {
+		pins = "gpio35";
+		function = "gpio";
+		drive-strength = <8>;
+		bias-pull-up;
 	};
 
 	pcie0_default_state: pcie0-default-state {
