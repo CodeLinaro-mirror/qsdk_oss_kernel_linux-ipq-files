@@ -837,6 +837,17 @@
 			status = "disabled";
 		};
 
+		qti,rpm-log@29fc00 {
+			compatible = "qti,rpm-log";
+			reg = <0x29fc00 0x4000>;
+			qti,rpm-addr-phys = <0x200000>;
+			qti,offset-version = <4>;
+			qti,offset-page-buffer-addr = <36>;
+			qti,offset-log-len = <40>;
+			qti,offset-log-len-mask = <44>;
+			qti,offset-page-indices = <56>;
+		};
+
 		qusb_phy_0: phy@7b000 {
 			compatible = "qcom,ipq9574-qusb2-phy";
 			reg = <0x07b000 0x180>;
