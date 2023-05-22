@@ -13,8 +13,8 @@
 #include "ipq9574.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. IPQ9574/AP-AL02-C6";
-	compatible = "qcom,ipq9574-ap-al02-c6", "qcom,ipq9574";
+	model = "Qualcomm Technologies, Inc. IPQ9574/RDP449/AP-AL02-C6";
+	compatible = "qcom,ipq9574-ap-al02-c6", "qcom,ipq9574-rdp449", "qcom,ipq9574";
 
 	aliases {
 		serial0 = &blsp1_uart2;
