@@ -75,6 +75,14 @@
 						phy_address = <4>;
 					};
 				};
+
+				led_source@5 {
+					source = <5>;
+					mode = "normal";
+					speed = "all";
+					blink_en = "enable";
+					active = "high";
+				};
 			};
 
 			ess-switch1@1 {
@@ -108,6 +116,28 @@
 						port_id = <3>;
 						phy_address = <3>;
 					};
+				};
+
+				led_source@2 {
+					source = <2>;
+					mode = "normal";
+					speed = "all";
+					blink_en = "enable";
+					active = "high";
+				};
+				led_source@5 {
+					source = <5>;
+					mode = "normal";
+					speed = "all";
+					blink_en = "enable";
+					active = "high";
+				};
+				led_source@8 {
+					source = <8>;
+					mode = "normal";
+					speed = "all";
+					blink_en = "enable";
+					active = "high";
 				};
 			};
 		};
