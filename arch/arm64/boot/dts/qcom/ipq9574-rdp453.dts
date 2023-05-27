@@ -258,6 +258,21 @@
 			bias-disable;
 		};
 	};
+
+	mdio_pins: mdio-state {
+		mux_0 {
+			pins = "gpio38";
+			function = "mdc";
+			drive-strength = <8>;
+			bias-disable;
+		};
+		mux_1 {
+			pins = "gpio39";
+			function = "mdio";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+	};
 };
 
 &usb3 {
@@ -266,4 +281,108 @@
 
 &xo_board_clk {
 	clock-frequency = <24000000>;
+};
+
+&mdio {
+	pinctrl-0 = <&mdio_pins>;
+	pinctrl-names = "default";
+	status = "okay";
+
+	/* gpio60 for manhattan reset */
+	phy-reset-gpio = <&tlmm 60 GPIO_ACTIVE_LOW>;
+	phyaddr_fixup = <0xC90F018>;
+	uniphyaddr_fixup = <0xC90F014>;
+	mdio_clk_fixup; /* MDIO clock sequence fix up flag */
+
+	phy0: ethernet-phy@0 {
+		      reg = <1>;
+		      fixup;
+	      };
+	phy1: ethernet-phy@1 {
+		      reg = <2>;
+		      fixup;
+	      };
+	phy2: ethernet-phy@2 {
+		      reg = <3>;
+		      fixup;
+	      };
+	phy3: ethernet-phy@3 {
+		      reg = <4>;
+		      fixup;
+	      };
+	phy4: ethernet-phy@4 {
+		      compatible ="ethernet-phy-ieee802.3-c45";
+		      reg = <8>;
+	      };
+	phy5: ethernet-phy@5 {
+		      compatible ="ethernet-phy-ieee802.3-c45";
+		      reg = <0>;
+	      };
+};
+
+&ess_switch {
+	switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
+	switch_lan_bmp = <0x3e>; /* lan port bitmap */
+	switch_wan_bmp = <0x40>; /* wan port bitmap */
+	switch_mac_mode = <0x15>; /* mac mode for uniphy instance0*/
+	switch_mac_mode1 = <0xd>; /* mac mode for uniphy instance1*/
+	switch_mac_mode2 = <0xd>; /* mac mode for uniphy instance2*/
+
+	qcom,port_phyinfo {
+		port@0 {
+			port_id = <1>;
+			phy_address = <1>;
+		};
+		port@1 {
+			port_id = <2>;
+			phy_address = <2>;
+		};
+		port@2 {
+			port_id = <3>;
+			phy_address = <3>;
+		};
+		port@3 {
+			port_id = <4>;
+			phy_address = <4>;
+		};
+		port@4 {
+			port_id = <5>;
+			phy_address = <8>;
+			ethernet-phy-ieee802.3-c45;
+		};
+		port@5 {
+			port_id = <6>;
+			phy_address = <0>;
+			ethernet-phy-ieee802.3-c45;
+		};
+	};
+
+	led_source@0 {
+		source = <0>;
+		mode = "normal";
+		speed = "all";
+		blink_en = "enable";
+		active = "high";
+	};
+	led_source@3 {
+		source = <3>;
+		mode = "normal";
+		speed = "all";
+		blink_en = "enable";
+		active = "high";
+	};
+	led_source@6 {
+		source = <6>;
+		mode = "normal";
+		speed = "all";
+		blink_en = "enable";
+		active = "high";
+	};
+	led_source@9 {
+		source = <9>;
+		mode = "normal";
+		speed = "all";
+		blink_en = "enable";
+		active = "high";
+	};
 };
