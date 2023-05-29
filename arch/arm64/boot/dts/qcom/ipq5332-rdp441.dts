@@ -12,8 +12,8 @@
 #include "ipq5332.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. IPQ5332/AP-MI01.2";
-	compatible = "qcom,ipq5332-ap-mi01.2", "qcom,ipq5332";
+	model = "Qualcomm Technologies, Inc. IPQ5332/RDP441/AP-MI01.2";
+	compatible = "qcom,ipq5332-ap-mi01.2", "qcom,ipq5332-rdp441", "qcom,ipq5332";
 
 	aliases {
 		serial0 = &blsp1_uart0;
