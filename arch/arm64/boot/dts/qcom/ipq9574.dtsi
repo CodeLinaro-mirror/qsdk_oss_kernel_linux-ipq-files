@@ -656,6 +656,10 @@
 			status = "disabled";
 		};
 
+		wsi: wsi {
+			status = "okay";
+		};
+
 		pcie1_x1: pci@10000000 {
 			compatible = "qcom,pcie-ipq9574";
 			reg =  <0x10000000 0xf1d>,
