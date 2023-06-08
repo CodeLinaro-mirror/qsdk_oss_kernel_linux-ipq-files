@@ -221,6 +221,13 @@
 	};
 
 	firmware {
+		qfprom {
+			compatible = "qcom,qfprom-sec";
+			img-addr = <0x4a100000>;
+			img-size = <0x500000>;
+			scm-cmd-id = <0x1f>;
+		};
+
 		scm {
 			compatible = "qcom,scm-ipq9574", "qcom,scm";
 			hvc-log-cmd-id = <0xA>;
