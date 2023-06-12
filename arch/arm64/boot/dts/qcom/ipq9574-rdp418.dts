@@ -18,6 +18,7 @@
 
 	aliases {
 		serial0 = &blsp1_uart2;
+		serial1 = &blsp1_uart4;
 	};
 
 	chosen {
@@ -104,6 +105,12 @@
 
 &blsp1_uart2 {
 	pinctrl-0 = <&uart2_pins>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+&blsp1_uart4 {
+	pinctrl-0 = <&uart4_pins>;
 	pinctrl-names = "default";
 	status = "okay";
 };
@@ -197,6 +204,13 @@
 		function = "gpio";
 		drive-strength = <8>;
 		bias-pull-up;
+	};
+
+	uart4_pins: uart4-pins {
+		pins = "gpio50", "gpio51", "gpio52", "gpio53";
+		function = "blsp4_uart";
+		drive-strength = <8>;
+		bias-disable;
 	};
 
 	spi_0_pins: spi-0-pins {
