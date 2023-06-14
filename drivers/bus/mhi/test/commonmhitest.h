@@ -108,7 +108,6 @@ struct mhitest_msi_user {
 enum fw_dump_type {
 	FW_IMAGE,
 	FW_RDDM,
-	FW_REMOTE_HEAP,
 	FW_DUMP_TYPE_MAX,
 };
 /* recovery reasons using only default and rddm one for now */
@@ -150,12 +149,25 @@ struct mhitest_dump_data {
 	u32 seg_version;
 };
 struct mhitest_ramdump_info {
-	struct ramdump_device *ramdump_dev;
+	void *ramdump_dev;
 	unsigned long ramdump_size;
 	void *dump_data_vaddr;
 	u8 dump_data_valid;
 	struct mhitest_dump_data dump_data;
 };
+
+struct mhitest_dump_seg_list {
+	struct list_head node;
+	dma_addr_t da;
+	void *va;
+	size_t size;
+};
+
+struct mhitest_dump_desc {
+	void *data;
+	struct completion dump_done;
+};
+
 struct mhitest_platform {
 	struct platform_device *plat_dev;
 	struct pci_dev *pci_dev;
