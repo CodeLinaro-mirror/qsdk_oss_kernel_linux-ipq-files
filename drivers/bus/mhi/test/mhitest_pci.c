@@ -967,27 +967,29 @@ out:
 
 void mhitest_global_soc_reset(struct mhitest_platform *mplat)
 {
-	u32 current_ee;
-	u32 count = 0;
+	u32 val, delay;
 
-	current_ee = mhi_get_exec_env(mplat->mhi_ctrl);
-	MHITEST_EMERG("Soc Globle Reset issued\n");
+	MHITEST_LOG("Soc Globle Reset issued");
+	val = readl_relaxed(mplat->bar + PCIE_SOC_GLOBAL_RESET_ADDRESS);
 
-	do {
-		writel_relaxed(PCIE_SOC_GLOBAL_RESET_VALUE,
-			       PCIE_SOC_GLOBAL_RESET_ADDRESS +
-			       mplat->bar);
-		msleep(20);
-		current_ee = mhi_get_exec_env(mplat->mhi_ctrl);
-		count++;
-	} while (current_ee != MHI_EE_PBL &&
-		 count < MAX_SOC_GLOBAL_RESET_WAIT_CNT);
+	val |= PCIE_SOC_GLOBAL_RESET_V;
 
-	if (current_ee != MHI_EE_PBL && count >= MAX_SOC_GLOBAL_RESET_WAIT_CNT)
-		MHITEST_EMERG("SoC global reset failed! Reset count : %d\n",
-			      count);
-	else
-		MHITEST_ERR("SOC Global reset count: %d\n", count);
+	writel_relaxed(val, mplat->bar + PCIE_SOC_GLOBAL_RESET_ADDRESS);
+
+	/* TODO: exact time to sleep is uncertain */
+	delay = 10;
+	mdelay(delay);
+
+	/* Need to toggle V bit back otherwise stuck in reset status */
+	val &= ~PCIE_SOC_GLOBAL_RESET_V;
+
+	writel_relaxed(val, mplat->bar + PCIE_SOC_GLOBAL_RESET_ADDRESS);
+
+	mdelay(delay);
+
+	val = readl_relaxed(mplat->bar + PCIE_SOC_GLOBAL_RESET_ADDRESS);
+	if (val == 0xffffffff)
+		MHITEST_ERR("link down error during global reset\n");
 }
 
 static void mhitest_reset_mhi_state(struct mhitest_platform *mplat)
