@@ -211,6 +211,11 @@
 					"lane_s_clk",
 					"phy_ahb_clk";
 
+			assigned-clocks = <&gcc GCC_SNOC_PCIE3_1LANE_M_CLK>,
+					  <&gcc GCC_SNOC_PCIE3_1LANE_S_CLK>;
+			assigned-clock-rates = <240000000>,
+						<240000000>;
+
 			resets = <&gcc GCC_PCIE3X1_0_PHY_BCR>,
 				<&gcc GCC_PCIE3X1_0_PHY_PHY_BCR>,
 				<&gcc GCC_PCIE3X1_PHY_AHB_CLK_ARES>;
@@ -239,6 +244,11 @@
 					"lane_m_clk",
 					"lane_s_clk",
 					"phy_ahb_clk";
+
+			assigned-clocks = <&gcc GCC_SNOC_PCIE3_2LANE_M_CLK>,
+					  <&gcc GCC_SNOC_PCIE3_2LANE_S_CLK>;
+			assigned-clock-rates = <266666666>,
+						<240000000>;
 
 			resets = <&gcc GCC_PCIE3X2_PHY_BCR>,
 				<&gcc GCC_PCIE3X2_PHY_AHB_CLK_ARES>;
@@ -269,6 +279,11 @@
 					"lane_s_clk",
 					"phy_ahb_clk";
 
+			assigned-clocks = <&gcc GCC_SNOC_PCIE3_1LANE_1_M_CLK>,
+					  <&gcc GCC_SNOC_PCIE3_1LANE_1_S_CLK>;
+			assigned-clock-rates = <240000000>,
+						<240000000>;
+
 			resets = <&gcc GCC_PCIE3X1_1_PHY_BCR>,
 				<&gcc GCC_PCIE3X2_PHY_AHB_CLK_ARES>;
 			reset-names = "phy",
@@ -292,6 +307,11 @@
 					"lane_m_clk",
 					"lane_s_clk",
 					"phy_ahb_clk";
+
+			assigned-clocks = <&gcc GCC_SNOC_PCIE3_2LANE_M_CLK>,
+					  <&gcc GCC_SNOC_PCIE3_2LANE_S_CLK>;
+			assigned-clock-rates = <266666666>,
+						<240000000>;
 
 			resets = <&gcc GCC_PCIE3X2_PHY_BCR>,
 				<&gcc GCC_PCIE3X2_PHY_AHB_CLK_ARES>;
@@ -933,6 +953,18 @@
 				      "axi_bridge",
 				      "rchng";
 
+			assigned-clocks = <&gcc GCC_PCIE3X2_AUX_CLK>,
+					<&gcc GCC_PCIE3X1_1_AXI_M_CLK>,
+					<&gcc GCC_PCIE3X1_1_AXI_S_BRIDGE_CLK>,
+					<&gcc GCC_PCIE3X1_1_AXI_S_CLK>,
+					<&gcc GCC_PCIE3X1_1_RCHG_CLK>;
+
+			assigned-clock-rates = <2000000>,
+						<240000000>,
+						<240000000>,
+						<240000000>,
+						<100000000>;
+
 			resets = <&gcc GCC_PCIE3X1_1_PIPE_ARES>,
 				 <&gcc GCC_PCIE3X1_1_CORE_STICKY_ARES>,
 				 <&gcc GCC_PCIE3X1_1_AXI_M_CLK_ARES>,
@@ -1006,6 +1038,18 @@
 				      "axi_bridge",
 				      "rchng";
 
+			assigned-clocks = <&gcc GCC_PCIE3X2_AUX_CLK>,
+					<&gcc GCC_PCIE3X2_AXI_M_CLK>,
+					<&gcc GCC_PCIE3X2_AXI_S_BRIDGE_CLK>,
+					<&gcc GCC_PCIE3X2_AXI_S_CLK>,
+					<&gcc GCC_PCIE3X2_RCHG_CLK>;
+
+			assigned-clock-rates = <2000000>,
+						<266666666>,
+						<240000000>,
+						<240000000>,
+						<100000000>;
+
 			resets = <&gcc GCC_PCIE3X2_PIPE_ARES>,
 				 <&gcc GCC_PCIE3X2_CORE_STICKY_ARES>,
 				 <&gcc GCC_PCIE3X2_AXI_M_CLK_ARES>,
@@ -1075,6 +1119,18 @@
 				      "aux",
 				      "axi_bridge",
 				      "rchng";
+
+			assigned-clocks = <&gcc GCC_PCIE3X1_0_AUX_CLK>,
+					<&gcc GCC_PCIE3X1_0_AXI_M_CLK>,
+					<&gcc GCC_PCIE3X1_0_AXI_S_BRIDGE_CLK>,
+					<&gcc GCC_PCIE3X1_0_AXI_S_CLK>,
+					<&gcc GCC_PCIE3X1_0_RCHG_CLK>;
+
+			assigned-clock-rates = <2000000>,
+						<240000000>,
+						<240000000>,
+						<240000000>,
+						<100000000>;
 
 			resets = <&gcc GCC_PCIE3X1_0_PIPE_ARES>,
 				 <&gcc GCC_PCIE3X1_0_CORE_STICKY_ARES>,
