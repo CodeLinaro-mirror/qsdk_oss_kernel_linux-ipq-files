@@ -50,6 +50,30 @@
 				debounce-interval = <60>;
 			};
 		};
+
+		nss-macsec0 {
+			compatible = "qcom,nss-macsec";
+			phy_addr = <0x1>;
+			mdiobus = <&mdio>;
+		};
+
+		nss-macsec1 {
+			compatible = "qcom,nss-macsec";
+			phy_addr = <0x2>;
+			mdiobus = <&mdio>;
+		};
+
+		nss-macsec2 {
+			compatible = "qcom,nss-macsec";
+			phy_addr = <0x3>;
+			mdiobus = <&mdio>;
+		};
+
+		nss-macsec3 {
+			compatible = "qcom,nss-macsec";
+			phy_addr = <0x4>;
+			mdiobus = <&mdio>;
+		};
 	};
 };
 
