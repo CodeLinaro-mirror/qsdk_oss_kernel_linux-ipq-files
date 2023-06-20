@@ -19,6 +19,7 @@
 #include <linux/of_device.h>
 #include <linux/devcoredump.h>
 #include <linux/elf.h>
+#include <linux/of_address.h>
 #include "commonmhitest.h"
 
 #define PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV0	0x3164
@@ -778,9 +779,8 @@ int mhitest_pci_register_mhi(struct mhitest_platform *mplat)
 	struct pci_dev *pci_dev = mplat->pci_dev;
 	struct mhi_controller *mhi_ctrl;
 	struct device_node *np;
-	int ret, len, sw, aw;
-	unsigned int *reg, *reg_end;
-	unsigned long start, size;
+	int ret;
+	struct resource memory;
 
 	mhi_ctrl = mhi_alloc_controller();
 	if (!mhi_ctrl) {
@@ -810,28 +810,19 @@ int mhitest_pci_register_mhi(struct mhitest_platform *mplat)
 	np = of_find_node_by_type(NULL, "memory");
 	if (!np) {
 		MHITEST_ERR("memory node not found !!\n");
-		return 1;
+		ret = -ENOMEM;
+		goto out;
 	}
 
-	aw = of_n_addr_cells(np);
-	sw = of_n_size_cells(np);
-
-	reg = (unsigned int *)of_get_property(np, "reg", &len);
-	if (!reg) {
-		pr_mhitest2("Couldn't get reg from mem node\n");
-		return -ENOMEM;
+	if (of_address_to_resource(np, 0, &memory)) {
+		MHITEST_ERR("Unable to get resource: memory");
+		ret = -ENOMEM;
+		goto out;
 	}
-	reg_end = reg + len/4;
-	do {
-		start = of_read_number(reg, aw);
-		reg += aw;
-		size = of_read_number(reg, sw);
-		reg += sw;
-	} while (reg < reg_end);
 
-
-	mhi_ctrl->iova_start = (dma_addr_t)start;
-	mhi_ctrl->iova_stop = (dma_addr_t)(start + size);
+	mhi_ctrl->iova_start = (dma_addr_t)memory.start;
+	mhi_ctrl->iova_stop = (dma_addr_t)(memory.start +
+					   (resource_size(&memory) - 1));
 
 	MHITEST_VERB("iova_start:%x iova_stop:%x\n",
 			(unsigned int)mhi_ctrl->iova_start,
