@@ -296,16 +296,22 @@ void mhitest_pci_unregister_mhi(struct mhitest_platform *mplat)
 
 	mhi_unregister_controller(mhi_ctrl);
 	kfree(mhi_ctrl->irq);
-	mhi_free_controller(mhi_ctrl);
+}
+
+static void mhitest_pci_free_mhi_controller(struct mhitest_platform *mplat)
+{
+	mhi_free_controller(mplat->mhi_ctrl);
+	mplat->mhi_ctrl = NULL;
 }
 
 int mhitest_pci_remove_all(struct mhitest_platform *mplat)
 {
 	MHITEST_VERB("Enter\n");
 
+	mhitest_pci_unregister_mhi(mplat);
 	mhitest_pci_disable_msi(mplat);
 	mhitest_pci_disable_bus(mplat);
-	mhitest_pci_unregister_mhi(mplat);
+	mhitest_pci_free_mhi_controller(mplat);
 	mhitest_unregister_ramdump(mplat);
 
 	MHITEST_VERB("Exit\n");
