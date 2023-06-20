@@ -17,7 +17,8 @@
 #include <linux/of.h>
 #include <linux/spinlock.h>
 #include <linux/of_device.h>
-#include <soc/qcom/ramdump.h>
+#include <linux/devcoredump.h>
+#include <linux/elf.h>
 #include "commonmhitest.h"
 
 #define PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV0	0x3164
@@ -28,6 +29,35 @@
 
 #define MHITEST_MHI_SEG_LEN			SZ_512K
 #define MHITEST_DUMP_DESC_TOLERANCE		64
+
+DECLARE_COMPLETION(dump_done);
+#define TIMEOUT_SAVE_DUMP_MS 300000
+
+/* Ramdump ELF Helpers */
+#define SIZEOF_ELF_STRUCT(__xhdr)					\
+static inline size_t sizeof_elf_##__xhdr(unsigned char class)		\
+{									\
+	if (class == ELFCLASS32)					\
+		return sizeof(struct elf32_##__xhdr);			\
+	else								\
+		return sizeof(struct elf64_##__xhdr);			\
+}
+
+SIZEOF_ELF_STRUCT(phdr)
+SIZEOF_ELF_STRUCT(hdr)
+
+#define set_xhdr_property(__xhdr, arg, class, member, value)		\
+do {									\
+	if (class == ELFCLASS32)					\
+		((struct elf32_##__xhdr *)arg)->member = value;		\
+	else								\
+		((struct elf64_##__xhdr *)arg)->member = value;		\
+} while (0)
+
+#define set_ehdr_property(arg, class, member, value) \
+	set_xhdr_property(hdr, arg, class, member, value)
+#define set_phdr_property(arg, class, member, value) \
+	set_xhdr_property(phdr, arg, class, member, value)
 
 static struct mhi_channel_config mhitest_mhi_channels[] = {
 	{
@@ -236,66 +266,195 @@ int mhitest_dump_info(struct mhitest_platform *mplat, bool in_panic)
 	return 0;
 }
 
+static ssize_t mhitest_devcd_readv(char *buffer, loff_t offset, size_t count,
+				   void *data, size_t datalen)
+{
+	struct mhitest_dump_desc *desc = data;
+
+	return memory_read_from_buffer(buffer, count, &offset, desc->data,
+				       datalen);
+}
+
+static void mhitest_devcd_freev(void *data)
+{
+	struct mhitest_dump_desc *desc = data;
+
+	MHITEST_LOG("Free dump data for dev coredump\n");
+
+	complete(&dump_done);
+	vfree(desc->data);
+	kfree(desc);
+}
+
+static int mhitest_devcd_dump(struct device *dev, void *data, size_t datalen,
+			      gfp_t gfp)
+{
+	struct mhitest_dump_desc *desc;
+	unsigned int timeout = TIMEOUT_SAVE_DUMP_MS;
+	int ret;
+
+	desc = kmalloc(sizeof(*desc), GFP_KERNEL);
+	if (!desc)
+		return -ENOMEM;
+
+	desc->data = data;
+	reinit_completion(&dump_done);
+
+	dev_coredumpm(dev, NULL, desc, datalen, gfp,
+		      mhitest_devcd_readv, mhitest_devcd_freev);
+
+	ret = wait_for_completion_timeout(&dump_done,
+					  msecs_to_jiffies(timeout));
+	if (!ret)
+		MHITEST_ERR("Timeout waiting (%dms) for saving dump to file system\n",
+			    timeout);
+
+	return ret ? 0 : -ETIMEDOUT;
+}
+
+/* Since the elf32 and elf64 identification is identical apart from
+ * the class, use elf32 by default.
+ */
+static void init_elf_identification(struct elf32_hdr *ehdr, unsigned char class)
+{
+	memcpy(ehdr->e_ident, ELFMAG, SELFMAG);
+	ehdr->e_ident[EI_CLASS] = class;
+	ehdr->e_ident[EI_DATA] = ELFDATA2LSB;
+	ehdr->e_ident[EI_VERSION] = EV_CURRENT;
+	ehdr->e_ident[EI_OSABI] = ELFOSABI_NONE;
+}
+
+static int mhitest_elf_dump(struct list_head *segs, struct device *dev,
+			    unsigned char class)
+{
+	struct mhitest_dump_seg_list *segment = NULL;
+	Elf32_Phdr *phdr;
+	Elf32_Ehdr *ehdr;
+	size_t data_size = 0, offset = 0;
+	int phnum = 0;
+	void *data = NULL;
+	void __iomem *ptr = NULL;
+
+	if (!segs || list_empty(segs))
+		return -EINVAL;
+
+	data_size = sizeof_elf_hdr(class);
+	list_for_each_entry(segment, segs, node) {
+		data_size += sizeof_elf_phdr(class) + segment->size;
+		phnum++;
+	}
+	data = vmalloc(data_size);
+	if (!data)
+		return -ENOMEM;
+
+	MHITEST_LOG("Creating ELF file with size %lu\n", data_size);
+
+	ehdr = data;
+	memset(ehdr, 0, sizeof_elf_hdr(class));
+	init_elf_identification(ehdr, class);
+	set_ehdr_property(ehdr, class, e_type, ET_CORE);
+	set_ehdr_property(ehdr, class, e_machine, EM_NONE);
+	set_ehdr_property(ehdr, class, e_version, EV_CURRENT);
+	set_ehdr_property(ehdr, class, e_phoff, sizeof_elf_hdr(class));
+	set_ehdr_property(ehdr, class, e_ehsize, sizeof_elf_hdr(class));
+	set_ehdr_property(ehdr, class, e_phentsize, sizeof_elf_phdr(class));
+	set_ehdr_property(ehdr, class, e_phnum, phnum);
+
+	phdr = data + sizeof_elf_hdr(class);
+	offset = sizeof_elf_hdr(class) + sizeof_elf_phdr(class) * phnum;
+	list_for_each_entry(segment, segs, node) {
+		memset(phdr, 0, sizeof_elf_phdr(class));
+		set_phdr_property(phdr, class, p_type, PT_LOAD);
+		set_phdr_property(phdr, class, p_offset, offset);
+		set_phdr_property(phdr, class, p_vaddr, segment->da);
+		set_phdr_property(phdr, class, p_paddr, segment->da);
+		set_phdr_property(phdr, class, p_filesz, segment->size);
+		set_phdr_property(phdr, class, p_memsz, segment->size);
+		set_phdr_property(phdr, class, p_flags, PF_R | PF_W | PF_X);
+		set_phdr_property(phdr, class, p_align, 0);
+
+		if (segment->va) {
+			memcpy(data + offset, segment->va, segment->size);
+		} else {
+			ptr = devm_ioremap(dev, segment->da, segment->size);
+			if (!ptr) {
+				MHITEST_LOG("Invalid coredump segment (%pad, %zu)\n",
+					    &segment->da, segment->size);
+				memset(data + offset, 0xff, segment->size);
+			} else {
+				memcpy_fromio(data + offset, ptr,
+					      segment->size);
+			}
+		}
+
+		offset += segment->size;
+		phdr += sizeof_elf_phdr(class);
+	}
+
+	return mhitest_devcd_dump(dev, data, data_size, GFP_KERNEL);
+}
+
 int mhitest_dev_ramdump(struct mhitest_platform *mplat)
 {
 	struct mhitest_ramdump_info *rdinfo = &mplat->mhitest_rdinfo;
 	struct mhitest_dump_data *dump_data = &rdinfo->dump_data;
 	struct mhitest_dump_seg *dump_seg = rdinfo->dump_data_vaddr;
-	struct ramdump_segment *ramdump_segs, *s;
+	struct mhitest_dump_seg_list *seg;
 	struct mhitest_dump_meta_info *meta_info;
+	struct list_head head;
 	int i, ret = 0, idx = 0;
 
 	if (!rdinfo->dump_data_valid ||
 	    dump_data->nentries == 0)
 		return 0;
 
-	/* First segment of the dump_data will have meta info in
-	 * cnss_dump_meta_info structure format.
-	 * Allocate extra segment for meta info and start filling the dump_seg
-	 * entries from ramdump_segs + NUM_META_INFO_SEGMENTS.
-	 */
-	ramdump_segs = kcalloc(dump_data->nentries +
-			       MHITEST_NUM_META_INFO_SEGMENTS,
-			       sizeof(*ramdump_segs),
-			       GFP_KERNEL);
-	if (!ramdump_segs)
-		return -ENOMEM;
+	INIT_LIST_HEAD(&head);
 
 	meta_info = kzalloc(PAGE_SIZE, GFP_KERNEL);
 	if (!meta_info) {
-		kfree(ramdump_segs);
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto free_seg_list;
+	}
+
+	seg = kzalloc(sizeof(*seg), GFP_KERNEL);
+	if (!seg) {
+		ret = -ENOMEM;
+		goto free_seg_list;
 	}
 
 	meta_info->magic = MHITEST_RAMDUMP_MAGIC;
 	meta_info->version = MHITEST_RAMDUMP_VERSION_V2;
 	meta_info->chipset = mplat->device_id;
 
-	ramdump_segs->v_address = meta_info;
-	ramdump_segs->size = sizeof(*meta_info);
+	seg->va = meta_info;
+	seg->size = sizeof(meta_info);
+	list_add(&seg->node, &head);
 
-	s = ramdump_segs + MHITEST_NUM_META_INFO_SEGMENTS;
 	for (i = 0; i < dump_data->nentries; i++) {
 		if (dump_seg->type >= FW_DUMP_TYPE_MAX) {
-			MHITEST_ERR("Unsupported dump type: %d\n",
+			MHITEST_ERR("Unsupported dump type: %d",
 				    dump_seg->type);
 			continue;
+		}
+
+		seg = kzalloc(sizeof(*seg), GFP_KERNEL);
+		if (!seg) {
+			ret = -ENOMEM;
+			goto free_seg_list;
 		}
 
 		if (dump_seg->type != meta_info->entry[idx].type)
 			idx++;
 
-		if (meta_info->entry[idx].entry_start == 0) {
-			meta_info->entry[idx].type = dump_seg->type;
-			meta_info->entry[idx].entry_start =
-						i + MHITEST_NUM_META_INFO_SEGMENTS;
+		if (meta_info->entry[dump_seg->type].entry_start == 0) {
+			meta_info->entry[dump_seg->type].type = dump_seg->type;
+			meta_info->entry[dump_seg->type].entry_start = i + 1;
 		}
-		meta_info->entry[idx].entry_num++;
-
-		s->address = dump_seg->address;
-		s->v_address = dump_seg->v_address;
-		s->size = dump_seg->size;
-		s++;
+		meta_info->entry[dump_seg->type].entry_num++;
+		seg->da = dump_seg->address;
+		seg->va = dump_seg->v_address;
+		seg->size = dump_seg->size;
+		list_add_tail(&seg->node, &head);
 		dump_seg++;
 	}
 
@@ -309,16 +468,15 @@ int mhitest_dev_ramdump(struct mhitest_platform *mplat)
 			    meta_info->entry[i].entry_start,
 			    meta_info->entry[i].entry_num);
 
-	ret = create_ramdump_device_file(rdinfo->ramdump_dev);
-	if (ret)
-		goto clear_dump_info;
+	ret = mhitest_elf_dump(&head, rdinfo->ramdump_dev, ELF_CLASS);
 
-	ret = do_elf_ramdump(rdinfo->ramdump_dev, ramdump_segs,
-			     dump_data->nentries + MHITEST_NUM_META_INFO_SEGMENTS);
-
-clear_dump_info:
-	kfree(meta_info);
-	kfree(ramdump_segs);
+free_seg_list:
+	while (!list_empty(&head)) {
+		seg = list_first_entry(&head,
+				       struct mhitest_dump_seg_list, node);
+		list_del(&seg->node);
+		kfree(seg);
+	}
 
 	return ret;
 }
@@ -872,8 +1030,7 @@ int mhitest_unregister_ramdump(struct mhitest_platform *mplat)
 {
 	struct mhitest_ramdump_info *mhitest_rdinfo = &mplat->mhitest_rdinfo;
 
-	if (mhitest_rdinfo->ramdump_dev)
-		destroy_ramdump_device(mhitest_rdinfo->ramdump_dev);
+	mhitest_rdinfo->ramdump_dev = NULL;
 	kfree(mhitest_rdinfo->dump_data_vaddr);
 	mhitest_rdinfo->dump_data_vaddr = NULL;
 	mhitest_rdinfo->dump_data_valid = false;
@@ -928,32 +1085,16 @@ int mhitest_register_ramdump(struct mhitest_platform *mplat)
 
 	dump_data->paddr = virt_to_phys(mhitest_rdinfo->dump_data_vaddr);
 
-	/*
-	 * TODO: used ramdom version and magic..etc check and correct it.
-	 */
-	dump_data->version = 0x00;
-	dump_data->magic = 0xAA55AA55;
-	dump_data->seg_version = 0x1;
+	dump_data->version = 0x22;
+	dump_data->magic = 0x42445953;
+	dump_data->seg_version = 0x2;
 	strlcpy(dump_data->name, "mhitest_mod",
 		sizeof(dump_data->name));
-	mhitest_rdinfo->ramdump_dev =
-		create_ramdump_device(mplat->mhitest_ss_desc_name,
-				      mplat->subsys_handle->dev.parent);
-	if (!mhitest_rdinfo->ramdump_dev) {
-		MHITEST_ERR("Failed to create ramdump device!\n");
-		ret = -ENOMEM;
-		goto free_ramdump;
-	}
+	mhitest_rdinfo->ramdump_dev = dev;
 
 	MHITEST_LOG("Ramdump registered ramdump_size:0x%x\n", ramdump_size);
 
 	return 0;
-
-free_ramdump:
-	kfree(mhitest_rdinfo->dump_data_vaddr);
-	mhitest_rdinfo->dump_data_vaddr = NULL;
-
-	return ret;
 }
 
 int mhitest_prepare_pci_mhi_msi(struct mhitest_platform *temp)
