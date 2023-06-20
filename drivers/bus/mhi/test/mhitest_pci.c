@@ -30,6 +30,10 @@
 #define MHITEST_MHI_SEG_LEN			SZ_512K
 #define MHITEST_DUMP_DESC_TOLERANCE		64
 
+#define MHISTATUS				0x48
+#define MHICTRL					0x38
+#define MHICTRL_RESET_MASK			0x2
+
 DECLARE_COMPLETION(dump_done);
 #define TIMEOUT_SAVE_DUMP_MS 300000
 
@@ -986,6 +990,16 @@ void mhitest_global_soc_reset(struct mhitest_platform *mplat)
 		MHITEST_ERR("SOC Global reset count: %d\n", count);
 }
 
+static void mhitest_reset_mhi_state(struct mhitest_platform *mplat)
+{
+	u32 val = 0;
+
+	val = readl_relaxed(mplat->bar + MHISTATUS);
+
+	MHITEST_LOG("Setting MHI State to reset, current state: 0x%x", val);
+	writel_relaxed(MHICTRL_RESET_MASK, mplat->bar + MHICTRL);
+}
+
 void mhitest_pci_disable_bus(struct mhitest_platform *mplat)
 {
 	struct pci_dev *pci_dev = mplat->pci_dev;
@@ -995,7 +1009,7 @@ void mhitest_pci_disable_bus(struct mhitest_platform *mplat)
 
 	msleep(2000);
 
-	mhi_set_mhi_state(mplat->mhi_ctrl, MHI_STATE_RESET);
+	mhitest_reset_mhi_state(mplat);
 
         while (retries--) {
                 temp = readl_relaxed(mplat->mhi_ctrl->regs  + 0x38);
