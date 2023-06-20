@@ -465,3 +465,16 @@
 		};
 	};
 };
+
+&usb3 {
+	qcom,multiplexed-phy;
+	status = "okay";
+};
+
+&hs_m31phy_0 {
+	status = "okay";
+};
+
+&ssuniphy_0 {
+	status = "okay";
+};
