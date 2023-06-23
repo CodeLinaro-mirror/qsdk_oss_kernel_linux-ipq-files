@@ -217,3 +217,18 @@
 		bias-pull-up;
 	};
 };
+
+&usb3 {
+	qcom,select-utmi-as-pipe-clk;
+	status = "okay";
+
+	dwc3@8A00000 {
+		/delete-property/ #phy-cells;
+		/delete-property/ phys;
+		/delete-property/ phy-names;
+	};
+};
+
+&hs_m31phy_0 {
+	status = "okay";
+};
