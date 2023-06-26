@@ -242,6 +242,46 @@
 				reg = <0x1d 0x2>;
 				bits = <7 2>;
 			};
+
+			s11: s11@3a5 {
+				reg = <0x3a5 0x1>;
+				bits = <4 4>;
+			};
+
+			s12: s12@3a6 {
+				reg = <0x3a6 0x1>;
+				bits = <0 4>;
+			};
+
+			s13: s13@3a6 {
+				reg = <0x3a6 0x1>;
+				bits = <4 4>;
+			};
+
+			s14: s14@3ad {
+				reg = <0x3ad 0x2>;
+				bits = <7 4>;
+			};
+
+			s15: s15@3ae {
+				reg = <0x3ae 0x1>;
+				bits = <3 4>;
+			};
+
+			tsens_mode: mode@3e1 {
+				reg = <0x3e1 0x1>;
+				bits = <0 3>;
+			};
+
+			tsens_base0: base0@3e1 {
+				reg = <0x3e1 0x2>;
+				bits = <3 10>;
+			};
+
+			tsens_base1: base1@3e2 {
+				reg = <0x3e2 0x2>;
+				bits = <5 10>;
+			};
 		};
 
 		rng: rng@e3000 {
@@ -388,6 +428,23 @@
 				compatible = "qcom,msm-imem-tz-log-buf-addr";
 				reg = <0x720 4>;
 			};
+		};
+
+		tsens: thermal-sensor@4a9000 {
+			compatible = "qcom,ipq5332-tsens";
+			reg = <0x4a9000 0x1000>,
+			      <0x4a8000 0x1000>;
+			nvmem-cells = <&tsens_mode>, <&tsens_base0>,
+				      <&tsens_base1>, <&s11>,
+				      <&s12>, <&s13>,
+				      <&s14>, <&s15>;
+			nvmem-cell-names = "mode", "base0",
+					   "base1", "s11",
+					   "s12", "s13",
+					   "s14", "s15";
+			interrupts = <GIC_SPI 320 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "combined";
+			#thermal-sensor-cells = <1>;
 		};
 
 		tlmm: pinctrl@1000000 {
