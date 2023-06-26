@@ -27,13 +27,14 @@
 #include <linux/uaccess.h>
 #include <linux/module.h>
 #include <linux/version.h>
-#include <linux/genhd.h>
 #include <linux/major.h>
 #include <linux/mtd/blktrans.h>
 #include <linux/mtd/mtd.h>
 #include <linux/types.h>
 #include <linux/blkdev.h>
 #include <linux/init.h>
+#include <linux/blkdev.h>
+#include <linux/pagemap.h>
 #include <linux/qcom_scm.h>
 #include <linux/soc/qcom/smem.h>
 #include "bootconfig.h"
@@ -85,14 +86,14 @@ static int getbinary_show(struct seq_file *m, void *v)
 
 static int getbinary_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, getbinary_show, PDE_DATA(inode));
+	return single_open(file, getbinary_show, pde_data(inode));
 }
 
-static const struct file_operations getbinary_ops = {
-	.open		= getbinary_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
+static const struct proc_ops getbinary_ops = {
+	.proc_open		= getbinary_open,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release		= single_release,
 };
 
 static int part_upgradepartition_show(struct seq_file *m, void *v)
@@ -121,14 +122,14 @@ static int part_upgradepartition_show(struct seq_file *m, void *v)
 
 static int part_upgradepartition_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, part_upgradepartition_show, PDE_DATA(inode));
+	return single_open(file, part_upgradepartition_show, pde_data(inode));
 }
 
-static const struct file_operations upgradepartition_ops = {
-	.open		= part_upgradepartition_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
+static const struct proc_ops upgradepartition_ops = {
+	.proc_open		= part_upgradepartition_open,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release		= single_release,
 };
 
 static ssize_t part_primaryboot_write(struct file *file,
@@ -140,7 +141,7 @@ static ssize_t part_primaryboot_write(struct file *file,
 	struct per_part_info *part_entry;
 	unsigned long val;
 
-	part_entry = PDE_DATA(file_inode(file));
+	part_entry = pde_data(file_inode(file));
 
 	if (count == 0 || count > sizeof(optstr))
 		return -EINVAL;
@@ -172,15 +173,15 @@ static int part_primaryboot_show(struct seq_file *m, void *v)
 
 static int part_primaryboot_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, part_primaryboot_show, PDE_DATA(inode));
+	return single_open(file, part_primaryboot_show, pde_data(inode));
 }
 
-static const struct file_operations primaryboot_ops = {
-	.open		= part_primaryboot_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
-	.write		= part_primaryboot_write,
+static const struct proc_ops primaryboot_ops = {
+	.proc_open		= part_primaryboot_open,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release		= single_release,
+	.proc_write		= part_primaryboot_write,
 };
 
 static ssize_t trybit_write(struct file *file,
@@ -192,7 +193,7 @@ static ssize_t trybit_write(struct file *file,
 	unsigned long int *value;
 	unsigned long val;
 
-	value = PDE_DATA(file_inode(file));
+	value = pde_data(file_inode(file));
 
 	if (count == 0 || count > sizeof(optstr))
 		return -EINVAL;
@@ -209,7 +210,7 @@ static ssize_t trybit_write(struct file *file,
 
 	if(1 == val)
 	{
-		qti_scm_set_trybit(QCOM_SCM_SVC_BOOT);
+		qcom_scm_enable_try_mode();
 	} else{
 		return -EINVAL;
 	}
@@ -219,7 +220,7 @@ static ssize_t trybit_write(struct file *file,
 static int trybit_show(struct seq_file *m, void *v)
 {
 	uint32_t val;
-	val = qti_read_dload_reg();
+	val = qcom_read_dload_reg();
 	val = (val & QTI_TRYBIT) ? 1 : 0;
 
 	seq_printf(m, "%x\n", val);
@@ -228,15 +229,15 @@ static int trybit_show(struct seq_file *m, void *v)
 
 static int trybit_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, trybit_show, PDE_DATA(inode));
+	return single_open(file, trybit_show, pde_data(inode));
 }
 
-static const struct file_operations trybit_ops = {
-	.open           = trybit_open,
-	.read           = seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
-	.write		= trybit_write,
+static const struct proc_ops trybit_ops = {
+	.proc_open	= trybit_open,
+	.proc_read	= seq_read,
+	.proc_lseek	= seq_lseek,
+	.proc_release	= single_release,
+	.proc_write	= trybit_write,
 };
 
 static int trymode_inprogress_show(struct seq_file *m, void *v)
@@ -250,14 +251,14 @@ static int trymode_inprogress_show(struct seq_file *m, void *v)
 
 static int trymode_inprogress_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, trymode_inprogress_show, PDE_DATA(inode));
+	return single_open(file, trymode_inprogress_show, pde_data(inode));
 }
 
-static const struct file_operations trymode_inprogress_ops = {
-	.open		= trymode_inprogress_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
+static const struct proc_ops trymode_inprogress_ops = {
+	.proc_open		= trymode_inprogress_open,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release		= single_release,
 };
 
 struct sbl_if_dualboot_info_type_v2 *read_bootconfig_mtd(
@@ -305,41 +306,21 @@ struct sbl_if_dualboot_info_type_v2 *read_bootconfig_mtd(
 }
 
 #ifdef CONFIG_MMC
-struct sbl_if_dualboot_info_type_v2 *read_bootconfig_emmc(struct gendisk *disk,
-						struct hd_struct *part)
+struct sbl_if_dualboot_info_type_v2 *read_bootconfig_emmc(struct block_device *bdev)
 {
 	sector_t n;
-	Sector sect;
-	int ret;
-	unsigned char *data;
 	struct sbl_if_dualboot_info_type_v2 *bootconfig_emmc;
-	unsigned ssz;
-	struct block_device *bdev = NULL;
+	struct address_space *mapping = bdev_whole(bdev)->bd_inode->i_mapping;
+	struct folio *folio;
 
-	bdev = bdget_disk(disk, 0);
-	if (!bdev)
-		return NULL;
+	n =  bdev->bd_start_sect * (bdev_logical_block_size(bdev) / 512);
 
-	bdev->bd_invalidated = 1;
-	ret = blkdev_get(bdev, FMODE_READ , NULL);
-	if (ret)
-		return NULL;
-
-	ssz = bdev_logical_block_size(bdev);
-	bootconfig_emmc = kmalloc(ssz, GFP_ATOMIC);
-	if (!bootconfig_emmc)
-		return NULL;
-
-	n =  part->start_sect * (bdev_logical_block_size(bdev) / 512);
-	data = read_dev_sector(bdev, n, &sect);
-	put_dev_sector(sect);
-	blkdev_put(bdev, FMODE_READ);
-	if (!data) {
+	folio = read_mapping_folio(mapping, n >> PAGE_SECTORS_SHIFT, NULL);
+	if (IS_ERR(folio)) {
 		kfree(bootconfig_emmc);
 		return NULL;
 	}
-
-	memcpy(bootconfig_emmc, data, 512);
+	bootconfig_emmc = kmemdup(folio_address(folio) + offset_in_folio(folio, n * SECTOR_SIZE), 512, GFP_KERNEL);
 
 	if ((bootconfig_emmc->magic_start != SMEM_DUAL_BOOTINFO_MAGIC_START) &&
 		(bootconfig_emmc->magic_start != SMEM_DUAL_BOOTINFO_MAGIC_START_TRYMODE)) {
@@ -361,7 +342,7 @@ static ssize_t age_write(struct file *file,
 	struct sbl_if_dualboot_info_type_v2 *bootconfig;
 	unsigned long val;
 
-	bootconfig = PDE_DATA(file_inode(file));
+	bootconfig = pde_data(file_inode(file));
 
 	if (count == 0 || count > sizeof(optstr))
 		return -EINVAL;
@@ -392,15 +373,15 @@ static int age_show(struct seq_file *m, void *v)
 
 static int age_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, age_show, PDE_DATA(inode));
+	return single_open(file, age_show, pde_data(inode));
 }
 
-static const struct file_operations age_ops = {
-	.open		= age_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
-	.write          = age_write,
+static const struct proc_ops age_ops = {
+	.proc_open		= age_open,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release		= single_release,
+	.proc_write		= age_write,
 };
 
 static int __init bootconfig_partition_init(void)
@@ -411,9 +392,8 @@ static int __init bootconfig_partition_init(void)
 	int i;
 #ifdef CONFIG_MMC
 	struct gendisk *disk = NULL;
-	struct disk_part_iter piter;
-	struct hd_struct *part;
-	int partno;
+	struct block_device *bdev;
+	unsigned long idx;
 #endif
 	struct mtd_info *mtd;
 	size_t len;
@@ -451,31 +431,33 @@ static int __init bootconfig_partition_init(void)
 	else if (flash_type_emmc == 1) {
 		flash_type_emmc = 0;
 		for (i = 0; i < MAX_MMC_DEVICE; i++) {
+			bdev = blkdev_get_by_dev(MKDEV(MMC_BLOCK_MAJOR,
+					i*CONFIG_MMC_BLOCK_MINORS),
+					FMODE_READ|FMODE_WRITE|FMODE_EXCL, NULL);
+			if (IS_ERR(bdev))
+				return PTR_ERR(bdev);
+			disk = bdev->bd_disk;
 
-			disk = get_gendisk(MKDEV(MMC_BLOCK_MAJOR, i*CONFIG_MMC_BLOCK_MINORS), &partno);
 			if (!disk)
 				goto free_memory;
 
-			disk_part_iter_init(&piter, disk, DISK_PITER_INCL_PART0);
-			while ((part = disk_part_iter_next(&piter))) {
+			xa_for_each_start(&disk->part_tbl, idx, bdev, 1) {
 
-				if (part->info) {
-					if (!strcmp((char *)part->info->volname,
+				if (bdev->bd_meta_info) {
+					if (!strcmp((char *)bdev->bd_meta_info->volname,
 							BOOTCONFIG_PARTITION)) {
-						bootconfig1 = read_bootconfig_emmc(disk,
-									part);
+						bootconfig1 = read_bootconfig_emmc(
+									bdev);
 					}
 
-					if (!strcmp((char *)part->info->volname,
+					if (!strcmp((char *)bdev->bd_meta_info->volname,
 							BOOTCONFIG_PARTITION1)) {
-						bootconfig2 = read_bootconfig_emmc(disk,
-									 part);
+						bootconfig2 = read_bootconfig_emmc(
+									 bdev);
 						flash_type_emmc = 1;
 					}
 				}
 			}
-			disk_part_iter_exit(&piter);
-
 			if (bootconfig1 || bootconfig2)
 			       break;
 		}
