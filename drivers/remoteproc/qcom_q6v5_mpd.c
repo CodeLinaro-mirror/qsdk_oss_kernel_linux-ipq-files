@@ -32,7 +32,14 @@
 #define WCNSS_PAS_ID			6
 #define MPD_WCNSS_PAS_ID        0xD
 
+#define RPD_SWID		MPD_WCNSS_PAS_ID
+#define UPD_SWID		0x12
+
 #define BUF_SIZE			35
+
+#define REMOTE_PID			1
+#define Q6_BOOT_ARGS_SMEM_SIZE		4096
+#define UPD_BOOTARGS_HEADER_TYPE	0x2
 
 /**
  * enum state - state of a wcss (private)
@@ -55,6 +62,11 @@ enum {
 	WCSS_PCIE_IPQ,
 };
 
+enum q6_bootargs_version {
+	VERSION1 = 1,
+	VERSION2,
+};
+
 struct q6_wcss {
 	struct device *dev;
 	struct qcom_rproc_glink glink_subdev;
@@ -68,6 +80,7 @@ struct q6_wcss {
 	u32 version;
 	s8 pd_asid;
 	enum q6_wcss_state state;
+	bool is_fw_shared;
 };
 
 struct wcss_data {
@@ -90,7 +103,29 @@ struct wcss_data {
 			    const char *fw_name, int pas_id, void *mem_region,
 			    phys_addr_t mem_phys, size_t mem_size,
 			    phys_addr_t *reloc_base);
+	bool is_fw_shared;
+	int (*powerup_scm)(u32 peripheral);
+	int (*powerdown_scm)(u32 peripheral);
+	u8 bootargs_version;
 };
+
+struct bootargs_smem_info {
+	void *smem_base_ptr;
+	void *smem_elem_cnt_ptr;
+	void *smem_bootargs_ptr;
+};
+
+struct bootargs_header {
+	u8 type;
+	u8 length;
+};
+
+struct q6_userpd_bootargs {
+	struct bootargs_header header;
+	u8 pid;
+	u32 bootaddr;
+	u32 data_size;
+} __packed;
 
 static int q6_wcss_start(struct rproc *rproc)
 {
@@ -155,10 +190,14 @@ static int wcss_ahb_pcie_pd_start(struct rproc *rproc)
 {
 	struct q6_wcss *wcss = rproc->priv;
 	const struct wcss_data *desc = of_device_get_match_data(wcss->dev);
+	u8 pd_asid = qcom_get_pd_asid(wcss->dev->of_node);
+	u32 pasid = desc->pasid;
 	int ret;
 
 	if (desc->reset_seq) {
-		ret = qti_scm_int_radio_powerup(desc->pasid);
+		if (!pasid)
+			pasid = (pd_asid << 8) | UPD_SWID;
+		ret = desc->powerup_scm(pasid);
 		if (ret) {
 			dev_err(wcss->dev, "failed to power up ahb pd\n");
 			return ret;
@@ -200,6 +239,8 @@ static int wcss_ahb_pcie_pd_stop(struct rproc *rproc)
 	struct q6_wcss *wcss = rproc->priv;
 	struct rproc *rpd_rproc = dev_get_drvdata(wcss->dev->parent);
 	const struct wcss_data *desc = of_device_get_match_data(wcss->dev);
+	u8 pd_asid = qcom_get_pd_asid(wcss->dev->of_node);
+	u32 pasid = desc->pasid;
 	int ret;
 
 	if (rproc->state != RPROC_CRASHED && wcss->q6.stop_bit) {
@@ -211,7 +252,9 @@ static int wcss_ahb_pcie_pd_stop(struct rproc *rproc)
 	}
 
 	if (desc->reset_seq) {
-		ret = qti_scm_int_radio_powerdown(desc->pasid);
+		if (!pasid)
+			pasid = (pd_asid << 8) | UPD_SWID;
+		ret = desc->powerdown_scm(pasid);
 		if (ret) {
 			dev_err(wcss->dev, "failed to power down pd\n");
 			return ret;
@@ -238,6 +281,176 @@ static void *q6_wcss_da_to_va(struct rproc *rproc, u64 da, size_t len,
 	return wcss->mem_region + offset;
 }
 
+static int copy_userpd_bootargs(struct bootargs_smem_info *boot_args,
+				struct rproc *upd_rproc)
+{
+	struct q6_wcss *upd_wcss = upd_rproc->priv;
+	int ret;
+	const struct firmware *fw;
+	struct q6_userpd_bootargs upd_bootargs = {0};
+	struct device *dev = upd_wcss->dev;
+
+	/* TYPE */
+	upd_bootargs.header.type = UPD_BOOTARGS_HEADER_TYPE;
+
+	/* LENGTH */
+	upd_bootargs.header.length =
+		sizeof(struct q6_userpd_bootargs) - sizeof(upd_bootargs.header);
+
+	/* PID */
+	upd_bootargs.pid = qcom_get_pd_asid(upd_wcss->dev->of_node) + 1;
+
+	ret = request_firmware(&fw, upd_rproc->firmware, upd_wcss->dev);
+	if (ret < 0) {
+		dev_err(upd_wcss->dev, "request_firmware failed: %d\n",	ret);
+		return ret;
+	}
+
+	/* Load address */
+	upd_bootargs.bootaddr = rproc_get_boot_addr(upd_rproc, fw);
+
+	/* PIL data size */
+	upd_bootargs.data_size = qcom_mdt_get_file_size(fw);
+
+	release_firmware(fw);
+
+	/* copy into smem bootargs array*/
+	memcpy_toio(boot_args->smem_bootargs_ptr,
+		    &upd_bootargs, sizeof(struct q6_userpd_bootargs));
+	boot_args->smem_bootargs_ptr += sizeof(struct q6_userpd_bootargs);
+	return ret;
+}
+
+static int load_userpd_params_to_bootargs(struct device *dev,
+					  struct bootargs_smem_info *boot_args)
+{
+	int ret = 0;
+	struct device_node *upd_np;
+	struct platform_device *upd_pdev;
+	struct rproc *upd_rproc;
+	u16 cnt;
+	u8 upd_cnt = 0;
+
+	if (!of_property_read_bool(dev->of_node, "qcom,userpd-bootargs"))
+		return -EINVAL;
+
+	for_each_available_child_of_node(dev->of_node, upd_np) {
+		if (!strstr(upd_np->name, "pd"))
+			continue;
+		upd_cnt++;
+	}
+
+	/* No of elements */
+	cnt = *((u16 *)boot_args->smem_elem_cnt_ptr);
+	cnt += (sizeof(struct q6_userpd_bootargs) * upd_cnt);
+	memcpy_toio(boot_args->smem_elem_cnt_ptr, &cnt, sizeof(u16));
+
+	for_each_available_child_of_node(dev->of_node, upd_np) {
+		if (!strstr(upd_np->name, "pd"))
+			continue;
+		upd_pdev = of_find_device_by_node(upd_np);
+		upd_rproc = platform_get_drvdata(upd_pdev);
+		ret = copy_userpd_bootargs(boot_args, upd_rproc);
+		if (ret)
+			return ret;
+	}
+	return ret;
+}
+
+static int share_bootargs_to_q6(struct device *dev)
+{
+	int ret;
+	u32 smem_id, rd_val;
+	const char *key = "qcom,bootargs_smem";
+	size_t size;
+	u16 cnt, tmp, version;
+	void *ptr;
+	u8 *bootargs_arr;
+	struct device_node *np = dev->of_node;
+	struct bootargs_smem_info boot_args;
+	const struct wcss_data *desc =
+				of_device_get_match_data(dev);
+
+	if (!desc)
+		return -EINVAL;
+
+	ret = of_property_read_u32(np, key, &smem_id);
+	if (ret) {
+		pr_err("failed to get smem id\n");
+		return ret;
+	}
+
+	ret = qcom_smem_alloc(REMOTE_PID, smem_id, Q6_BOOT_ARGS_SMEM_SIZE);
+	if (ret && ret != -EEXIST) {
+		pr_err("failed to allocate q6 bootargs smem segment\n");
+		return ret;
+	}
+
+	boot_args.smem_base_ptr = qcom_smem_get(REMOTE_PID, smem_id, &size);
+	if (IS_ERR(boot_args.smem_base_ptr)) {
+		pr_err("Unable to acquire smp2p item(%d) ret:%ld\n",
+		       smem_id, PTR_ERR(boot_args.smem_base_ptr));
+		return PTR_ERR(boot_args.smem_base_ptr);
+	}
+	ptr = boot_args.smem_base_ptr;
+
+	/*get physical address*/
+	pr_info("smem phyiscal address:0x%lX\n",
+		(uintptr_t)qcom_smem_virt_to_phys(ptr));
+
+	/*Version*/
+	version = desc->bootargs_version;
+	memcpy_toio(ptr, &version, sizeof(version));
+	ptr += sizeof(version);
+	boot_args.smem_elem_cnt_ptr = ptr;
+
+	ret = of_property_count_u32_elems(np, "boot-args");
+	cnt = ret;
+	if (ret < 0) {
+		if (ret == -ENODATA) {
+			pr_err("failed to read boot args ret:%d\n", ret);
+			return ret;
+		}
+		cnt = 0;
+	}
+
+	/* No of elements */
+	memcpy_toio(ptr, &cnt, sizeof(u16));
+	ptr += sizeof(u16);
+
+	bootargs_arr = kzalloc(cnt, GFP_KERNEL);
+	if (!bootargs_arr) {
+		pr_err("failed to allocate memory\n");
+		return PTR_ERR(bootargs_arr);
+	}
+
+	for (tmp = 0; tmp < cnt; tmp++) {
+		ret = of_property_read_u32_index(np, "boot-args", tmp, &rd_val);
+		if (ret) {
+			pr_err("failed to read boot args\n");
+			kfree(bootargs_arr);
+			return ret;
+		}
+		bootargs_arr[tmp] = (u8)rd_val;
+	}
+
+	/* Copy bootargs */
+	memcpy_toio(ptr, bootargs_arr, cnt);
+	ptr += (cnt);
+	boot_args.smem_bootargs_ptr = ptr;
+
+	of_node_put(np);
+	kfree(bootargs_arr);
+
+	ret = load_userpd_params_to_bootargs(dev, &boot_args);
+	if (ret < 0) {
+		pr_err("failed to read userpd boot args ret:%d\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
 static int q6_wcss_load(struct rproc *rproc, const struct firmware *fw)
 {
 	struct q6_wcss *wcss = rproc->priv;
@@ -251,6 +464,15 @@ static int q6_wcss_load(struct rproc *rproc, const struct firmware *fw)
 
 	if (!desc)
 		return -EINVAL;
+
+	/* Share boot args to Q6 remote processor */
+	ret = share_bootargs_to_q6(wcss->dev);
+	if (ret && ret != -EINVAL) {
+		dev_err(wcss->dev,
+			"boot args sharing with q6 failed %d\n",
+			ret);
+		return ret;
+	}
 
 	/* load m3 firmware */
 	for_each_available_child_of_node(wcss->dev->of_node, upd_np) {
@@ -291,24 +513,30 @@ static int q6_wcss_load(struct rproc *rproc, const struct firmware *fw)
 
 static int wcss_ahb_pcie_pd_load(struct rproc *rproc, const struct firmware *fw)
 {
-	struct q6_wcss *wcss = rproc->priv, *wcss_rpd;
+	struct q6_wcss *wcss = rproc->priv;
 	struct rproc *rpd_rproc = dev_get_drvdata(wcss->dev->parent);
 	int ret;
+	u8 pd_asid;
+	u32 pasid;
 	const struct wcss_data *desc =
 				of_device_get_match_data(wcss->dev);
 
 	if (!desc)
 		return -EINVAL;
 
-	wcss_rpd = rpd_rproc->priv;
-
 	/* Boot rootpd rproc */
 	ret = rproc_boot(rpd_rproc);
-	if (ret || wcss->state == WCSS_NORMAL)
+	if ((ret || wcss->state == WCSS_NORMAL) && wcss->is_fw_shared)
 		return ret;
 
+	pasid = desc->pasid;
+	if (!pasid) {
+		pd_asid = qcom_get_pd_asid(wcss->dev->of_node);
+		pasid = (pd_asid << 8) | UPD_SWID;
+	}
+
 	return desc->mdt_load_sec(wcss->dev, fw, rproc->firmware,
-				desc->pasid, wcss->mem_region,
+				pasid, wcss->mem_region,
 				wcss->mem_phys, wcss->mem_size,
 				&wcss->mem_reloc);
 }
@@ -324,6 +552,7 @@ static const struct rproc_ops wcss_ahb_pcie_ipq5018_ops = {
 	.start = wcss_ahb_pcie_pd_start,
 	.stop = wcss_ahb_pcie_pd_stop,
 	.load = wcss_ahb_pcie_pd_load,
+	.get_boot_addr = rproc_elf_get_boot_addr,
 };
 
 static const struct rproc_ops q6_wcss_ipq5018_ops = {
@@ -372,7 +601,6 @@ static int q6_alloc_memory_region(struct q6_wcss *wcss)
 			&rmem->base, &rmem->size);
 		return -EBUSY;
 	}
-
 	return 0;
 }
 
@@ -523,6 +751,7 @@ static int q6_wcss_probe(struct platform_device *pdev)
 	wcss = rproc->priv;
 	wcss->dev = &pdev->dev;
 	wcss->version = desc->version;
+	wcss->is_fw_shared = desc->is_fw_shared;
 
 	ret = q6_alloc_memory_region(wcss);
 	if (ret)
@@ -534,7 +763,7 @@ static int q6_wcss_probe(struct platform_device *pdev)
 
 	if (desc->init_irq) {
 		ret = desc->init_irq(&wcss->q6, pdev, rproc, desc->remote_id,
-				desc->crash_reason_smem, NULL, NULL);
+				     desc->crash_reason_smem, NULL, NULL);
 		if (ret) {
 			if (wcss->version == Q6_IPQ)
 				goto free_rproc;
@@ -595,6 +824,20 @@ static const struct wcss_data q6_ipq5018_res_init = {
 	.version = Q6_IPQ,
 	.glink_subdev_required = true,
 	.pasid = MPD_WCNSS_PAS_ID,
+	.bootargs_version = VERSION1,
+};
+
+static const struct wcss_data q6_ipq5332_res_init = {
+	.init_irq = qcom_q6v5_init,
+	.q6_firmware_name = "IPQ5332/q6_fw0.mdt",
+	.crash_reason_smem = WCSS_CRASH_REASON,
+	.remote_id = WCSS_SMEM_HOST,
+	.ssr_name = "q6wcss",
+	.ops = &q6_wcss_ipq5018_ops,
+	.version = Q6_IPQ,
+	.glink_subdev_required = true,
+	.pasid = RPD_SWID,
+	.bootargs_version = VERSION2,
 };
 
 static const struct wcss_data q6_ipq9574_res_init = {
@@ -619,6 +862,22 @@ static const struct wcss_data wcss_ahb_ipq5018_res_init = {
 	.pasid = MPD_WCNSS_PAS_ID,
 	.reset_seq = true,
 	.mdt_load_sec = qcom_mdt_load_pd_seg,
+	.is_fw_shared = true,
+	.powerup_scm = qti_scm_int_radio_powerup,
+	.powerdown_scm = qti_scm_int_radio_powerdown,
+};
+
+static const struct wcss_data wcss_ahb_ipq5332_res_init = {
+	.init_irq = init_irq,
+	.q6_firmware_name = "IPQ5332/q6_fw1.mdt",
+	.crash_reason_smem = WCSS_CRASH_REASON,
+	.remote_id = WCSS_SMEM_HOST,
+	.ops = &wcss_ahb_pcie_ipq5018_ops,
+	.version = WCSS_AHB_IPQ,
+	.reset_seq = true,
+	.mdt_load_sec = qcom_mdt_load,
+	.powerup_scm = qcom_scm_pas_auth_and_reset,
+	.powerdown_scm = qcom_scm_pas_shutdown,
 };
 
 static const struct wcss_data wcss_ahb_ipq9574_res_init = {
@@ -630,6 +889,7 @@ static const struct wcss_data wcss_ahb_ipq9574_res_init = {
 	.version = WCSS_AHB_IPQ,
 	.pasid = WCNSS_PAS_ID,
 	.mdt_load_sec = qcom_mdt_load,
+	.is_fw_shared = true,
 };
 
 static const struct wcss_data wcss_pcie_ipq5018_res_init = {
@@ -640,17 +900,33 @@ static const struct wcss_data wcss_pcie_ipq5018_res_init = {
 	.version = WCSS_PCIE_IPQ,
 	.mdt_load_sec = qcom_mdt_load_pd_seg,
 	.pasid = MPD_WCNSS_PAS_ID,
+	.is_fw_shared = true,
+};
+
+static const struct wcss_data wcss_pcie_ipq5332_res_init = {
+	.init_irq = init_irq,
+	.q6_firmware_name = "IPQ5018/q6_fw2.mdt",
+	.crash_reason_smem = WCSS_CRASH_REASON,
+	.remote_id = WCSS_SMEM_HOST,
+	.ops = &wcss_ahb_pcie_ipq5018_ops,
+	.version = WCSS_PCIE_IPQ,
+	.mdt_load_sec = qcom_mdt_load,
 };
 
 static const struct of_device_id q6_wcss_of_match[] = {
 	{ .compatible = "qcom,ipq5018-q6-mpd", .data = &q6_ipq5018_res_init },
+	{ .compatible = "qcom,ipq5332-q6-mpd", .data = &q6_ipq5332_res_init },
 	{ .compatible = "qcom,ipq9574-q6-mpd", .data = &q6_ipq9574_res_init },
 	{ .compatible = "qcom,ipq5018-wcss-ahb-mpd",
 		.data = &wcss_ahb_ipq5018_res_init },
+	{ .compatible = "qcom,ipq5332-wcss-ahb-mpd",
+		.data = &wcss_ahb_ipq5332_res_init },
 	{ .compatible = "qcom,ipq9574-wcss-ahb-mpd",
 		.data = &wcss_ahb_ipq9574_res_init },
 	{ .compatible = "qcom,ipq5018-wcss-pcie-mpd",
 		.data = &wcss_pcie_ipq5018_res_init },
+	{ .compatible = "qcom,ipq5332-wcss-pcie-mpd",
+		.data = &wcss_pcie_ipq5332_res_init },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, q6_wcss_of_match);

@@ -135,11 +135,34 @@
 	};
 
 	cpu_opp_table: opp-table-cpu {
-		compatible = "operating-points-v2";
+		compatible = "operating-points-v2-ipq5332";
 		opp-shared;
+		nvmem-cells = <&cpu_speed_bin>;
+		nvmem-cell-names = "speed_bin";
 
-		opp-1488000000 {
-			opp-hz = /bits/ 64 <1488000000>;
+		/*
+		 * Listed all supported CPU frequencies and opp-supported-hw
+		 * values to select CPU frequencies based on the limits fused.
+		 * ------------------------------------------------------------
+		 * Frequency     BIT3   BIT2   BIT1    BIT0    opp-supported-hw
+		 *              1.0GHz 1.2GHz 1.5GHz No Limit
+		 * ------------------------------------------------------------
+		 * 1100000000     1      1      1       1            0xF
+		 * 1500000000     0      0      1       1            0x3
+		 * -----------------------------------------------------------
+		 */
+
+		opp-1100000000 {
+			opp-hz = /bits/ 64 <1100000000>;
+			opp-microvolt = <850000>;
+			opp-supported-hw = <0xF>;
+			clock-latency-ns = <200000>;
+		};
+
+		opp-1500000000 {
+			opp-hz = /bits/ 64 <1500000000>;
+			opp-microvolt = <950000>;
+			opp-supported-hw = <0x3>;
 			clock-latency-ns = <200000>;
 		};
 	};
@@ -189,6 +212,11 @@
 
 			hwlocks = <&tcsr_mutex 0>;
 		};
+
+		q6_region: wcnss@4a900000 {
+			reg = <0x0 0x4a900000 0x0 0x2b00000>;
+			no-map;
+		};
 	};
 
 	soc@0 {
@@ -202,6 +230,18 @@
 			reg = <0x00400000 0x6148>;
 			reg-names = "memnoc";
 			status = "ok";
+		};
+
+		qfprom: efuse@a4000 {
+			compatible = "qcom,qfprom";
+			reg = <0xa4000 0x721>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			cpu_speed_bin: cpu_speed_bin@1d {
+				reg = <0x1d 0x2>;
+				bits = <7 2>;
+			};
 		};
 
 		rng: rng@e3000 {
@@ -238,7 +278,7 @@
 					"phy_phy",
 					"phy_ahb";
 			mode-fixed = <2>; /* TBD */
-			/*status = "disabled";*/
+			status = "disabled";
 		};
 
 		/* PHY for PCIE1 single lane mode */
@@ -453,6 +493,15 @@
 			status = "disabled";
 		};
 
+		dcc@797f000 {
+			compatible = "qcom,dcc-v2-ipq5332";
+			reg = <0x40ff000 0x1000>,
+				<0x4080000 0x800>;
+			reg-names = "dcc-base", "dcc-ram-base";
+			dcc-ram-offset = <0x0>;
+			status = "disabled";
+		};
+
 		qpic_bam: dma-controller@7984000 {
 			compatible = "qcom,bam-v1.7.0";
 			reg = <0x7984000 0x1c000>;
@@ -577,8 +626,8 @@
 				     "qcom,ipq6018-apcs-apps-global";
 			reg = <0x0b111000 0x1000>;
 			#clock-cells = <1>;
-			clocks = <&a53pll>, <&xo_board>;
-			clock-names = "pll", "xo";
+			clocks = <&a53pll>, <&xo_board>, <&gcc_gpll0_out_aux>;
+			clock-names = "pll", "xo", "gpll0";
 			#mbox-cells = <1>;
 		};
 
@@ -1198,6 +1247,84 @@
 			status = "disabled";
 		};
 
+		ssuniphy_0: ssuniphy@4b0000 {
+			compatible = "qca,ipq5332-uni-ssphy";
+			reg = <0x4b0000 0x800>;
+			clocks = <&gcc GCC_USB0_PIPE_CLK>,
+				<&gcc GCC_USB0_PHY_CFG_AHB_CLK>,
+				<&gcc GCC_PCIE3X1_PHY_AHB_CLK>;
+
+			clock-names = "pipe_clk", "phy_cfg_ahb_clk",
+				"phy_ahb_clk";
+
+			resets =  <&gcc GCC_USB0_PHY_BCR>;
+			reset-names = "por_rst";
+			#phy-cells = <0>;
+			status = "disabled";
+		};
+
+		hs_m31phy_0: hs_m31phy@7b000 {
+			compatible = "qcom,ipq5332-m31-usb-hsphy";
+			reg = <0x0007b000 0x12C>,
+			      <0x08af8800 0x400>;
+			reg-names = "m31usb_phy_base",
+				    "qscratch_base";
+			phy_type= "utmi";
+
+			resets = <&gcc GCC_QUSB2_0_PHY_BCR>;
+			reset-names = "usb2_phy_reset";
+
+			status = "disabled";
+		};
+
+		usb3: usb3@8a00000 {
+			compatible = "qcom,ipq5332-dwc3", "qcom,dwc3";
+			reg = <0x08af8800 0x100>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges;
+
+			clocks = <&gcc GCC_USB0_MASTER_CLK>,
+				<&gcc GCC_SNOC_USB_CLK>,
+				<&gcc GCC_USB0_SLEEP_CLK>,
+				<&gcc GCC_USB0_MOCK_UTMI_CLK>,
+				<&gcc GCC_USB0_PHY_CFG_AHB_CLK>,
+				<&gcc GCC_USB0_AUX_CLK>,
+				<&gcc GCC_USB0_LFPS_CLK>,
+				<&gcc GCC_USB0_PIPE_CLK>;
+
+			clock-names = "core",
+				"iface",
+				"sleep",
+				"mock_utmi",
+				"cfg_ahb_clk",
+				"aux_clk",
+				"lfps_clk",
+				"pipe_clk";
+
+			resets = <&gcc GCC_USB_BCR>;
+			qcom,phy-mux-regs = <&tcsr 0x10540>;
+
+			dwc_0: dwc3@8a00000 {
+				compatible = "snps,dwc3";
+				reg = <0x08a00000 0xe000>;
+				clocks = <&gcc GCC_USB0_MOCK_UTMI_CLK>;
+				clock-names = "ref";
+				interrupts = <GIC_SPI 64 IRQ_TYPE_LEVEL_HIGH>;
+				usb-phy = <&hs_m31phy_0>;
+				#phy-cells = <0>;
+				phys = <&ssuniphy_0>;
+				phy-names = "usb3-phy";
+				tx-fifo-resize;
+				snps,is-utmi-l1-suspend;
+				snps,hird-threshold = /bits/ 8 <0x0>;
+				snps,dis_u2_susphy_quirk;
+				snps,dis_u3_susphy_quirk;
+				snps,ref-clock-period-ns = <21>;
+				dr_mode = "host";
+			};
+		};
+
 		edma@3ab00000 {
 			compatible = "qcom,edma";
 			reg = <0x3ab00000 0xed000>;
@@ -1283,6 +1410,61 @@
 			compatible = "qcom,eip_crypto";
 			status = "ok";
 		};
+
+		q6v5_wcss: remoteproc@d100000 {
+			compatible = "qcom,ipq5332-q6-mpd";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges;
+			reg = <0xd100000 0x4040>;
+			interrupts-extended = <&intc GIC_SPI 421 IRQ_TYPE_EDGE_RISING>,
+					      <&wcss_smp2p_in 0 0>,
+					      <&wcss_smp2p_in 1 0>,
+					      <&wcss_smp2p_in 2 0>,
+					      <&wcss_smp2p_in 3 0>;
+			interrupt-names = "wdog",
+					  "fatal",
+					  "ready",
+					  "handover",
+					  "stop-ack";
+
+			qcom,smem-states = <&wcss_smp2p_out 0>,
+					   <&wcss_smp2p_out 1>;
+			qcom,smem-state-names = "shutdown",
+						"stop";
+
+			memory-region = <&q6_region>;
+			qcom,bootargs_smem = <507>;
+			qcom,bootargs_version = <2>;
+			qcom,userpd-bootargs;
+
+			glink-edge {
+				interrupts = <GIC_SPI 321 IRQ_TYPE_EDGE_RISING>;
+				label = "rtr";
+				qcom,remote-pid = <1>;
+				mboxes = <&apcs_glb 8>;
+			};
+
+			q6_wcss_pd1: remoteproc_pd1 {
+				compatible = "qcom,ipq5332-wcss-ahb-mpd";
+				m3_firmware = "IPQ5332/iu_fw.mdt";
+				interrupts-extended = <&wcss_smp2p_in 8 0>,
+						      <&wcss_smp2p_in 9 0>,
+						      <&wcss_smp2p_in 12 0>,
+						      <&wcss_smp2p_in 11 0>;
+				interrupt-names = "fatal",
+						  "ready",
+						  "spawn-ack",
+						  "stop-ack";
+
+				qcom,smem-states = <&wcss_smp2p_out 8>,
+						   <&wcss_smp2p_out 9>,
+						   <&wcss_smp2p_out 10>;
+				qcom,smem-state-names = "shutdown",
+							"stop",
+							"spawn";
+			};
+		};
 	};
 
 	timer {
@@ -1296,5 +1478,29 @@
 	qcom,test@0 {
 		compatible = "qcom,testmhi";
 		qcom,wlan-ramdump-dynamic = <0x600000>;
+	};
+
+	wcss: wcss-smp2p {
+		compatible = "qcom,smp2p";
+		qcom,smem = <435>, <428>;
+
+		interrupt-parent = <&intc>;
+		interrupts = <GIC_SPI 418 IRQ_TYPE_EDGE_RISING>;
+
+		mboxes = <&apcs_glb 9>;
+
+		qcom,local-pid = <0>;
+		qcom,remote-pid = <1>;
+
+		wcss_smp2p_out: master-kernel {
+			qcom,entry-name = "master-kernel";
+			#qcom,smem-state-cells = <1>;
+		};
+
+		wcss_smp2p_in: slave-kernel {
+			qcom,entry-name = "slave-kernel";
+			interrupt-controller;
+			#interrupt-cells = <2>;
+		};
 	};
 };

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 /*
- * IPQ5332 RDP442 board device tree source
+ * IPQ5332 DB-MI02.1 board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
@@ -13,12 +13,11 @@
 #include <dt-bindings/input/input.h>
 
 / {
-	model = "Qualcomm Technologies, Inc. IPQ5332/RDP442/MI01.3";
-	compatible = "qcom,ipq5332-ap-mi01.3", "qcom,ipq5332-rdp442", "qcom,ipq5332";
+	model = "Qualcomm Technologies, Inc. IPQ5332/DB-MI02.1";
+	compatible = "qcom,ipq5332-db-mi02.1", "qcom,ipq5332";
 
 	aliases {
 		serial0 = &blsp1_uart0;
-		serial1 = &blsp1_uart1;
 	};
 
 	chosen {
@@ -60,33 +59,6 @@
 	status = "okay";
 };
 
-&blsp1_uart1 {
-        pinctrl-0 = <&serial_1_pins>;
-        pinctrl-names = "default";
-        status = "disabled";
-};
-
-&blsp1_i2c1 {
-	clock-frequency  = <400000>;
-	pinctrl-0 = <&i2c_1_pins>;
-	pinctrl-names = "default";
-	status = "okay";
-};
-
-&blsp1_spi0 {
-	pinctrl-0 = <&spi_0_data_clk_pins &spi_0_cs_pins>;
-	pinctrl-names = "default";
-	status = "okay";
-
-	flash@0 {
-		compatible = "micron,n25q128a11", "jedec,spi-nor";
-		reg = <0>;
-		#address-cells = <1>;
-		#size-cells = <1>;
-		spi-max-frequency = <50000000>;
-	};
-};
-
 &sdhc {
 	bus-width = <4>;
 	max-frequency = <192000000>;
@@ -96,6 +68,13 @@
 	pinctrl-0 = <&sdc_default_state>;
 	pinctrl-names = "default";
 	status = "disabled";
+};
+
+&blsp1_i2c1 {
+	clock-frequency  = <400000>;
+	pinctrl-0 = <&i2c_1_pins>;
+	pinctrl-names = "default";
+	status = "okay";
 };
 
 &sleep_clk {
@@ -126,60 +105,42 @@
 	};
 };
 
+&pcie0_phy {
+	status = "okay";
+};
+
+&pcie0 {
+	pinctrl-0 = <&pcie0_default_state>;
+	pinctrl-names = "default";
+	perst-gpios = <&tlmm 38 GPIO_ACTIVE_LOW>;
+	status = "okay";
+};
+
+&pcie1_phy_x2 {
+	status = "okay";
+};
+
+&pcie1 {
+	pinctrl-0 = <&pcie1_default_state>;
+	pinctrl-names = "default";
+	perst-gpios = <&tlmm 47 GPIO_ACTIVE_LOW>;
+	status = "okay";
+};
+
+&pcie2_phy {
+	status = "ok";
+};
+
+&pcie2 {
+	pinctrl-0 = <&pcie2_default_state>;
+	pinctrl-names = "default";
+	perst-gpios = <&tlmm 44 GPIO_ACTIVE_LOW>;
+	status = "okay";
+};
+
 /* PINCTRL */
 
 &tlmm {
-	qspi_default_state: qspi-default-state {
-		qspi_clock {
-			pins = "gpio13";
-			function = "qspi_clk";
-			drive-strength = <8>;
-			bias-pull-down;
-		};
-
-		qspi_cs {
-			pins = "gpio12";
-			function = "qspi_cs";
-			drive-strength = <8>;
-			bias-pull-up;
-		};
-
-		qspi_data {
-			pins = "gpio8", "gpio9", "gpio10", "gpio11";
-			function = "qspi_data";
-			drive-strength = <8>;
-			bias-pull-down;
-		};
-	};
-
-	serial_1_pins: serial1-pinmux {
-		pins = "gpio33", "gpio34", "gpio35", "gpio36";
-		function = "blsp1_uart2";
-		drive-strength = <8>;
-		bias-pull-up;
-	};
-
-	i2c_1_pins: i2c-1-state {
-		pins = "gpio29", "gpio30";
-		function = "blsp1_i2c0";
-		drive-strength = <8>;
-		bias-pull-up;
-	};
-
-	leds_pins: leds-state {
-		pins = "gpio36";
-		function = "gpio";
-		drive-strength = <8>;
-		bias-pull-down;
-	};
-
-	button_pins: button-state {
-		pins = "gpio35";
-		function = "gpio";
-		drive-strength = <8>;
-		bias-pull-up;
-	};
-
 	sdc_default_state: sdc-default-state {
 		clk-pins {
 			pins = "gpio13";
@@ -203,32 +164,72 @@
 		};
 	};
 
-	spi_0_data_clk_pins: spi-0-data-clk-state {
-		pins = "gpio14", "gpio15", "gpio16";
-		function = "blsp0_spi";
-		drive-strength = <2>;
+	qspi_default_state: qspi-default-state {
+		qspi_clock {
+			pins = "gpio13";
+			function = "qspi_clk";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+
+		qspi_cs {
+			pins = "gpio12";
+			function = "qspi_cs";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+
+		qspi_data {
+			pins = "gpio8", "gpio9", "gpio10", "gpio11";
+			function = "qspi_data";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+	};
+
+	i2c_1_pins: i2c-1-state {
+		pins = "gpio29", "gpio30";
+		function = "blsp1_i2c0";
+		drive-strength = <8>;
+		bias-pull-up;
+	};
+
+	leds_pins: leds-state {
+		pins = "gpio36";
+		function = "gpio";
+		drive-strength = <8>;
 		bias-pull-down;
 	};
 
-	spi_0_cs_pins: spi-0-cs-state {
-		pins = "gpio17";
-		function = "blsp0_spi";
-		drive-strength = <2>;
+	button_pins: button-state {
+		pins = "gpio35";
+		function = "gpio";
+		drive-strength = <8>;
 		bias-pull-up;
 	};
-};
 
-&usb3 {
-	qcom,select-utmi-as-pipe-clk;
-	status = "okay";
-
-	dwc3@8A00000 {
-		/delete-property/ #phy-cells;
-		/delete-property/ phys;
-		/delete-property/ phy-names;
+	pcie0_default_state: pcie0-default-state {
+		pins = "gpio38";
+		function = "gpio";
+		drive-strength = <8>;
+		bias-pull-up;
+		output-low;
 	};
-};
 
-&hs_m31phy_0 {
-	status = "okay";
+	pcie1_default_state: pcie1-default-state {
+		pins = "gpio47";
+		function = "gpio";
+		drive-strength = <8>;
+		bias-pull-up;
+		output-low;
+	};
+
+	pcie2_default_state: pcie2-default-state {
+		pins = "gpio44";
+		function = "gpio";
+		drive-strength = <8>;
+		bias-pull-up;
+		output-low;
+	};
+
 };
