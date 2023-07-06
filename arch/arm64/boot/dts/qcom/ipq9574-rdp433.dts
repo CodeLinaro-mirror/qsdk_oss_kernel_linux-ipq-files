@@ -11,6 +11,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
 #include "ipq9574.dtsi"
+#include "ipq9574-wkk-default-memory.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ9574/RDP433/AP-AL02-C4";
@@ -296,9 +297,31 @@
 	status = "okay";
 };
 
+&wsi {
+	id = <0>;
+	num_chip = <3>;
+};
+
 &pcie1_x1 {
 	perst-gpios = <&tlmm 26 GPIO_ACTIVE_LOW>;
 	status = "okay";
+	pcie1_rp: pcie1_rp {
+		reg = <0 0 0 0 0>;
+
+		wifi@1 {
+			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9224_pcie1>;
+			qcom,board_id = <0x01>;
+			qcom,wsi = <&wsi>;
+			qcom,pta-num = <0>;
+			qcom,coex-mode = <0x2>;
+			qcom,bt-active-time = <0x18>;
+			qcom,bt-priority-time = <0x12>;
+			qcom,coex-algo = <0x2>;
+			qcom,pta-priority = <0x80800505>;
+		};
+	};
+
 };
 
 &pcie2_phy {
@@ -308,6 +331,16 @@
 &pcie2_x2 {
 	perst-gpios = <&tlmm 29 GPIO_ACTIVE_LOW>;
 	status = "okay";
+	pcie2_rp: pcie2_rp {
+		reg = <0 0 0 0 0>;
+
+		wifi@2 {
+			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9224_pcie2>;
+			qcom,board_id = <0x04>;
+			qcom,wsi = <&wsi>;
+		};
+	};
 };
 
 &pcie3_phy {
@@ -317,6 +350,17 @@
 &pcie3_x2 {
 	perst-gpios = <&tlmm 32 GPIO_ACTIVE_LOW>;
 	status = "okay";
+	pcie3_rp: pcie3_rp {
+		reg = <0 0 0 0 0>;
+
+		wifi@3 {
+			reg = <0 0 0 0 0>;
+
+			memory-region = <&qcn9224_pcie3>;
+			qcom,board_id = <0x02>;
+			qcom,wsi = <&wsi>;
+		};
+	};
 };
 
 &qpic_bam {
@@ -523,3 +567,30 @@
 	clock-frequency = <24000000>;
 };
 
+&qcn9224_pcie1 {
+	status = "okay";
+};
+
+&mhi_region1 {
+	status = "okay";
+};
+
+&qcn9224_pcie2 {
+	status = "okay";
+};
+
+&mhi_region2 {
+	status = "okay";
+};
+
+&qcn9224_pcie3 {
+	status = "okay";
+};
+
+&mhi_region3 {
+	status = "okay";
+};
+
+&mlo_global_mem0 {
+	status = "okay";
+};
