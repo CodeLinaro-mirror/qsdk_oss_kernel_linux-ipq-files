@@ -1419,60 +1419,6 @@ static struct clk_branch gcc_blsp1_uart3_apps_clk = {
 	},
 };
 
-static struct clk_branch gcc_ce_ahb_clk = {
-	.halt_reg = 0x25074,
-	.halt_check = BRANCH_HALT,
-	.clkr = {
-		.enable_reg = 0x25074,
-		.enable_mask = BIT(0),
-		.hw.init = &(const struct clk_init_data) {
-			.name = "gcc_ce_ahb_clk",
-			.parent_hws = (const struct clk_hw*[]) {
-				&gcc_system_noc_bfdcd_div2_clk_src.hw,
-			},
-			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT,
-			.ops = &clk_branch2_ops,
-		},
-	},
-};
-
-static struct clk_branch gcc_ce_axi_clk = {
-	.halt_reg = 0x25068,
-	.halt_check = BRANCH_HALT,
-	.clkr = {
-		.enable_reg = 0x25068,
-		.enable_mask = BIT(0),
-		.hw.init = &(const struct clk_init_data) {
-			.name = "gcc_ce_axi_clk",
-			.parent_hws = (const struct clk_hw*[]) {
-				&gcc_system_noc_bfdcd_clk_src.clkr.hw,
-			},
-			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT,
-			.ops = &clk_branch2_ops,
-		},
-	},
-};
-
-static struct clk_branch gcc_ce_pcnoc_ahb_clk = {
-	.halt_reg = 0x25070,
-	.halt_check = BRANCH_HALT,
-	.clkr = {
-		.enable_reg = 0x25070,
-		.enable_mask = BIT(0),
-		.hw.init = &(const struct clk_init_data) {
-			.name = "gcc_ce_pcnoc_ahb_clk",
-			.parent_hws = (const struct clk_hw*[]) {
-				&gcc_pcnoc_bfdcd_clk_src.clkr.hw,
-			},
-			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT,
-			.ops = &clk_branch2_ops,
-		},
-	},
-};
-
 static struct clk_branch gcc_cmn_12gpll_ahb_clk = {
 	.halt_reg = 0x3a004,
 	.halt_check = BRANCH_HALT,
@@ -2986,9 +2932,6 @@ static struct clk_regmap *gcc_ipq5332_clocks[] = {
 	[GCC_BLSP1_UART2_APPS_CLK_SRC] = &gcc_blsp1_uart2_apps_clk_src.clkr,
 	[GCC_BLSP1_UART3_APPS_CLK] = &gcc_blsp1_uart3_apps_clk.clkr,
 	[GCC_BLSP1_UART3_APPS_CLK_SRC] = &gcc_blsp1_uart3_apps_clk_src.clkr,
-	[GCC_CE_AHB_CLK] = &gcc_ce_ahb_clk.clkr,
-	[GCC_CE_AXI_CLK] = &gcc_ce_axi_clk.clkr,
-	[GCC_CE_PCNOC_AHB_CLK] = &gcc_ce_pcnoc_ahb_clk.clkr,
 	[GCC_CMN_12GPLL_AHB_CLK] = &gcc_cmn_12gpll_ahb_clk.clkr,
 	[GCC_CMN_12GPLL_APU_CLK] = &gcc_cmn_12gpll_apu_clk.clkr,
 	[GCC_CMN_12GPLL_SYS_CLK] = &gcc_cmn_12gpll_sys_clk.clkr,
