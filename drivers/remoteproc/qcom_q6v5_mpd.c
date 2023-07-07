@@ -131,7 +131,7 @@ static int q6_wcss_start(struct rproc *rproc)
 {
 	struct q6_wcss *wcss = rproc->priv;
 	int ret;
-	struct device_node *upd_np;
+	struct device_node *upd_np, *temp;
 	struct platform_device *upd_pdev;
 	struct rproc *upd_rproc;
 	struct q6_wcss *upd_wcss;
@@ -161,6 +161,13 @@ static int q6_wcss_start(struct rproc *rproc)
 		upd_rproc = platform_get_drvdata(upd_pdev);
 		upd_wcss = upd_rproc->priv;
 		upd_wcss->state = WCSS_NORMAL;
+
+		for_each_available_child_of_node(upd_np, temp) {
+			upd_pdev = of_find_device_by_node(temp);
+			upd_rproc = platform_get_drvdata(upd_pdev);
+			upd_wcss = upd_rproc->priv;
+			upd_wcss->state = WCSS_NORMAL;
+		}
 	}
 	return ret;
 }
@@ -325,7 +332,7 @@ static int load_userpd_params_to_bootargs(struct device *dev,
 					  struct bootargs_smem_info *boot_args)
 {
 	int ret = 0;
-	struct device_node *upd_np;
+	struct device_node *upd_np, *temp;
 	struct platform_device *upd_pdev;
 	struct rproc *upd_rproc;
 	u16 cnt;
@@ -338,6 +345,8 @@ static int load_userpd_params_to_bootargs(struct device *dev,
 		if (!strstr(upd_np->name, "pd"))
 			continue;
 		upd_cnt++;
+		for_each_available_child_of_node(upd_np, temp)
+			upd_cnt++;
 	}
 
 	/* No of elements */
@@ -353,6 +362,14 @@ static int load_userpd_params_to_bootargs(struct device *dev,
 		ret = copy_userpd_bootargs(boot_args, upd_rproc);
 		if (ret)
 			return ret;
+
+		for_each_available_child_of_node(upd_np, temp) {
+			upd_pdev = of_find_device_by_node(temp);
+			upd_rproc = platform_get_drvdata(upd_pdev);
+			ret = copy_userpd_bootargs(boot_args, upd_rproc);
+			if (ret)
+				return ret;
+		}
 	}
 	return ret;
 }
@@ -451,13 +468,42 @@ static int share_bootargs_to_q6(struct device *dev)
 	return 0;
 }
 
+static int load_m3_firmware(struct device_node *np, struct q6_wcss *wcss)
+{
+	int ret;
+	const struct firmware *m3_fw;
+	const char *m3_fw_name;
+
+	ret = of_property_read_string(np, "m3_firmware", &m3_fw_name);
+	if (ret)
+		return 0;
+
+	ret = request_firmware(&m3_fw, m3_fw_name, wcss->dev);
+	if (ret)
+		return 0;
+
+	ret = qcom_mdt_load_no_init(wcss->dev, m3_fw,
+				    m3_fw_name, 0,
+				    wcss->mem_region, wcss->mem_phys,
+				    wcss->mem_size, &wcss->mem_reloc);
+	release_firmware(m3_fw);
+
+	if (ret) {
+		dev_err(wcss->dev, "can't load %s ret:%d\n", m3_fw_name, ret);
+		return ret;
+	}
+
+	dev_info(wcss->dev, "m3 firmware %s loaded to DDR\n", m3_fw_name);
+	return ret;
+}
+
 static int q6_wcss_load(struct rproc *rproc, const struct firmware *fw)
 {
 	struct q6_wcss *wcss = rproc->priv;
 	const struct firmware *m3_fw;
 	int ret;
 	const char *m3_fw_name;
-	struct device_node *upd_np;
+	struct device_node *upd_np, *temp;
 	struct platform_device *upd_pdev;
 	const struct wcss_data *desc =
 				of_device_get_match_data(wcss->dev);
@@ -479,29 +525,15 @@ static int q6_wcss_load(struct rproc *rproc, const struct firmware *fw)
 		if (!strstr(upd_np->name, "pd"))
 			continue;
 		upd_pdev = of_find_device_by_node(upd_np);
+		ret = load_m3_firmware(upd_np, wcss);
+		if (ret)
+			return ret;
 
-		ret = of_property_read_string(upd_np, "m3_firmware",
-					      &m3_fw_name);
-		if (!ret && m3_fw_name) {
-			ret = request_firmware(&m3_fw, m3_fw_name,
-					       &upd_pdev->dev);
+		for_each_available_child_of_node(upd_np, temp) {
+			upd_pdev = of_find_device_by_node(temp);
+			ret = load_m3_firmware(temp, wcss);
 			if (ret)
-				continue;
-
-			ret = qcom_mdt_load_no_init(wcss->dev, m3_fw,
-						    m3_fw_name, 0,
-						    wcss->mem_region,
-						    wcss->mem_phys,
-						    wcss->mem_size,
-						    &wcss->mem_reloc);
-
-			release_firmware(m3_fw);
-
-			if (ret) {
-				dev_err(wcss->dev,
-					"can't load m3_fw.bXX ret:%d\n", ret);
 				return ret;
-			}
 		}
 	}
 
@@ -737,13 +769,18 @@ static int q6_wcss_probe(struct platform_device *pdev)
 	struct rproc *rproc;
 	int ret;
 	char *subdev_name;
+	const char *fw_name;
 
 	desc = of_device_get_match_data(&pdev->dev);
 	if (!desc)
 		return -EINVAL;
 
+	of_property_read_string(pdev->dev.of_node, "firmware", &fw_name);
+	if (!fw_name)
+		fw_name = desc->q6_firmware_name;
+
 	rproc = rproc_alloc(&pdev->dev, pdev->name, desc->ops,
-			    desc->q6_firmware_name, sizeof(*wcss));
+			    fw_name, sizeof(*wcss));
 	if (!rproc) {
 		dev_err(&pdev->dev, "failed to allocate rproc\n");
 		return -ENOMEM;
@@ -905,12 +942,25 @@ static const struct wcss_data wcss_pcie_ipq5018_res_init = {
 
 static const struct wcss_data wcss_pcie_ipq5332_res_init = {
 	.init_irq = init_irq,
-	.q6_firmware_name = "IPQ5018/q6_fw2.mdt",
+	.q6_firmware_name = "IPQ5332/q6_fw2.mdt",
 	.crash_reason_smem = WCSS_CRASH_REASON,
 	.remote_id = WCSS_SMEM_HOST,
 	.ops = &wcss_ahb_pcie_ipq5018_ops,
 	.version = WCSS_PCIE_IPQ,
+	.reset_seq = true,
 	.mdt_load_sec = qcom_mdt_load,
+	.powerup_scm = qcom_scm_pas_auth_and_reset,
+	.powerdown_scm = qcom_scm_pas_shutdown,
+};
+
+static const struct wcss_data wcss_text_ipq5332_res_init = {
+	.q6_firmware_name = "IPQ5332/q6_fw4.mdt",
+	.ops = &wcss_ahb_pcie_ipq5018_ops,
+	.version = WCSS_AHB_IPQ,
+	.reset_seq = true,
+	.mdt_load_sec = qcom_mdt_load,
+	.powerup_scm = qcom_scm_pas_auth_and_reset,
+	.powerdown_scm = qcom_scm_pas_shutdown,
 };
 
 static const struct of_device_id q6_wcss_of_match[] = {
@@ -927,6 +977,8 @@ static const struct of_device_id q6_wcss_of_match[] = {
 		.data = &wcss_pcie_ipq5018_res_init },
 	{ .compatible = "qcom,ipq5332-wcss-pcie-mpd",
 		.data = &wcss_pcie_ipq5332_res_init },
+	{ .compatible = "qcom,ipq5332-mpd-upd-text",
+		.data = &wcss_text_ipq5332_res_init },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, q6_wcss_of_match);
