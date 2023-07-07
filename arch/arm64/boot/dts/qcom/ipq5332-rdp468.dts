@@ -11,6 +11,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
 #include "ipq5332.dtsi"
+#include "ipq5332-default-memory.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ5332/RDP468/AP-MI01.6";
@@ -251,7 +252,28 @@
 			};
 		};
 
+		wsi: wsi {
+			id = <0>;
+			num_chip = <2>;
+			status = "okay";
+		};
 	};
+};
+
+&wifi0 {
+	led-gpio = <&tlmm 36 GPIO_ACTIVE_HIGH>;
+	qcom,rproc = <&q6_wcss_pd1>;
+	qcom,rproc_rpd = <&q6v5_wcss>;
+	qcom,multipd_arch;
+	qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
+	memory-region = <&q6_region>;
+	qcom,wsi = <&wsi>;
+	qcom,board_id = <0x16>;
+	status = "okay";
+};
+
+&qcn9224_pcie1 {
+	status = "okay";
 };
 
 &blsp1_uart0 {
@@ -334,6 +356,17 @@
 	pinctrl-names = "default";
 	perst-gpios = <&tlmm 47 GPIO_ACTIVE_LOW>;
 	status = "okay";
+
+	pcie1_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@1 {
+			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9224_pcie1>;
+			qcom,wsi = <&wsi>;
+			qcom,board_id = <0x1019>;
+		};
+	};
 };
 
 /* PINCTRL */

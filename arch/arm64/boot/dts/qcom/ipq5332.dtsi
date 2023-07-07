@@ -657,6 +657,142 @@
 			status = "disabled";
 		};
 
+		wifi0: wifi@c0000000 {
+			compatible = "qcom,cnss-qca5332", "qcom,ipq5332-wifi";
+			reg = <0xc000000 0x1000000>;
+			qcom,tgt-mem-mode = <0>;
+			qcom,rproc = <&q6v5_wcss>;
+			qcom,bdf-addr = <0x4B500000 0x4B500000 0x4B500000
+					0x0 0x0 0x0>;
+			qcom,caldb-addr = <0x4CE00000 0x4CE00000 0x0
+					0x0 0x0 0x0>;
+			qcom,caldb-size = <0x500000>;
+			interrupts = <GIC_SPI 559 IRQ_TYPE_EDGE_RISING>, /* misc-pulse1 */
+				<GIC_SPI 560 IRQ_TYPE_EDGE_RISING>, /* misc-latch */
+				<GIC_SPI 561 IRQ_TYPE_EDGE_RISING>, /* sw-exception */
+				<GIC_SPI 422 IRQ_TYPE_EDGE_RISING>, /* ce0 */
+				<GIC_SPI 423 IRQ_TYPE_EDGE_RISING>, /* ce1 */
+				<GIC_SPI 424 IRQ_TYPE_EDGE_RISING>, /* ce2 */
+				<GIC_SPI 425 IRQ_TYPE_EDGE_RISING>, /* ce3 */
+				<GIC_SPI 426 IRQ_TYPE_EDGE_RISING>, /* ce4 */
+				<GIC_SPI 427 IRQ_TYPE_EDGE_RISING>, /* ce5 */
+				<GIC_SPI 428 IRQ_TYPE_EDGE_RISING>, /* ce6 */
+				<GIC_SPI 429 IRQ_TYPE_EDGE_RISING>, /* ce7 */
+				<GIC_SPI 430 IRQ_TYPE_EDGE_RISING>, /* ce8 */
+				<GIC_SPI 431 IRQ_TYPE_EDGE_RISING>, /* ce9 */
+				<GIC_SPI 432 IRQ_TYPE_EDGE_RISING>, /* ce10 */
+				<GIC_SPI 433 IRQ_TYPE_EDGE_RISING>, /* ce11 */
+				<GIC_SPI 491 IRQ_TYPE_EDGE_RISING>, /* host2wbm-desc-feed */
+				<GIC_SPI 495 IRQ_TYPE_EDGE_RISING>, /* host2reo-re-injection */
+				<GIC_SPI 493 IRQ_TYPE_EDGE_RISING>, /* host2reo-command */
+				<GIC_SPI 544 IRQ_TYPE_EDGE_RISING>, /* host2rxdma-monitor-ring1 */
+				<GIC_SPI 457 IRQ_TYPE_EDGE_RISING>, /* reo2ost-exception */
+				<GIC_SPI 466 IRQ_TYPE_EDGE_RISING>, /* wbm2host-rx-release */
+				<GIC_SPI 497 IRQ_TYPE_EDGE_RISING>, /* reo2host-status */
+				<GIC_SPI 454 IRQ_TYPE_EDGE_RISING>, /* reo2host-destination-ring4 */
+				<GIC_SPI 453 IRQ_TYPE_EDGE_RISING>, /* reo2host-destination-ring3 */
+				<GIC_SPI 452 IRQ_TYPE_EDGE_RISING>, /* reo2host-destination-ring2 */
+				<GIC_SPI 451 IRQ_TYPE_EDGE_RISING>, /* reo2host-destination-ring1 */
+				<GIC_SPI 488 IRQ_TYPE_EDGE_RISING>, /* rxdma2host-monitor-destination-mac3 */
+				<GIC_SPI 488 IRQ_TYPE_EDGE_RISING>, /* rxdma2host-monitor-destination-mac2 */
+				<GIC_SPI 484 IRQ_TYPE_EDGE_RISING>, /* rxdma2host-monitor-destination-mac1 */
+				<GIC_SPI 554 IRQ_TYPE_EDGE_RISING>, /* host2rxdma-host-buf-ring-mac3 */
+				<GIC_SPI 554 IRQ_TYPE_EDGE_RISING>, /* host2rxdma-host-buf-ring-mac2 */
+				<GIC_SPI 549 IRQ_TYPE_EDGE_RISING>, /* host2rxdma-host-buf-ring-mac1 */
+				<GIC_SPI 507 IRQ_TYPE_EDGE_RISING>, /* host2tcl-input-ring4 */
+				<GIC_SPI 500 IRQ_TYPE_EDGE_RISING>, /* host2tcl-input-ring3 */
+				<GIC_SPI 499 IRQ_TYPE_EDGE_RISING>, /* host2tcl-input-ring2 */
+				<GIC_SPI 498 IRQ_TYPE_EDGE_RISING>, /* host2tcl-input-ring1 */
+				<GIC_SPI 450 IRQ_TYPE_EDGE_RISING>, /* wbm2host-tx-completions-ring4 */
+				<GIC_SPI 449 IRQ_TYPE_EDGE_RISING>, /* wbm2host-tx-completions-ring3 */
+				<GIC_SPI 448 IRQ_TYPE_EDGE_RISING>, /* wbm2host-tx-completions-ring2 */
+				<GIC_SPI 447 IRQ_TYPE_EDGE_RISING>, /* wbm2host-tx-completions-ring1 */
+				<GIC_SPI 543 IRQ_TYPE_EDGE_RISING>, /* host2tx-monitor-ring1 */
+				<GIC_SPI 486 IRQ_TYPE_EDGE_RISING>, /* txmon2host-monitor-destination-mac3 */
+				<GIC_SPI 486 IRQ_TYPE_EDGE_RISING>, /* txmon2host-monitor-destination-mac2 */
+				<GIC_SPI 482 IRQ_TYPE_EDGE_RISING>, /* txmon2host-monitor-destination-mac1 */
+				<GIC_SPI 419 IRQ_TYPE_EDGE_RISING>, /* umac_reset */
+				/* Unused Interrupts */
+				<GIC_SPI 558 IRQ_TYPE_EDGE_RISING>, /* host2rxdma-monitor-ring3 */
+				<GIC_SPI 558 IRQ_TYPE_EDGE_RISING>, /* host2rxdma-monitor-ring2 */
+				<GIC_SPI 558 IRQ_TYPE_EDGE_RISING>, /* ppdu-end-interrupts-mac3 */
+				<GIC_SPI 558 IRQ_TYPE_EDGE_RISING>, /* ppdu-end-interrupts-mac2 */
+				<GIC_SPI 558 IRQ_TYPE_EDGE_RISING>, /* ppdu-end-interrupts-mac1 */
+				<GIC_SPI 558 IRQ_TYPE_EDGE_RISING>, /* rxdma2host-monitor-status-ring-mac3 */
+				<GIC_SPI 558 IRQ_TYPE_EDGE_RISING>, /* rxdma2host-monitor-status-ring-mac2 */
+				<GIC_SPI 558 IRQ_TYPE_EDGE_RISING>, /* rxdma2host-monitor-status-ring-mac1 */
+				<GIC_SPI 558 IRQ_TYPE_EDGE_RISING>, /* rxdma2host-destination-ring-mac3 */
+				<GIC_SPI 558 IRQ_TYPE_EDGE_RISING>, /* rxdma2host-destination-ring-mac2 */
+				<GIC_SPI 558 IRQ_TYPE_EDGE_RISING>; /* rxdma2host-destination-ring-mac1 */
+
+
+			interrupt-names = "misc-pulse1",
+				"misc-latch",
+				"sw-exception",
+				"ce0",
+				"ce1",
+				"ce2",
+				"ce3",
+				"ce4",
+				"ce5",
+				"ce6",
+				"ce7",
+				"ce8",
+				"ce9",
+				"ce10",
+				"ce11",
+				"host2wbm-desc-feed",
+				"host2reo-re-injection",
+				"host2reo-command",
+				"host2rxdma-monitor-ring1",
+				"reo2ost-exception",
+				"wbm2host-rx-release",
+				"reo2host-status",
+				"reo2host-destination-ring4",
+				"reo2host-destination-ring3",
+				"reo2host-destination-ring2",
+				"reo2host-destination-ring1",
+				"rxdma2host-monitor-destination-mac3",
+				"rxdma2host-monitor-destination-mac2",
+				"rxdma2host-monitor-destination-mac1",
+				"host2rxdma-host-buf-ring-mac3",
+				"host2rxdma-host-buf-ring-mac2",
+				"host2rxdma-host-buf-ring-mac1",
+				"host2tcl-input-ring4",
+				"host2tcl-input-ring3",
+				"host2tcl-input-ring2",
+				"host2tcl-input-ring1",
+				"wbm2host-tx-completions-ring4",
+				"wbm2host-tx-completions-ring3",
+				"wbm2host-tx-completions-ring2",
+				"wbm2host-tx-completions-ring1",
+				"host2tx-monitor-ring1",
+				"txmon2host-monitor-destination-mac3",
+				"txmon2host-monitor-destination-mac2",
+				"txmon2host-monitor-destination-mac1",
+				"umac_reset",
+				/* Unused Interrupts */
+				"host2rxdma-monitor-ring3",
+				"host2rxdma-monitor-ring2",
+				"ppdu-end-interrupts-mac3",
+				"ppdu-end-interrupts-mac2",
+				"ppdu-end-interrupts-mac1",
+				"rxdma2host-monitor-status-ring-mac3",
+				"rxdma2host-monitor-status-ring-mac2",
+				"rxdma2host-monitor-status-ring-mac1",
+				"rxdma2host-destination-ring-mac3",
+				"rxdma2host-destination-ring-mac2",
+				"rxdma2host-destination-ring-mac1";
+
+			qcom,pta-num = <0>;
+			qcom,coex-mode = <0x2>;
+			qcom,bt-active-time = <0x18>;
+			qcom,bt-priority-time = <0x12>;
+			qcom,coex-algo = <0x2>;
+			qcom,pta-priority = <0x80800505>;
+			status = "disabled";
+		};
+
 		ess-instance {
 			compatible = "qcom,ess-instance";
 			ess-switch@3a000000 {
