@@ -2433,3 +2433,7 @@
 		qcom,wlan-ramdump-dynamic = <0x600000>;
 	};
 };
+
+#ifndef __CPU_THERMAL__
+#include "ipq9574-thermald.dtsi"
+#endif
