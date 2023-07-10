@@ -769,7 +769,7 @@ static int q6_wcss_probe(struct platform_device *pdev)
 	struct rproc *rproc;
 	int ret;
 	char *subdev_name;
-	const char *fw_name;
+	const char *fw_name = NULL;
 
 	desc = of_device_get_match_data(&pdev->dev);
 	if (!desc)
