@@ -24,6 +24,78 @@
 	chosen {
 		stdout-path = "serial0:115200n8";
 	};
+
+	soc@0 {
+		mdio@90000 {
+			pinctrl-0 = <&mdio_pins>;
+			pinctrl-names = "default";
+			/*gpio60 for malibu reset*/
+			phy-reset-gpio = <&tlmm 60 GPIO_ACTIVE_LOW>;
+			status = "okay";
+
+			phy0: ethernet-phy@0 {
+				reg = <16>;
+			};
+			phy1: ethernet-phy@1 {
+				reg = <17>;
+			};
+			phy2: ethernet-phy@2 {
+				reg = <18>;
+			};
+			phy3: ethernet-phy@3 {
+				reg = <19>;
+			};
+			phy4: ethernet-phy@4 {
+				compatible ="ethernet-phy-ieee802.3-c45";
+				reg = <0>;
+			};
+		};
+
+		ess-instance {
+			num_devices = <0x1>;
+			ess-switch@3a000000 {
+				pinctrl-0 = <&sfp_pins>;
+				pinctrl-names = "default";
+				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
+				switch_lan_bmp = <0x3e>; /* lan port bitmap */
+				switch_wan_bmp = <0x40>; /* wan port bitmap */
+				switch_mac_mode = <0x0>; /* mac mode for uniphy instance0*/
+				switch_mac_mode1 = <0xe>; /* mac mode for uniphy instance1*/
+				switch_mac_mode2 = <0xd>; /* mac mode for uniphy instance2*/
+				bm_tick_mode = <0>; /* bm tick mode */
+				tm_tick_mode = <0>; /* tm tick mode */
+
+				qcom,port_phyinfo {
+					port@0 {
+						port_id = <1>;
+						phy_address = <16>;
+					};
+					port@1 {
+						port_id = <2>;
+						phy_address = <17>;
+					};
+					port@2 {
+						port_id = <3>;
+						phy_address = <18>;
+					};
+					port@3 {
+						port_id = <4>;
+						phy_address = <19>;
+					};
+					port@4 {
+						port_id = <5>;
+						phy_address = <30>;
+						media-type = "sfp"; /* fiber mode */
+					};
+					port@5 {
+						port_id = <6>;
+						phy_address = <0>;
+						ethernet-phy-ieee802.3-c45;
+					};
+				};
+			};
+		};
+	};
 };
 
 &pcie0_x1 {
@@ -105,25 +177,15 @@
 	};
 };
 
-&blsp1_i2c3 {
-	pinctrl-0 = <&i2c_3_pins>;
+&blsp1_i2c4 {
+	clock-frequency = <400000>;
+	pinctrl-0 = <&i2c_4_pins>;
 	pinctrl-names = "default";
 	status = "okay";
-
-	bmp390@77 {
-		compatible = "bosch,bmp390";
-		reg = <0x77>;
-	};
 };
 
 &blsp1_uart2 {
 	pinctrl-0 = <&uart2_pins>;
-	pinctrl-names = "default";
-	status = "okay";
-};
-
-&blsp1_uart4 {
-	pinctrl-0 = <&uart4_pins>;
 	pinctrl-names = "default";
 	status = "okay";
 };
@@ -252,6 +314,29 @@
 			drive-strength = <8>;
 			bias-disable;
 		};
+	};
+
+	sfp_pins: sfp_pinmux {
+		sfp_rx {
+			pins = "gpio46";
+			function = "rx1";
+			bias-disable;
+		};
+
+		sfp_tx {
+			pins = "gpio61";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-down;
+			output-low;
+		};
+	};
+
+	i2c_4_pins: i2c-4-pinmux {
+		pins = "gpio50", "gpio51";
+		function = "blsp4_i2c";
+		drive-strength = <8>;
+		bias-disable;
 	};
 };
 
