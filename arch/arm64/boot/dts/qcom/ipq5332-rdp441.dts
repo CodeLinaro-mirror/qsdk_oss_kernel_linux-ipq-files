@@ -10,6 +10,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
 #include "ipq5332.dtsi"
+#include "ipq5332-default-memory.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ5332/RDP441/AP-MI01.2";
@@ -257,6 +258,12 @@
 				<0 129 4>,			/* PPEDS Node #2(Rx Desc ring id #2) Rx Desc IRQ info */
 				<0 153 4>;			/* PPEDS Node #2(RxFill Desc ring id #2) Rx Fill IRQ info */
 		};
+
+		wsi: wsi {
+			id = <0>;
+			num_chip = <3>;
+			status = "okay";
+		};
 	};
 };
 
@@ -327,6 +334,17 @@
 	pinctrl-names = "default";
 	perst-gpios = <&tlmm 38 GPIO_ACTIVE_LOW>;
 	status = "okay";
+
+	pcie0_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@2 {
+			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9224_pcie0>;
+			qcom,board_id = <0x15>;
+			qcom,wsi = <&wsi>;
+		};
+	};
 };
 
 &pcie1_phy_x2 {
@@ -337,6 +355,38 @@
 	pinctrl-0 = <&pcie1_default_state>;
 	pinctrl-names = "default";
 	perst-gpios = <&tlmm 47 GPIO_ACTIVE_LOW>;
+	status = "okay";
+
+	pcie1_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@1 {
+			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9224_pcie1>;
+			qcom,board_id = <0x16>;
+			qcom,wsi = <&wsi>;
+		};
+	};
+};
+
+
+&wifi0 {
+	led-gpio = <&tlmm 36 GPIO_ACTIVE_HIGH>;
+	qcom,rproc = <&q6_wcss_pd1>;
+	qcom,rproc_rpd = <&q6v5_wcss>;
+	qcom,multipd_arch;
+	qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
+	memory-region = <&q6_region>;
+	qcom,wsi = <&wsi>;
+	qcom,board_id = <0x12>;
+	status = "okay";
+};
+
+&qcn9224_pcie0 {
+	status = "okay";
+};
+
+&qcn9224_pcie1 {
 	status = "okay";
 };
 
