@@ -178,6 +178,12 @@
 			};
 		};
 
+		nss-macsec0 {
+			compatible = "qcom,nss-macsec";
+			phy_addr = <12>;
+			mdiobus = <&mdio>;
+		};
+
 		dp1 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
