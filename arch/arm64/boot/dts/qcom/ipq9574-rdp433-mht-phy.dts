@@ -22,6 +22,32 @@
 	chosen {
 		stdout-path = "serial0:115200n8";
 	};
+
+	soc@0 {
+		nss-macsec0 {
+			compatible = "qcom,nss-macsec";
+			phy_addr = <0x1>;
+			mdiobus = <&mdio>;
+		};
+
+		nss-macsec1 {
+			compatible = "qcom,nss-macsec";
+			phy_addr = <0x2>;
+			mdiobus = <&mdio>;
+		};
+
+		nss-macsec2 {
+			compatible = "qcom,nss-macsec";
+			phy_addr = <0x3>;
+			mdiobus = <&mdio>;
+		};
+
+		nss-macsec3 {
+			compatible = "qcom,nss-macsec";
+			phy_addr = <0x4>;
+			mdiobus = <&mdio>;
+		};
+	};
 };
 
 &pcie1_x1 {
