@@ -11,7 +11,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
 #include "ipq9574.dtsi"
-#include "ipq9574-wkk-default-memory.dtsi"
+#include "ipq9574-qcn9224-default-memory.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ9574/RDP433/AP-AL02-C4";
