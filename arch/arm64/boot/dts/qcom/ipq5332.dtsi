@@ -442,7 +442,7 @@
 					   "base1", "s11",
 					   "s12", "s13",
 					   "s14", "s15";
-			interrupts = <GIC_SPI 320 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI 320 IRQ_TYPE_EDGE_RISING>;
 			interrupt-names = "combined";
 			#thermal-sensor-cells = <1>;
 		};
