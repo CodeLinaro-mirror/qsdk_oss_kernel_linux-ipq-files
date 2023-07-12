@@ -1697,7 +1697,7 @@
 		};
 	};
 
-	thermal-zones {
+	thermal_zones: thermal-zones {
 		rfa-0-thermal {
 			polling-delay-passive = <0>;
 			polling-delay = <0>;
