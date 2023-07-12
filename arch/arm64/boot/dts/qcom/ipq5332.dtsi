@@ -1775,3 +1775,7 @@
 		};
 	};
 };
+
+#ifndef __CPU_THERMAL__
+#include "ipq5332-thermald.dtsi"
+#endif
