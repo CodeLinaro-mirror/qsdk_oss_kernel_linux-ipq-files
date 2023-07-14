@@ -212,11 +212,6 @@
 
 			hwlocks = <&tcsr_mutex 0>;
 		};
-
-		q6_region: wcnss@4a900000 {
-			reg = <0x0 0x4a900000 0x0 0x2b00000>;
-			no-map;
-		};
 	};
 
 	soc@0 {
