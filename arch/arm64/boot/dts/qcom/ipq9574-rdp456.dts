@@ -9,6 +9,7 @@
 /dts-v1/;
 
 #include <dt-bindings/gpio/gpio.h>
+#include "ipq9574-qcn9224-default-memory.dtsi"
 #include "ipq9574.dtsi"
 
 / {
