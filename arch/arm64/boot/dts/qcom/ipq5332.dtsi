@@ -875,6 +875,18 @@
 			status = "disabled";
 		};
 
+		wifi1: wifi1@c0000000 {
+			compatible = "qcom,cnss-qcn6432" , "qcom,qcn6432-wifi";
+			msi-parent = <&v2m0>;
+			status = "disabled";
+		};
+
+		wifi2: wifi2@c0000000 {
+			compatible = "qcom,cnss-qcn6432" , "qcom,qcn6432-wifi";
+			msi-parent = <&v2m0>;
+			status = "disabled";
+		};
+
 		ess_instance: ess-instance {
 			compatible = "qcom,ess-instance";
 			ess-switch@3a000000 {
