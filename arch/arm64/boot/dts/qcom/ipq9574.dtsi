@@ -2155,6 +2155,7 @@
 
 			q6_wcss_pd1: remoteproc_pd1 {
 				compatible = "qcom,ipq9574-wcss-ahb-mpd";
+				m3_firmware = "IPQ9574/m3_fw.mdt";
 			};
 		};
 
