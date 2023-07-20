@@ -11,6 +11,7 @@
 #include "ipq5332.dtsi"
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
+#include "ipq5332-default-memory.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ5332/RDP446/AP-MI04.1";
