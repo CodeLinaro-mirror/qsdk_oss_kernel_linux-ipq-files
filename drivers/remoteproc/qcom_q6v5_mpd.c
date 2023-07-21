@@ -918,7 +918,6 @@ static const struct wcss_data wcss_ahb_ipq5332_res_init = {
 };
 
 static const struct wcss_data wcss_ahb_ipq9574_res_init = {
-	.init_irq = init_irq,
 	.q6_firmware_name = "IPQ9574/q6_fw.mdt",
 	.crash_reason_smem = WCSS_CRASH_REASON,
 	.remote_id = WCSS_SMEM_HOST,
