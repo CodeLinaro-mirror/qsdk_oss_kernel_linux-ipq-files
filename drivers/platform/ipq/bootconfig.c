@@ -433,7 +433,7 @@ static int __init bootconfig_partition_init(void)
 		for (i = 0; i < MAX_MMC_DEVICE; i++) {
 			bdev = blkdev_get_by_dev(MKDEV(MMC_BLOCK_MAJOR,
 					i*CONFIG_MMC_BLOCK_MINORS),
-					FMODE_READ|FMODE_WRITE|FMODE_EXCL, NULL);
+					FMODE_READ | FMODE_WRITE, NULL);
 			if (IS_ERR(bdev))
 				return PTR_ERR(bdev);
 			disk = bdev->bd_disk;
