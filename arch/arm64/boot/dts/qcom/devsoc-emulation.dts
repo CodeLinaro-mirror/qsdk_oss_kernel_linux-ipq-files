@@ -1,0 +1,95 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * Dev SoC Emulation board device tree source
+ *
+ * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ */
+
+/dts-v1/;
+
+#include "devsoc.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. DevSoc-EMULATION";
+	compatible = "qcom,devsoc-ap-emulation", "qcom,devsoc";
+
+	/*Timer freq for rumi = timer freq / 100*/
+	clocks {
+		sleep_clk: sleep-clk {
+			clock-frequency = <320>;
+		};
+
+		xo: xo {
+			clock-frequency = <240000>;
+		};
+	};
+
+	chosen {
+		linux,initrd-end = <0x47000000>;
+		linux,initrd-start = <0x45000000>;
+		bootargs = "root=/dev/ram0 rw init=/init nosmp clk_ignore_unused";
+		stdout-path = "serial0";
+	};
+
+	cpus: cpus {
+		CPU0: cpu@0 {
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc0>;
+		};
+
+		CPU1: cpu@1 {
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc1>;
+		};
+
+		CPU2: cpu@2 {
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc2>;
+		};
+
+		CPU3: cpu@3 {
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc3>;
+		};
+	};
+
+	memory@80000000 {
+		reg = <0x0 0x80000000 0x0 0x80000000>;
+	};
+
+	soc@0 {
+		acc0: clock-controller@f800000 {
+			compatible = "qcom,arm-cortex-acc";
+			reg = <0xf800000 0x10000>;
+		};
+
+		acc1: clock-controller@f810000 {
+			compatible = "qcom,arm-cortex-acc";
+			reg = <0xf810000 0x10000>;
+		};
+
+		acc2:clock-controller@f820000 {
+			compatible = "qcom,arm-cortex-acc";
+			reg = <0xf820000 0x10000>;
+		};
+
+		acc3:clock-controller@f830000 {
+			compatible = "qcom,arm-cortex-acc";
+			reg = <0xf830000 0x10000>;
+		};
+
+		/*Timer freq for rumi = timer freq / 100*/
+		timer {
+			clock-frequency = <240000>;
+		};
+
+		timer@f420000 {
+			clock-frequency = <240000>;
+		};
+	};
+
+	psci {
+		status = "disabled";
+	};
+};

@@ -10,6 +10,7 @@
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
+#include "ipq9574-qcn9224-default-memory.dtsi"
 #include "ipq9574.dtsi"
 
 / {
@@ -495,21 +496,6 @@
 			function = "sdc_rclk";
 			drive-strength = <8>;
 			bias-pull-down;
-		};
-	};
-
-	mdio_pins: mdio-state {
-		mux_0 {
-			pins = "gpio38";
-			function = "mdc";
-			drive-strength = <8>;
-			bias-disable;
-		};
-		mux_1 {
-			pins = "gpio39";
-			function = "mdio";
-			drive-strength = <8>;
-			bias-pull-up;
 		};
 	};
 };

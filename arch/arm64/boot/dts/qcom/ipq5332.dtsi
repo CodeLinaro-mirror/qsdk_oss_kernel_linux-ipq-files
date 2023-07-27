@@ -212,11 +212,6 @@
 
 			hwlocks = <&tcsr_mutex 0>;
 		};
-
-		q6_region: wcnss@4a900000 {
-			reg = <0x0 0x4a900000 0x0 0x2b00000>;
-			no-map;
-		};
 	};
 
 	soc@0 {
@@ -463,6 +458,36 @@
 				drive-strength = <8>;
 				bias-pull-up;
 			};
+
+			mdio0_pins: mdio0-state {
+				mux_0 {
+					pins = "gpio25";
+					function = "mdc0";
+					drive-strength = <8>;
+					bias-disable;
+				};
+				mux_1 {
+					pins = "gpio26";
+					function = "mdio0";
+					drive-strength = <8>;
+					bias-pull-up;
+				};
+			};
+
+			mdio1_pins: mdio1-state {
+				mux_0 {
+					pins = "gpio27";
+					function = "mdc1";
+					drive-strength = <8>;
+					bias-disable;
+				};
+				mux_1 {
+					pins = "gpio28";
+					function = "mdio1";
+					drive-strength = <8>;
+					bias-pull-up;
+				};
+			};
 		};
 
 		gcc: clock-controller@1800000 {
@@ -696,7 +721,7 @@
 			clock-names = "xo";
 		};
 
-		mdio@90000 {
+		mdio: mdio@90000 {
 			compatible = "qcom,qca-mdio", "qcom,ipq40xx-mdio";
 			reg = <0x90000 0x64>, <0x7A00610 0x4>, <0x7A10610 0x4>;
 			#address-cells = <1>;
@@ -850,7 +875,19 @@
 			status = "disabled";
 		};
 
-		ess-instance {
+		wifi1: wifi1@c0000000 {
+			compatible = "qcom,cnss-qcn6432" , "qcom,qcn6432-wifi";
+			msi-parent = <&v2m0>;
+			status = "disabled";
+		};
+
+		wifi2: wifi2@c0000000 {
+			compatible = "qcom,cnss-qcn6432" , "qcom,qcn6432-wifi";
+			msi-parent = <&v2m0>;
+			status = "disabled";
+		};
+
+		ess_instance: ess-instance {
 			compatible = "qcom,ess-instance";
 			ess-switch@3a000000 {
 				compatible = "qcom,ess-switch-ipq53xx";

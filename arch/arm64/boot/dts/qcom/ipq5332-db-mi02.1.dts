@@ -11,6 +11,7 @@
 #include "ipq5332.dtsi"
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
+#include "ipq5332-default-memory.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ5332/DB-MI02.1";
@@ -48,6 +49,42 @@
 				gpios = <&tlmm 35 GPIO_ACTIVE_LOW>;
 				linux,input-type = <1>;
 				debounce-interval = <60>;
+			};
+		};
+
+		mdio@90000 {
+			status = "ok";
+			pinctrl-0 = <&mdio1_pins>;
+			pinctrl-names = "default";
+		};
+
+		ess-instance {
+			ess-switch@3a000000 {
+				pinctrl-0 = <&sfp_pins>;
+				pinctrl-names = "default";
+				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
+				switch_lan_bmp = <0x2>; /* lan port bitmap */
+				switch_wan_bmp = <0x4>; /* wan port bitmap */
+				switch_mac_mode = <0xe>; /* mac mode for uniphy instance0*/
+				switch_mac_mode1 = <0xe>; /* mac mode for uniphy instance1*/
+				switch_mac_mode2 = <0xff>; /* mac mode for uniphy instance2*/
+				qcom,port_phyinfo {
+					port@0 {
+						port_id = <1>;
+						phy_address = <30>;
+						media-type = "sfp"; /* fiber mode */
+						sfp_rx_los_pin = <&tlmm 48 0>;
+						sfp_tx_dis_pin = <&tlmm 15 0>;
+
+					};
+					port@1 {
+						port_id = <2>;
+						phy_address = <31>;
+						media-type = "sfp"; /* fiber mode */
+						sfp_rx_los_pin = <&tlmm 45 0>;
+						sfp_tx_dis_pin = <&tlmm 24 0>;
+					};
+				};
 			};
 		};
 	};
@@ -232,4 +269,18 @@
 		output-low;
 	};
 
+	sfp_pins: sfp-state {
+		sfp_rx {
+			pins = "gpio45";
+			function = "rx1";
+			bias-disable;
+		};
+		sfp_tx {
+			pins = "gpio24";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-down;
+			output-low;
+		};
+	};
 };

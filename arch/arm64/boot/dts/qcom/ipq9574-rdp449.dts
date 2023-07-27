@@ -11,6 +11,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
 #include "ipq9574.dtsi"
+#include "ipq9574-qcn9224-default-memory.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ9574/RDP449/AP-AL02-C6";
@@ -58,6 +59,12 @@
 				compatible ="ethernet-phy-ieee802.3-c45";
 				reg = <0>;
 			};
+		};
+
+		wsi: wsi {
+			id = <0>;
+			num_chip = <2>;
+			status = "okay";
 		};
 
 		ess-instance {
@@ -286,6 +293,15 @@
 
 	pcie2_rp {
 		reg = <0 0 0 0 0>;
+
+		wifi@2 {
+			reg = <0 0 0 0 0>;
+
+			memory-region = <&qcn9224_pcie2>;
+			qcom,board_id = <0x04>;
+			qcom,wsi = <&wsi>;
+			status = "okay";
+		};
 	};
 };
 
@@ -301,6 +317,15 @@
 
 	pcie3_rp {
 		reg = <0 0 0 0 0>;
+
+		wifi@3 {
+			reg = <0 0 0 0 0>;
+
+			memory-region = <&qcn9224_pcie3>;
+			qcom,board_id = <0x02>;
+			qcom,wsi = <&wsi>;
+			status = "okay";
+		};
 	};
 };
 
@@ -460,21 +485,6 @@
 			bias-disable;
 		};
 	};
-
-	mdio_pins: mdio-state {
-		mux_0 {
-			pins = "gpio38";
-			function = "mdc";
-			drive-strength = <8>;
-			bias-disable;
-		};
-		mux_1 {
-			pins = "gpio39";
-			function = "mdio";
-			drive-strength = <8>;
-			bias-pull-up;
-		};
-	};
 };
 
 &usb3 {
@@ -483,4 +493,41 @@
 
 &xo_board_clk {
 	clock-frequency = <24000000>;
+};
+
+/* Enable IPQ9574 integrated radio's reserved memory */
+&q6_region {
+	status = "okay";
+};
+
+&m3_dump {
+	status = "okay";
+};
+
+&q6_etr_region {
+	status = "okay";
+};
+
+&q6_caldb_region {
+	status = "okay";
+};
+
+&mlo_global_mem0 {
+	size = <0x0 0xC00000>;
+	status = "okay";
+};
+
+&qcn9224_pcie3 {
+	status = "okay";
+};
+
+&qcn9224_pcie2 {
+	status = "okay";
+};
+
+&wifi0 {
+	/* Enable IPQ9574 integratd 2G Radio */
+	led-gpio = <&tlmm 64 GPIO_ACTIVE_LOW>;
+	qcom,board_id = <0x20>;
+	status = "okay";
 };
