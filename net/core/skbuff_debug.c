@@ -71,17 +71,16 @@ static void skbuff_debugobj_get_stack(void **ret)
 	struct skbuff_debugobj_walking w = {0, ret};
 	void *p = &w;
 
-	frame.fp = (unsigned long)__builtin_frame_address(0);
-
 #ifdef CONFIG_ARM
+	frame.fp = (unsigned long)__builtin_frame_address(0);
 	frame.lr = (unsigned long)__builtin_return_address(0);
 	frame.sp = current_sp;
+	frame.pc = (unsigned long)skbuff_debugobj_get_stack;
 #endif
 
-	frame.pc = (unsigned long)skbuff_debugobj_get_stack;
-
 #ifdef CONFIG_ARM64
-	walk_stackframe(current,&frame, skbuff_debugobj_walkstack, p);
+	start_backtrace(&frame, (unsigned long)__builtin_frame_address(0), (unsigned long)skbuff_debugobj_get_stack);
+	walk_stackframe(current, &frame, skbuff_debugobj_walkstack, p);
 #else
 	walk_stackframe(&frame, skbuff_debugobj_walkstack, p);
 #endif
