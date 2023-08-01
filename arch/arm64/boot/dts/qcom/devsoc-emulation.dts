@@ -26,8 +26,8 @@
 	};
 
 	chosen {
-		linux,initrd-end = <0x47000000>;
-		linux,initrd-start = <0x45000000>;
+		linux,initrd-end = <0x97000000>;
+		linux,initrd-start = <0x95000000>;
 		bootargs = "root=/dev/ram0 rw init=/init nosmp clk_ignore_unused";
 		stdout-path = "serial0";
 	};
