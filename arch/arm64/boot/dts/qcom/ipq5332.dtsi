@@ -190,8 +190,8 @@
 		#size-cells = <2>;
 		ranges;
 
-		bootloader@49e00000 {
-			reg = <0x0 0x49e00000 0x0 0x700000>;
+		bootloader@49c00000 {
+			reg = <0x0 0x49c00000 0x0 0x900000>;
 			no-map;
 		};
 
