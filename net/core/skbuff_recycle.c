@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -38,13 +38,24 @@ inline struct sk_buff *skb_recycler_alloc(struct net_device *dev,
 	unsigned long flags;
 	struct sk_buff_head *h;
 	struct sk_buff *skb = NULL;
+	struct sk_buff *ln = NULL;
 
 	if (unlikely(length > SKB_RECYCLE_SIZE))
 		return NULL;
 
 	h = &get_cpu_var(recycle_list);
 	local_irq_save(flags);
-	skb = __skb_dequeue(h);
+	skb = skb_peek(h);
+	if (skb) {
+		ln = skb_peek_next(skb, h);
+		skbuff_debugobj_activate(skb);
+		/* Recalculate the sum for skb->next as next and prev pointers
+		 * of skb->next will be updated in __skb_unlink
+		 */
+		skbuff_debugobj_sum_validate(ln);
+		__skb_unlink(skb, h);
+		skbuff_debugobj_sum_update(ln);
+	}
 #ifdef CONFIG_SKB_RECYCLER_MULTI_CPU
 	if (unlikely(!skb)) {
 		u8 head;
@@ -55,13 +66,32 @@ inline struct sk_buff *skb_recycler_alloc(struct net_device *dev,
 		if (unlikely(head == glob_recycler.tail)) {
 			spin_unlock(&glob_recycler.lock);
 		} else {
+			struct sk_buff *gn = glob_recycler.pool[head].next;
+			struct sk_buff *gp = glob_recycler.pool[head].prev;
+
 			/* Move SKBs from global list to CPU pool */
+			skbuff_debugobj_sum_validate(gn);
+			skbuff_debugobj_sum_validate(gp);
 			skb_queue_splice_init(&glob_recycler.pool[head], h);
+			skbuff_debugobj_sum_update(gn);
+			skbuff_debugobj_sum_update(gp);
+
 			head = (head + 1) & SKB_RECYCLE_MAX_SHARED_POOLS_MASK;
 			glob_recycler.head = head;
 			spin_unlock(&glob_recycler.lock);
 			/* We have refilled the CPU pool - dequeue */
-			skb = __skb_dequeue(h);
+			skb = skb_peek(h);
+			if (skb) {
+				/* Recalculate the sum for skb->next as next and
+				 * prev pointers of skb->next will be updated
+				 * in __skb_unlink
+				 */
+				ln = skb_peek_next(skb, h);
+				skbuff_debugobj_activate(skb);
+				skbuff_debugobj_sum_validate(ln);
+				__skb_unlink(skb, h);
+				skbuff_debugobj_sum_update(ln);
+			}
 		}
 	}
 #endif
@@ -80,9 +110,9 @@ inline struct sk_buff *skb_recycler_alloc(struct net_device *dev,
 		prefetchw(shinfo);
 
 		zero_struct(skb, offsetof(struct sk_buff, tail));
-#ifdef NET_SKBUFF_DATA_USES_OFFSET
-		skb->mac_header = ~0U;
-#endif
+		refcount_set(&skb->users, 1);
+		skb->mac_header = (typeof(skb->mac_header))~0U;
+		skb->transport_header = (typeof(skb->transport_header))~0U;
 		zero_struct(shinfo, offsetof(struct skb_shared_info, dataref));
 		atomic_set(&shinfo->dataref, 1);
 
@@ -100,7 +130,7 @@ inline bool skb_recycler_consume(struct sk_buff *skb)
 {
 	unsigned long flags;
 	struct sk_buff_head *h;
-
+	struct sk_buff *ln = NULL;
 	/* Can we recycle this skb?  If not, simply return that we cannot */
 	if (unlikely(!consume_skb_can_recycle(skb, SKB_RECYCLE_MIN_SIZE,
 					      SKB_RECYCLE_MAX_SIZE)))
@@ -113,8 +143,14 @@ inline bool skb_recycler_consume(struct sk_buff *skb)
 	local_irq_save(flags);
 	/* Attempt to enqueue the CPU hot recycle list first */
 	if (likely(skb_queue_len(h) < skb_recycle_max_skbs)) {
+		ln = skb_peek(h);
+		/* Recalculate the sum for peek of list as next and prev
+		 * pointers of skb->next will be updated in __skb_queue_head
+		 */
+		skbuff_debugobj_sum_validate(ln);
 		__skb_queue_head(h, skb);
 		skbuff_debugobj_deactivate(skb);
+		skbuff_debugobj_sum_update(ln);
 		local_irq_restore(flags);
 		preempt_enable();
 		return true;
@@ -134,18 +170,30 @@ inline bool skb_recycler_consume(struct sk_buff *skb)
 		next_tail = (cur_tail + 1) & SKB_RECYCLE_MAX_SHARED_POOLS_MASK;
 		if (next_tail != glob_recycler.head) {
 			struct sk_buff_head *p = &glob_recycler.pool[cur_tail];
+			struct sk_buff *hn = h->next, *hp = h->prev;
 
 			/* Move SKBs from CPU pool to Global pool*/
+			skbuff_debugobj_sum_validate(hp);
+			skbuff_debugobj_sum_validate(hn);
 			skb_queue_splice_init(h, p);
+			skbuff_debugobj_sum_update(hp);
+			skbuff_debugobj_sum_update(hn);
 
 			/* Done with global list init */
 			glob_recycler.tail = next_tail;
 			spin_unlock(&glob_recycler.lock);
 
+			/* Recalculate the sum for peek of list as next and prev
+			 * pointers of skb->next will be updated in
+			 * __skb_queue_head
+			 */
+			ln = skb_peek(h);
+			skbuff_debugobj_sum_validate(ln);
 			/* We have now cleared room in the spare;
 			 * Initialize and enqueue skb into spare
 			 */
 			__skb_queue_head(h, skb);
+			skbuff_debugobj_sum_update(ln);
 			skbuff_debugobj_deactivate(skb);
 
 			local_irq_restore(flags);
@@ -156,8 +204,14 @@ inline bool skb_recycler_consume(struct sk_buff *skb)
 		spin_unlock(&glob_recycler.lock);
 	} else {
 		/* We have room in the spare list; enqueue to spare list */
+		ln = skb_peek(h);
+		/* Recalculate the sum for peek of list as next and prev
+		 * pointers of skb->next will be updated in __skb_queue_head
+		 */
+		skbuff_debugobj_sum_validate(ln);
 		__skb_queue_head(h, skb);
 		skbuff_debugobj_deactivate(skb);
+		skbuff_debugobj_sum_update(ln);
 		local_irq_restore(flags);
 		preempt_enable();
 		return true;
@@ -173,12 +227,16 @@ inline bool skb_recycler_consume(struct sk_buff *skb)
 static void skb_recycler_free_skb(struct sk_buff_head *list)
 {
 	struct sk_buff *skb = NULL;
+	unsigned long flags;
 
-	while ((skb = skb_dequeue(list)) != NULL) {
-		skb_release_data(skb);
+	spin_lock_irqsave(&list->lock, flags);
+	while ((skb = skb_peek(list)) != NULL) {
 		skbuff_debugobj_activate(skb);
+		__skb_unlink(skb, list);
+		skb_release_data(skb);
 		kfree_skbmem(skb);
 	}
+	spin_unlock_irqrestore(&list->lock, flags);
 }
 
 static int skb_cpu_callback(unsigned int ocpu)
@@ -192,7 +250,7 @@ static int skb_cpu_callback(unsigned int ocpu)
 	spin_unlock(&glob_recycler.lock);
 #endif
 
-	return NOTIFY_OK;
+	return NOTIFY_DONE;
 }
 
 #ifdef CONFIG_SKB_RECYCLER_PREALLOC
@@ -476,6 +534,41 @@ void __init skb_recycler_init(void)
 	if (skb_prealloc_init_list())
 		pr_err("Failed to preallocate SKBs for recycle list\n");
 #endif
-	cpuhp_setup_state_nocalls(CPUHP_NET_DEV_DEAD, "net/skbuff_recycler:dead:",NULL, skb_cpu_callback);
+	cpuhp_setup_state_nocalls(CPUHP_SKB_RECYCLER_DEAD, "net/skbuff_recycler:dead:",NULL, skb_cpu_callback);
+	skbuff_debugobj_register_callback();
 	skb_recycler_init_procfs();
+}
+
+void skb_recycler_print_all_lists(void)
+{
+	unsigned long flags;
+	int cpu;
+#ifdef CONFIG_SKB_RECYCLER_MULTI_CPU
+	int i;
+	struct sk_buff_head *h;
+
+	cpu = get_cpu();
+	spin_lock_irqsave(&glob_recycler.lock, flags);
+	for (i = 0; i < SKB_RECYCLE_MAX_SHARED_POOLS; i++)
+		skbuff_debugobj_print_skb_list((&glob_recycler.pool[i])->next,
+					       "Global Pool", -1);
+	spin_unlock_irqrestore(&glob_recycler.lock, flags);
+
+	preempt_disable();
+	local_irq_save(flags);
+
+	h = &per_cpu(recycle_spare_list, cpu);
+	skbuff_debugobj_print_skb_list(h->next, "Recycle Spare", cpu);
+
+	local_irq_restore(flags);
+	preempt_enable();
+#endif
+
+	preempt_disable();
+	local_irq_save(flags);
+	h = &per_cpu(recycle_list, cpu);
+	skbuff_debugobj_print_skb_list(h->next, "Recycle List", cpu);
+
+	local_irq_restore(flags);
+	preempt_enable();
 }

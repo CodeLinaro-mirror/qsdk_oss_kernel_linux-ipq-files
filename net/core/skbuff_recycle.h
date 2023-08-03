@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2017, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -131,6 +131,12 @@ static inline bool consume_skb_can_recycle(const struct sk_buff *skb,
 	if (unlikely(skb_is_nonlinear(skb)))
 		return false;
 
+	if (unlikely(skb_shinfo(skb)->frag_list))
+		return false;
+
+	if (unlikely(skb_shinfo(skb)->nr_frags))
+		return false;
+
 	if (unlikely(skb->fclone != SKB_FCLONE_UNAVAILABLE))
 		return false;
 
@@ -145,6 +151,9 @@ static inline bool consume_skb_can_recycle(const struct sk_buff *skb,
 	if (unlikely(skb_cloned(skb)))
 		return false;
 
+	if (unlikely(skb_pfmemalloc(skb)))
+		return false;
+
 	return true;
 }
 
@@ -152,9 +161,11 @@ static inline bool consume_skb_can_recycle(const struct sk_buff *skb,
 void __init skb_recycler_init(void);
 struct sk_buff *skb_recycler_alloc(struct net_device *dev, unsigned int length);
 bool skb_recycler_consume(struct sk_buff *skb);
+void skb_recycler_print_all_lists(void);
 #else
 #define skb_recycler_init()  {}
 #define skb_recycler_alloc(dev, len) NULL
 #define skb_recycler_consume(skb) false
+#define skb_recycler_print_all_lists() false
 #endif
 #endif
