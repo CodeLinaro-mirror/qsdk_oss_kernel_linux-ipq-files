@@ -1549,7 +1549,8 @@
 
 		mdio: mdio@90000 {
 			compatible = "qcom,qca-mdio", "qcom,ipq40xx-mdio";
-			reg = <0x90000 0x64>;
+			reg = <0x90000 0x64>, <0x9B780 8>;
+			reg-names = "ppe", "cmn_blk";
 			#address-cells = <1>;
 			#size-cells = <1>;
 			clocks = <&gcc GCC_MDIO_AHB_CLK>;
