@@ -39,7 +39,7 @@
 			cpu-critical-hi {
 				temperature = <125000>;
 				hysteresis = <2>;
-				type = "critical_high";
+				type = "critical";
 			};
 
 			cpu-config-hi {
@@ -65,7 +65,7 @@
 			cpu-critical-hi {
 				temperature = <125000>;
 				hysteresis = <2>;
-				type = "critical_high";
+				type = "critical";
 			};
 
 			cpu-config-hi {
@@ -91,7 +91,7 @@
 			cpu-critical-hi {
 				temperature = <125000>;
 				hysteresis = <2>;
-				type = "critical_high";
+				type = "critical";
 			};
 
 			cpu-config-hi {
@@ -117,7 +117,7 @@
 			cpu-critical-hi {
 				temperature = <125000>;
 				hysteresis = <2>;
-				type = "critical_high";
+				type = "critical";
 			};
 
 			cpu-config-hi {
@@ -143,7 +143,7 @@
 			cpu-critical-hi {
 				temperature = <125000>;
 				hysteresis = <2>;
-				type = "critical_high";
+				type = "critical";
 			};
 
 			cpu-config-hi {
@@ -169,7 +169,7 @@
 			cpu-critical-hi {
 				temperature = <125000>;
 				hysteresis = <2>;
-				type = "critical_high";
+				type = "critical";
 			};
 
 			cpu-config-hi {
@@ -195,7 +195,7 @@
 			cpu-critical-hi {
 				temperature = <125000>;
 				hysteresis = <2>;
-				type = "critical_high";
+				type = "critical";
 			};
 
 			cpu-config-hi {
@@ -221,7 +221,7 @@
 			cpu-critical-hi {
 				temperature = <125000>;
 				hysteresis = <2>;
-				type = "critical_high";
+				type = "critical";
 			};
 
 			cpu-config-hi {
@@ -247,7 +247,7 @@
 			cpu-critical-hi {
 				temperature = <125000>;
 				hysteresis = <2>;
-				type = "critical_high";
+				type = "critical";
 			};
 
 			cpu-config-hi {
@@ -273,7 +273,7 @@
 			cpu-critical-hi {
 				temperature = <125000>;
 				hysteresis = <2>;
-				type = "critical_high";
+				type = "critical";
 			};
 
 			cpu-config-hi {
@@ -299,7 +299,7 @@
 			cpu-critical-hi {
 				temperature = <125000>;
 				hysteresis = <2>;
-				type = "critical_high";
+				type = "critical";
 			};
 
 			cpu-config-hi {
@@ -325,7 +325,7 @@
 			cpu-critical-hi {
 				temperature = <125000>;
 				hysteresis = <2>;
-				type = "critical_high";
+				type = "critical";
 			};
 
 			cpu-config-hi {
@@ -351,7 +351,7 @@
 			cpu-critical-hi {
 				temperature = <125000>;
 				hysteresis = <2>;
-				type = "critical_high";
+				type = "critical";
 			};
 
 			cpu-config-hi {
