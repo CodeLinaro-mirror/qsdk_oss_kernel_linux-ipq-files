@@ -7,6 +7,8 @@
  */
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/clock/qcom,devsoc-gcc.h>
+#include <dt-bindings/reset/qcom,devsoc-gcc.h>
 
 
 / {
@@ -109,6 +111,72 @@
 		#size-cells = <1>;
 		ranges = <0 0 0 0xffffffff>;
 		dma-ranges;
+
+		tlmm: pinctrl@1000000 {
+			compatible = "qcom,devsoc-tlmm";
+			reg = <0x01000000 0x300000>;
+			interrupts = <GIC_SPI 84 IRQ_TYPE_LEVEL_HIGH>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			gpio-ranges = <&tlmm 0 0 49>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+
+			qup_uart0_default: qup-uart0-default-state {
+				qup_uart0_tx: tx-pins {
+					pins = "gpio13";
+					function = "uart0_tx";
+					drive-strength = <8>;
+					bias-disable;
+				};
+
+				qup_uart0_rx: rx-pins {
+					pins = "gpio12";
+					function = "uart0_rx";
+					drive-strength = <8>;
+					bias-disable;
+				};
+			};
+		};
+
+		gcc: clock-controller@1800000 {
+			compatible = "qcom,devsoc-gcc";
+			reg = <0x01800000 0x40000>;
+			clocks = <&xo>,
+				 <&sleep_clk>;
+			#clock-cells = <1>;
+			#reset-cells = <1>;
+			#power-domain-cells = <1>;
+                };
+
+		qupv3: geniqup@1ac0000 {
+			compatible = "qcom,geni-se-qup";
+			reg = <0x01ac0000 0x2000>;
+			clocks = <&gcc GCC_QUPV3_AHB_MST_CLK>,
+				 <&gcc GCC_QUPV3_AHB_SLV_CLK>;
+			clock-names = "m-ahb", "s-ahb";
+			ranges;
+
+			status = "disabled";
+
+			uart0: serial@1a80000 {
+				compatible = "qcom,geni-debug-uart";
+				reg = <0x01a80000 0x4000>;
+				clocks = <&gcc GCC_QUPV3_UART0_CLK>;
+				clock-names = "se";
+				interrupts = <GIC_SPI 339 IRQ_TYPE_LEVEL_HIGH>;
+				status = "disabled";
+			};
+
+			uart1: serial@1a84000 {
+				compatible = "qcom,geni-uart";
+				reg = <0x01a84000 0x4000>;
+				clocks = <&gcc GCC_QUPV3_UART1_CLK>;
+				clock-names = "se";
+				interrupts = <GIC_SPI 340 IRQ_TYPE_LEVEL_HIGH>;
+				status = "disabled";
+			};
+		};
 
 		intc: interrupt-controller@f200000 {
 			compatible = "arm,gic-v3";
