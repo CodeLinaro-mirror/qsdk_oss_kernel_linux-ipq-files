@@ -79,14 +79,15 @@
 			reg = <0xf830000 0x10000>;
 		};
 
-		/*Timer freq for rumi = timer freq / 100*/
-		timer {
-			clock-frequency = <240000>;
-		};
-
+		/* Timer freq for rumi = timer freq / 100 */
 		timer@f420000 {
 			clock-frequency = <240000>;
 		};
+	};
+
+	/* Timer freq for rumi = timer freq / 100 */
+	timer {
+		clock-frequency = <240000>;
 	};
 
 	psci {
