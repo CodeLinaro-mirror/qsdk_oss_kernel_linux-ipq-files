@@ -452,7 +452,7 @@
 	qcom,select-utmi-as-pipe-clk;
 	status = "okay";
 
-	dwc3@8A00000 {
+	dwc3@8a00000 {
 		/delete-property/ #phy-cells;
 		/delete-property/ phys;
 		/delete-property/ phy-names;
