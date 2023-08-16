@@ -6,6 +6,9 @@
  * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
+#ifdef __IPQ_MEM_PROFILE_512_MB__
+#include "ipq9574-qcn9224-512MB-memory.dtsi"
+#else
 / {
 
 	/*		Default Profile for Waikiki
@@ -178,3 +181,4 @@
 
 	};
 };
+#endif
