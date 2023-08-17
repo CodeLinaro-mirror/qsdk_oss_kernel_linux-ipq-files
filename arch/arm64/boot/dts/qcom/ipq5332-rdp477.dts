@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 /*
- * IPQ5332 RDP446 board device tree source
+ * IPQ5332 RDP477 board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
@@ -14,8 +14,92 @@
 #include "ipq5332-default-memory.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. IPQ5332/RDP446/AP-MI04.1";
-	compatible = "qcom,ipq5332-ap-mi04.1","qcom,ipq5332-rdp446", "qcom,ipq5332";
+	model = "Qualcomm Technologies, Inc. IPQ5332/RDP442/MI01.3-C2";
+	compatible = "qcom,ipq5332-ap-mi01.3-c2", "qcom,ipq5332-rdp477", "qcom,ipq5332";
+
+	reserved-memory {
+
+		/delete-node/ m3_dump@4cc00000;
+		/delete-node/ q6_etr_dump@1;
+		/delete-node/ mlo_global_mem_0@0x4db00000;
+		/delete-node/ wcnss@4a900000;
+		/delete-node/ q6_caldb_region@4ce00000;
+
+		q6_mem_regions: q6_mem_regions@4A900000  {
+			no-map;
+			reg = <0x0 0x4a900000 0x0 0x8A00000>;
+		};
+
+		q6_code_data: q6_code_data@4A900000 {
+			no-map;
+			reg = <0x0 0x4a900000 0x0 0x1B00000>;
+		};
+
+		q6_ipq5332_data: q6_ipq5332_data@4C400000 {
+			no-map;
+			reg = <0x0 0x4C400000 0x0 0x1E00000>;
+		};
+
+		m3_dump: m3_dump@4E200000 {
+			no-map;
+			reg = <0x0 0x4E200000 0x0 0x100000>;
+		};
+
+		q6_etr_region: q6_etr_dump@4E300000 {
+			no-map;
+			reg = <0x0 0x4E300000 0x0 0x100000>;
+		};
+
+		q6_ipq5332_caldb: q6_ipq5332_caldb@4E400000 {
+			no-map;
+			reg = <0x0 0x4E400000 0x0 0x500000>;
+		};
+
+		q6_qcn6432_data_1: q6_qcn6432_data_1@4E900000 {
+			no-map;
+			reg = <0x0 0x4E900000 0x0 0x1E00000>;
+		};
+
+		m3_dump_qcn6432_1: m3_dump_qcn6432_1@50700000 {
+			no-map;
+			reg = <0x0 0x50700000 0x0 0x100000>;
+                };
+
+		q6_qcn6432_etr_1: q6_qcn6432_etr_1@50800000 {
+			no-map;
+			reg = <0x0 0x50800000 0x0 0x100000>;
+		};
+
+		q6_qcn6432_caldb_1: q6_qcn6432_caldb_1@50900000 {
+			no-map;
+			reg = <0x0 0x50900000 0x0 0x500000>;
+		};
+
+		q6_qcn6432_data_2: q6_qcn6432_data_2@50E00000 {
+			no-map;
+			reg = <0x0 0x50E00000 0x0 0x1E00000>;
+		};
+
+		m3_dump_qcn6432_2: m3_dump_qcn6432_2@52C00000 {
+			no-map;
+			reg = <0x0 0x52C00000 0x0 0x100000>;
+                };
+
+		q6_qcn6432_etr_2: q6_qcn6432_etr_2@52D00000 {
+			no-map;
+			reg = <0x0 0x52D00000 0x0 0x100000>;
+		};
+
+		q6_qcn6432_caldb_2: q6_qcn6432_caldb_2@52E00000 {
+			no-map;
+			reg = <0x0 0x52E00000 0x0 0x500000>;
+		};
+
+		mlo_global_mem0: mlo_global_mem_0@53300000 {
+			no-map;
+			reg = <0x0 0x53300000 0x0 0x1100000>;
+		};
+	};
 
 	aliases {
 		serial0 = &blsp1_uart0;
@@ -33,7 +117,7 @@
 			pinctrl-0 = <&mdio1_pins &mdio0_pins>;
 			pinctrl-names = "default";
 			/*gpio51 for manhattan reset*/
-			phy-reset-gpio = <&tlmm 51 GPIO_ACTIVE_LOW &tlmm 22 GPIO_ACTIVE_LOW>;
+			phy-reset-gpio = <&tlmm 51 GPIO_ACTIVE_LOW>;
 			phyaddr_fixup = <0xC90F018>;
 			uniphyaddr_fixup = <0xC90F014>;
 			mdio_clk_fixup; /* MDIO clock sequence fix up flag */
@@ -54,9 +138,6 @@
 			phy3: ethernet-phy@3 {
 				reg = <4>;
 				fixup;
-			};
-			phy4: ethernet-phy@4 {
-				reg = <12>;
 			};
 		};
 
@@ -90,12 +171,13 @@
 			num_devices = <0x2>;
 
 			ess-switch@3a000000 {
+				pinctrl-0 = <&sfp_pins>;
 				pinctrl-names = "default";
 				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
 				switch_lan_bmp = <0x2>; /* lan port bitmap */
 				switch_wan_bmp = <0x4>; /* wan port bitmap */
 				switch_mac_mode = <0xc>; /* mac mode for uniphy instance0*/
-				switch_mac_mode1 = <0xf>; /* mac mode for uniphy instance1*/
+				switch_mac_mode1 = <0xe>; /* mac mode for uniphy instance1*/
 				switch_mac_mode2 = <0xff>; /* mac mode for uniphy instance2*/
 
 				qcom,port_phyinfo {
@@ -106,7 +188,10 @@
 					};
 					port@1 {
 						port_id = <2>;
-						phy_address = <12>;
+						phy_address = <30>;
+						media-type = "sfp"; /* fiber mode */
+						sfp_rx_los_pin = <&tlmm 45 GPIO_ACTIVE_HIGH>;
+						sfp_tx_dis_pin = <&tlmm 24 GPIO_ACTIVE_HIGH>;
 					};
 				};
 			};
@@ -179,12 +264,6 @@
 			};
 		};
 
-		nss-macsec0 {
-			compatible = "qcom,nss-macsec";
-			phy_addr = <12>;
-			mdiobus = <&mdio>;
-		};
-
 		dp1 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
@@ -193,7 +272,7 @@
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
 			mdio-bus = <&mdio>;
-			qcom,phy-mdio-addr = <12>;
+			qcom,phy-mdio-addr = <30>;
 			qcom,link-poll = <1>;
 			phy-mode = "sgmii";
 		};
@@ -265,81 +344,38 @@
 				<0 153 4>;			/* PPEDS Node #2(RxFill Desc ring id #2) Rx Fill IRQ info */
 		};
 
+		wsi: wsi {
+			id = <0>;
+			num_chip = <3>;
+		};
+
 		q6v5_wcss: remoteproc@d100000 {
-			boot-args = <0x1 0x4 0x3 0x1 0x2f 0x2>,
-					<0x1 0x4 0x4 0x2 0x2c 0x2>;
+			boot-args = <0x1 0x4 0x3 0x0 0x26 0x2>;
+			memory-region = <&q6_mem_regions>;
 
-			/delete-node/ remoteproc_pd1;
-			/delete-node/ remoteproc_pd2;
-			/delete-node/ remoteproc_pd3;
+			q6_wcss_pd1: remoteproc_pd1 {
+				status = "ok";
+			};
 
-			q6_wcss_pd4: remoteproc_pd4 {
-				compatible = "qcom,ipq5332-mpd-upd-text";
-				firmware = "IPQ5332/q6_fw4.mdt";
-
-				q6_wcss_pd1: remoteproc_pd1 {
-					compatible = "qcom,ipq5332-wcss-ahb-mpd";
-					firmware = "IPQ5332/q6_fw1.mdt";
-					m3_firmware = "IPQ5332/iu_fw.mdt";
-					interrupts-extended = <&wcss_smp2p_in 8 0>,
-							<&wcss_smp2p_in 9 0>,
-							<&wcss_smp2p_in 12 0>,
-							<&wcss_smp2p_in 11 0>;
-					interrupt-names = "fatal",
-							"ready",
-							"spawn-ack",
-							"stop-ack";
-
-					qcom,smem-states = <&wcss_smp2p_out 8>,
-							<&wcss_smp2p_out 9>,
-							<&wcss_smp2p_out 10>;
-					qcom,smem-state-names = "shutdown",
-								"stop",
-								"spawn";
-				};
-
-				q6_wcss_pd2: remoteproc_pd2 {
-					compatible = "qcom,ipq5332-wcss-pcie-mpd";
-					firmware = "IPQ5332/q6_fw2.mdt";
-					m3_firmware = "qcn6432/iu_fw.mdt";
-					interrupts-extended = <&wcss_smp2p_in 16 0>,
-							<&wcss_smp2p_in 17 0>,
-							<&wcss_smp2p_in 20 0>,
-							<&wcss_smp2p_in 19 0>;
-					interrupt-names = "fatal",
-							"ready",
-							"spawn-ack",
-							"stop-ack";
-
-					qcom,smem-states = <&wcss_smp2p_out 16>,
-							<&wcss_smp2p_out 17>,
-							<&wcss_smp2p_out 18>;
-					qcom,smem-state-names = "shutdown",
-								"stop",
-								"spawn";
-					status = "ok";
-				};
-
-				q6_wcss_pd3: remoteproc_pd3 {
-					compatible = "qcom,ipq5332-wcss-pcie-mpd";
-					firmware = "IPQ5332/q6_fw3.mdt";
-					interrupts-extended = <&wcss_smp2p_in 24 0>,
-							<&wcss_smp2p_in 25 0>,
-							<&wcss_smp2p_in 28 0>,
-							<&wcss_smp2p_in 27 0>;
-					interrupt-names = "fatal",
-							"ready",
-							"spawn-ack",
-							"stop-ack";
-
-					qcom,smem-states = <&wcss_smp2p_out 24>,
-							<&wcss_smp2p_out 25>,
-							<&wcss_smp2p_out 26>;
-					qcom,smem-state-names = "shutdown",
-								"stop",
-								"spawn";
-					status = "ok";
-				};
+			q6_wcss_pd2: remoteproc_pd2 {
+				compatible = "qcom,ipq5332-wcss-pcie-mpd";
+				firmware = "IPQ5332/q6_fw2.mdt";
+				m3_firmware = "qcn6432/iu_fw.mdt";
+				interrupts-extended = <&wcss_smp2p_in 16 0>,
+						<&wcss_smp2p_in 17 0>,
+						<&wcss_smp2p_in 20 0>,
+						<&wcss_smp2p_in 19 0>;
+				interrupt-names = "fatal",
+						"ready",
+						"spawn-ack",
+						"stop-ack";
+				qcom,smem-states = <&wcss_smp2p_out 16>,
+						<&wcss_smp2p_out 17>,
+						<&wcss_smp2p_out 18>;
+				qcom,smem-state-names = "shutdown",
+							"stop",
+							"spawn";
+				status = "ok";
 			};
 		};
 	};
@@ -352,9 +388,16 @@
 };
 
 &blsp1_uart1 {
-	pinctrl-0 = <&serial_1_pins>;
+        pinctrl-0 = <&serial_1_pins>;
+        pinctrl-names = "default";
+        status = "disabled";
+};
+
+&blsp1_i2c1 {
+	clock-frequency  = <400000>;
+	pinctrl-0 = <&i2c_1_pins>;
 	pinctrl-names = "default";
-	status = "disabled";
+	status = "okay";
 };
 
 &blsp1_spi0 {
@@ -369,6 +412,17 @@
 		#size-cells = <1>;
 		spi-max-frequency = <50000000>;
 	};
+};
+
+&sdhc {
+	bus-width = <4>;
+	max-frequency = <192000000>;
+	mmc-ddr-1_8v;
+	mmc-hs200-1_8v;
+	non-removable;
+	pinctrl-0 = <&sdc_default_state>;
+	pinctrl-names = "default";
+	status = "disabled";
 };
 
 &sleep_clk {
@@ -398,6 +452,8 @@
 		nand-bus-width = <8>;
 	};
 };
+
+/* PINCTRL */
 
 &tlmm {
 	qspi_default_state: qspi-default-state {
@@ -430,6 +486,13 @@
 		bias-pull-up;
 	};
 
+	i2c_1_pins: i2c-1-state {
+		pins = "gpio29", "gpio30";
+		function = "blsp1_i2c0";
+		drive-strength = <8>;
+		bias-pull-up;
+	};
+
 	leds_pins: leds-state {
 		pins = "gpio36";
 		function = "gpio";
@@ -442,6 +505,29 @@
 		function = "gpio";
 		drive-strength = <8>;
 		bias-pull-up;
+	};
+
+	sdc_default_state: sdc-default-state {
+		clk-pins {
+			pins = "gpio13";
+			function = "sdc_clk";
+			drive-strength = <8>;
+			bias-disable;
+		};
+
+		cmd-pins {
+			pins = "gpio12";
+			function = "sdc_cmd";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+
+		data-pins {
+			pins = "gpio8", "gpio9", "gpio10", "gpio11";
+			function = "sdc_data";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
 	};
 
 	spi_0_data_clk_pins: spi-0-data-clk-state {
@@ -458,18 +544,18 @@
 		bias-pull-up;
 	};
 
-	mdio1_pins: mdio1-state {
-		mux_0 {
-			pins = "gpio27";
-			function = "mdc1";
-			drive-strength = <2>;
-			bias-pull-up;
+	sfp_pins: sfp-state {
+		sfp_rx {
+			pins = "gpio45";
+			function = "rx1";
+			bias-disable;
 		};
-		mux_1 {
-			pins = "gpio28";
-			function = "mdio1";
-			drive-strength = <2>;
-			bias-pull-up;
+		sfp_tx {
+			pins = "gpio24";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-down;
+			output-low;
 		};
 	};
 };

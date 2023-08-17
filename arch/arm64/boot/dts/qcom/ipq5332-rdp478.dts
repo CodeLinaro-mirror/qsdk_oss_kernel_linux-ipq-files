@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 /*
- * IPQ5332 RDP446 board device tree source
+ * IPQ5332 RDP478 board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
@@ -14,8 +14,8 @@
 #include "ipq5332-default-memory.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. IPQ5332/RDP446/AP-MI04.1";
-	compatible = "qcom,ipq5332-ap-mi04.1","qcom,ipq5332-rdp446", "qcom,ipq5332";
+	model = "Qualcomm Technologies, Inc. IPQ5332/RDP446/AP-MI04.1-C2";
+	compatible = "qcom,ipq5332-ap-mi04.1-c2","qcom,ipq5332-rdp478", "qcom,ipq5332";
 
 	aliases {
 		serial0 = &blsp1_uart0;
@@ -266,80 +266,32 @@
 		};
 
 		q6v5_wcss: remoteproc@d100000 {
-			boot-args = <0x1 0x4 0x3 0x1 0x2f 0x2>,
-					<0x1 0x4 0x4 0x2 0x2c 0x2>;
+			boot-args = <0x1 0x4 0x3 0x1 0x2f 0x2>;
 
-			/delete-node/ remoteproc_pd1;
-			/delete-node/ remoteproc_pd2;
-			/delete-node/ remoteproc_pd3;
+			q6_wcss_pd1: remoteproc_pd1 {
+				status = "ok";
+			};
 
-			q6_wcss_pd4: remoteproc_pd4 {
-				compatible = "qcom,ipq5332-mpd-upd-text";
-				firmware = "IPQ5332/q6_fw4.mdt";
+			q6_wcss_pd2: remoteproc_pd2 {
+				compatible = "qcom,ipq5332-wcss-pcie-mpd";
+				firmware = "IPQ5332/q6_fw2.mdt";
+				m3_firmware = "qcn6432/iu_fw.mdt";
+				interrupts-extended = <&wcss_smp2p_in 16 0>,
+						<&wcss_smp2p_in 17 0>,
+						<&wcss_smp2p_in 20 0>,
+						<&wcss_smp2p_in 19 0>;
+				interrupt-names = "fatal",
+						"ready",
+						"spawn-ack",
+						"stop-ack";
 
-				q6_wcss_pd1: remoteproc_pd1 {
-					compatible = "qcom,ipq5332-wcss-ahb-mpd";
-					firmware = "IPQ5332/q6_fw1.mdt";
-					m3_firmware = "IPQ5332/iu_fw.mdt";
-					interrupts-extended = <&wcss_smp2p_in 8 0>,
-							<&wcss_smp2p_in 9 0>,
-							<&wcss_smp2p_in 12 0>,
-							<&wcss_smp2p_in 11 0>;
-					interrupt-names = "fatal",
-							"ready",
-							"spawn-ack",
-							"stop-ack";
-
-					qcom,smem-states = <&wcss_smp2p_out 8>,
-							<&wcss_smp2p_out 9>,
-							<&wcss_smp2p_out 10>;
-					qcom,smem-state-names = "shutdown",
-								"stop",
-								"spawn";
-				};
-
-				q6_wcss_pd2: remoteproc_pd2 {
-					compatible = "qcom,ipq5332-wcss-pcie-mpd";
-					firmware = "IPQ5332/q6_fw2.mdt";
-					m3_firmware = "qcn6432/iu_fw.mdt";
-					interrupts-extended = <&wcss_smp2p_in 16 0>,
-							<&wcss_smp2p_in 17 0>,
-							<&wcss_smp2p_in 20 0>,
-							<&wcss_smp2p_in 19 0>;
-					interrupt-names = "fatal",
-							"ready",
-							"spawn-ack",
-							"stop-ack";
-
-					qcom,smem-states = <&wcss_smp2p_out 16>,
-							<&wcss_smp2p_out 17>,
-							<&wcss_smp2p_out 18>;
-					qcom,smem-state-names = "shutdown",
-								"stop",
-								"spawn";
-					status = "ok";
-				};
-
-				q6_wcss_pd3: remoteproc_pd3 {
-					compatible = "qcom,ipq5332-wcss-pcie-mpd";
-					firmware = "IPQ5332/q6_fw3.mdt";
-					interrupts-extended = <&wcss_smp2p_in 24 0>,
-							<&wcss_smp2p_in 25 0>,
-							<&wcss_smp2p_in 28 0>,
-							<&wcss_smp2p_in 27 0>;
-					interrupt-names = "fatal",
-							"ready",
-							"spawn-ack",
-							"stop-ack";
-
-					qcom,smem-states = <&wcss_smp2p_out 24>,
-							<&wcss_smp2p_out 25>,
-							<&wcss_smp2p_out 26>;
-					qcom,smem-state-names = "shutdown",
-								"stop",
-								"spawn";
-					status = "ok";
-				};
+				qcom,smem-states = <&wcss_smp2p_out 16>,
+						<&wcss_smp2p_out 17>,
+						<&wcss_smp2p_out 18>;
+				qcom,smem-state-names = "shutdown",
+							"stop",
+							"spawn";
+				status = "ok";
 			};
 		};
 	};
