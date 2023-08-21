@@ -14,7 +14,7 @@
 #include "ipq5332-default-memory.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. IPQ5332/RDP446/AP-MI04.1-C2";
+	model = "Qualcomm Technologies, Inc. IPQ5332/RDP478/AP-MI04.1-C2";
 	compatible = "qcom,ipq5332-ap-mi04.1-c2","qcom,ipq5332-rdp478", "qcom,ipq5332";
 
 	aliases {
