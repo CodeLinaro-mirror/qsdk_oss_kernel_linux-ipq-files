@@ -25,6 +25,10 @@
 		};
 	};
 
+	aliases {
+		serial0 = &uart0;
+	};
+
 	chosen {
 		linux,initrd-end = <0x97000000>;
 		linux,initrd-start = <0x95000000>;
@@ -59,6 +63,16 @@
 	};
 
 	soc@0 {
+		qupv3: geniqup@1ac0000 {
+			status = "okay";
+
+			uart0: serial@1a80000 {
+				pinctrl-0 = <&qup_uart0_default>;
+				pinctrl-names = "default";
+				status = "okay";
+			};
+		};
+
 		acc0: clock-controller@f800000 {
 			compatible = "qcom,arm-cortex-acc";
 			reg = <0xf800000 0x10000>;
