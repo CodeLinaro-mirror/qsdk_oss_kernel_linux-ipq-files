@@ -369,11 +369,11 @@ static int copy_userpd_bootargs(struct bootargs_smem_info *boot_args,
 		sizeof(struct q6_userpd_bootargs) - sizeof(upd_bootargs.header);
 
 	/* PID */
-	upd_bootargs.pid = qcom_get_pd_asid(upd_wcss->dev->of_node) + 1;
+	upd_bootargs.pid = qcom_get_pd_asid(dev->of_node) + 1;
 
-	ret = request_firmware(&fw, upd_rproc->firmware, upd_wcss->dev);
+	ret = request_firmware(&fw, upd_rproc->firmware, dev);
 	if (ret < 0) {
-		dev_err(upd_wcss->dev, "request_firmware failed: %d\n",	ret);
+		dev_err(dev, "request_firmware failed: %d\n", ret);
 		return ret;
 	}
 
@@ -566,9 +566,7 @@ static int load_m3_firmware(struct device_node *np, struct q6_wcss *wcss)
 static int q6_wcss_load(struct rproc *rproc, const struct firmware *fw)
 {
 	struct q6_wcss *wcss = rproc->priv;
-	const struct firmware *m3_fw;
 	int ret;
-	const char *m3_fw_name;
 	struct device_node *upd_np, *temp;
 	struct platform_device *upd_pdev;
 	const struct wcss_data *desc =
