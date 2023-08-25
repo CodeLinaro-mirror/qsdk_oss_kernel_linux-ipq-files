@@ -189,6 +189,23 @@
 			interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
+		ess-instance {
+			compatible = "qcom,ess-instance";
+			ess-switch@3a000000 {
+				compatible = "qcom,ess-switch-ipq54xx";
+				switch_access_mode = "local bus";
+				reg = <0x3a000000 0x1000000>;
+				clocks = <&gcc GCC_CMN_12GPLL_AHB_CLK>;
+				clock-names = "cmn_ahb_clk";
+			};
+		};
+
+		ess-uniphy@7a00000 {
+			compatible = "qcom,ess-uniphy";
+			reg = <0x7a00000 0x30000>;
+			uniphy_access_mode = "local bus";
+		};
+
 		timer@f420000 {
 			compatible = "arm,armv7-timer-mem";
 			reg = <0xf420000 0x1000>;
