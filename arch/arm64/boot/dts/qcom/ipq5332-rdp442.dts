@@ -73,7 +73,7 @@
      */
 
 / {
-	model = "Qualcomm Technologies, Inc. IPQ5332/RDP442/MI01.3";
+	model = "Qualcomm Technologies, Inc. IPQ5332/RDP442/AP-MI01.3";
 	compatible = "qcom,ipq5332-ap-mi01.3", "qcom,ipq5332-rdp442", "qcom,ipq5332";
 
 	reserved-memory {
