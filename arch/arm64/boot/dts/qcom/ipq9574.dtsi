@@ -313,10 +313,23 @@
 		qti,get-smmu-state;
 	};
 
+	qseecom: qseecom {
+		compatible = "ipq9574-qseecom";
+		memory-region = <&tzapp>;
+		status = "okay";
+	};
+
 	reserved-memory {
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
+
+		tzapp:tzapp@49600000 {  /* TZAPPS */
+		#if !defined(__IPQ_MEM_PROFILE_512_MB__)
+			reg = <0x0 0x49600000 0x0 0x00600000>;
+		#endif
+			no-map;
+		};
 
 		bootloader@49c00000 {
 			reg = <0x0 0x49c00000 0x0 0x00900000>;
