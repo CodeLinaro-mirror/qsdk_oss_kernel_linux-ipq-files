@@ -813,7 +813,7 @@ static int q6_wcss_probe(struct platform_device *pdev)
 	if (desc->glink_subdev_required)
 		qcom_add_glink_subdev(rproc, &wcss->glink_subdev, desc->ssr_name);
 
-	subdev_name = (char *)(desc->ssr_name ? desc->ssr_name : pdev->name);
+	subdev_name = (char *)pdev->name;
 	qcom_add_ssr_subdev(rproc, &wcss->ssr_subdev, subdev_name);
 
 	rproc->auto_boot = desc->need_auto_boot;
