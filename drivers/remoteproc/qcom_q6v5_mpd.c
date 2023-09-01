@@ -580,11 +580,76 @@ static unsigned long q6_wcss_panic(struct rproc *rproc)
 	return qcom_q6v5_panic(&wcss->q6);
 }
 
+static void q6_wcss_copy_segment(struct rproc *rproc,
+				 struct rproc_dump_segment *segment,
+				 void *dest, size_t offset, size_t size)
+{
+	struct q6_wcss *wcss = rproc->priv;
+	struct device *dev = wcss->dev;
+	int base;
+	void *ptr;
+
+	base = segment->da + offset - wcss->mem_reloc;
+
+	if (base < 0 || base + size > wcss->mem_size) {
+		ptr = devm_ioremap_wc(dev, segment->da, segment->size);
+		memcpy(dest, ptr + offset, size);
+		devm_iounmap(dev, ptr);
+	} else {
+		memcpy(dest, wcss->mem_region + offset, size);
+	}
+}
+
+static int q6_wcss_dump_segments(struct rproc *rproc,
+				 const struct firmware *fw)
+{
+	struct device *dev = rproc->dev.parent;
+	struct reserved_mem *rmem = NULL;
+	struct device_node *node;
+	int num_segs, index = 0;
+	int ret;
+
+	/* Parse through additional reserved memory regions for the rproc
+	 * and add them to the coredump segments
+	 */
+	num_segs = of_count_phandle_with_args(dev->of_node,
+					      "memory-region", NULL);
+	while (index < num_segs) {
+		node = of_parse_phandle(dev->of_node,
+					"memory-region", index);
+		if (!node)
+			return -EINVAL;
+
+		rmem = of_reserved_mem_lookup(node);
+		if (!rmem) {
+			dev_err(dev, "unable to acquire memory-region index %d num_segs %d\n",
+				index, num_segs);
+			return -EINVAL;
+		}
+
+		of_node_put(node);
+
+		dev_dbg(dev, "Adding segment 0x%llx size 0x%llx", rmem->base, rmem->size);
+		ret = rproc_coredump_add_custom_segment(rproc,
+							rmem->base,
+							rmem->size,
+							q6_wcss_copy_segment,
+							NULL);
+		if (ret)
+			return ret;
+
+		index++;
+	}
+
+	return 0;
+}
+
 static const struct rproc_ops wcss_ahb_pcie_ipq5018_ops = {
 	.start = wcss_ahb_pcie_pd_start,
 	.stop = wcss_ahb_pcie_pd_stop,
 	.load = wcss_ahb_pcie_pd_load,
 	.get_boot_addr = rproc_elf_get_boot_addr,
+	.parse_fw = q6_wcss_dump_segments,
 };
 
 static const struct rproc_ops q6_wcss_ipq5018_ops = {
@@ -594,6 +659,7 @@ static const struct rproc_ops q6_wcss_ipq5018_ops = {
 	.load = q6_wcss_load,
 	.get_boot_addr = rproc_elf_get_boot_addr,
 	.panic = q6_wcss_panic,
+	.parse_fw = q6_wcss_dump_segments,
 };
 
 static int q6_alloc_memory_region(struct q6_wcss *wcss)
@@ -817,6 +883,7 @@ static int q6_wcss_probe(struct platform_device *pdev)
 	qcom_add_ssr_subdev(rproc, &wcss->ssr_subdev, subdev_name);
 
 	rproc->auto_boot = desc->need_auto_boot;
+	rproc_coredump_set_elf_info(rproc, ELFCLASS32, EM_NONE);
 	ret = rproc_add(rproc);
 	if (ret)
 		goto free_rproc;
