@@ -229,6 +229,11 @@
 	};
 };
 
+&wsi {
+     id = <0>;
+     num_chip = <2>;
+};
+
 &pcie0_x1 {
 	pinctrl-0 = <&pci0_pin>;
 	pinctrl-names = "default";
@@ -237,6 +242,23 @@
 
 	pcie0_rp {
 		reg = <0 0 0 0 0>;
+
+		wifi@0 {
+			reg = <0 0 0 0 0>;
+			qti,disable-rddm-prealloc;
+			qti,rddm-seg-len = <0x1000>;
+			boot-args = <0x2 0x4 0x34 0x3 0x0 0x0	/* MX Rail, GPIO52, Drive strength 0x3 */
+						0x4 0x4 0x18 0x3 0x0 0x0	/* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
+						0x0 0x4 0x0 0x0 0x0 0x0>;	/* End of arguments */
+			license-file = "";
+			/* qcn9224 tgt-mem-mode=0 layout
+			 * refer ipq9574-qcn9224-default-memory.dtsi
+			 */
+			memory-region = <&qcn9224_pcie0>, <&mhi_region0>;
+			qcom,board_id = <0x1010>;
+			qcom,wsi = <&wsi>;
+			status = "okay";
+		};
 	};
 };
 
@@ -252,6 +274,17 @@
 
 	pcie2_rp {
 		reg = <0 0 0 0 0>;
+		wifi@2 {
+			reg = <0 0 0 0 0>;
+
+			/* qcn9224 tgt-mem-mode=0 layout
+			 * refer ipq9574-qcn9224-default-memory.dtsi
+			 */
+			memory-region = <&qcn9224_pcie2>;
+			qcom,board_id = <0x100e>;
+			status = "okay";
+			qcom,wsi = <&wsi>;
+		};
 	};
 };
 
@@ -419,4 +452,31 @@
 
 &xo_board_clk {
 	clock-frequency = <24000000>;
+};
+
+&wifi0 {
+	/* Disable IPQ9574 integratd 2G Radio */
+	status = "disabled";
+};
+
+&wifi4 {
+	/* QCN9224 split-radio 2.4G + 5G *(Low) */
+	hremote_node = <&qcn9224_pcie0>;
+	board_id = <0x1010>;
+	status = "okay";
+};
+
+&wifi5 {
+	status = "disabled";
+};
+
+&wifi6 {
+	/* QCN9224 split-radio 5G (High) + 6G */
+	hremote_node = <&qcn9224_pcie2>;
+	board_id = <0x100e>;
+	status = "okay";
+};
+
+&wifi7 {
+	status = "disabled";
 };
