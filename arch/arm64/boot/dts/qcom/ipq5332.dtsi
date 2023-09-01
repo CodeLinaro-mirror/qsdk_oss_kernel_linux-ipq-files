@@ -128,6 +128,10 @@
 		};
 	};
 
+	ipq-debug {
+		compatible = "qcom,ipq-debug";
+	};
+
 	memory@40000000 {
 		device_type = "memory";
 		/* We expect the bootloader to fill in the size */
@@ -422,6 +426,11 @@
 			tz-log-buf-addr@720 {
 				compatible = "qcom,msm-imem-tz-log-buf-addr";
 				reg = <0x720 4>;
+			};
+
+			restart-reason-buf-addr@7a4 {
+				compatible = "qcom,msm-imem-restart-reason-buf-addr";
+				reg = <0x7a4 4>;
 			};
 		};
 

@@ -240,6 +240,10 @@
 		};
 	};
 
+	ipq-debug {
+		compatible = "qcom,ipq-debug";
+	};
+
 	pmu {
 		compatible = "arm,cortex-a73-pmu";
 		interrupts = <GIC_PPI 7 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_HIGH)>;
@@ -2431,6 +2435,11 @@
 			tz-log-buf-addr@720 {
 				compatible = "qcom,msm-imem-tz-log-buf-addr";
 				reg = <0x720 4>;
+			};
+
+			restart-reason-buf-addr@7a4 {
+				compatible = "qcom,msm-imem-restart-reason-buf-addr";
+				reg = <0x7a4 4>;
 			};
 		};
 
