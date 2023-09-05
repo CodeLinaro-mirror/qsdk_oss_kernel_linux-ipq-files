@@ -51,13 +51,13 @@
 			};
 		};
 
-		CPU1: cpu@1 {
+		CPU1: cpu@100 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a55";
 			enable-method = "psci";
-			reg = <0x1>;
-			next-level-cache = <&L2_1>;
-			L2_1: l2-cache {
+			reg = <0x100>;
+			next-level-cache = <&L2_100>;
+			L2_100: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
 				cache-unified;
@@ -65,13 +65,13 @@
 			};
 		};
 
-		CPU2: cpu@2 {
+		CPU2: cpu@200 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a55";
 			enable-method = "psci";
-			reg = <0x2>;
-			next-level-cache = <&L2_2>;
-			L2_2: l2-cache {
+			reg = <0x200>;
+			next-level-cache = <&L2_200>;
+			L2_200: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
 				cache-unified;
@@ -79,13 +79,13 @@
 			};
 		};
 
-		CPU3: cpu@3 {
+		CPU3: cpu@300 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a55";
 			enable-method = "psci";
-			reg = <0x3>;
-			next-level-cache = <&L2_3>;
-			L2_3: l2-cache {
+			reg = <0x300>;
+			next-level-cache = <&L2_300>;
+			L2_300: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
 				cache-unified;
@@ -273,6 +273,5 @@
 			     <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
 			     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
 			     <GIC_PPI 12 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>;
-		status = "disabled";
 	};
 };
