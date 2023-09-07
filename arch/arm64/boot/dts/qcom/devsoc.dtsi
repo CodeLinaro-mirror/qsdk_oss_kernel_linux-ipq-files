@@ -231,6 +231,14 @@
 			uniphy_access_mode = "local bus";
 		};
 
+		apcs_glb: mailbox@f400004 {
+			compatible = "qcom,devsoc-apcs-apps-global",
+				     "qcom,ipq6018-apcs-apps-global";
+			reg = <0xf400004 0x6000>;
+			#clock-cells = <1>;
+			#mbox-cells = <1>;
+		};
+
 		timer@f420000 {
 			compatible = "arm,armv7-timer-mem";
 			reg = <0xf420000 0x1000>;
