@@ -226,4 +226,20 @@
 #define GCC_RBCPR_CLK_SRC			236
 #define GCC_ACC_CLK_SRC				237
 #define GCC_SEC_CTRL_CLK_SRC			238
+/* Add new clocks on top of q6 bring up clocks
+ * and update MAX_GCC_CLOCKS macro
+ */
+#define MAX_GCC_CLOCKS				238
+#if defined(CONFIG_QCOM_NON_SECURE_PIL) || defined(__QCOM_NON_SECURE_PIL__)
+#define GCC_Q6_TSCTR_1TO2_CLK			(MAX_GCC_CLOCKS + 1)
+#define GCC_Q6SS_TRIG_CLK			(MAX_GCC_CLOCKS + 2)
+#define GCC_Q6_AHB_S_CLK			(MAX_GCC_CLOCKS + 3)
+#define GCC_Q6_AHB_CLK				(MAX_GCC_CLOCKS + 4)
+#define GCC_Q6SS_ATBM_CLK			(MAX_GCC_CLOCKS + 5)
+#define GCC_Q6_AXIM_CLK				(MAX_GCC_CLOCKS + 6)
+#define	GCC_Q6SS_BOOT_CLK			(MAX_GCC_CLOCKS + 7)
+#define GCC_WCSS_ECAHB_CLK			(MAX_GCC_CLOCKS + 8)
+#define GCC_Q6SS_PCLKDBG_CLK			(MAX_GCC_CLOCKS + 9)
+#endif
+
 #endif

@@ -276,7 +276,9 @@ static struct clk_regmap *gcc_devsoc_dummy_clks[] = {
 	[GCC_CNOC_QOSGEN_EXTREF_CLK] = DEFINE_DUMMY_CLK(gcc_cnoc_qosgen_extref_clk),
 	[GCC_CNOC_TME_CFG_CLK] = DEFINE_DUMMY_CLK(gcc_cnoc_tme_cfg_clk),
 	[GCC_CNOC_USB_CLK] = DEFINE_DUMMY_CLK(gcc_cnoc_usb_clk),
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	[GCC_CNOC_WCSS_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_cnoc_wcss_ahb_clk),
+#endif
 	[GCC_QX_CLK] = DEFINE_DUMMY_CLK(gcc_qx_clk),
 	[GCC_QUPV3_2X_CORE_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_2x_core_clk),
 	[GCC_QUPV3_AHB_MST_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_ahb_mst_clk),
@@ -308,6 +310,17 @@ static struct clk_regmap *gcc_devsoc_dummy_clks[] = {
 	[GCC_RBCPR_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_rbcpr_clk_src),
 	[GCC_ACC_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_acc_clk_src),
 	[GCC_SEC_CTRL_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_sec_ctrl_clk_src),
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
+	[GCC_Q6_TSCTR_1TO2_CLK] = DEFINE_DUMMY_CLK(gcc_q6_tsctr_1to2_clk),
+	[GCC_Q6SS_TRIG_CLK] = DEFINE_DUMMY_CLK(gcc_q6ss_trig_clk),
+	[GCC_Q6_AHB_S_CLK] = DEFINE_DUMMY_CLK(gcc_q6_ahb_s_clk),
+	[GCC_Q6_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_q6_ahb_clk),
+	[GCC_Q6SS_ATBM_CLK] = DEFINE_DUMMY_CLK(gcc_q6ss_atbm_clk),
+	[GCC_Q6_AXIM_CLK] = DEFINE_DUMMY_CLK(gcc_q6_axim_clk),
+	[GCC_Q6SS_BOOT_CLK] = DEFINE_DUMMY_CLK(gcc_q6ss_boot_clk),
+	[GCC_WCSS_ECAHB_CLK] = DEFINE_DUMMY_CLK(gcc_wcss_ecahb_clk),
+	[GCC_Q6SS_PCLKDBG_CLK] = DEFINE_DUMMY_CLK(gcc_q6ss_pclkdbg_clk),
+#endif
 };
 
 static const struct qcom_reset_map gcc_devsoc_resets[] = {
@@ -328,7 +341,9 @@ static const struct qcom_reset_map gcc_devsoc_resets[] = {
 	[GCC_UNIPHY0_BCR] = { 0x17044, 0 },
 	[GCC_UNIPHY1_BCR] = { 0x17054, 0 },
 	[GCC_UNIPHY2_BCR] = { 0x17064, 0 },
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	[GCC_WCSS_Q6_BCR] = { 0x18000, 0 },
+#endif
 	[GCC_WCSS_BCR] = { 0x18004, 0 },
 	[GCC_WAPSS_BCR] = { 0x18008, 0 },
 	[GCC_SEC_CTRL_BCR] = { 0x1a000, 0 },
