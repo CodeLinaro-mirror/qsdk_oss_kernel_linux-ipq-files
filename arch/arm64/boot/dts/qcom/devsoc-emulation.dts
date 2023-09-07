@@ -73,6 +73,19 @@
 			};
 		};
 
+#ifdef __QCOM_NON_SECURE_PIL__
+		q6v5_wcss: remoteproc@d100000 {
+			qcom,emulation;
+			qcom,nosecure;
+			bootaddr = <0x8a900000>;
+			q6_wcss_pd1: remoteproc_pd1 {
+				qcom,emulation;
+				qcom,nosecure;
+				bootaddr = <0x8a900000>;
+			};
+		};
+#endif
+
 		acc0: clock-controller@f800000 {
 			compatible = "qcom,arm-cortex-acc";
 			reg = <0xf800000 0x10000>;
