@@ -93,6 +93,225 @@
 			reg = <0xf830000 0x10000>;
 		};
 
+		ess-instance {
+			num_devices = <0x1>;
+			ess-switch@3a000000 {
+				qcom,emulation; /* RUMI ENV */
+				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
+				switch_lan_bmp = <0x6>; /* lan port bitmap */
+				switch_wan_bmp = <0x8>; /* wan port bitmap */
+				switch_mac_mode = <0xd>; /* mac mode for uniphy instance0*/
+				switch_mac_mode1 = <0xd>; /* mac mode for uniphy instance1*/
+				switch_mac_mode2 = <0xd>; /* mac mode for uniphy instance2*/
+				bm_tick_mode = <0>; /* bm tick mode */
+				tm_tick_mode = <0>; /* tm tick mode */
+				qcom,port_phyinfo {
+					port@0 {
+						port_id = <1>;
+						forced-speed = <10000>;
+						forced-duplex = <1>;
+					};
+					port@1 {
+						port_id = <2>;
+						forced-speed = <10000>;
+						forced-duplex = <1>;
+					};
+					port@2 {
+						port_id = <3>;
+						forced-speed = <10000>;
+						forced-duplex = <1>;
+					};
+				};
+				port_scheduler_resource {
+					port@0 {
+						port_id = <0>;
+						ucast_queue = <0 63>;
+						mcast_queue = <256 263>;
+						l0sp = <0 0>;
+						l0cdrr = <0 7>;
+						l0edrr = <0 7>;
+						l1cdrr = <0 0>;
+						l1edrr = <0 0>;
+					};
+					port@1 {
+						port_id = <1>;
+						ucast_queue = <204 211>;
+						mcast_queue = <272 275>;
+						l0sp = <51 52>;
+						l0cdrr = <108 115>;
+						l0edrr = <108 115>;
+						l1cdrr = <23 24>;
+						l1edrr = <23 24>;
+					};
+					port@2 {
+						port_id = <2>;
+						ucast_queue = <212 219>;
+						mcast_queue = <276 279>;
+						l0sp = <53 54>;
+						l0cdrr = <116 123>;
+						l0edrr = <116 123>;
+						l1cdrr = <25 26>;
+						l1edrr = <25 26>;
+					};
+					port@3 {
+						port_id = <3>;
+						ucast_queue = <220 227>;
+						mcast_queue = <280 283>;
+						l0sp = <55 56>;
+						l0cdrr = <124 131>;
+						l0edrr = <124 131>;
+						l1cdrr = <27 28>;
+						l1edrr = <27 28>;
+					};
+					reserved {
+						ucast_queue = <64 203>;
+						mcast_queue = <264 271>;
+						l0sp = <1 50>;
+						l0cdrr = <8 107>;
+						l0edrr = <8 107>;
+						l1cdrr = <1 22>;
+						l1edrr = <1 22>;
+					};
+				};
+				port_scheduler_config {
+					port@0 {
+						port_id = <0>;
+						l1scheduler {
+							group@0 {
+								/* L0 SP */
+								sp = <0>;
+								/* cpri cdrr epri edrr */
+								cfg = <0 0 0 0>;
+							};
+						};
+						l0scheduler {
+							group@0 {
+								/* unicast queue */
+								ucast_queue = <0>;
+								ucast_loop_pri = <8>;
+								/* multicast queue */
+								mcast_queue = <256>;
+								/* sp cpri cdrr epri edrr */
+								cfg = <0 0 0 0 0>;
+							};
+							group@1 {
+								ucast_queue = <8>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <257>;
+								cfg = <0 0 0 0 0>;
+							};
+							group@2 {
+								ucast_queue = <16>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <258>;
+								cfg = <0 0 0 0 0>;
+							};
+							group@3 {
+								ucast_queue = <24>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <259>;
+								cfg = <0 0 0 0 0>;
+							};
+							group@4 {
+								ucast_queue = <32>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <260>;
+								cfg = <0 0 0 0 0>;
+							};
+							group@5 {
+								ucast_queue = <40>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <261>;
+								cfg = <0 0 0 0 0>;
+							};
+							group@6 {
+								ucast_queue = <48>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <262>;
+								cfg = <0 0 0 0 0>;
+							};
+							group@7 {
+								ucast_queue = <56>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <263>;
+								cfg = <0 0 0 0 0>;
+							};
+						};
+					};
+					port@1 {
+						port_id = <1>;
+						l1scheduler {
+							group@0 {
+								sp = <51>;
+								cfg = <0 23 0 23>;
+							};
+							group@1 {
+								sp = <52>;
+								cfg = <1 24 1 24>;
+							};
+						};
+						l0scheduler {
+							group@0 {
+								ucast_queue = <204>;
+								ucast_loop_pri = <8>;
+								/* max priority per SP */
+								ucast_max_pri = <4>;
+								mcast_queue = <272>;
+								mcast_loop_pri = <4>;
+								cfg = <51 0 108 0 108>;
+							};
+						};
+					};
+					port@2 {
+						port_id = <2>;
+						l1scheduler {
+							group@0 {
+								sp = <53>;
+								cfg = <0 25 0 25>;
+							};
+							group@1 {
+								sp = <54>;
+								cfg = <1 26 1 26>;
+							};
+						};
+						l0scheduler {
+							group@0 {
+								ucast_queue = <212>;
+								ucast_loop_pri = <8>;
+								ucast_max_pri = <4>;
+								mcast_queue = <276>;
+								mcast_loop_pri = <4>;
+								cfg = <53 0 116 0 116>;
+							};
+						};
+					};
+					port@3 {
+						port_id = <3>;
+						l1scheduler {
+							group@0 {
+								sp = <55>;
+								cfg = <0 27 0 27>;
+							};
+							group@1 {
+								sp = <56>;
+								cfg = <1 28 1 28>;
+							};
+						};
+						l0scheduler {
+							group@0 {
+								ucast_queue = <220>;
+								ucast_loop_pri = <8>;
+								ucast_max_pri = <4>;
+								mcast_queue = <280>;
+								mcast_loop_pri = <4>;
+								cfg = <55 0 124 0 124>;
+							};
+						};
+					};
+				};
+			};
+		};
+
 		/* Timer freq for rumi = timer freq / 100 */
 		timer@f420000 {
 			clock-frequency = <240000>;
