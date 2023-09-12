@@ -21,6 +21,7 @@
 #include <linux/soc/qcom/smem_state.h>
 #include <linux/qcom_scm.h>
 #include <linux/interrupt.h>
+#include <soc/qcom/license_manager.h>
 #include "qcom_common.h"
 #include "qcom_q6v5.h"
 
@@ -40,6 +41,7 @@
 #define REMOTE_PID			1
 #define Q6_BOOT_ARGS_SMEM_SIZE		4096
 #define UPD_BOOTARGS_HEADER_TYPE	0x2
+#define LIC_BOOTARGS_HEADER_TYPE        0x3
 
 /**
  * enum state - state of a wcss (private)
@@ -115,6 +117,14 @@ struct bootargs_smem_info {
 	void *smem_bootargs_ptr;
 };
 
+struct license_params {
+	dma_addr_t dma_buf;
+	void *buf;
+	size_t size;
+};
+
+static struct license_params lic_param;
+
 struct bootargs_header {
 	u8 type;
 	u8 length;
@@ -125,6 +135,13 @@ struct q6_userpd_bootargs {
 	u8 pid;
 	u32 bootaddr;
 	u32 data_size;
+} __packed;
+
+struct license_bootargs {
+	struct bootargs_header header;
+	u8 license_type;
+	u32 addr;
+	u32 size;
 } __packed;
 
 static int q6_wcss_start(struct rproc *rproc)
@@ -168,6 +185,11 @@ static int q6_wcss_start(struct rproc *rproc)
 			upd_wcss = upd_rproc->priv;
 			upd_wcss->state = WCSS_NORMAL;
 		}
+	}
+
+	if (lic_param.buf) {
+		lm_free_license(lic_param.buf, lic_param.dma_buf, lic_param.size);
+		lic_param.buf = NULL;
 	}
 	return ret;
 }
@@ -286,6 +308,48 @@ static void *q6_wcss_da_to_va(struct rproc *rproc, u64 da, size_t len,
 		return NULL;
 
 	return wcss->mem_region + offset;
+}
+
+static void load_license_params_to_bootargs(struct device *dev,
+					struct bootargs_smem_info *boot_args)
+{
+	u16 cnt;
+	u32 rd_val;
+	struct license_bootargs lic_bootargs = {0x0};
+
+	lic_param.buf = lm_get_license(INTERNAL, &lic_param.dma_buf, &lic_param.size, 0);
+	if (!lic_param.buf) {
+		dev_info(dev, "No license file passed in bootargs\n");
+		return;
+	}
+
+	/* No of elements */
+	cnt = *((u16 *)boot_args->smem_elem_cnt_ptr);
+	cnt += sizeof(struct license_bootargs);
+	memcpy_toio(boot_args->smem_elem_cnt_ptr, &cnt, sizeof(u16));
+
+	/* TYPE */
+	lic_bootargs.header.type = LIC_BOOTARGS_HEADER_TYPE;
+
+	/* LENGTH */
+	lic_bootargs.header.length =
+			sizeof(lic_bootargs) - sizeof(lic_bootargs.header);
+
+	/* license type */
+	if (!of_property_read_u32(dev->of_node, "license-type", &rd_val))
+		lic_bootargs.license_type = (u8)rd_val;
+
+	/* ADDRESS */
+	lic_bootargs.addr = (u32)lic_param.dma_buf;
+
+	/* License file size */
+	lic_bootargs.size = lic_param.size;
+	memcpy_toio(boot_args->smem_bootargs_ptr,
+					&lic_bootargs, sizeof(lic_bootargs));
+	boot_args->smem_bootargs_ptr += sizeof(lic_bootargs);
+
+	dev_info(dev, "License file copied in bootargs\n");
+	return;
 }
 
 static int copy_userpd_bootargs(struct bootargs_smem_info *boot_args,
@@ -464,6 +528,8 @@ static int share_bootargs_to_q6(struct device *dev)
 		pr_err("failed to read userpd boot args ret:%d\n", ret);
 		return ret;
 	}
+
+	load_license_params_to_bootargs(dev, &boot_args);
 
 	return 0;
 }
