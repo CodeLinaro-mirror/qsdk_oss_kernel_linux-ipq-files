@@ -454,6 +454,20 @@
 	clock-frequency = <24000000>;
 };
 
+&qcn9224_pcie0 {
+	status = "okay";
+};
+
+&qcn9224_pcie2 {
+	status = "okay";
+};
+
+/* MLO GLOBAL MEM REGION size is 13MB for RDP with 2 QCN224 radios */
+&mlo_global_mem0 {
+	size = <0x0 0xD00000>;
+	status = "okay";
+};
+
 &wifi0 {
 	/* Disable IPQ9574 integratd 2G Radio */
 	status = "disabled";
