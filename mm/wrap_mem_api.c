@@ -28,6 +28,7 @@ struct obj_walking {
 	void **d;
 };
 
+#ifdef CONFIG_ARM
 static int walkstack(struct stackframe *frame, void *p)
 {
 	struct obj_walking *w = (struct obj_walking *)p;
@@ -40,26 +41,35 @@ static int walkstack(struct stackframe *frame, void *p)
 
 	return 1;
 }
+#else
+static bool walkstack(void *p, unsigned long pc)
+{
+	struct obj_walking *w = (struct obj_walking *)p;
+
+	if (w->pos < 9) {
+		w->d[w->pos++] = (void *)pc;
+		return true;
+	}
+
+	return false;
+}
+#endif
 
 static void get_stacktrace(void **stack)
 {
-	struct stackframe frame;
 	struct obj_walking w = {0, stack};
 	void *p = &w;
 
 #ifdef CONFIG_ARM
+	struct stackframe frame;
 	register unsigned long current_sp asm ("sp");
 	frame.sp = current_sp;
-#endif
 
 	frame.fp = (unsigned long)__builtin_frame_address(0);
 	frame.pc = (unsigned long)get_stacktrace;
-
-#ifdef CONFIG_ARM64
-	start_backtrace(&frame, frame.fp, frame.pc);
-	walk_stackframe(get_current(), &frame, walkstack, p);
-#else
 	walk_stackframe(&frame, walkstack, p);
+#else
+	arch_stack_walk(walkstack, p, current, NULL);
 #endif
 }
 
@@ -227,22 +237,6 @@ void __wrap_devm_free_pages(struct device *dev, unsigned long addr)
 }
 EXPORT_SYMBOL_GPL(__wrap_devm_free_pages);
 
-struct page *__wrap___alloc_pages_nodemask(gfp_t gfp_mask, unsigned int order,
-				int preferred_nid, nodemask_t *nodemask)
-{
-	void *stack[9] = {0};
-	struct page *page = __alloc_pages_nodemask(gfp_mask, order, preferred_nid, nodemask);
-
-	if (page && debug_mem_usage_enabled) {
-		get_stacktrace(stack);
-		debug_object_trace_init(page_address(page), stack,
-					(1 << order) * PAGE_SIZE);
-	}
-
-	return page;
-}
-EXPORT_SYMBOL(__wrap___alloc_pages_nodemask);
-
 struct page *__wrap_alloc_pages(gfp_t gfp_mask,
 			unsigned int order)
 {
@@ -260,9 +254,9 @@ struct page *__wrap_alloc_pages(gfp_t gfp_mask,
 EXPORT_SYMBOL(__wrap_alloc_pages);
 
 struct page *
-__wrap___alloc_pages(gfp_t gfp_mask, unsigned int order, int preferred_nid)
+__wrap___alloc_pages(gfp_t gfp_mask, unsigned int order, int preferred_nid, nodemask_t *nodemask)
 {
-	struct page *page = __alloc_pages(gfp_mask, order, preferred_nid);
+	struct page *page = __alloc_pages(gfp_mask, order, preferred_nid, nodemask);
 
 	if (page && debug_mem_usage_enabled) {
 		void *stack[9] = {0};
@@ -273,6 +267,7 @@ __wrap___alloc_pages(gfp_t gfp_mask, unsigned int order, int preferred_nid)
 
 	return page;
 }
+EXPORT_SYMBOL(__wrap___alloc_pages);
 
 static inline struct page *
 __wrap___alloc_pages_node(int nid, gfp_t gfp_mask, unsigned int order)
@@ -390,10 +385,10 @@ void *__wrap_kmem_cache_alloc_node(struct kmem_cache *s, gfp_t gfpflags, int nod
 }
 EXPORT_SYMBOL(__wrap_kmem_cache_alloc_node);
 
-void *__wrap_kmem_cache_alloc_node_trace(struct kmem_cache *s, gfp_t gfpflags, int node, size_t size)
+void *__wrap_kmalloc_node_trace(struct kmem_cache *s, gfp_t gfpflags, int node, size_t size)
 {
 	void *stack[9] = {0};
-	void *addr = (void *)kmem_cache_alloc_node_trace(s, gfpflags, node, size);
+	void *addr = (void *)kmalloc_node_trace(s, gfpflags, node, size);
 	if (addr && debug_mem_usage_enabled) {
 		get_stacktrace(stack);
 		debug_object_trace_init(addr, stack, s->size);
@@ -401,12 +396,12 @@ void *__wrap_kmem_cache_alloc_node_trace(struct kmem_cache *s, gfp_t gfpflags, i
 
 	return addr;
 }
-EXPORT_SYMBOL(__wrap_kmem_cache_alloc_node_trace);
+EXPORT_SYMBOL(__wrap_kmalloc_node_trace);
 
-void *__wrap_kmem_cache_alloc_trace(struct kmem_cache *s, gfp_t gfpflags, size_t size)
+void *__wrap_kmalloc_trace(struct kmem_cache *s, gfp_t gfpflags, size_t size)
 {
 	void *stack[9] = {0};
-	void *addr = (void *)kmem_cache_alloc_trace(s, gfpflags, size);
+	void *addr = (void *)kmalloc_trace(s, gfpflags, size);
 	if (addr && debug_mem_usage_enabled) {
 		get_stacktrace(stack);
 		debug_object_trace_init(addr, stack, s->size);
@@ -414,7 +409,7 @@ void *__wrap_kmem_cache_alloc_trace(struct kmem_cache *s, gfp_t gfpflags, size_t
 
 	return addr;
 }
-EXPORT_SYMBOL(__wrap_kmem_cache_alloc_trace);
+EXPORT_SYMBOL(__wrap_kmalloc_trace);
 
 void __wrap_kmem_cache_free(struct kmem_cache *s, void *x)
 {
@@ -497,33 +492,19 @@ void *__wrap_kzalloc_node(size_t size, gfp_t flags, int node)
 }
 EXPORT_SYMBOL(__wrap_kzalloc_node);
 
-void *__wrap_kmalloc_order(size_t size, gfp_t flags, unsigned int order)
+void *__wrap_kmalloc_large(size_t size, gfp_t flags)
 {
-	void *addr = kmalloc_order(size, flags, order);
+	void *addr = kmalloc_large(size, flags);
 
 	if (addr && debug_mem_usage_enabled) {
 		void *stack[9] = {0};
 		get_stacktrace(stack);
-		debug_object_trace_init(addr, stack, (1 << order) * PAGE_SIZE);
+		debug_object_trace_init(addr, stack, ksize(addr));
 	}
 
 	return addr;
 }
-EXPORT_SYMBOL(__wrap_kmalloc_order);
-
-void *__wrap_kmalloc_order_trace(size_t size, gfp_t flags, unsigned int order)
-{
-	void *stack[9] = {0};
-	void *addr = kmalloc_order_trace(size, flags, order);
-
-	if (addr && debug_mem_usage_enabled) {
-		get_stacktrace(stack);
-		debug_object_trace_init(addr, stack, (1 << order) * PAGE_SIZE);
-	}
-
-	return addr;
-}
-EXPORT_SYMBOL(__wrap_kmalloc_order_trace);
+EXPORT_SYMBOL(__wrap_kmalloc_large);
 
 void *__wrap_dma_pool_alloc(struct dma_pool *pool, gfp_t mem_flags,
 			dma_addr_t *handle)
@@ -650,9 +631,9 @@ void __wrap_vfree(const void *addr)
 }
 EXPORT_SYMBOL(__wrap_vfree);
 
-void *__wrap___vmalloc(unsigned long size, gfp_t gfp_mask, pgprot_t prot)
+void *__wrap___vmalloc(unsigned long size, gfp_t gfp_mask)
 {
-	void *addr = (void *)__vmalloc(size, gfp_mask, prot);
+	void *addr = (void *)__vmalloc(size, gfp_mask);
 
 	if (addr && debug_mem_usage_enabled) {
 		void *stack[9] = {0};
@@ -762,17 +743,17 @@ void *__wrap_krealloc(const void *p, size_t new_size, gfp_t flags)
 }
 EXPORT_SYMBOL(__wrap_krealloc);
 
-void __wrap_kzfree(const void *p)
+void __wrap_kfree_sensitive(const void *p)
 {
 	void *addr = (void *)p;
 	if (debug_mem_usage_enabled)
 		debug_object_trace_free(addr);
 
-	kzfree(p);
+	kfree_sensitive(p);
 
 	return;
 }
-EXPORT_SYMBOL(__wrap_kzfree);
+EXPORT_SYMBOL(__wrap_kfree_sensitive);
 
 void *__wrap_page_frag_alloc(struct page_frag_cache *nc,
 		      unsigned int fragsz, gfp_t gfp_mask)
@@ -863,7 +844,6 @@ void *__init __wrap_alloc_large_system_hash(const char *tablename,
 }
 EXPORT_SYMBOL(__wrap_alloc_large_system_hash);
 
-#ifdef CONFIG_NUMA
 void *__wrap___kmalloc_node_track_caller(size_t size, gfp_t gfpflags,
 					int node, unsigned long caller)
 {
@@ -877,36 +857,4 @@ void *__wrap___kmalloc_node_track_caller(size_t size, gfp_t gfpflags,
 
 	return addr;
 }
-#endif
-
-void *__wrap___kmalloc_track_caller(size_t size, gfp_t gfpflags, unsigned long caller)
-{
-	void *addr = __kmalloc_track_caller(size, gfpflags, caller);
-
-	if (addr && debug_mem_usage_enabled) {
-		void *stack[9] = {0};
-		get_stacktrace(stack);
-		debug_object_trace_init(addr, stack, ksize(addr));
-	}
-
-	return addr;
-}
-
-void __wrap___put_page(struct page *page)
-{
-	struct page *actual_page;
-
-	if (unlikely(PageCompound(page))) {
-		actual_page = compound_head(page);
-	} else {
-		actual_page = page;
-	}
-
-	if (debug_mem_usage_enabled)
-		debug_object_trace_free(page_address(page));
-
-	__put_page(page);
-
-	return;
-}
-EXPORT_SYMBOL(__wrap___put_page);
+EXPORT_SYMBOL(__wrap___kmalloc_node_track_caller);

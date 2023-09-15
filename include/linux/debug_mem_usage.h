@@ -28,18 +28,16 @@
 #define __kmalloc_node			__wrap___kmalloc_node
 #define kmalloc_node			__wrap_kmalloc_node
 #define kmalloc_array			__wrap_kmalloc_array
-#define kmalloc_order			__wrap_kmalloc_order
-#define kmalloc_order_trace		__wrap_kmalloc_order_trace
+#define kmalloc_large			__wrap_kmalloc_large
 #define kzalloc_node			__wrap_kzalloc_node
 #define kfree				__wrap_kfree
 
-#define __kmalloc_track_caller		__wrap___kmalloc_track_caller
-#define __kmalloc_node_track_caller	__warp___kmalloc_node_track_caller
+#define __kmalloc_node_track_caller	__wrap___kmalloc_node_track_caller
 
 #define kmem_cache_alloc		__wrap_kmem_cache_alloc
 #define kmem_cache_alloc_node		__wrap_kmem_cache_alloc_node
-#define kmem_cache_alloc_node_trace	__wrap_kmem_cache_alloc_node_trace
-#define kmem_cache_alloc_trace		__wrap_kmem_cache_alloc_trace
+#define kmalloc_node_trace		__wrap_kmalloc_node_trace
+#define kmalloc_trace			__wrap_kmalloc_trace
 #define kmem_cache_free			__wrap_kmem_cache_free
 
 #define kmemdup				__wrap_kmemdup
@@ -55,7 +53,6 @@
 #define __alloc_pages			__wrap___alloc_pages
 #define __alloc_pages_node		__wrap___alloc_pages_node
 #define alloc_pages_node		__wrap_alloc_pages_node
-#define __alloc_pages_nodemask		__wrap___alloc_pages_nodemask
 #define free_pages			__wrap_free_pages
 #define __free_pages			__wrap___free_pages
 
@@ -75,7 +72,7 @@
 #define vzalloc_node			__wrap_vzalloc_node
 #define vmalloc_32			__wrap_vmalloc_32
 #define krealloc			__wrap_krealloc
-#define kzfree				__wrap_kzfree
+#define kfree_sensitive			__wrap_kfree_sensitive
 #define kvfree				__wrap_kvfree
 #define vfree				__wrap_vfree
 
@@ -92,8 +89,6 @@
 #define page_frag_free			__wrap_page_frag_free
 
 #define alloc_large_system_hash		__wrap_alloc_large_system_hash
-
-#define __put_page			__wrap___put_page
 
 #endif
 
