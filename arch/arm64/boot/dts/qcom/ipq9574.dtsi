@@ -3462,6 +3462,7 @@
 			clock-names = "crypto_clk", "crypto_nocclk",
 			"crypto_ppeclk";
 			clock-frequency = /bits/ 64 <600000000 600000000 300000000>;
+			qcom,inline-enabled;
 			interrupts = <GIC_SPI 385 IRQ_TYPE_LEVEL_HIGH>,
 				   <GIC_SPI 386 IRQ_TYPE_LEVEL_HIGH>,
 				   <GIC_SPI 387 IRQ_TYPE_LEVEL_HIGH>,
