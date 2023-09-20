@@ -21,6 +21,7 @@
 #include <linux/soc/qcom/smem_state.h>
 #include <linux/qcom_scm.h>
 #include <linux/interrupt.h>
+#include <linux/kthread.h>
 #include <soc/qcom/license_manager.h>
 #include "qcom_common.h"
 #include "qcom_q6v5.h"
@@ -144,6 +145,74 @@ struct license_bootargs {
 	u32 size;
 } __packed;
 
+static int handle_upd_in_rpd_crash(void *data)
+{
+	struct rproc *rpd_rproc = data, *upd_rproc;
+	struct q6_wcss *rpd_wcss = rpd_rproc->priv;
+	struct device_node *upd_np, *temp;
+	struct platform_device *upd_pdev;
+	const struct firmware *firmware_p;
+	int ret;
+
+	while (1) {
+		if (rpd_rproc->state == RPROC_RUNNING)
+			break;
+		udelay(1);
+	}
+
+	for_each_available_child_of_node(rpd_wcss->dev->of_node, upd_np) {
+		if (!strstr(upd_np->name, "pd"))
+			continue;
+		upd_pdev = of_find_device_by_node(upd_np);
+		upd_rproc = platform_get_drvdata(upd_pdev);
+
+		if (upd_rproc->state != RPROC_SUSPENDED)
+			continue;
+
+		/* load firmware */
+		ret = request_firmware(&firmware_p, upd_rproc->firmware,
+				       &upd_pdev->dev);
+		if (ret < 0) {
+			dev_err(&upd_pdev->dev, "request_firmware failed: %d\n",
+				ret);
+			continue;
+		}
+
+		/* start the userpd rproc*/
+		ret = rproc_start(upd_rproc, firmware_p);
+		if (ret)
+			dev_err(&upd_pdev->dev, "failed to start %s\n",
+				upd_rproc->name);
+		release_firmware(firmware_p);
+
+		for_each_available_child_of_node(upd_np, temp) {
+			upd_pdev = of_find_device_by_node(temp);
+			upd_rproc = platform_get_drvdata(upd_pdev);
+
+			if (upd_rproc->state != RPROC_SUSPENDED)
+				continue;
+
+			/* load firmware */
+			ret = request_firmware(&firmware_p, upd_rproc->firmware,
+					       &upd_pdev->dev);
+			if (ret < 0) {
+				dev_err(&upd_pdev->dev,
+					"request_firmware failed: %d\n", ret);
+				continue;
+			}
+
+			/* start the userpd rproc*/
+			ret = rproc_start(upd_rproc, firmware_p);
+			if (ret)
+				dev_err(&upd_pdev->dev, "failed to start %s\n",
+					upd_rproc->name);
+			release_firmware(firmware_p);
+		}
+	}
+	rpd_wcss->state = WCSS_NORMAL;
+	return 0;
+}
+
 static int q6_wcss_start(struct rproc *rproc)
 {
 	struct q6_wcss *wcss = rproc->priv;
@@ -170,20 +239,25 @@ static int q6_wcss_start(struct rproc *rproc)
 	if (ret == -ETIMEDOUT)
 		dev_err(wcss->dev, "start timed out\n");
 
-	/* Bring userpd wcss state to default value */
-	for_each_available_child_of_node(wcss->dev->of_node, upd_np) {
-		if (!strstr(upd_np->name, "pd"))
-			continue;
-		upd_pdev = of_find_device_by_node(upd_np);
-		upd_rproc = platform_get_drvdata(upd_pdev);
-		upd_wcss = upd_rproc->priv;
-		upd_wcss->state = WCSS_NORMAL;
-
-		for_each_available_child_of_node(upd_np, temp) {
-			upd_pdev = of_find_device_by_node(temp);
+	/* start userpd's, if root pd getting recovered*/
+	if (wcss->state == WCSS_RESTARTING) {
+		kthread_run(handle_upd_in_rpd_crash, rproc, "mpd_restart");
+	} else {
+		/* Bring userpd wcss state to default value */
+		for_each_available_child_of_node(wcss->dev->of_node, upd_np) {
+			if (!strstr(upd_np->name, "pd"))
+				continue;
+			upd_pdev = of_find_device_by_node(upd_np);
 			upd_rproc = platform_get_drvdata(upd_pdev);
 			upd_wcss = upd_rproc->priv;
 			upd_wcss->state = WCSS_NORMAL;
+
+			for_each_available_child_of_node(upd_np, temp) {
+				upd_pdev = of_find_device_by_node(temp);
+				upd_rproc = platform_get_drvdata(upd_pdev);
+				upd_wcss = upd_rproc->priv;
+				upd_wcss->state = WCSS_NORMAL;
+			}
 		}
 	}
 
@@ -249,9 +323,54 @@ static int q6_wcss_stop(struct rproc *rproc)
 	int ret;
 	const struct wcss_data *desc =
 			of_device_get_match_data(wcss->dev);
+	struct device_node *upd_np, *temp;
+	struct platform_device *upd_pdev;
+	struct rproc *upd_rproc;
 
 	if (!desc)
 		return -EINVAL;
+
+	/* stop userpd's, if root pd getting crashed*/
+	if (rproc->state == RPROC_CRASHED) {
+		for_each_available_child_of_node(wcss->dev->of_node, upd_np) {
+			if (!strstr(upd_np->name, "pd"))
+				continue;
+
+			upd_pdev = of_find_device_by_node(upd_np);
+			upd_rproc = platform_get_drvdata(upd_pdev);
+
+			if (upd_rproc->state == RPROC_OFFLINE)
+				continue;
+
+			upd_rproc->state = RPROC_CRASHED;
+
+			/* stop the userpd parent rproc*/
+			ret = rproc_stop(upd_rproc, true);
+			if (ret)
+				dev_err(&upd_pdev->dev, "failed to stop %s\n",
+					upd_rproc->name);
+			upd_rproc->state = RPROC_SUSPENDED;
+
+			for_each_available_child_of_node(upd_np, temp) {
+				upd_pdev = of_find_device_by_node(temp);
+				upd_rproc = platform_get_drvdata(upd_pdev);
+
+				if (upd_rproc->state == RPROC_OFFLINE)
+					continue;
+
+				upd_rproc->state = RPROC_CRASHED;
+
+				/* stop the userpd child rproc*/
+				ret = rproc_stop(upd_rproc, true);
+				if (ret)
+					dev_err(&upd_pdev->dev, "failed to stop %s\n",
+						upd_rproc->name);
+
+				upd_rproc->state = RPROC_SUSPENDED;
+			}
+		}
+		wcss->state = WCSS_RESTARTING;
+	}
 
 	ret = qcom_scm_pas_shutdown(desc->pasid);
 	if (ret) {
@@ -609,7 +728,7 @@ static int q6_wcss_load(struct rproc *rproc, const struct firmware *fw)
 
 static int wcss_ahb_pcie_pd_load(struct rproc *rproc, const struct firmware *fw)
 {
-	struct q6_wcss *wcss = rproc->priv;
+	struct q6_wcss *wcss_rpd, *wcss = rproc->priv;
 	struct rproc *rpd_rproc = dev_get_drvdata(wcss->dev->parent);
 	int ret;
 	u8 pd_asid;
@@ -617,13 +736,18 @@ static int wcss_ahb_pcie_pd_load(struct rproc *rproc, const struct firmware *fw)
 	const struct wcss_data *desc =
 				of_device_get_match_data(wcss->dev);
 
+	wcss_rpd = rpd_rproc->priv;
 	if (!desc)
 		return -EINVAL;
 
-	/* Boot rootpd rproc */
-	ret = rproc_boot(rpd_rproc);
-	if ((ret || wcss->state == WCSS_NORMAL) && wcss->is_fw_shared)
-		return ret;
+	/* Don't boot rootpd rproc in case user/root pd recovering after crash */
+	if (wcss->state != WCSS_RESTARTING &&
+	    wcss_rpd->state != WCSS_RESTARTING) {
+		/* Boot rootpd rproc*/
+		ret = rproc_boot(rpd_rproc);
+		if (ret || (wcss->state == WCSS_NORMAL && wcss->is_fw_shared))
+			return ret;
+	}
 
 	pasid = desc->pasid;
 	if (!pasid) {
@@ -693,7 +817,8 @@ static int q6_wcss_dump_segments(struct rproc *rproc,
 
 		of_node_put(node);
 
-		dev_dbg(dev, "Adding segment 0x%llx size 0x%llx", rmem->base, rmem->size);
+		dev_dbg(dev, "Adding segment 0x%pa size 0x%pa",
+			&rmem->base, &rmem->size);
 		ret = rproc_coredump_add_custom_segment(rproc,
 							rmem->base,
 							rmem->size,
