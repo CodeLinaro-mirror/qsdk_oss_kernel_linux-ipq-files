@@ -49,6 +49,19 @@ struct skbuff_debugobj_walking {
 	void **d;
 };
 
+#ifdef CONFIG_ARM
+static int skbuff_debugobj_walkstack(struct stackframe *frame, void *p) {
+	struct skbuff_debugobj_walking *w = (struct skbuff_debugobj_walking *)p;
+	unsigned long pc = frame->pc;
+
+	if (w->pos < DEBUG_OBJECTS_SKBUFF_STACKSIZE - 1) {
+		w->d[w->pos++] = (void *)pc;
+		return 0;
+	}
+
+	return -ENOENT;
+}
+#else
 static bool skbuff_debugobj_walkstack(void *p, unsigned long pc)
 {
 	struct skbuff_debugobj_walking *w = (struct skbuff_debugobj_walking *)p;
@@ -60,6 +73,7 @@ static bool skbuff_debugobj_walkstack(void *p, unsigned long pc)
 
 	return false;
 }
+#endif
 
 #if defined(CONFIG_ARM) || defined(CONFIG_ARM64)
 static void skbuff_debugobj_get_stack(void **ret)
@@ -67,7 +81,19 @@ static void skbuff_debugobj_get_stack(void **ret)
 	struct skbuff_debugobj_walking w = {0, ret};
 	void *p = &w;
 
+#ifdef CONFIG_ARM
+	struct stackframe frame;
+	register unsigned long current_sp asm ("sp");
+
+	frame.lr = (unsigned long)__builtin_return_address(0);
+	frame.fp = (unsigned long)__builtin_frame_address(0);
+	frame.sp = current_sp;
+	frame.pc = (unsigned long)skbuff_debugobj_get_stack;
+
+	walk_stackframe(&frame, skbuff_debugobj_walkstack, p);
+#else
 	arch_stack_walk(skbuff_debugobj_walkstack, p, current, NULL);
+#endif
 
 	ret[w.pos] = NULL;
 }
@@ -128,11 +154,7 @@ EXPORT_SYMBOL(skbuff_debugobj_print_skb);
  *	Called when an error is detected in the state machine for
  *	the objects
  */
-#if defined(CONFIG_ARM64)
 static bool skbuff_debugobj_fixup(void *addr, enum debug_obj_state state)
-#else
-static int skbuff_debugobj_fixup(void *addr, enum debug_obj_state state)
-#endif
 {
 	struct sk_buff *skb = (struct sk_buff *)addr;
 	ftrace_dump(DUMP_ALL);
@@ -140,11 +162,7 @@ static int skbuff_debugobj_fixup(void *addr, enum debug_obj_state state)
 	     state, skb, skb->sum, skbuff_debugobj_sum(skb));
 	skb_recycler_notifier_send_event(SKB_RECYCLER_NOTIFIER_FSM, skb);
 
-#ifdef CONFIG_ARM64
 	return true;
-#else
-	return 0;
-#endif
 }
 
 static struct debug_obj_descr skbuff_debug_descr = {
