@@ -340,7 +340,7 @@
 
 		qcom,mhi@2 {
 			reg = <0 0 0 0 0>;
-			memory-region = <&qcn9224_pcie0>;
+			memory-region = <&qcn9224_pcie0>, <&mhi_region0>;
 			qcom,board_id = <0x15>;
 			qcom,wsi = <&wsi>;
 		};
@@ -362,7 +362,7 @@
 
 		qcom,mhi@1 {
 			reg = <0 0 0 0 0>;
-			memory-region = <&qcn9224_pcie1>;
+			memory-region = <&qcn9224_pcie1>, <&mhi_region1>;
 			qcom,board_id = <0x16>;
 			qcom,wsi = <&wsi>;
 		};
@@ -387,6 +387,30 @@
 };
 
 &qcn9224_pcie1 {
+	status = "okay";
+};
+
+&mhi_region0 {
+	status = "okay";
+};
+
+&mhi_region1 {
+	status = "okay";
+};
+
+&wifi3 {
+	/* QCN9224 radio 5G */
+	hremote_node = <&qcn9224_pcie0>;
+	board_id = <0x15>;
+	node_id = <0>;
+	status = "okay";
+};
+
+&wifi4 {
+	/* QCN9224 radio 6G */
+	hremote_node = <&qcn9224_pcie1>;
+	board_id = <0x16>;
+	node_id = <1>;
 	status = "okay";
 };
 
