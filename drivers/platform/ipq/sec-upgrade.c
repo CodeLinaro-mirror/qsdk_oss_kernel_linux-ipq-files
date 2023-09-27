@@ -347,8 +347,6 @@ store_sec_auth(struct device *dev,
 	char *sec_auth_token[QTI_SEC_AUTH_ARG_MAX] = {NULL};
 	static void __iomem *file_buf;
 	struct device_node *np;
-	struct file *file;
-	struct kstat st;
 	int idx;
 	size_t data_size = 0;
 	u32 scm_cmd_id;
