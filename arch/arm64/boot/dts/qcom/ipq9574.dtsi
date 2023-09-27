@@ -256,7 +256,7 @@
 
         qcn9224_legacy_irq0: qcn9224_legacy_irq0 {
 		compatible = "qcom,qcn9224_legacy_irq";
-		qrtr_node_id = <0x30>;
+		node_id = <0>;
 		status = "okay";
 
 		qcn9224_in0: legacy_interrupt {
@@ -267,7 +267,7 @@
 
 	qcn9224_legacy_irq1: qcn9224_legacy_irq1 {
 		compatible = "qcom,qcn9224_legacy_irq";
-		qrtr_node_id = <0x31>;
+		node_id = <1>;
 		status = "okay";
 
 		qcn9224_in1: legacy_interrupt {
@@ -278,7 +278,7 @@
 
 	qcn9224_legacy_irq2: qcn9224_legacy_irq2 {
 		compatible = "qcom,qcn9224_legacy_irq";
-		qrtr_node_id = <0x32>;
+		node_id = <2>;
 		status = "okay";
 
 		qcn9224_in2: legacy_interrupt {
@@ -289,7 +289,7 @@
 
 	qcn9224_legacy_irq3: qcn9224_legacy_irq3 {
 		compatible = "qcom,qcn9224_legacy_irq";
-		qrtr_node_id = <0x33>;
+		node_id = <3>;
 		status = "okay";
 
 		qcn9224_in3: legacy_interrupt {
@@ -1257,7 +1257,6 @@
 		wifi4: wifi4@f00000 {
 			compatible  = "qcom,cnss-qcn9224";
 			qcom,wlan-ramdump-dynamic = <0x600000>;
-			qrtr_node_id = <0x30>;
 			qca,auto-restart;
 			interrupt-bmap = <0x100512>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
@@ -1528,7 +1527,6 @@
 		wifi5: wifi5@f00000 {
 			compatible  = "qcom,cnss-qcn9224";
 			qcom,wlan-ramdump-dynamic = <0x600000>;
-			qrtr_node_id = <0x31>;
 			qca,auto-restart;
 			interrupt-bmap = <0x100512>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
@@ -1799,7 +1797,6 @@
 		wifi6: wifi6@f00000 {
 			compatible  = "qcom,cnss-qcn9224";
 			qcom,wlan-ramdump-dynamic = <0x600000>;
-			qrtr_node_id = <0x32>;
 			qca,auto-restart;
 			interrupt-bmap = <0x100512>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
@@ -2070,7 +2067,6 @@
 		wifi7: wifi7@f00000 {
 			compatible  = "qcom,cnss-qcn9224";
 			qcom,wlan-ramdump-dynamic = <0x600000>;
-			qrtr_node_id = <0x33>;
 			qca,auto-restart;
 			interrupt-bmap = <0x100512>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
