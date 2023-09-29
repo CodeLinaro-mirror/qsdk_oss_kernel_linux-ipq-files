@@ -117,6 +117,11 @@
 
 			hwlocks = <&tcsr_mutex 3>;
 		};
+
+		q6_region: wcnss@8a900000 {
+			reg = <0x0 0x8a900000 0x0 0x02300000>;
+			no-map;
+		};
 	};
 
 	soc@0 {
@@ -200,6 +205,89 @@
 				clock-names = "se";
 				interrupts = <GIC_SPI 340 IRQ_TYPE_LEVEL_HIGH>;
 				status = "disabled";
+			};
+		};
+
+		q6v5_wcss: remoteproc@d100000 {
+			compatible = "qcom,devsoc-q6-mpd";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges;
+#ifdef __QCOM_NON_SECURE_PIL__
+			reg = <0xd100000 0x4040>;
+			reg-names = "qdsp6";
+			resets = <&gcc GCC_WCSS_Q6_BCR>;
+			reset-names = "wcss_q6_reset";
+			clocks = <&gcc GCC_Q6_TSCTR_1TO2_CLK>,
+				 <&gcc GCC_Q6SS_TRIG_CLK>,
+				 <&gcc GCC_Q6_AHB_S_CLK>,
+				 <&gcc GCC_Q6_AHB_CLK>,
+				 <&gcc GCC_Q6SS_ATBM_CLK>,
+				 <&gcc GCC_Q6_AXIM_CLK>,
+				 <&gcc GCC_Q6SS_BOOT_CLK>,
+				 <&gcc GCC_Q6SS_PCLKDBG_CLK>,
+				 <&gcc GCC_WCSS_ECAHB_CLK>,
+				 <&gcc GCC_CNOC_WCSS_AHB_CLK>;
+
+			clock-names = "q6_tsctr_1to2",
+				      "q6ss_trig",
+				      "q6_ahb_s",
+				      "q6_ahb",
+				      "q6ss_atbm",
+				      "q6_axim",
+				      "q6ss_boot",
+				      "q6ss_pclkdbg",
+				      "wcss_ecahb",
+				      "cnoc_wcss_ahb";
+			qcom,q6-tcsr-regs = <&tcsr 0x6204 0x1B000>;
+#endif
+			firmware = "devsoc/q6_fw0.mdt";
+			interrupts-extended = <&intc GIC_SPI 508 IRQ_TYPE_EDGE_RISING>,
+					      <&wcss_smp2p_in 0 0>,
+					      <&wcss_smp2p_in 1 0>,
+					      <&wcss_smp2p_in 2 0>,
+					      <&wcss_smp2p_in 3 0>;
+			interrupt-names = "wdog",
+					  "fatal",
+					  "ready",
+					  "handover",
+					  "stop-ack";
+			qcom,smem-states = <&wcss_smp2p_out 0>,
+					   <&wcss_smp2p_out 1>;
+			qcom,smem-state-names = "shutdown",
+						"stop";
+
+			memory-region = <&q6_region>;
+			qcom,bootargs_smem = <507>;
+			qcom,bootargs_version = <2>;
+			qcom,userpd-bootargs;
+
+			glink-edge {
+				interrupts = <GIC_SPI 500 IRQ_TYPE_EDGE_RISING>;
+				label = "rtr";
+				qcom,remote-pid = <1>;
+				mboxes = <&apcs_glb 8>;
+			};
+
+			q6_wcss_pd1: remoteproc_pd1 {
+				compatible = "qcom,devsoc-wcss-ahb-mpd";
+				firmware = "devsoc/q6_fw1.mdt";
+				m3_firmware = "devsoc/iu_fw.mdt";
+				interrupts-extended = <&wcss_smp2p_in 8 0>,
+						      <&wcss_smp2p_in 9 0>,
+						      <&wcss_smp2p_in 12 0>,
+						      <&wcss_smp2p_in 11 0>;
+				interrupt-names = "fatal",
+						  "ready",
+						  "spawn-ack",
+						  "stop-ack";
+
+				qcom,smem-states = <&wcss_smp2p_out 8>,
+						   <&wcss_smp2p_out 9>,
+						   <&wcss_smp2p_out 10>;
+				qcom,smem-state-names = "shutdown",
+							"stop",
+							"spawn";
 			};
 		};
 
