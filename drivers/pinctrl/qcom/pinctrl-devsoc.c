@@ -231,19 +231,13 @@ enum devsoc_functions {
 	msm_mux_qdss_tracedata_a,
 	msm_mux_qspi_clk,
 	msm_mux_qspi_cs,
-	msm_mux_qspi0,
-	msm_mux_qspi1,
-	msm_mux_qspi2,
-	msm_mux_qspi3,
+	msm_mux_qspi_data,
 	msm_mux_resout,
 	msm_mux_rx0,
 	msm_mux_rx1,
 	msm_mux_sdc_clk,
 	msm_mux_sdc_cmd,
-	msm_mux_sdc0,
-	msm_mux_sdc1,
-	msm_mux_sdc2,
-	msm_mux_sdc3,
+	msm_mux_sdc_data,
 	msm_mux_spi0_clk,
 	msm_mux_spi0_cs,
 	msm_mux_spi0_miso,
@@ -282,12 +276,12 @@ static const char * const gpio_groups[] = {
         "gpio43", "gpio44", "gpio45", "gpio46", "gpio47", "gpio48", "gpio49",
 };
 
-static const char * const sdc3_groups[] = {
-	"gpio0",
+static const char * const sdc_data_groups[] = {
+	"gpio0", "gpio1", "gpio2", "gpio3",
 };
 
-static const char * const qspi3_groups[] = {
-	"gpio0",
+static const char * const qspi_data_groups[] = {
+	"gpio0", "gpio1", "gpio2", "gpio3",
 };
 
 static const char * const pwm2_groups[] = {
@@ -298,32 +292,8 @@ static const char * const wci0_groups[] = {
 	"gpio0", "gpio0",
 };
 
-static const char * const sdc2_groups[] = {
-	"gpio1",
-};
-
-static const char * const qspi2_groups[] = {
-	"gpio1",
-};
-
 static const char * const wci1_groups[] = {
 	"gpio1", "gpio1",
-};
-
-static const char * const sdc1_groups[] = {
-	"gpio2",
-};
-
-static const char * const qspi1_groups[] = {
-	"gpio2",
-};
-
-static const char * const sdc0_groups[] = {
-	"gpio3",
-};
-
-static const char * const qspi0_groups[] = {
-	"gpio3",
 };
 
 static const char * const sdc_cmd_groups[] = {
@@ -768,19 +738,13 @@ static const struct msm_function devsoc_functions[] = {
 	FUNCTION(qdss_tracedata_a),
 	FUNCTION(qspi_clk),
 	FUNCTION(qspi_cs),
-	FUNCTION(qspi0),
-	FUNCTION(qspi1),
-	FUNCTION(qspi2),
-	FUNCTION(qspi3),
+	FUNCTION(qspi_data),
 	FUNCTION(resout),
 	FUNCTION(rx0),
 	FUNCTION(rx1),
 	FUNCTION(sdc_clk),
 	FUNCTION(sdc_cmd),
-	FUNCTION(sdc0),
-	FUNCTION(sdc1),
-	FUNCTION(sdc2),
-	FUNCTION(sdc3),
+	FUNCTION(sdc_data),
 	FUNCTION(spi0_clk),
 	FUNCTION(spi0_cs),
 	FUNCTION(spi0_miso),
@@ -809,10 +773,10 @@ static const struct msm_function devsoc_functions[] = {
 };
 
 static const struct msm_pingroup devsoc_groups[] = {
-	PINGROUP(0, sdc3, qspi3, pwm2, wci0, wci0, _, _, _, _),
-	PINGROUP(1, sdc2, qspi2, pwm2, wci1, wci1, _, _, _, _),
-	PINGROUP(2, sdc1, qspi1, pwm2, _, _, _, _, _, _),
-	PINGROUP(3, sdc0, qspi0, pwm2, _, _, _, _, _, _),
+	PINGROUP(0, sdc_data, qspi_data, pwm2, wci0, wci0, _, _, _, _),
+	PINGROUP(1, sdc_data, qspi_data, pwm2, wci1, wci1, _, _, _, _),
+	PINGROUP(2, sdc_data, qspi_data, pwm2, _, _, _, _, _, _),
+	PINGROUP(3, sdc_data, qspi_data, pwm2, _, _, _, _, _, _),
 	PINGROUP(4, sdc_cmd, qspi_cs, _, qdss_cti_trig_out_a1, _, _, _, _,
 		 _),
 	PINGROUP(5, sdc_clk, qspi_clk, _, _, _, _, _, _, _),
