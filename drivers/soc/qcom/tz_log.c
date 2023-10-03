@@ -534,8 +534,12 @@ static int qti_tzlog_probe(struct platform_device *pdev)
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq > 0) {
-		devm_request_irq(&pdev->dev, irq, tzerr_irq,
+		ret = devm_request_irq(&pdev->dev, irq, tzerr_irq,
 				IRQF_ONESHOT, "tzerror", NULL);
+		if (ret < 0) {
+			dev_err(&pdev->dev, "failed to request interrupt\n");
+			goto remove_debugfs;
+		}
 	}
 
 	platform_set_drvdata(pdev, tz_hvc_log);
