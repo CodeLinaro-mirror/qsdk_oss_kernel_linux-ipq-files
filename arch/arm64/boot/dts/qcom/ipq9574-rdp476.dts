@@ -545,3 +545,19 @@
 	qcom,board_id = <0x20>;
 	status = "okay";
 };
+
+&pcie2_x2 {
+	pcie2_rp {
+		wifi@2 {
+			qcom,board_id = <0x1e>;
+		};
+	};
+};
+
+&pcie3_x2 {
+	pcie3_rp {
+		wifi@3 {
+			qcom,board_id = <0x15>;
+		};
+	};
+};
