@@ -340,3 +340,11 @@
 		status = "disabled";
 	};
 };
+
+&qpic_bam {
+	status = "okay";
+};
+
+&qpic_nand {
+	status = "okay";
+};
