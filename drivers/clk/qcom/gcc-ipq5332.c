@@ -839,86 +839,6 @@ static struct clk_rcg2 gcc_qdss_at_clk_src = {
 	},
 };
 
-static const struct freq_tbl ftbl_gcc_qdss_tsctr_clk_src[] = {
-	F(600000000, P_GPLL4_OUT_MAIN, 2, 0, 0),
-	{ }
-};
-
-static struct clk_rcg2 gcc_qdss_tsctr_clk_src = {
-	.cmd_rcgr = 0x2d01c,
-	.mnd_width = 0,
-	.hid_width = 5,
-	.parent_map = gcc_parent_map_4,
-	.freq_tbl = ftbl_gcc_qdss_tsctr_clk_src,
-	.clkr.hw.init = &(const struct clk_init_data) {
-		.name = "gcc_qdss_tsctr_clk_src",
-		.parent_data = gcc_parent_data_4,
-		.num_parents = ARRAY_SIZE(gcc_parent_data_4),
-		.ops = &clk_rcg2_ops,
-	},
-};
-
-static struct clk_fixed_factor gcc_qdss_tsctr_div2_clk_src = {
-	.mult = 1,
-	.div = 2,
-	.hw.init = &(struct clk_init_data) {
-		.name = "gcc_qdss_tsctr_div2_clk_src",
-		.parent_hws = (const struct clk_hw *[]) {
-				&gcc_qdss_tsctr_clk_src.clkr.hw },
-		.num_parents = 1,
-		.flags = CLK_SET_RATE_PARENT,
-		.ops = &clk_fixed_factor_ops,
-	},
-};
-
-static struct clk_fixed_factor gcc_qdss_tsctr_div3_clk_src = {
-	.mult = 1,
-	.div = 3,
-	.hw.init = &(struct clk_init_data) {
-		.name = "gcc_qdss_tsctr_div3_clk_src",
-		.parent_hws = (const struct clk_hw *[]) {
-				&gcc_qdss_tsctr_clk_src.clkr.hw },
-		.num_parents = 1,
-		.ops = &clk_fixed_factor_ops,
-	},
-};
-
-static struct clk_fixed_factor gcc_qdss_tsctr_div4_clk_src = {
-	.mult = 1,
-	.div = 4,
-	.hw.init = &(struct clk_init_data) {
-		.name = "gcc_qdss_tsctr_div4_clk_src",
-		.parent_hws = (const struct clk_hw *[]) {
-				&gcc_qdss_tsctr_clk_src.clkr.hw },
-		.num_parents = 1,
-		.ops = &clk_fixed_factor_ops,
-	},
-};
-
-static struct clk_fixed_factor gcc_qdss_tsctr_div8_clk_src = {
-	.mult = 1,
-	.div = 8,
-	.hw.init = &(struct clk_init_data) {
-		.name = "gcc_qdss_tsctr_div8_clk_src",
-		.parent_hws = (const struct clk_hw *[]) {
-				&gcc_qdss_tsctr_clk_src.clkr.hw },
-		.num_parents = 1,
-		.ops = &clk_fixed_factor_ops,
-	},
-};
-
-static struct clk_fixed_factor gcc_qdss_tsctr_div16_clk_src = {
-	.mult = 1,
-	.div = 16,
-	.hw.init = &(struct clk_init_data) {
-		.name = "gcc_qdss_tsctr_div16_clk_src",
-		.parent_hws = (const struct clk_hw *[]) {
-				&gcc_qdss_tsctr_clk_src.clkr.hw },
-		.num_parents = 1,
-		.ops = &clk_fixed_factor_ops,
-	},
-};
-
 static const struct freq_tbl ftbl_gcc_qpic_io_macro_clk_src[] = {
 	F(24000000, P_XO, 1, 0, 0),
 	F(100000000, P_GPLL0_OUT_MAIN, 8, 0, 0),
@@ -1153,20 +1073,6 @@ static struct clk_fixed_factor gcc_xo_div4_clk_src = {
 		.num_parents = 1,
 		.ops = &clk_fixed_factor_ops,
 		.flags = CLK_SET_RATE_PARENT,
-	},
-};
-
-static struct clk_regmap_div gcc_qdss_dap_div_clk_src = {
-	.reg = 0x2d028,
-	.shift = 0,
-	.width = 4,
-	.clkr.hw.init = &(const struct clk_init_data) {
-		.name = "gcc_qdss_dap_div_clk_src",
-		.parent_hws = (const struct clk_hw*[]) {
-			&gcc_qdss_tsctr_clk_src.clkr.hw,
-		},
-		.num_parents = 1,
-		.ops = &clk_regmap_div_ro_ops,
 	},
 };
 
@@ -2157,96 +2063,6 @@ static struct clk_branch gcc_prng_ahb_clk = {
 	},
 };
 
-static struct clk_branch gcc_qdss_at_clk = {
-	.halt_reg = 0x2d038,
-	.halt_check = BRANCH_HALT_VOTED,
-	.clkr = {
-		.enable_reg = 0x2d038,
-		.enable_mask = BIT(0),
-		.hw.init = &(const struct clk_init_data) {
-			.name = "gcc_qdss_at_clk",
-			.parent_hws = (const struct clk_hw*[]) {
-				&gcc_qdss_at_clk_src.clkr.hw,
-			},
-			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT,
-			.ops = &clk_branch2_ops,
-		},
-	},
-};
-
-static struct clk_branch gcc_qdss_cfg_ahb_clk = {
-	.halt_reg = 0x2d06c,
-	.halt_check = BRANCH_HALT_VOTED,
-	.clkr = {
-		.enable_reg = 0x2d06c,
-		.enable_mask = BIT(0),
-		.hw.init = &(const struct clk_init_data) {
-			.name = "gcc_qdss_cfg_ahb_clk",
-			.parent_hws = (const struct clk_hw*[]) {
-				&gcc_pcnoc_bfdcd_clk_src.clkr.hw,
-			},
-			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT,
-			.ops = &clk_branch2_ops,
-		},
-	},
-};
-
-static struct clk_branch gcc_qdss_dap_ahb_clk = {
-	.halt_reg = 0x2d068,
-	.halt_check = BRANCH_HALT_VOTED,
-	.clkr = {
-		.enable_reg = 0x2d068,
-		.enable_mask = BIT(0),
-		.hw.init = &(const struct clk_init_data) {
-			.name = "gcc_qdss_dap_ahb_clk",
-			.parent_hws = (const struct clk_hw*[]) {
-				&gcc_pcnoc_bfdcd_clk_src.clkr.hw,
-			},
-			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT,
-			.ops = &clk_branch2_ops,
-		},
-	},
-};
-
-static struct clk_branch gcc_qdss_dap_clk = {
-	.halt_reg = 0x2d05c,
-	.halt_check = BRANCH_HALT_VOTED,
-	.clkr = {
-		.enable_reg = 0xb004,
-		.enable_mask = BIT(2),
-		.hw.init = &(const struct clk_init_data) {
-			.name = "gcc_qdss_dap_clk",
-			.parent_hws = (const struct clk_hw*[]) {
-				&gcc_qdss_dap_div_clk_src.clkr.hw,
-			},
-			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT,
-			.ops = &clk_branch2_ops,
-		},
-	},
-};
-
-static struct clk_branch gcc_qdss_etr_usb_clk = {
-	.halt_reg = 0x2d064,
-	.halt_check = BRANCH_HALT_VOTED,
-	.clkr = {
-		.enable_reg = 0x2d064,
-		.enable_mask = BIT(0),
-		.hw.init = &(const struct clk_init_data) {
-			.name = "gcc_qdss_etr_usb_clk",
-			.parent_hws = (const struct clk_hw*[]) {
-				&gcc_system_noc_bfdcd_clk_src.clkr.hw,
-			},
-			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT,
-			.ops = &clk_branch2_ops,
-		},
-	},
-};
-
 static struct clk_fixed_factor gcc_eud_at_div_clk_src = {
 	.mult = 1,
 	.div = 6,
@@ -2936,13 +2752,7 @@ static struct clk_regmap *gcc_ipq5332_clocks[] = {
 	[GCC_PCNOC_LPASS_CLK] = &gcc_pcnoc_lpass_clk.clkr,
 	[GCC_PRNG_AHB_CLK] = &gcc_prng_ahb_clk.clkr,
 	[GCC_Q6_AXIM_CLK_SRC] = &gcc_q6_axim_clk_src.clkr,
-	[GCC_QDSS_AT_CLK] = &gcc_qdss_at_clk.clkr,
 	[GCC_QDSS_AT_CLK_SRC] = &gcc_qdss_at_clk_src.clkr,
-	[GCC_QDSS_CFG_AHB_CLK] = &gcc_qdss_cfg_ahb_clk.clkr,
-	[GCC_QDSS_DAP_AHB_CLK] = &gcc_qdss_dap_ahb_clk.clkr,
-	[GCC_QDSS_DAP_CLK] = &gcc_qdss_dap_clk.clkr,
-	[GCC_QDSS_DAP_DIV_CLK_SRC] = &gcc_qdss_dap_div_clk_src.clkr,
-	[GCC_QDSS_ETR_USB_CLK] = &gcc_qdss_etr_usb_clk.clkr,
 	[GCC_QDSS_EUD_AT_CLK] = &gcc_qdss_eud_at_clk.clkr,
 	[GCC_QPIC_AHB_CLK] = &gcc_qpic_ahb_clk.clkr,
 	[GCC_QPIC_CLK] = &gcc_qpic_clk.clkr,
@@ -3182,11 +2992,6 @@ static struct clk_hw *gcc_ipq5332_hws[] = {
 	&gpll0_div2.hw,
 	&gcc_xo_div4_clk_src.hw,
 	&gcc_system_noc_bfdcd_div2_clk_src.hw,
-	&gcc_qdss_tsctr_div2_clk_src.hw,
-	&gcc_qdss_tsctr_div3_clk_src.hw,
-	&gcc_qdss_tsctr_div4_clk_src.hw,
-	&gcc_qdss_tsctr_div8_clk_src.hw,
-	&gcc_qdss_tsctr_div16_clk_src.hw,
 	&gcc_eud_at_div_clk_src.hw,
 };
 
