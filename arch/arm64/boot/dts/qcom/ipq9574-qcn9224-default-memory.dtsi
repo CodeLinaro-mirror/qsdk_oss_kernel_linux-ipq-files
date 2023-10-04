@@ -91,6 +91,11 @@
 		#size-cells = <2>;
 		ranges;
 
+		tzapp:tzapp@49600000 {  /* TZAPPS */
+			reg = <0x0 0x49600000 0x0 0x00600000>;
+			no-map;
+		};
+
 		q6_region: wcnss@4ab00000 {
 			no-map;
 			reg = <0x0 0x4ab00000 0x0 0x02b00000>;
