@@ -1468,6 +1468,7 @@ static int q6_wcss_probe(struct platform_device *pdev)
 	qcom_add_ssr_subdev(rproc, &wcss->ssr_subdev, subdev_name);
 
 	rproc->auto_boot = desc->need_auto_boot;
+	rproc->dump_conf = RPROC_COREDUMP_INLINE;
 	rproc_coredump_set_elf_info(rproc, ELFCLASS32, EM_NONE);
 	ret = rproc_add(rproc);
 	if (ret)
