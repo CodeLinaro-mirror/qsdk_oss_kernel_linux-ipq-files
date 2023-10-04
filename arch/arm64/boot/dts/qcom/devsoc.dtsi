@@ -156,6 +156,29 @@
 					bias-disable;
 				};
 			};
+
+			qspi_default_state: qspi-default-state {
+				qspi_clock {
+					pins = "gpio5";
+					function = "qspi_clk";
+					drive-strength = <8>;
+					bias-pull-down;
+				};
+
+				qspi_cs {
+					pins = "gpio4";
+					function = "qspi_cs";
+					drive-strength = <8>;
+					bias-pull-up;
+				};
+
+				qspi_data {
+					pins = "gpio0", "gpio1", "gpio2", "gpio3";
+					function = "qspi_data";
+					drive-strength = <8>;
+					bias-pull-down;
+				};
+			};
 		};
 
 		gcc: clock-controller@1800000 {
@@ -310,6 +333,52 @@
 				reg = <0x3a000000 0x1000000>;
 				clocks = <&gcc GCC_CMN_12GPLL_AHB_CLK>;
 				clock-names = "cmn_ahb_clk";
+			};
+		};
+
+		qpic_bam: dma-controller@7984000 {
+			compatible = "qcom,bam-v1.7.0";
+			reg = <0x7984000 0x1c000>;
+			interrupts = <GIC_SPI 109 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&gcc GCC_QPIC_AHB_CLK>;
+			clock-names = "bam_clk";
+			#dma-cells = <1>;
+			qcom,ee = <0>;
+			status = "disabled";
+		};
+
+		qpic_nand: nand@79b0000 {
+			compatible = "qcom,devsoc-nand";
+			reg = <0x79b0000 0x10000>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clocks = <&gcc GCC_QPIC_CLK>,
+				 <&gcc GCC_QPIC_AHB_CLK>,
+				 <&gcc GCC_QPIC_IO_MACRO_CLK>;
+			clock-names = "core", "aon", "io_macro";
+
+			dmas = <&qpic_bam 0>,
+			       <&qpic_bam 1>,
+			       <&qpic_bam 2>,
+			       <&qpic_bam 3>;
+			dma-names = "tx", "rx", "cmd", "sts";
+
+			qcom,io_macro_max_clk = <320000000>;
+			qcom,io_macro_clk_rates = <24000000 100000000 200000000 \
+						   320000000>;
+
+			pinctrl-0 = <&qspi_default_state>;
+			pinctrl-names = "default";
+
+			status = "disabled";
+			nandcs@0 {
+				reg = <0>;
+				#address-cells = <1>;
+				#size-cells = <1>;
+
+				nand-ecc-strength = <8>;
+				nand-ecc-step-size = <512>;
+				nand-bus-width = <8>;
 			};
 		};
 
