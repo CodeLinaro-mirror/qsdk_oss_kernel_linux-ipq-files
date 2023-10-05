@@ -489,3 +489,7 @@
 	vdd-supply = <&ipq9574_s2>;
 	status = "okay";
 };
+
+&q6_region {
+	status = "okay";
+};
