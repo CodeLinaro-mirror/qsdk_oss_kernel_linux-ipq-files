@@ -396,6 +396,14 @@
 			#mbox-cells = <1>;
 		};
 
+		watchdog: watchdog@f410000 {
+			compatible = "qcom,apss-wdt-devsoc", "qcom,kpss-wdt";
+			reg = <0xf410000 0x1000>;
+			interrupts = <GIC_SPI 0 IRQ_TYPE_EDGE_RISING>;
+			clocks = <&sleep_clk>;
+			timeout-sec = <30>;
+		};
+
 		timer@f420000 {
 			compatible = "arm,armv7-timer-mem";
 			reg = <0xf420000 0x1000>;
