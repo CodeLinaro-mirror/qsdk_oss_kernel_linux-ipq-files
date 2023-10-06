@@ -4121,3 +4121,4 @@
 #ifndef __CPU_THERMAL__
 #include "ipq9574-thermald.dtsi"
 #endif
+#include "ipq9574-cpr-regulator.dtsi"
