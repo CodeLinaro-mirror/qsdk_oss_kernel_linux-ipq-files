@@ -30,6 +30,7 @@
 			    "alias2-pwr-gate",
 			    "alias3-pwr-gate",
 			    "apm-ctl-override";
+		status = "disabled";
 		qcom,apm-post-halt-delay = <0x2>;
 		qcom,apm-halt-clk-delay = <0x11>;
 		qcom,apm-resume-clk-delay = <0x10>;
@@ -40,6 +41,7 @@
 		compatible = "qcom,cpr4-ipq9574-apss-regulator";
 		reg = <0xb018000 0x4000>, <0xa4000 0x1000>, <0x0193d008 0x4>;
 		reg-names = "cpr_ctrl", "fuse_base", "cpr_tcsr_reg";
+		status = "disabled";
 		interrupts = <GIC_SPI 15 IRQ_TYPE_EDGE_RISING>;
 		interrupt-names = "cpr";
 		qcom,cpr-ctrl-name = "apc";
@@ -54,7 +56,6 @@
 		qcom,cpr-up-error-step-limit = <1>;
 		qcom,apm-ctrl = <&apc_apm>;
 		qcom,apm-threshold-voltage = <850000>;
-		vdd-supply = <&ipq9574_s1>;
 		qcom,voltage-step = <12500>;
 
 		thread@0 {
@@ -156,8 +157,8 @@
 		compatible = "qcom,cpr3-ipq9574-npu-regulator";
 		reg = <0xa4000 0x1000>, <0x0193d008 0x4>;
 		reg-names = "fuse_base", "cpr_tcsr_reg";
+		status = "disabled";
 		qcom,cpr-ctrl-name = "npu";
-		vdd-supply = <&ipq9574_s2>;
 		qcom,voltage-step = <12500>;
 		thread@0 {
 			qcom,cpr-thread-id = <0>;

@@ -98,7 +98,6 @@
 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
-			cpu-supply = <&ipq9574_s1>;
 			#cooling-cells = <2>;
 		};
 
@@ -111,7 +110,6 @@
 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
-			cpu-supply = <&ipq9574_s1>;
 			#cooling-cells = <2>;
 		};
 
@@ -124,7 +122,6 @@
 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
-			cpu-supply = <&ipq9574_s1>;
 			#cooling-cells = <2>;
 		};
 
@@ -137,7 +134,6 @@
 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
-			cpu-supply = <&ipq9574_s1>;
 			#cooling-cells = <2>;
 		};
 
@@ -176,49 +172,49 @@
 
 		opp-936000000 {
 			opp-hz = /bits/ 64 <936000000>;
-			opp-microvolt = <725000>;
+			opp-microvolt = <1>;
 			opp-supported-hw = <0xF>;
 			clock-latency-ns = <200000>;
 		};
 
 		opp-1104000000 {
 			opp-hz = /bits/ 64 <1104000000>;
-			opp-microvolt = <787500>;
+			opp-microvolt = <2>;
 			opp-supported-hw = <0xF>;
 			clock-latency-ns = <200000>;
 		};
 
 		opp-1200000000 {
 			opp-hz = /bits/ 64 <1200000000>;
-			opp-microvolt = <862500>;
+			opp-microvolt = <3>;
 			opp-supported-hw = <0x8>;
 			clock-latency-ns = <200000>;
 		};
 
 		opp-1416000000 {
 			opp-hz = /bits/ 64 <1416000000>;
-			opp-microvolt = <862500>;
+			opp-microvolt = <3>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
 		};
 
 		opp-1488000000 {
 			opp-hz = /bits/ 64 <1488000000>;
-			opp-microvolt = <925000>;
+			opp-microvolt = <4>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
 		};
 
 		opp-1800000000 {
 			opp-hz = /bits/ 64 <1800000000>;
-			opp-microvolt = <987500>;
+			opp-microvolt = <5>;
 			opp-supported-hw = <0x3>;
 			clock-latency-ns = <200000>;
 		};
 
 		opp-2208000000 {
 			opp-hz = /bits/ 64 <2208000000>;
-			opp-microvolt = <1062500>;
+			opp-microvolt = <6>;
 			opp-supported-hw = <0x1>;
 			clock-latency-ns = <200000>;
 		};
@@ -387,6 +383,7 @@
 		rpm_requests: rpm-requests {
 			compatible = "qcom,rpm-ipq9574";
 			qcom,glink-channels = "rpm_requests";
+
 		};
 	};
 
@@ -4118,7 +4115,7 @@
 	};
 };
 
+#include "ipq9574-cpr-regulator.dtsi"
 #ifndef __CPU_THERMAL__
 #include "ipq9574-thermald.dtsi"
 #endif
-#include "ipq9574-cpr-regulator.dtsi"
