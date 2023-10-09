@@ -499,6 +499,7 @@ static const DEVICE_ATTR(fuse_blower, 0644, fuse_blower_show,
 struct module *mod = THIS_MODULE;
 int mhi_fuse_pci_probe(struct pci_dev *pci_dev, const struct pci_device_id *id)
 {
+	int err;
 
 	printk("--->\n");
 
@@ -510,8 +511,10 @@ int mhi_fuse_pci_probe(struct pci_dev *pci_dev, const struct pci_device_id *id)
 	gpci_dev_list[idx].id = id;
 
 	if (!idx) {
-		sysfs_create_file(&mod->mkobj.kobj,
-					&dev_attr_fuse_blower.attr);
+		err = sysfs_create_file(&mod->mkobj.kobj,
+						&dev_attr_fuse_blower.attr);
+		if (err)
+			return err;
 	}
 	idx++;
 
