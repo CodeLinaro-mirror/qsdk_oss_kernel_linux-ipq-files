@@ -352,7 +352,7 @@ static int mhitest_elf_dump(struct list_head *segs, struct device *dev,
 	if (!data)
 		return -ENOMEM;
 
-	MHITEST_LOG("Creating ELF file with size %lu\n", data_size);
+	MHITEST_LOG("Creating ELF file with size %zu\n", data_size);
 
 	ehdr = data;
 	memset(ehdr, 0, sizeof_elf_hdr(class));
