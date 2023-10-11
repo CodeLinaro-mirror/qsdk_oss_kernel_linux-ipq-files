@@ -179,6 +179,29 @@
 					bias-pull-down;
 				};
 			};
+
+			sdc_default_state: sdc-default-state {
+				clk-pins {
+					pins = "gpio5";
+					function = "sdc_clk";
+					drive-strength = <8>;
+					bias-disable;
+				};
+
+				cmd-pins {
+					pins = "gpio4";
+					function = "sdc_cmd";
+					drive-strength = <8>;
+					bias-pull-up;
+				};
+
+				data-pins {
+					pins = "gpio0", "gpio1", "gpio2", "gpio3";
+					function = "sdc_data";
+					drive-strength = <8>;
+					bias-pull-up;
+				};
+			};
 		};
 
 		gcc: clock-controller@1800000 {
@@ -334,6 +357,25 @@
 				clocks = <&gcc GCC_CMN_12GPLL_AHB_CLK>;
 				clock-names = "cmn_ahb_clk";
 			};
+		};
+
+		sdhc: mmc@7804000 {
+			compatible = "qcom,devsoc-sdhci", "qcom,sdhci-msm-v5";
+			reg = <0x07804000 0x1000>, <0x07805000 0x1000>;
+
+			interrupts = <GIC_SPI 116 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 119 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "hc_irq", "pwr_irq";
+
+			clocks = <&gcc GCC_SDCC1_AHB_CLK>,
+				 <&gcc GCC_SDCC1_APPS_CLK>,
+				 <&xo>;
+			clock-names = "iface", "core", "xo";
+
+			pinctrl-0 = <&sdc_default_state>;
+			pinctrl-names = "default";
+
+			status = "disabled";
 		};
 
 		qpic_bam: dma-controller@7984000 {
