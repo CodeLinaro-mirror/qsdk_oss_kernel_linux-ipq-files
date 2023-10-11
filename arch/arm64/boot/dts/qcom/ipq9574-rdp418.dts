@@ -436,7 +436,7 @@
 
 	pwm_pins: pwm-pins {
 		pins = "gpio57";
-		function = "pwm03";
+		function = "pwm";
 		drive-strength = <8>;
 	};
 
