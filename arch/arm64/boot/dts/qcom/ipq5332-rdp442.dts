@@ -452,6 +452,10 @@
 					qcom,smem-state-names = "shutdown",
 								"stop",
 								"spawn";
+					memory-region = <&q6_ipq5332_data>,
+							<&m3_dump>,
+							<&q6_etr_region>,
+							<&q6_ipq5332_caldb>;
 				};
 
 				q6_wcss_pd2: remoteproc_pd2 {
@@ -473,6 +477,10 @@
 					qcom,smem-state-names = "shutdown",
 								"stop",
 								"spawn";
+					memory-region = <&q6_qcn6432_data_1>,
+							<&m3_dump_qcn6432_1>,
+							<&q6_qcn6432_etr_1>,
+							<&q6_qcn6432_caldb_1>;
 					status = "ok";
 				};
 
@@ -494,6 +502,10 @@
 					qcom,smem-state-names = "shutdown",
 								"stop",
 								"spawn";
+					memory-region = <&q6_qcn6432_data_2>,
+							<&m3_dump_qcn6432_2>,
+							<&q6_qcn6432_etr_2>,
+							<&q6_qcn6432_caldb_2>;
 					status = "ok";
 				};
 			};
