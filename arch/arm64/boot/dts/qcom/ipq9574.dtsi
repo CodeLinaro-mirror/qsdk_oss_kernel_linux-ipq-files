@@ -394,7 +394,7 @@
 		ranges = <0 0 0 0xffffffff>;
 
 		reg_update: reg-update@400000 {
-			compatible = "ipq9574,reg-update";
+			compatible = "ipq,reg-update";
 			reg = <0x00400000 0x6148>,
 			      <0x39d00020 0x10>;
 			reg-names = "memnoc",

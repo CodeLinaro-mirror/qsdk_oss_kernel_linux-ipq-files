@@ -264,13 +264,6 @@
 		#size-cells = <1>;
 		ranges = <0 0 0 0xffffffff>;
 
-		reg_update: reg_update@400000 {
-			compatible = "ipq5332,reg-update";
-			reg = <0x00400000 0x6148>;
-			reg-names = "memnoc";
-			status = "okay";
-		};
-
 		qfprom: efuse@a4000 {
 			compatible = "qcom,qfprom";
 			reg = <0xa4000 0x721>;
