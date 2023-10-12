@@ -4144,11 +4144,25 @@ static int __init qseecom_probe(struct platform_device *pdev)
 load:
 	props = ((struct qseecom_props *)id->data);
 
-	sysfs_create_bin_file(firmware_kobj, &mdt_attr);
-	sysfs_create_bin_file(firmware_kobj, &seg_attr);
+	ret = sysfs_create_bin_file(firmware_kobj, &mdt_attr);
+	if (ret) {
+		pr_info("Failed to create mdt_file");
+		return ret;
+	}
+	ret = sysfs_create_bin_file(firmware_kobj, &seg_attr);
+	if (ret) {
+		pr_info("Failed to create seg_file");
+		return ret;
+	}
 
-	if (props->function & AUTH_OTP)
-		sysfs_create_bin_file(firmware_kobj, &auth_attr);
+	if (props->function & AUTH_OTP) {
+		ret = sysfs_create_bin_file(firmware_kobj, &auth_attr);
+		if (ret) {
+			pr_info("Failed to create auth_file");
+			return ret;
+		}
+	}
+
 	if (!qtiapp_init(qdev))
 		pr_info("Loaded tzapp successfully!\n");
 	else
