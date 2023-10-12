@@ -53,11 +53,18 @@ struct platform_device *get_plat_device(void)
 
 int mhitest_store_mplat(struct mhitest_platform *temp)
 {
+	int index = 0;
+
 	if (d_instance < MHI_MAX_DEVICE) {
-		mplat_g[d_instance] = temp;
-		mplat_g[d_instance]->d_instance = d_instance;
-		MHITEST_VERB("mplat_g[%d]:%p temp:%p same ? d_instance:%d\n",
-			d_instance, mplat_g[d_instance], temp, d_instance);
+		for (index = 0; index < MHI_MAX_DEVICE; index++) {
+			if(mplat_g[index] == NULL) {
+				mplat_g[index] = temp;
+				mplat_g[index]->d_instance = index;
+				MHITEST_VERB("mplat_g[%d]:%p temp:%p same ? d_instance:%d\n",
+						index, mplat_g[index], temp, d_instance);
+				break;
+			}
+		}
 		d_instance++;
 		return 0;
 	}
@@ -69,7 +76,7 @@ void mhitest_remove_mplat(struct mhitest_platform *temp)
 {
 	if (d_instance > 0 && d_instance < MHI_MAX_DEVICE) {
 		d_instance--;
-		mplat_g[d_instance] = NULL;
+		mplat_g[temp->d_instance] = NULL;
 	}
 }
 
