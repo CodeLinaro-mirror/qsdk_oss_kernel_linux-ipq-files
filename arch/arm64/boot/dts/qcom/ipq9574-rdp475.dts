@@ -509,6 +509,10 @@
 	clock-frequency = <24000000>;
 };
 
+&q6v5_wcss {
+	status = "okay";
+};
+
 /* Enable IPQ9574 integrated radio's reserved memory */
 &q6_region {
 	status = "okay";
