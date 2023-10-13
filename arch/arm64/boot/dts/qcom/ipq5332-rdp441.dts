@@ -352,6 +352,8 @@
 
 		qcom,mhi@2 {
 			reg = <0 0 0 0 0>;
+			qti,disable-rddm-prealloc;
+			qti,rddm-seg-len = <0x1000>;
 			memory-region = <&qcn9224_pcie0>, <&mhi_region0>;
 			qcom,board_id = <0x15>;
 			qcom,wsi = <&wsi>;
@@ -374,6 +376,8 @@
 
 		qcom,mhi@1 {
 			reg = <0 0 0 0 0>;
+			qti,disable-rddm-prealloc;
+			qti,rddm-seg-len = <0x1000>;
 			memory-region = <&qcn9224_pcie1>, <&mhi_region1>;
 			qcom,board_id = <0x16>;
 			qcom,wsi = <&wsi>;
