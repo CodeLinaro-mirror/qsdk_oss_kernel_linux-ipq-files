@@ -33,28 +33,43 @@
 	};
 
 	soc@0 {
+		pinctrl@1000000 {
+			sfp_pins: sfp_pinmux {
+				sfp_rx {
+					pins = "gpio46";
+					function = "rx1";
+					bias-disable;
+				};
+			};
+		};
+
 		mdio@90000 {
 			pinctrl-0 = <&mdio_pins>;
 			pinctrl-names = "default";
-			/*gpio60 for malibu reset, gpio36 for both aqr reset reserved */
+			/*gpio60 for malibu reset*/
 			phy-reset-gpio = <&tlmm 60 GPIO_ACTIVE_LOW>;
 			status = "okay";
-
+			phyaddr_fixup = <0xC90F018>;
+			uniphyaddr_fixup = <0xC90F014>;
+			mdio_clk_fixup; /* MDIO clock sequence fix up flag */
 			phy0: ethernet-phy@0 {
-				reg = <16>;
+				reg = <1>;
+				fixup;
 			};
 			phy1: ethernet-phy@1 {
-				reg = <17>;
+				reg = <2>;
+				fixup;
 			};
 			phy2: ethernet-phy@2 {
-				reg = <18>;
+				reg = <3>;
+				fixup;
 			};
 			phy3: ethernet-phy@3 {
-				reg = <19>;
+				reg = <4>;
+				fixup;
 			};
 			phy4: ethernet-phy@4 {
-				compatible ="ethernet-phy-ieee802.3-c45";
-				reg = <8>;
+				reg = <30>;
 			};
 			phy5: ethernet-phy@5 {
 				compatible ="ethernet-phy-ieee802.3-c45";
@@ -71,11 +86,13 @@
 		ess-instance {
 			num_devices = <0x1>;
 			ess-switch@3a000000 {
+				pinctrl-0 = <&sfp_pins>;
+				pinctrl-names = "default";
 				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
 				switch_lan_bmp = <0x3e>; /* lan port bitmap */
 				switch_wan_bmp = <0x40>; /* wan port bitmap */
-				switch_mac_mode = <0x0>; /* mac mode for uniphy instance0*/
-				switch_mac_mode1 = <0xd>; /* mac mode for uniphy instance1*/
+				switch_mac_mode = <0x15>; /* mac mode for uniphy instance0*/
+				switch_mac_mode1 = <0xe>; /* mac mode for uniphy instance1*/
 				switch_mac_mode2 = <0xd>; /* mac mode for uniphy instance2*/
 				bm_tick_mode = <0>; /* bm tick mode */
 				tm_tick_mode = <0>; /* tm tick mode */
@@ -83,24 +100,25 @@
 				qcom,port_phyinfo {
 					port@0 {
 						port_id = <1>;
-						phy_address = <16>;
+						phy_address = <1>;
 					};
 					port@1 {
 						port_id = <2>;
-						phy_address = <17>;
+						phy_address = <2>;
 					};
 					port@2 {
 						port_id = <3>;
-						phy_address = <18>;
+						phy_address = <3>;
 					};
 					port@3 {
 						port_id = <4>;
-						phy_address = <19>;
+						phy_address = <4>;
 					};
 					port@4 {
 						port_id = <5>;
-						phy_address = <8>;
-						ethernet-phy-ieee802.3-c45;
+						phy_address = <30>;
+						media-type = "sfp"; /* fiber mode */
+						sfp_rx_los_pin = <&tlmm 0xffff GPIO_ACTIVE_HIGH>;
 					};
 					port@5 {
 						port_id = <6>;
@@ -109,7 +127,56 @@
 					};
 				};
 
+				led_source@0 {
+					source = <0>;
+					mode = "normal";
+					speed = "all";
+					blink_en = "enable";
+					active = "high";
+				};
+				led_source@3 {
+					source = <3>;
+					mode = "normal";
+					speed = "all";
+					blink_en = "enable";
+					active = "high";
+				};
+				led_source@6 {
+					source = <6>;
+					mode = "normal";
+					speed = "all";
+					blink_en = "enable";
+					active = "high";
+				};
+				led_source@9 {
+					source = <9>;
+					mode = "normal";
+					speed = "all";
+					blink_en = "enable";
+					active = "high";
+				};
 			};
+		};
+
+		nss-macsec0 {
+			compatible = "qcom,nss-macsec";
+			phy_addr = <0x1>;
+			mdiobus = <&mdio>;
+		};
+		nss-macsec1 {
+			compatible = "qcom,nss-macsec";
+			phy_addr = <0x2>;
+			mdiobus = <&mdio>;
+		};
+		nss-macsec2 {
+			compatible = "qcom,nss-macsec";
+			phy_addr = <0x3>;
+			mdiobus = <&mdio>;
+		};
+		nss-macsec3 {
+			compatible = "qcom,nss-macsec";
+			phy_addr = <0x4>;
+			mdiobus = <&mdio>;
 		};
 
 		leds {
