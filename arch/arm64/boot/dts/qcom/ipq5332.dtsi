@@ -778,7 +778,7 @@
 
 		mdio: mdio@90000 {
 			compatible = "qcom,qca-mdio", "qcom,ipq40xx-mdio";
-			reg = <0x90000 0x64>, <0x7A00610 0x4>, <0x7A10610 0x4>, <0x9B780 8>;
+			reg = <0x90000 0x64>, <0x7A00610 0x4>, <0x7A10610 0x4>, <0x9B000 0x800>;
 			reg-names = "ppe", "eth_ldo1", "eth_ldo2", "cmn_blk";
 			#address-cells = <1>;
 			#size-cells = <1>;
