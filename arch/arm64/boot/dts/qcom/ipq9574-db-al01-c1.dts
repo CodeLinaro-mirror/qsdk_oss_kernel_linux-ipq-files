@@ -402,8 +402,12 @@
 		 * the regulators are brought up with 725000uV which is sufficient for all the
 		 * corner parts to operate at 800MHz
 		 */
-			regulator-min-microvolt = <725000>;
+			regulator-min-microvolt = <587500>;
 			regulator-max-microvolt = <1075000>;
+		};
+		ipq9574_s2: s2 {
+			regulator-min-microvolt = <700000>;
+			regulator-max-microvolt = <1000000>;
 		};
 	};
 };
@@ -492,4 +496,34 @@
 
 &xo_board_clk {
 	clock-frequency = <24000000>;
+};
+
+&CPU0 {
+	cpu-supply = <&apc_vreg>;
+};
+
+&CPU1 {
+	cpu-supply = <&apc_vreg>;
+};
+
+&CPU2 {
+	cpu-supply = <&apc_vreg>;
+};
+
+&CPU3 {
+	cpu-supply = <&apc_vreg>;
+};
+
+&apc_apm {
+	status = "okay";
+};
+
+&apc_cpr {
+	vdd-supply = <&ipq9574_s1>;
+	status = "okay";
+};
+
+&npu_cpr {
+	vdd-supply = <&ipq9574_s2>;
+	status = "okay";
 };
