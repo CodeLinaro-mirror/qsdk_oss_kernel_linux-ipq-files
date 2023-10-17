@@ -228,4 +228,8 @@
 #define GCC_CRYPTO_CLK					218
 #define GCC_CRYPTO_AXI_CLK				219
 #define GCC_CRYPTO_AHB_CLK				220
+#define GCC_LPASS_SWAY_CLK				221
+#define GCC_LPASS_CORE_AXIM_CLK			222
+#define GCC_SNOC_LPASS_CFG_CLK			223
+#define GCC_PCNOC_LPASS_CLK				224
 #endif
