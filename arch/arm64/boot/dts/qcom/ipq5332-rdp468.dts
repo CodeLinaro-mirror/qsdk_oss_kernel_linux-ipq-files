@@ -322,6 +322,19 @@
 	};
 };
 
+&blsp1_spi2 {
+	pinctrl-0 = <&spi_2_pins>;
+	pinctrl-names = "default";
+	cs-select = <0>;
+	status = "disabled";
+};
+
+&pcm {
+	pinctrl-0 = <&audio_pins_pri>;
+	pinctrl-names = "primary";
+	status = "disabled";
+};
+
 &sdhc {
 	bus-width = <4>;
 	max-frequency = <192000000>;
@@ -388,11 +401,49 @@
 /* PINCTRL */
 
 &tlmm {
+
+	audio_pins_pri: audio_pinmux_pri {
+		mux_1 {
+			pins = "gpio29";
+			function = "audio_pri";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+
+		mux_2 {
+			pins = "gpio30";
+			function = "audio_pri";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+
+		mux_3 {
+			pins = "gpio31";
+			function = "audio_pri";
+			drive-strength = <4>;
+			bias-pull-down;
+		};
+
+		mux_4 {
+			pins = "gpio32";
+			function = "audio_pri";
+			drive-strength = <4>;
+			bias-pull-down;
+		};
+	};
+
 	i2c_1_pins: i2c-1-state {
 		pins = "gpio29", "gpio30";
 		function = "blsp1_i2c0";
 		drive-strength = <8>;
 		bias-pull-up;
+	};
+
+	spi_2_pins: spi-2-pins {
+		pins = "gpio33", "gpio34", "gpio35", "gpio36";
+		function = "blsp2_spi0";
+		drive-strength = <8>;
+		bias-pull-down;
 	};
 
 	sdc_default_state: sdc-default-state {
