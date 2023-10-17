@@ -635,15 +635,7 @@
 	status = "okay";
 };
 
-&mhi_region1 {
-	status = "okay";
-};
-
 &qcn9224_pcie2 {
-	status = "okay";
-};
-
-&mhi_region2 {
 	status = "okay";
 };
 
@@ -651,9 +643,19 @@
 	status = "okay";
 };
 
+#if defined(__MHI_BUS_RESERVED_DMA_POOL__)
+&mhi_region1 {
+	status = "okay";
+};
+
+&mhi_region2 {
+	status = "okay";
+};
+
 &mhi_region3 {
 	status = "okay";
 };
+#endif
 
 &mlo_global_mem0 {
 	status = "okay";

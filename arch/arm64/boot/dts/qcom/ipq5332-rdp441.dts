@@ -406,6 +406,7 @@
 	status = "okay";
 };
 
+#if defined(__MHI_BUS_RESERVED_DMA_POOL__)
 &mhi_region0 {
 	status = "okay";
 };
@@ -413,6 +414,7 @@
 &mhi_region1 {
 	status = "okay";
 };
+#endif
 
 &wifi3 {
 	/* QCN9224 radio 5G */
