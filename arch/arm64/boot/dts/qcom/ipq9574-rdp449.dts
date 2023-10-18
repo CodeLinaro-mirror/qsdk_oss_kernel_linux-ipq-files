@@ -310,8 +310,7 @@
 
 		wifi@2 {
 			reg = <0 0 0 0 0>;
-			qti,disable-rddm-prealloc;
-			qti,rddm-seg-len = <0x1000>;
+
 			memory-region = <&qcn9224_pcie2>;
 			qcom,board_id = <0x04>;
 			qcom,wsi = <&wsi>;
@@ -335,8 +334,7 @@
 
 		wifi@3 {
 			reg = <0 0 0 0 0>;
-			qti,disable-rddm-prealloc;
-			qti,rddm-seg-len = <0x1000>;
+
 			memory-region = <&qcn9224_pcie3>;
 			qcom,board_id = <0x02>;
 			qcom,wsi = <&wsi>;
