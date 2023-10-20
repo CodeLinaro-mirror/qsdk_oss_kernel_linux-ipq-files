@@ -71,6 +71,20 @@
 				pinctrl-names = "default";
 				status = "okay";
 			};
+
+			spi0: spi@1a90000 {
+				pinctrl-0 = <&qup_spi0_default>;
+				pinctrl-names = "default";
+				status = "okay";
+
+				flash@0 {
+					compatible = "spansion,s25fs128s1", "jedec,spi-nor";
+					#address-cells = <1>;
+					#size-cells = <1>;
+					reg = <0>;
+					spi-max-frequency = <50000000>;
+				};
+			};
 		};
 
 #ifdef __QCOM_NON_SECURE_PIL__
