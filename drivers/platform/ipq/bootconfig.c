@@ -47,6 +47,7 @@
 #define BOOTCONFIG_PARTITION1	"0:BOOTCONFIG1"
 #define ROOTFS_PARTITION	"rootfs"
 #define MAX_MMC_DEVICE		2
+#define MAX_PART_NAME_LEN	25
 
 static struct proc_dir_entry *bc1_partname_dir[CONFIG_NUM_ALT_PARTITION];
 static struct proc_dir_entry *bc2_partname_dir[CONFIG_NUM_ALT_PARTITION];
@@ -384,12 +385,83 @@ static const struct proc_ops age_ops = {
 	.proc_write		= age_write,
 };
 
+bool check_alt_partition(char *partition)
+{
+
+	int i;
+	char *alt_part_name;
+	uint8_t size;
+#ifdef CONFIG_MMC
+	struct gendisk *disk = NULL;
+	struct block_device *part;
+	unsigned long idx;
+#endif
+	struct mtd_info *mtd;
+	int alt_part = 0;
+
+	size = strnlen(partition, MAX_PART_NAME_LEN) + 1; /*including terminator-\0*/
+
+	alt_part_name = kmalloc(size + 2,     /*size include suffix _1*/
+				   GFP_ATOMIC);
+
+	if(!alt_part_name)
+		return NULL;
+
+	strlcpy(alt_part_name, partition, size);
+
+	strlcat(alt_part_name, "_1", size + 2);
+
+	mtd = get_mtd_device_nm(alt_part_name);
+	if (!IS_ERR(mtd)) {
+
+		put_mtd_device(mtd);
+		alt_part = 1;
+	}
+#ifdef CONFIG_MMC
+	else {
+		for (i = 0; i < MAX_MMC_DEVICE && !alt_part; i++) {
+
+			part = blkdev_get_by_dev(MKDEV(MMC_BLOCK_MAJOR,
+						i*CONFIG_MMC_BLOCK_MINORS),
+					FMODE_READ | FMODE_WRITE, NULL);
+			if (IS_ERR(part))
+				goto exit;
+
+			disk = part->bd_disk;
+			if (!disk)
+				goto exit;
+
+			rcu_read_lock();
+			xa_for_each(&disk->part_tbl, idx, part) {
+				if (!bdev_nr_sectors(part))
+					continue;
+				if (part->bd_meta_info) {
+					if (!strcmp((char *)part->bd_meta_info->volname,
+								alt_part_name)) {
+						alt_part = 1;
+						break;
+					}
+
+				}
+			}
+			rcu_read_unlock();
+		}
+	}
+#endif
+
+exit:
+	if (alt_part_name)
+		kfree(alt_part_name);
+	return alt_part;
+
+}
+
 static int __init bootconfig_partition_init(void)
 {
 	struct per_part_info *bc1_part_info;
 	struct per_part_info *bc2_part_info;
 
-	int i;
+	int i, ret = 0;
 #ifdef CONFIG_MMC
 	struct gendisk *disk = NULL;
 	struct block_device *bdev;
@@ -496,6 +568,11 @@ static int __init bootconfig_partition_init(void)
 				(strncmp(bc1_part_info[i].name, "kernel",
 					ALT_PART_NAME_LENGTH) == 0))
 			continue;
+
+		ret = check_alt_partition(bc1_part_info[i].name);
+		if(!ret)
+			continue;
+
 		bc1_partname_dir[i] = proc_mkdir(bc1_part_info[i].name, bootconfig1_info_dir);
 		if (bc1_partname_dir[i] != NULL) {
 			proc_create_data("primaryboot", S_IRUGO,
@@ -514,6 +591,11 @@ static int __init bootconfig_partition_init(void)
 				(strncmp(bc2_part_info[i].name, "kernel",
 					ALT_PART_NAME_LENGTH) == 0))
 			continue;
+
+		ret = check_alt_partition(bc1_part_info[i].name);
+		if(!ret)
+			continue;
+
 		bc2_partname_dir[i] = proc_mkdir(bc2_part_info[i].name, bootconfig2_info_dir);
 		if (bc2_partname_dir[i] != NULL) {
 			proc_create_data("primaryboot", S_IRUGO,
