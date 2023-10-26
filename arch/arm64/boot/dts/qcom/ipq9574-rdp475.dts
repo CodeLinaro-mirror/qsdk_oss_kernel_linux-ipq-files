@@ -79,12 +79,6 @@
 			};
 		};
 
-		wsi: wsi {
-			id = <0>;
-			num_chip = <2>;
-			status = "okay";
-		};
-
 		ess-instance {
 			num_devices = <0x1>;
 			ess-switch@3a000000 {
@@ -305,22 +299,27 @@
 	};
 };
 
-&pcie2_x2 {
-	pinctrl-0 = <&pci2_pin>;
-	pinctrl-names = "default";
-	perst-gpio = <&tlmm 29 GPIO_ACTIVE_LOW>;
+&pcie1_phy {
 	status = "okay";
+};
 
-	pcie2_rp {
+&pcie1_x1 {
+	perst-gpios = <&tlmm 26 GPIO_ACTIVE_LOW>;
+	status = "okay";
+	pcie1_rp: pcie1_rp {
 		reg = <0 0 0 0 0>;
 
-		wifi@2 {
+		wifi@1 {
 			reg = <0 0 0 0 0>;
-
-			memory-region = <&qcn9224_pcie2>;
-			qcom,board_id = <0x04>;
+			memory-region = <&qcn9224_pcie1>, <&mhi_region1>;
+			qcom,board_id = <0x01>;
 			qcom,wsi = <&wsi>;
-			status = "okay";
+			qcom,pta-num = <0>;
+			qcom,coex-mode = <0x2>;
+			qcom,bt-active-time = <0x18>;
+			qcom,bt-priority-time = <0x12>;
+			qcom,coex-algo = <0x2>;
+			qcom,pta-priority = <0x80800505>;
 		};
 	};
 };
@@ -329,28 +328,38 @@
 	status = "okay";
 };
 
-&pcie3_x2 {
-	pinctrl-0 = <&pci3_pin>;
-	pinctrl-names = "default";
-	perst-gpio = <&tlmm 32 GPIO_ACTIVE_LOW>;
+&pcie2_x2 {
+	perst-gpios = <&tlmm 29 GPIO_ACTIVE_LOW>;
 	status = "okay";
-
-	pcie3_rp {
+	pcie2_rp: pcie2_rp {
 		reg = <0 0 0 0 0>;
 
-		wifi@3 {
+		wifi@2 {
 			reg = <0 0 0 0 0>;
-
-			memory-region = <&qcn9224_pcie3>;
-			qcom,board_id = <0x02>;
+			memory-region = <&qcn9224_pcie2>, <&mhi_region2>;
+			qcom,board_id = <0x04>;
 			qcom,wsi = <&wsi>;
-			status = "okay";
 		};
 	};
 };
 
 &pcie3_phy {
 	status = "okay";
+};
+
+&pcie3_x2 {
+	perst-gpios = <&tlmm 32 GPIO_ACTIVE_LOW>;
+	status = "okay";
+	pcie3_rp: pcie3_rp {
+		reg = <0 0 0 0 0>;
+
+		wifi@3 {
+			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9224_pcie3>, <&mhi_region3>;
+			qcom,board_id = <0x02>;
+			qcom,wsi = <&wsi>;
+		};
+	};
 };
 
 &qusb_phy_0 {
@@ -370,6 +379,18 @@
 		#size-cells = <1>;
 		spi-max-frequency = <50000000>;
 	};
+};
+
+&sdhc_1 {
+	pinctrl-0 = <&sdc_default_state>;
+	pinctrl-names = "default";
+	mmc-ddr-1_8v;
+	mmc-hs200-1_8v;
+	mmc-hs400-1_8v;
+	mmc-hs400-enhanced-strobe;
+	max-frequency = <384000000>;
+	bus-width = <8>;
+	status = "disabled";
 };
 
 &blsp1_i2c3 {
@@ -393,6 +414,11 @@
 	pinctrl-0 = <&uart4_pins>;
 	pinctrl-names = "default";
 	status = "okay";
+};
+
+&wsi {
+	id = <0>;
+	num_chip = <3>;
 };
 
 &qpic_bam {
@@ -438,27 +464,47 @@
 		 * the regulators are brought up with 725000uV which is sufficient for all the
 		 * corner parts to operate at 800MHz
 		 */
-			regulator-min-microvolt = <725000>;
+			regulator-min-microvolt = <587500>;
 			regulator-max-microvolt = <1075000>;
+		};
+		ipq9574_s2: s2 {
+			regulator-min-microvolt = <700000>;
+			regulator-max-microvolt = <1000000>;
 		};
 	};
 };
 
 &tlmm {
-	pci2_pin: pci2-default-state {
-		pins = "gpio29";
-		function = "gpio";
-		drive-strength = <8>;
-		bias-pull-down;
-		output-low;
-	};
+	sdc_default_state: sdc-default-state {
+		clk-pins {
+			pins = "gpio5";
+			function = "sdc_clk";
+			drive-strength = <8>;
+			bias-disable;
+		};
 
-	pci3_pin: pci3-default-state {
-		pins = "gpio32";
-		function = "gpio";
-		drive-strength = <8>;
-		bias-pull-up;
-		output-low;
+		cmd-pins {
+			pins = "gpio4";
+			function = "sdc_cmd";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+
+		data-pins {
+			pins = "gpio0", "gpio1", "gpio2",
+				"gpio3", "gpio6", "gpio7",
+				"gpio8", "gpio9";
+			function = "sdc_data";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+
+		rclk-pins {
+			pins = "gpio10";
+			function = "sdc_rclk";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
 	};
 
 	i2c_3_pins: i2c-3-pins {
@@ -528,33 +574,63 @@
 	clock-frequency = <24000000>;
 };
 
-&q6v5_wcss {
+&CPU0 {
+	cpu-supply = <&apc_vreg>;
+};
+
+&CPU1 {
+	cpu-supply = <&apc_vreg>;
+};
+
+&CPU2 {
+	cpu-supply = <&apc_vreg>;
+};
+
+&CPU3 {
+	cpu-supply = <&apc_vreg>;
+};
+
+&apc_apm {
 	status = "okay";
 };
 
-/* Enable IPQ9574 integrated radio's reserved memory */
-&q6_region {
+&apc_cpr {
+	vdd-supply = <&ipq9574_s1>;
 	status = "okay";
 };
 
-&m3_dump {
+&npu_cpr {
+	vdd-supply = <&ipq9574_s2>;
 	status = "okay";
 };
 
-&q6_etr_region {
+&wifi0 {
+	led-gpio = <&tlmm 64 GPIO_ACTIVE_LOW>;
+	status = "disabled";
+};
+
+&wifi5 {
+	hremote_node = <&qcn9224_pcie1>;
+	board_id = <0x01>;
+	node_id = <1>;
 	status = "okay";
 };
 
-&q6_caldb_region {
+&wifi6 {
+	hremote_node = <&qcn9224_pcie2>;
+	board_id = <0x04>;
+	node_id = <2>;
 	status = "okay";
 };
 
-&mlo_global_mem0 {
-	size = <0x0 0xC00000>;
+&wifi7 {
+	hremote_node = <&qcn9224_pcie3>;
+	board_id = <0x02>;
+	node_id = <3>;
 	status = "okay";
 };
 
-&qcn9224_pcie3 {
+&qcn9224_pcie1 {
 	status = "okay";
 };
 
@@ -562,9 +638,24 @@
 	status = "okay";
 };
 
-&wifi0 {
-	/* Enable IPQ9574 integratd 2G Radio */
-	led-gpio = <&tlmm 64 GPIO_ACTIVE_LOW>;
-	qcom,board_id = <0x20>;
+&qcn9224_pcie3 {
+	status = "okay";
+};
+
+#if defined(__MHI_BUS_RESERVED_DMA_POOL__)
+&mhi_region1 {
+	status = "okay";
+};
+
+&mhi_region2 {
+	status = "okay";
+};
+
+&mhi_region3 {
+	status = "okay";
+};
+#endif
+
+&mlo_global_mem0 {
 	status = "okay";
 };
