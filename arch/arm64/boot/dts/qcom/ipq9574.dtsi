@@ -2486,6 +2486,7 @@
 				 <&xo_board_clk>;
 			clock-names = "iface", "core", "xo";
 			non-removable;
+			supports-cqe;
 			status = "disabled";
 		};
 
