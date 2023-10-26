@@ -375,3 +375,63 @@
 	non-removable;
 	status = "okay";
 };
+
+&pcie0 {
+	max-link-speed = <1>;
+	phys = <>;
+	phy-names = "";
+	status = "disabled";
+
+	pcie0_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
+&pcie1 {
+	max-link-speed = <1>;
+	phys = <>;
+	phy-names = "";
+	status = "disabled";
+
+	pcie1_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
+&pcie2 {
+	max-link-speed = <1>;
+	phys = <>;
+	phy-names = "";
+	status = "disabled";
+
+	pcie2_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
+&pcie3 {
+	max-link-speed = <1>;
+	phys = <>;
+	phy-names = "";
+	status = "disabled";
+
+	pcie3_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
