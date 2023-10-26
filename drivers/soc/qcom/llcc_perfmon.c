@@ -318,7 +318,7 @@ static void remove_counters(struct llcc_perfmon_private *llcc_priv)
 
 		port_ops = llcc_priv->port_ops[counter_map->port_sel];
 		port_ops->event_config(llcc_priv, 0, &i, false);
-		pr_info("removed counter %2d for event %3ld from port %2ld\n", i,
+		pr_info("removed counter %2d for event %3u from port %2u\n", i,
 				counter_map->event_sel, counter_map->port_sel);
 		if ((llcc_priv->enables_port & (1 << counter_map->port_sel)) &&
 				port_ops->event_enable)
@@ -559,16 +559,16 @@ static ssize_t perfmon_remove_store(struct device *dev, struct device_attribute 
 		 */
 		if (counter_map->port_sel == port_sel) {
 			if (multi_fltr_flag && !filter_en) {
-				pr_err("Error! filter not present counter:%u for port:%u\n", j,
+				pr_err("Error! filter not present counter:%u for port:%lu\n", j,
 						port_sel);
 				goto out_remove_store_err;
 			} else if (!multi_fltr_flag && filter_en) {
-				pr_err("Error! Filter is present on counter:%u for port:%u\n", j,
+				pr_err("Error! Filter is present on counter:%u for port:%lu\n", j,
 						port_sel);
 				goto out_remove_store_err;
 			}
 		} else {
-			pr_err("Error! Given port %u is not configured on counter %u\n", port_sel,
+			pr_err("Error! Given port %lu is not configured on counter %u\n", port_sel,
 					j);
 			goto out_remove_store_err;
 		}
@@ -600,7 +600,7 @@ static ssize_t perfmon_remove_store(struct device *dev, struct device_attribute 
 		port_ops = llcc_priv->port_ops[port_sel];
 		port_ops->event_config(llcc_priv, event_sel, &j, false);
 		llcc_priv->removed_cntrs++;
-		pr_info("removed counter %2d for event %3ld from port %2ld\n", j++, event_sel,
+		pr_info("removed counter %2d for event %3lu from port %2lu\n", j++, event_sel,
 				port_sel);
 		if ((llcc_priv->enables_port & (1 << port_sel)) && port_ops->event_enable)
 			port_ops->event_enable(llcc_priv, false);
@@ -2055,7 +2055,7 @@ static int llcc_perfmon_probe(struct platform_device *pdev)
 
 	llcc_priv->llcc_map = llcc_driv_data->regmaps[0];
 	llcc_priv->llcc_bcast_map = llcc_driv_data->bcast_regmap;
-	llcc_priv->drv_ver = llcc_driv_data->llcc_ver;
+	llcc_priv->drv_ver = llcc_driv_data->version;
 	offset = LLCC_COMMON_STATUS0(llcc_priv->drv_ver);
 	llcc_bcast_read(llcc_priv, offset, &val);
 	llcc_priv->num_mc = (val & NUM_MC_MASK) >> NUM_MC_SHIFT;
