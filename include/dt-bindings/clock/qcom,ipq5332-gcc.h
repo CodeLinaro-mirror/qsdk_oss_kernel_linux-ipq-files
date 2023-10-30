@@ -96,7 +96,6 @@
 #define GCC_PRNG_AHB_CLK				89
 #define GCC_Q6_AXIM_CLK_SRC				93
 #define GCC_QDSS_AT_CLK_SRC				100
-#define GCC_QDSS_EUD_AT_CLK				106
 #define GCC_QPIC_AHB_CLK				108
 #define GCC_QPIC_CLK					109
 #define GCC_QPIC_IO_MACRO_CLK				110
