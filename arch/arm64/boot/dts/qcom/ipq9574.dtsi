@@ -743,6 +743,51 @@
 			status = "disabled";
 		};
 
+		lpass: lpass@0xA000000{
+			compatible = "qca,lpass-ipq9574";
+			reg =  <0xA000000 0x3BFFFF>;
+			clocks = <&gcc GCC_LPASS_SWAY_CLK>,
+			<&gcc GCC_LPASS_CORE_AXIM_CLK>,
+			<&gcc GCC_SNOC_LPASS_CFG_CLK>,
+			<&gcc GCC_PCNOC_LPASS_CLK>;
+			clock-names = "sway", "axim", "snoc_cfg", "pcnoc";
+			resets = <&gcc GCC_LPASS_BCR>;
+			reset-names = "lpass";
+			status = "disabled";
+		};
+
+		pcm: pcm@0xA3C0000{
+			compatible = "qca,ipq9574-lpass-pcm";
+			reg =  <0xA3C0000 0x23014>;
+			status = "disabled";
+
+			pcm0: pcm0@0 {
+				interrupts = <0 419 IRQ_TYPE_LEVEL_HIGH>;
+				interrupt-names = "out0";
+				capture_memory = "lpm";
+				playback_memory = "lpm";
+				voice_loopback = <0>;
+				slave = <0>;
+				status = "disabled";
+			      };
+
+			pcm1: pcm1@1 {
+				interrupts = <0 117 IRQ_TYPE_LEVEL_HIGH>;
+				interrupt-names = "out1";
+				capture_memory = "lpm";
+				playback_memory = "lpm";
+				voice_loopback = <0>;
+				slave = <0>;
+				status = "disabled";
+			};
+
+		};
+
+		pcm_lb: pcm_lb@0 {
+			compatible = "qca,ipq9574-pcm-lb";
+			status = "disabled";
+		};
+
 		wsi: wsi {
 			status = "okay";
 		};
