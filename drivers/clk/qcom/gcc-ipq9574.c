@@ -3594,6 +3594,22 @@ static struct clk_rcg2 lpass_axim_clk_src = {
 	},
 };
 
+static struct clk_branch gcc_pcnoc_lpass_clk = {
+	.halt_reg = 0x31020,
+	.clkr = {
+		.enable_reg = 0x31020,
+		.enable_mask = BIT(0),
+		.hw.init = &(struct clk_init_data){
+			.name = "gcc_pcnoc_lpass_clk",
+			.parent_hws = (const struct clk_hw *[]){
+				&lpass_axim_clk_src.clkr.hw },
+			.num_parents = 1,
+			.flags = CLK_SET_RATE_PARENT,
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
 static struct clk_rcg2 lpass_sway_clk_src = {
 	.cmd_rcgr = 0x27004,
 	.freq_tbl = ftbl_lpass_axim_clk_src,
@@ -3604,6 +3620,54 @@ static struct clk_rcg2 lpass_sway_clk_src = {
 		.parent_data = gcc_xo_gpll0,
 		.num_parents = ARRAY_SIZE(gcc_xo_gpll0),
 		.ops = &clk_rcg2_ops,
+	},
+};
+
+static struct clk_branch gcc_lpass_core_axim_clk = {
+	.halt_reg = 0x27018,
+	.clkr = {
+		.enable_reg = 0x27018,
+		.enable_mask = BIT(0),
+		.hw.init = &(struct clk_init_data){
+			.name = "gcc_lpass_core_axim_clk",
+			.parent_hws = (const struct clk_hw *[]){
+				&lpass_axim_clk_src.clkr.hw },
+			.num_parents = 1,
+			.flags = CLK_SET_RATE_PARENT,
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_snoc_lpass_cfg_clk = {
+	.halt_reg = 0x2e028,
+	.clkr = {
+		.enable_reg = 0x2e028,
+		.enable_mask = BIT(0),
+		.hw.init = &(struct clk_init_data){
+			.name = "gcc_snoc_lpass_cfg_clk",
+			.parent_hws = (const struct clk_hw *[]){
+				&lpass_sway_clk_src.clkr.hw },
+			.num_parents = 1,
+			.flags = CLK_SET_RATE_PARENT,
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_lpass_sway_clk = {
+	.halt_reg = 0x27014,
+	.clkr = {
+		.enable_reg = 0x27014,
+		.enable_mask = BIT(0),
+		.hw.init = &(struct clk_init_data){
+			.name = "gcc_lpass_sway_clk",
+			.parent_hws = (const struct clk_hw *[]){
+				&lpass_sway_clk_src.clkr.hw },
+			.num_parents = 1,
+			.flags = CLK_SET_RATE_PARENT,
+			.ops = &clk_branch2_ops,
+		},
 	},
 };
 
@@ -4058,8 +4122,12 @@ static struct clk_regmap *gcc_ipq9574_clks[] = {
 	[GCC_MEM_NOC_NSSNOC_CLK] = &gcc_mem_noc_nssnoc_clk.clkr,
 	[LPASS_AXIM_CLK_SRC] = &lpass_axim_clk_src.clkr,
 	[LPASS_SWAY_CLK_SRC] = &lpass_sway_clk_src.clkr,
+	[GCC_SNOC_LPASS_CFG_CLK] = &gcc_snoc_lpass_cfg_clk.clkr,
 	[ADSS_PWM_CLK_SRC] = &adss_pwm_clk_src.clkr,
 	[GCC_ADSS_PWM_CLK] = &gcc_adss_pwm_clk.clkr,
+	[GCC_PCNOC_LPASS_CLK] = &gcc_pcnoc_lpass_clk.clkr,
+	[GCC_LPASS_SWAY_CLK] = &gcc_lpass_sway_clk.clkr,
+	[GCC_LPASS_CORE_AXIM_CLK] = &gcc_lpass_core_axim_clk.clkr,
 	[GP1_CLK_SRC] = &gp1_clk_src.clkr,
 	[GP2_CLK_SRC] = &gp2_clk_src.clkr,
 	[GP3_CLK_SRC] = &gp3_clk_src.clkr,
