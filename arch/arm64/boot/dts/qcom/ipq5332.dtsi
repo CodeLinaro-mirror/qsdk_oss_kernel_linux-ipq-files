@@ -530,6 +530,21 @@
 					bias-pull-up;
 				};
 			};
+
+			bt_pins: bt_pins {
+				pta {
+					pins = "gpio49", "gpio50" , "gpio51";
+					function = "pta";
+					drive-strength = <8>;
+					bias-disable;
+				};
+				bt_reset {
+					pins = "gpio32";
+					function = "gpio";
+					drive-strength = <8>;
+					bias-pull-down;
+				};
+			};
 		};
 
 		gcc: clock-controller@1800000 {
