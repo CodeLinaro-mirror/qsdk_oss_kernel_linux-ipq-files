@@ -620,6 +620,7 @@
 			clock-names = "iface", "bus", "core";
 			dmas = <&cryptobam 2>, <&cryptobam 3>;
 			dma-names = "rx", "tx";
+			qce,cmd_desc_support;
 		};
 
 		rpm_msg_ram: sram@60000 {
