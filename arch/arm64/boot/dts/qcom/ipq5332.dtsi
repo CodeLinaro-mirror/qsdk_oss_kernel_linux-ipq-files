@@ -2399,7 +2399,7 @@
 			trips {
 				misc-critical {
 					temperature = <125000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 			};
@@ -2413,13 +2413,13 @@
 			trips {
 				cpu-top-critical {
 					temperature = <115000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 
 				cpu-passive {
 					temperature = <105000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "passive";
 				};
 			};
@@ -2433,7 +2433,7 @@
 			trips {
 				top-glue-critical {
 					temperature = <125000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 			};
