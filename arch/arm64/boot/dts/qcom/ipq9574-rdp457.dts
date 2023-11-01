@@ -9,6 +9,7 @@
 /dts-v1/;
 
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/leds/common.h>
 #include "ipq9574-qcn9224-default-memory.dtsi"
 #include "ipq9574.dtsi"
 
@@ -101,6 +102,20 @@
 						ethernet-phy-ieee802.3-c45;
 					};
 				};
+			};
+		};
+
+		leds {
+			compatible = "gpio-leds";
+			pinctrl-0 = <&gpio_leds_default>;
+			pinctrl-names = "default";
+
+			led-0 {
+				color = <LED_COLOR_ID_GREEN>;
+				function = LED_FUNCTION_WLAN;
+				gpios = <&tlmm 64 GPIO_ACTIVE_LOW>;
+				linux,default-trigger = "phy0tx";
+				default-state = "off";
 			};
 		};
 
@@ -412,6 +427,13 @@
 		function = "blsp3_i2c";
 		drive-strength = <8>;
 		bias-disable;
+	};
+
+	gpio_leds_default: gpio-leds-default-state {
+		pins = "gpio64";
+		function = "gpio";
+		drive-strength = <8>;
+		bias-pull-up;
 	};
 
 	spi_0_pins: spi-0-pins {

@@ -10,6 +10,7 @@
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
+#include <dt-bindings/leds/common.h>
 #include "ipq9574.dtsi"
 #include "ipq9574-qcn9224-default-memory.dtsi"
 
@@ -114,11 +115,14 @@
 
 		leds {
 			compatible = "gpio-leds";
-			pinctrl-0 = <&leds_pins>;
+			pinctrl-0 = <&gpio_leds_default>;
 			pinctrl-names = "default";
-			led@64 {
+
+			led-0 {
+				color = <LED_COLOR_ID_GREEN>;
+				function = LED_FUNCTION_WLAN;
 				gpios = <&tlmm 64 GPIO_ACTIVE_LOW>;
-				linux,default-trigger = "led_2g";
+				linux,default-trigger = "phy0tx";
 				default-state = "off";
 			};
 		};
@@ -466,7 +470,7 @@
 		bias-disable;
 	};
 
-	leds_pins: leds-state {
+	gpio_leds_default: gpio-leds-default-state {
 		pins = "gpio64";
 		function = "gpio";
 		drive-strength = <8>;
