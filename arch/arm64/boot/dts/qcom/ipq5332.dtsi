@@ -1872,7 +1872,7 @@
 
 		/* 1L controller with 2L/2x1L Flexible PHY 2nd lane */
 		pcie2: pcie@10000000 {
-			compatible = "qcom,pcie-ipq5332";
+			compatible = "qti,pcie-ipq5332";
 			reg =  <0x10000000 0xf1d>,
 			       <0x10000f20 0xa8>,
 			       <0x10001000 0x1000>,
@@ -1956,7 +1956,7 @@
 		 * Connected to the 1st lane of the Flexible PHY in 1L mode
 		 */
 		pcie1: pcie@18000000 {
-			compatible = "qcom,pcie-ipq5332";
+			compatible = "qti,pcie-ipq5332";
 			reg =  <0x18000000 0xf1d>,
 			       <0x18000f20 0xa8>,
 			       <0x18001000 0x1000>,
@@ -2039,7 +2039,7 @@
 
 		/* 1L controller with USB/PCIe combo PHY */
 		pcie0: pcie@20000000 {
-			compatible = "qcom,pcie-ipq5332";
+			compatible = "qti,pcie-ipq5332";
 			reg =  <0x20000000 0xf1d>,
 			       <0x20000f20 0xa8>,
 			       <0x20001000 0x1000>,
