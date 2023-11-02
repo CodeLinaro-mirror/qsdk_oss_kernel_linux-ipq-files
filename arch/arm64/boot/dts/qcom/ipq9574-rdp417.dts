@@ -344,6 +344,19 @@
 			 */
 			skip-voltage-scaling-turboL1-sku-quirk;
 		};
+
+		dummy_reg_cpu: dummy-regulator@1 {
+			compatible = "regulator-fixed";
+			regulator-name = "dummy-reg-cpu";
+			regulator-min-microvolt = <1075000>;
+			regulator-max-microvolt = <1075000>;
+			regulator-always-on;
+			regulator-boot-on;
+		};
+	};
+
+	rpm-glink {
+		status = "disabled";
 	};
 };
 
@@ -441,29 +454,6 @@
 	status = "okay";
 };
 
-&rpm_requests {
-	regulators {
-		compatible = "qcom,rpm-mp5496-regulators";
-
-		ipq9574_s1: s1 {
-		 /*
-		 * During kernel bootup, the SoC runs at 800MHz with 875mV set by the bootloaders.
-		 * During regulator registration, kernel not knowing the initial voltage,
-		 * considers it as zero and brings up the regulators with minimum supported voltage.
-		 * Updating the regulator-min-microvolt with SVS voltage of 725000uV so that
-		 * the regulators are brought up with 725000uV which is sufficient for all the
-		 * corner parts to operate at 800MHz
-		 */
-			regulator-min-microvolt = <587500>;
-			regulator-max-microvolt = <1075000>;
-		};
-		ipq9574_s2: s2 {
-			regulator-min-microvolt = <700000>;
-			regulator-max-microvolt = <1000000>;
-		};
-	};
-};
-
 &tlmm {
 	pci0_pin: pci0-default-state {
 		pins = "gpio23";
@@ -541,34 +531,50 @@
 	clock-frequency = <24000000>;
 };
 
+&cpu_opp_table {
+	opp-936000000 {
+		opp-microvolt = <1075000>;
+	};
+
+	opp-1104000000 {
+		opp-microvolt = <1075000>;
+	};
+
+	opp-1200000000 {
+		opp-microvolt = <1075000>;
+	};
+
+	opp-1416000000 {
+		opp-microvolt = <1075000>;
+	};
+
+	opp-1488000000 {
+		opp-microvolt = <1075000>;
+	};
+
+	opp-1800000000 {
+		opp-microvolt = <1075000>;
+	};
+
+	opp-2208000000 {
+		opp-microvolt = <1075000>;
+	};
+};
+
 &CPU0 {
-	cpu-supply = <&apc_vreg>;
+	cpu-supply = <&dummy_reg_cpu>;
 };
 
 &CPU1 {
-	cpu-supply = <&apc_vreg>;
+	cpu-supply = <&dummy_reg_cpu>;
 };
 
 &CPU2 {
-	cpu-supply = <&apc_vreg>;
+	cpu-supply = <&dummy_reg_cpu>;
 };
 
 &CPU3 {
-	cpu-supply = <&apc_vreg>;
-};
-
-&apc_apm {
-	status = "okay";
-};
-
-&apc_cpr {
-	vdd-supply = <&ipq9574_s1>;
-	status = "okay";
-};
-
-&npu_cpr {
-	vdd-supply = <&ipq9574_s2>;
-	status = "okay";
+	cpu-supply = <&dummy_reg_cpu>;
 };
 
 &q6_region {
