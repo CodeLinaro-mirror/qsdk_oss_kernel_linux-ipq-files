@@ -1115,6 +1115,11 @@
 			     <GIC_PPI 12 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>;
 	};
 
+	qcom,test@0 {
+		compatible = "qcom,testmhi";
+		qcom,wlan-ramdump-dynamic = <0x600000>;
+	};
+
 	wcss: wcss-smp2p {
 		compatible = "qcom,smp2p";
 		qcom,smem = <435>, <428>;
