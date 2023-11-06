@@ -41,10 +41,20 @@ static const struct gpio_regulator_data ipq9574_gpio_regulator_data[] = {
 	{ },
 };
 
+static const struct gpio_regulator_data ipq9574_4state_gpio_regulator_data[] = {
+	{"apc", 6, 1062500, 10000, 1004000, 1068000, 1000000},
+	{"cx", 5, 850000, 10000, 850000, 910000, 850000},
+	{ }
+};
+
 static struct of_device_id gpio_regulator_match_table[] = {
 	{
 		.compatible = "qcom,ipq9574-gpio-regulator",
 		.data = &ipq9574_gpio_regulator_data
+	},
+	{
+		.compatible = "qcom,ipq9574-4state-gpio-regulator",
+		.data = &ipq9574_4state_gpio_regulator_data
 	},
 	{}
 };
