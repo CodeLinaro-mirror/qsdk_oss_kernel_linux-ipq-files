@@ -632,6 +632,7 @@
 				 <&gcc GCC_BLSP1_AHB_CLK>;
 			clock-names = "core", "iface";
 			status = "disabled";
+			tx-watermark = <0>;
 		};
 
 		blsp1_uart1: serial@78b0000 {
