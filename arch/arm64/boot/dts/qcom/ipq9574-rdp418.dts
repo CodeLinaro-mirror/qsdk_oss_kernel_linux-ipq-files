@@ -340,7 +340,7 @@
 	};
 };
 
-&blsp1_spi0 {
+&blsp1_spi1 {
 	pinctrl-0 = <&spi_1_pins>;
 	pinctrl-names = "default";
 	cs-select = <0>;
