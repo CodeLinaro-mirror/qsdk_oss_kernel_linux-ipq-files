@@ -115,6 +115,7 @@
 			qcom,link-poll = <1>;
 			phy-mode = "sgmii";
 			qcom,mht-dev = <1>;
+			qcom,is_switch_connected = <1>;
 		};
 
 		/* EDMA host driver configuration for the board */
