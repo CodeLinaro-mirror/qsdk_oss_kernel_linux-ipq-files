@@ -119,8 +119,9 @@ struct q6_wcss {
 	enum q6_wcss_state state;
 	bool is_fw_shared;
 	bool need_mem_protection;
-#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	void __iomem *reg_base;
+	void __iomem *wcmn_base;
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	struct reset_control *wcss_q6_reset;
 	struct regmap *tcsr_map;
 	u32 tcsr_boot;
@@ -394,11 +395,11 @@ static int q6_wcss_start(struct rproc *rproc)
 		goto wait_for_start;
 	}
 
-	#ifdef CONFIG_QCOM_NON_SECURE_PIL
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	ret = q6_powerup(rproc);
 	if (ret)
 		return ret;
-	#endif
+#endif
 
 wait_for_start:
 	ret = qcom_q6v5_wait_for_start(&wcss->q6, msecs_to_jiffies(10000));
@@ -408,6 +409,13 @@ wait_for_start:
 		else
 			dev_err(wcss->dev, "start timed out\n");
 	}
+
+	if (wcss->reg_base)
+		dev_info(wcss->dev, "QDSP6SS Version : 0x%x\n",
+			 readl(wcss->reg_base));
+	if (wcss->wcmn_base)
+		dev_info(wcss->dev, "WCSS Version : 0x%x\n",
+			 readl(wcss->wcmn_base));
 
 	/* start userpd's, if root pd getting recovered*/
 	if (wcss->state == WCSS_RESTARTING) {
@@ -593,11 +601,11 @@ static int q6_wcss_stop(struct rproc *rproc)
 		goto unprepare;
 	}
 
-	#ifdef CONFIG_QCOM_NON_SECURE_PIL
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	ret = q6_powerdown(wcss);
 	if (ret)
 		return ret;
-	#endif
+#endif
 
 unprepare:
 	qcom_q6v5_unprepare(&wcss->q6);
@@ -699,9 +707,9 @@ static int copy_userpd_bootargs(struct bootargs_smem_info *boot_args,
 {
 	struct q6_wcss *upd_wcss = upd_rproc->priv;
 	int ret = 0;
-	#ifndef CONFIG_QCOM_NON_SECURE_PIL
+#ifndef CONFIG_QCOM_NON_SECURE_PIL
 	const struct firmware *fw;
-	#endif
+#endif
 	struct q6_userpd_bootargs upd_bootargs = {0};
 	struct device *dev = upd_wcss->dev;
 
@@ -715,7 +723,7 @@ static int copy_userpd_bootargs(struct bootargs_smem_info *boot_args,
 	/* PID */
 	upd_bootargs.pid = qcom_get_pd_asid(dev->of_node) + 1;
 
-	#ifndef CONFIG_QCOM_NON_SECURE_PIL
+#ifndef CONFIG_QCOM_NON_SECURE_PIL
 		ret = request_firmware(&fw, upd_rproc->firmware, upd_wcss->dev);
 		if (ret < 0) {
 			dev_err(upd_wcss->dev, "request_firmware failed: %d\n",	ret);
@@ -729,14 +737,14 @@ static int copy_userpd_bootargs(struct bootargs_smem_info *boot_args,
 		upd_bootargs.data_size = qcom_mdt_get_file_size(fw);
 
 		release_firmware(fw);
-	#else
+#else
 		/* Load address */
 		upd_bootargs.bootaddr = userpd_bootaddr;
 		upd_rproc->bootaddr = userpd_bootaddr;
 
 		/* PIL data size */
 		upd_bootargs.data_size = userpd_size;
-	#endif
+#endif
 
 	/* copy into smem bootargs array*/
 	memcpy_toio(boot_args->smem_bootargs_ptr,
@@ -937,7 +945,7 @@ static int q6_wcss_load(struct rproc *rproc, const struct firmware *fw)
 		return ret;
 	}
 
-	#ifdef CONFIG_QCOM_NON_SECURE_PIL
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	if (wcss->backdoor) {
 		dev_info(wcss->dev, "skipping fw load\n");
 		return 0;
@@ -948,7 +956,7 @@ static int q6_wcss_load(struct rproc *rproc, const struct firmware *fw)
 		dev_err(wcss->dev, "request_firmware failed: %d\n", ret);
 		return ret;
 	}
-	#endif
+#endif
 
 	/* load m3 firmware */
 	for_each_available_child_of_node(wcss->dev->of_node, upd_np) {
@@ -996,7 +1004,7 @@ static int wcss_ahb_pcie_pd_load(struct rproc *rproc, const struct firmware *fw)
 			return ret;
 	}
 
-	#ifdef CONFIG_QCOM_NON_SECURE_PIL
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	if (wcss->backdoor) {
 		dev_info(wcss->dev, "skipping fw load\n");
 		return 0;
@@ -1007,7 +1015,7 @@ static int wcss_ahb_pcie_pd_load(struct rproc *rproc, const struct firmware *fw)
 		dev_err(wcss->dev, "request_firmware failed: %d\n", ret);
 		return ret;
 	}
-	#endif
+#endif
 
 	pasid = desc->pasid;
 	if (!pasid) {
@@ -1331,21 +1339,12 @@ static int devsoc_init_reset(struct q6_wcss *wcss)
 	return 0;
 }
 
-static int q6_wcss_init_mmio(struct q6_wcss *wcss,
-			     struct platform_device *pdev)
+static int q6_wcss_map_tcsr(struct q6_wcss *wcss,
+			    struct platform_device *pdev)
 {
-	struct resource *res;
 	struct device_node *syscon;
 	unsigned int tcsr_reg[MAX_TCSR_REG] = {0};
 	int ret;
-
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "qdsp6");
-	if (res) {
-		wcss->reg_base = devm_ioremap(&pdev->dev, res->start,
-					      resource_size(res));
-		if (IS_ERR(wcss->reg_base))
-			return PTR_ERR(wcss->reg_base);
-	}
 
 	syscon = of_parse_phandle(pdev->dev.of_node,
 				  "qcom,q6-tcsr-regs", 0);
@@ -1372,6 +1371,30 @@ static int q6_wcss_init_mmio(struct q6_wcss *wcss,
 }
 #endif
 
+static int q6_wcss_init_mmio(struct q6_wcss *wcss,
+			     struct platform_device *pdev)
+{
+	struct resource *res;
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "qdsp6");
+	if (res) {
+		wcss->reg_base = devm_ioremap(&pdev->dev, res->start,
+					      resource_size(res));
+		if (IS_ERR(wcss->reg_base))
+			return PTR_ERR(wcss->reg_base);
+	}
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "wcmn");
+	if (res) {
+		wcss->wcmn_base = devm_ioremap(&pdev->dev, res->start,
+					       resource_size(res));
+		if (IS_ERR(wcss->wcmn_base))
+			return PTR_ERR(wcss->wcmn_base);
+	}
+
+	return 0;
+}
+
 static int q6_wcss_probe(struct platform_device *pdev)
 {
 	const struct wcss_data *desc;
@@ -1380,9 +1403,9 @@ static int q6_wcss_probe(struct platform_device *pdev)
 	int ret;
 	char *subdev_name;
 	const char *fw_name = NULL;
-	#ifdef CONFIG_QCOM_NON_SECURE_PIL
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	u32 bootaddr;
-	#endif
+#endif
 
 	desc = of_device_get_match_data(&pdev->dev);
 	if (!desc)
@@ -1412,8 +1435,16 @@ static int q6_wcss_probe(struct platform_device *pdev)
 	if (wcss->pd_asid < 0)
 		goto free_rproc;
 
-	#ifdef CONFIG_QCOM_NON_SECURE_PIL
+	ret = q6_wcss_init_mmio(wcss, pdev);
+	if (ret)
+		goto free_rproc;
+
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	/* Non-secure specific initializations */
+	ret = q6_wcss_map_tcsr(wcss, pdev);
+	if (ret)
+		goto free_rproc;
+
 	if (of_property_read_bool(pdev->dev.of_node, "qcom,nosecure"))
 		wcss->need_mem_protection = false;
 
@@ -1433,10 +1464,6 @@ static int q6_wcss_probe(struct platform_device *pdev)
 		}
 	}
 
-	ret = q6_wcss_init_mmio(wcss, pdev);
-	if (ret)
-		goto free_rproc;
-
 	if (desc->init_clock) {
 		ret = desc->init_clock(wcss);
 		if (ret)
@@ -1448,7 +1475,7 @@ static int q6_wcss_probe(struct platform_device *pdev)
 		if (ret)
 			goto free_rproc;
 	}
-	#endif
+#endif
 
 	if (desc->init_irq) {
 		ret = desc->init_irq(&wcss->q6, pdev, rproc, desc->remote_id,

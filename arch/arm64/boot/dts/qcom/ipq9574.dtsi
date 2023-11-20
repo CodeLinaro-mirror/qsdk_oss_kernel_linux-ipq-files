@@ -3293,7 +3293,10 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges;
-			reg = <0x0cd00000 0x4040>;
+			reg = <0x0cd00000 0x4040>,
+			      <0xCB50000 0x8>;
+			reg-names = "qdsp6",
+				    "wcmn";
 			interrupts-extended = <&intc GIC_SPI 325 IRQ_TYPE_EDGE_RISING>,
 					      <&wcss_smp2p_in 0 0>,
 					      <&wcss_smp2p_in 1 0>,
