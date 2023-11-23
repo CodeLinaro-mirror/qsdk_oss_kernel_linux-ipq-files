@@ -220,6 +220,10 @@
 		};
 	};
 
+	ctx_save: ctx-save {
+		compatible = "qti,ctxt-save-ipq9574";
+	};
+
 	firmware {
 		qfprom {
 			compatible = "qcom,qfprom-sec";
