@@ -679,7 +679,7 @@
 	qcom,bdf-addr = <0x4D800000 0x4D800000 0x4D800000 0x0 0x0 0x0>;
 	qcom,caldb-addr = <0x4EA00000 0x4EA00000 0x4EA00000 0x0 0x0 0x0>;
 	qcom,caldb-size = <0x500000>;
-	qcom,board_id = <0x050>;
+	qcom,board_id = <0x052>;
 	mem-region = <&q6_qcn6432_data_1>;
 	memory-region = <&q6_qcn6432_data_1>;
 	qcom,wsi = <&wsi>;
@@ -695,7 +695,7 @@
 	qcom,bdf-addr = <0x4EF00000 0x4EF00000 0x4EF00000 0x0 0x0 0x0>;
 	qcom,caldb-addr = <0x50100000 0x50100000 0x50100000 0x0 0x0 0x0>;
 	qcom,caldb-size = <0x500000>;
-	qcom,board_id = <0x090>;
+	qcom,board_id = <0x091>;
 	mem-region = <&q6_qcn6432_data_2>;
 	memory-region = <&q6_qcn6432_data_2>;
 	qcom,wsi = <&wsi>;
