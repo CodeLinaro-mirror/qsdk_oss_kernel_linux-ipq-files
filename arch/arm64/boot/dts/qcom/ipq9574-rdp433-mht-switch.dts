@@ -183,6 +183,10 @@
 	};
 };
 
+&reg_update {
+	ubi_core_enable;
+};
+
 &blsp1_uart2 {
 	pinctrl-0 = <&uart2_pins>;
 	pinctrl-names = "default";
