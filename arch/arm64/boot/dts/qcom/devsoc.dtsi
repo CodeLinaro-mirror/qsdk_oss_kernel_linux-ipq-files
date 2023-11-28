@@ -151,6 +151,14 @@
 		ranges = <0 0 0 0xffffffff>;
 		dma-ranges;
 
+		system-cache-controller@800000 {
+			compatible = "qcom,devsoc-llcc";
+			reg = <0x00800000 0x200000>, <0x00800000 0x200000>;
+			reg-names = "llcc_base", "llcc_broadcast_base";
+			interrupts = <GIC_SPI 68 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
 		tlmm: pinctrl@1000000 {
 			compatible = "qcom,devsoc-tlmm";
 			reg = <0x01000000 0x300000>;
