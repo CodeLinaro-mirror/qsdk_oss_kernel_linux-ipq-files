@@ -3936,7 +3936,7 @@
 			trips {
 				nss-top-critical {
 					temperature = <125000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 			};
@@ -3950,7 +3950,7 @@
 			trips {
 				ubi_0-critical {
 					temperature = <125000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 			};
@@ -3964,7 +3964,7 @@
 			trips {
 				ubi_1-critical {
 					temperature = <125000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 			};
@@ -3978,7 +3978,7 @@
 			trips {
 				ubi_2-critical {
 					temperature = <125000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 			};
@@ -3992,7 +3992,7 @@
 			trips {
 				ubi_3-critical {
 					temperature = <125000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 			};
@@ -4006,7 +4006,7 @@
 			trips {
 				cpu-critical {
 					temperature = <125000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 			};
@@ -4020,7 +4020,7 @@
 			trips {
 				cpu-critical {
 					temperature = <125000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 			};
@@ -4034,13 +4034,13 @@
 			trips {
 				cpu-critical {
 					temperature = <120000>;
-					hysteresis = <10000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 
 				cpu-passive {
 					temperature = <110000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "passive";
 				};
 			};
@@ -4054,13 +4054,13 @@
 			trips {
 				cpu-critical {
 					temperature = <120000>;
-					hysteresis = <10000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 
 				cpu-passive {
 					temperature = <110000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "passive";
 				};
 			};
@@ -4074,13 +4074,13 @@
 			trips {
 				cpu-critical {
 					temperature = <120000>;
-					hysteresis = <10000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 
 				cpu-passive {
 					temperature = <110000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "passive";
 				};
 			};
@@ -4094,13 +4094,13 @@
 			trips {
 				cpu-critical {
 					temperature = <120000>;
-					hysteresis = <10000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 
 				cpu3_thermal_alert: cpu-passive {
 					temperature = <110000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "passive";
 				};
 			};
@@ -4125,7 +4125,7 @@
 			trips {
 				wcss_phyb-critical {
 					temperature = <125000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 			};
@@ -4139,7 +4139,7 @@
 			trips {
 				top_glue-critical {
 					temperature = <125000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 			};
