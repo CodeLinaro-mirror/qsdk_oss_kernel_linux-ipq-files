@@ -374,6 +374,10 @@
 	status = "okay";
 };
 
+&q6v5_wcss {
+	status = "disabled";
+};
+
 /* PINCTRL */
 
 &tlmm {
