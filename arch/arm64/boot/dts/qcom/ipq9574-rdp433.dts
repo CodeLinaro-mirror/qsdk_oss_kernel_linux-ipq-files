@@ -645,6 +645,12 @@
 		};
 	};
 
+	pwm_pins: pwm-state {
+		pins = "gpio57";
+		function = "pwm";
+		drive-strength = <8>;
+	};
+
 	sdc_default_state: sdc-default-state {
 		clk-pins {
 			pins = "gpio5";
@@ -693,6 +699,12 @@
 };
 
 &usb3 {
+	status = "okay";
+};
+
+&pwm {
+	pinctrl-0 = <&pwm_pins>;
+	pinctrl-names = "default";
 	status = "okay";
 };
 

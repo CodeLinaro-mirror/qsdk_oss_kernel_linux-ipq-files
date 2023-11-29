@@ -530,6 +530,12 @@
 		bias-pull-up;
 	};
 
+	pwm_pins: pwm-state {
+		pins = "gpio46";
+		function = "pwm0";
+		drive-strength = <8>;
+	};
+
 	pcie1_default_state: pcie1-default-state {
 		pins = "gpio47";
 		function = "gpio";
@@ -541,6 +547,12 @@
 
 &usb3 {
 	qcom,multiplexed-phy;
+	status = "okay";
+};
+
+&pwm {
+	pinctrl-0 = <&pwm_pins>;
+	pinctrl-names = "default";
 	status = "okay";
 };
 
