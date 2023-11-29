@@ -380,7 +380,7 @@
 };
 
 &blsp1_uart4 {
-	pinctrl-0 = <&uart4_pins>;
+	pinctrl-0 = <&QCC710_pins &pta_QCC710>;
 	pinctrl-names = "default";
 	status = "okay";
 };
@@ -484,11 +484,40 @@
 		bias-disable;
 	};
 
-	uart4_pins: uart4-pins {
-		pins = "gpio50", "gpio51", "gpio52", "gpio53";
-		function = "blsp4_uart";
-		drive-strength = <8>;
-		bias-disable;
+	QCC710_pins: QCC710_pins {
+		uart4_pins: uart4-pins {
+			pins = "gpio50", "gpio51", "gpio52", "gpio53";
+			function = "blsp4_uart";
+			drive-strength = <8>;
+			bias-disable;
+		};
+		QCC710_reset {
+			pins = "gpio19";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+	};
+
+	pta_QCC710: pta_QCC710 {
+		pta1_0 {
+			pins = "gpio56";
+			function = "pta1_0";
+			drive-strength = <8>;
+			bias-disable;
+		};
+		pta1_1 {
+			pins = "gpio54";
+			function = "pta1_1";
+			drive-strength = <8>;
+			bias-disable;
+		};
+		pta1_2 {
+			pins = "gpio55";
+			function = "pta1_2";
+			drive-strength = <8>;
+			bias-disable;
+		};
 	};
 
 	qspi_nand_pins: qspi_nand_pins {
