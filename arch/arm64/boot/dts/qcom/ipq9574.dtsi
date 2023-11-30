@@ -793,7 +793,7 @@
 		};
 
 		pcie1_x1: pci@10000000 {
-			compatible = "qcom,pcie-ipq9574";
+			compatible = "qti,pcie-ipq9574";
 			reg =  <0x10000000 0xf1d>,
 			       <0x10000F20 0xa8>,
 			       <0x10001000 0x1000>,
@@ -879,7 +879,7 @@
 		};
 
 		pcie3_x2: pci@18000000 {
-			compatible = "qcom,pcie-ipq9574";
+			compatible = "qti,pcie-ipq9574";
 			reg =  <0x18000000 0xf1d>,
 			       <0x18000F20 0xa8>,
 			       <0x18001000 0x1000>,
@@ -964,7 +964,7 @@
 		};
 
 		pcie2_x2: pci@20000000 {
-			compatible = "qcom,pcie-ipq9574";
+			compatible = "qti,pcie-ipq9574";
 			reg =  <0x20000000 0xf1d>,
 			       <0x20000F20 0xa8>,
 			       <0x20001000 0x1000>,
@@ -1049,7 +1049,7 @@
 		};
 
 		pcie0_x1: pci@28000000 {
-			compatible = "qcom,pcie-ipq9574";
+			compatible = "qti,pcie-ipq9574";
 			reg =  <0x28000000 0xf1d>,
 			       <0x28000F20 0xa8>,
 			       <0x28001000 0x1000>,
@@ -2794,7 +2794,7 @@
 
 		mdio: mdio@90000 {
 			compatible = "qcom,qca-mdio", "qcom,ipq40xx-mdio";
-			reg = <0x90000 0x64>, <0x9B780 8>;
+			reg = <0x90000 0x64>, <0x9B000 0x800>;
 			reg-names = "ppe", "cmn_blk";
 			#address-cells = <1>;
 			#size-cells = <1>;
