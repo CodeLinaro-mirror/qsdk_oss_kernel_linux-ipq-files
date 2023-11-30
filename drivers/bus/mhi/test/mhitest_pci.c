@@ -836,6 +836,13 @@ void mhitest_mhi_notify_status(struct mhi_controller *mhi_cntrl,
 			complete(&temp->soc_reset_request);
 			return;
 		}
+
+		/* check duplicate RDDM received from MHI */
+		if (mhi_get_exec_env(mhi_cntrl) == mhi_cntrl->ee) {
+			MHITEST_LOG("Skip duplicate %s(%d) received from MHI\n",
+				    mhitest_get_reson_str(reason), reason);
+			return;
+		}
 		break;
 	case MHI_CB_EE_MISSION_MODE:
 		MHITEST_VERB("MHI_CB_EE_MISSION_MODE\n");
