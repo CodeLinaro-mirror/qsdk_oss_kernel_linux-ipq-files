@@ -830,6 +830,12 @@ void mhitest_mhi_notify_status(struct mhi_controller *mhi_cntrl,
 		return;
 	case MHI_CB_EE_RDDM:
 		reason = MHI_RDDM;
+		if (temp->soc_reset_requested) {
+			MHITEST_LOG("Ignoring RDDM CB for SOC_RESET_REQUEST\n");
+			temp->soc_reset_requested = false;
+			complete(&temp->soc_reset_request);
+			return;
+		}
 		break;
 	case MHI_CB_EE_MISSION_MODE:
 		MHITEST_VERB("MHI_CB_EE_MISSION_MODE\n");
@@ -1535,6 +1541,20 @@ free_mplat:
 	devm_kfree(&mplat->plat_dev->dev, mplat);
 fail_probe:
 	return ret;
+}
+
+void mhitest_pci_soc_reset(struct mhitest_platform *mplat)
+{
+	init_completion(&mplat->soc_reset_request);
+	mplat->soc_reset_requested = true;
+	mhi_soc_reset(mplat->mhi_ctrl);
+	if (!wait_for_completion_timeout(&mplat->soc_reset_request,
+					 msecs_to_jiffies(200))) {
+		MHITEST_ERR("SOC reset request failed\n");
+		mplat->soc_reset_requested = false;
+		reinit_completion(&mplat->soc_reset_request);
+	}
+	MHITEST_LOG("SOC_RESET_REQ done");
 }
 
 void mhitest_pci_remove(struct pci_dev *pci_dev)
