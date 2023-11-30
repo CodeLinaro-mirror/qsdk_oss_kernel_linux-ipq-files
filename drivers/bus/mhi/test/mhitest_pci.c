@@ -925,6 +925,9 @@ int mhitest_pci_register_mhi(struct mhitest_platform *mplat)
 		MHITEST_ERR("Failed to register mhi controller ret:%d\n", ret);
 		goto out;
 	}
+	mhi_ctrl->rddm_prealloc = false;
+	mhi_ctrl->rddm_seg_len = SZ_4K;
+
 	MHITEST_VERB("GOOD!\n");
 	return  0;
 
