@@ -605,6 +605,10 @@
 	status = "okay";
 };
 
+&license_manager {
+	status = "okay";
+};
+
 &xo_board_clk {
 	clock-frequency = <24000000>;
 };

@@ -576,6 +576,10 @@
 	cpu-supply = <&apc_vreg>;
 };
 
+&license_manager {
+	status = "okay";
+};
+
 &apc_apm {
 	status = "okay";
 };

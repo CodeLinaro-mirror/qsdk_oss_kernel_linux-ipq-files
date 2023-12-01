@@ -719,6 +719,10 @@
 	cpu-supply = <&apc_rail2>;
 };
 
+&license_manager {
+	status = "okay";
+};
+
 &q6v5_wcss {
 	status = "okay";
 };
