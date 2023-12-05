@@ -645,6 +645,8 @@
 			#redistributor-regions = <1>;
 			redistributor-stride = <0x0 0x20000>;
 			interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH>;
+			mbi-ranges = <672 128>;
+			msi-controller;
 		};
 
 		ess-instance {
@@ -999,9 +1001,8 @@
 					<0 0 0 3 &intc 0 481 IRQ_TYPE_LEVEL_HIGH>, /* int_c */
 					<0 0 0 4 &intc 0 482 IRQ_TYPE_LEVEL_HIGH>; /* int_d */
 
-			interrupts = <GIC_SPI 478 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI 470 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "global_irq", "msi";
+			interrupts = <GIC_SPI 478 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "global_irq";
 
 			clocks = <&gcc GCC_PCIE3_AXI_M_CLK>,
 				 <&gcc GCC_PCIE3_AXI_S_CLK>,
@@ -1047,6 +1048,8 @@
 				      "ahb",
 				      "aux";
 
+			msi-parent = <&intc>;
+
 			pinctrl-0 = <&pcie3_default_state>;
 			pinctrl-names = "default";
 
@@ -1083,9 +1086,8 @@
 					<0 0 0 3 &intc 0 466 IRQ_TYPE_LEVEL_HIGH>, /* int_c */
 					<0 0 0 4 &intc 0 467 IRQ_TYPE_LEVEL_HIGH>; /* int_d */
 
-			interrupts = <GIC_SPI 463 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI 455 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "global_irq", "msi";
+			interrupts = <GIC_SPI 463 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "global_irq";
 
 			clocks = <&gcc GCC_PCIE2_AXI_M_CLK>,
 				 <&gcc GCC_PCIE2_AXI_S_CLK>,
@@ -1131,6 +1133,8 @@
 				      "ahb",
 				      "aux";
 
+			msi-parent = <&intc>;
+
 			pinctrl-0 = <&pcie2_default_state>;
 			pinctrl-names = "default";
 
@@ -1167,9 +1171,8 @@
 					<0 0 0 3 &intc 0 451 IRQ_TYPE_LEVEL_HIGH>, /* int_c */
 					<0 0 0 4 &intc 0 452 IRQ_TYPE_LEVEL_HIGH>; /* int_d */
 
-			interrupts = <GIC_SPI 448 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI 440 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "global_irq", "msi";
+			interrupts = <GIC_SPI 448 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "global_irq";
 
 			clocks = <&gcc GCC_PCIE1_AXI_M_CLK>,
 				 <&gcc GCC_PCIE1_AXI_S_CLK>,
@@ -1215,6 +1218,8 @@
 				      "ahb",
 				      "aux";
 
+			msi-parent = <&intc>;
+
 			pinctrl-0 = <&pcie1_default_state>;
 			pinctrl-names = "default";
 
@@ -1251,9 +1256,8 @@
 					<0 0 0 3 &intc 0 436 IRQ_TYPE_LEVEL_HIGH>, /* int_c */
 					<0 0 0 4 &intc 0 437 IRQ_TYPE_LEVEL_HIGH>; /* int_d */
 
-			interrupts = <GIC_SPI 433 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI 425 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "global_irq", "msi";
+			interrupts = <GIC_SPI 433 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "global_irq";
 
 			clocks = <&gcc GCC_PCIE0_AXI_M_CLK>,
 				 <&gcc GCC_PCIE0_AXI_S_CLK>,
@@ -1298,6 +1302,8 @@
 				      "axi_s_sticky",
 				      "ahb",
 				      "aux";
+
+			msi-parent = <&intc>;
 
 			pinctrl-0 = <&pcie0_default_state>;
 			pinctrl-names = "default";
