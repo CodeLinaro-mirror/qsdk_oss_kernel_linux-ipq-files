@@ -692,7 +692,7 @@ static int lm_ioctl_init(struct lm_svc_ctx *svc)
 	}
 
 	/* Creating struct class */
-	dev_class = class_create(THIS_MODULE,"lm_class");
+	dev_class = class_create("lm_class");
 	if (IS_ERR(dev_class)){
 		dev_err(svc->dev, "IOCTL: struct class creation failed\n");
 		ret = PTR_ERR(dev_class);

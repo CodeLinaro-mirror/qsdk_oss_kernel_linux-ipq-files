@@ -284,7 +284,7 @@ static int __init qwes_driver_init(void)
 	}
 
 	/*Creating struct class*/
-	dev_class = class_create(THIS_MODULE,"qwes_class");
+	dev_class = class_create("qwes_class");
 	if (IS_ERR(dev_class)){
 		pr_err("Cannot create the struct class\n");
 		ret = PTR_ERR(dev_class);
