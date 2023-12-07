@@ -38,6 +38,7 @@
 #include <linux/of_device.h>
 #include <linux/of_irq.h>
 #include <linux/of_address.h>
+#include <linux/pinctrl/consumer.h>
 
 #include "ipq-lpass.h"
 #include "ipq9574-lpass-pcm.h"
