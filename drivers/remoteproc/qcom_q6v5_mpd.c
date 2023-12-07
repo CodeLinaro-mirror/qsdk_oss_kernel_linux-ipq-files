@@ -50,6 +50,8 @@
 #define UPD_BOOTARGS_HEADER_TYPE	0x2
 #define LIC_BOOTARGS_HEADER_TYPE        0x3
 
+#define RESET_CMD_ID			0x18
+
 #ifdef CONFIG_QCOM_NON_SECURE_PIL
 #define MAX_TCSR_REG			3
 #define Q6SS_DBG_CFG                    0x18
@@ -387,6 +389,13 @@ static int q6_wcss_start(struct rproc *rproc)
 	qcom_q6v5_prepare(&wcss->q6);
 
 	if (wcss->need_mem_protection) {
+		if (debug_wcss) {
+			ret = qcom_scm_break_q6_start(RESET_CMD_ID);
+			if (ret) {
+				dev_err(wcss->dev, "breaking q6 failed\n");
+				return ret;
+			}
+		}
 		ret = qcom_scm_pas_auth_and_reset(desc->pasid);
 		if (ret) {
 			dev_err(wcss->dev, "wcss_reset failed\n");
