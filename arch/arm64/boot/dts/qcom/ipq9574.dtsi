@@ -599,6 +599,26 @@
 				reg = <0x15 0x2>;
 				bits = <7 2>;
 			};
+
+			pcie0_disable: pcie0_disable@1c {
+				reg = <0x1c 0x1>;
+				bits = <2 1>;
+			};
+
+			pcie1_disable: pcie1_disable@1c {
+				reg = <0x1c 0x1>;
+				bits = <3 1>;
+			};
+
+			pcie2_disable: pcie2_disable@1c {
+				reg = <0x1c 0x1>;
+				bits = <4 1>;
+			};
+
+			pcie3_disable: pcie3_disable@1c {
+				reg = <0x1c 0x1>;
+				bits = <5 1>;
+			};
 		};
 
 		rng: rng@e3000 {
@@ -881,6 +901,7 @@
 			phys = <&pcie1_lane>;
 			phy-names = "pciephy";
 			msi-parent = <&v2m0>;
+			nvmem-cells = <&pcie1_disable>;
 			status = "disabled";
 		};
 
@@ -966,6 +987,7 @@
 			phys = <&pcie3_lanes>;
 			phy-names = "pciephy";
 			msi-parent = <&v2m0>;
+			nvmem-cells = <&pcie3_disable>;
 			status = "disabled";
 		};
 
@@ -1051,6 +1073,7 @@
 			phys = <&pcie2_lanes>;
 			phy-names = "pciephy";
 			msi-parent = <&v2m0>;
+			nvmem-cells = <&pcie2_disable>;
 			status = "disabled";
 		};
 
@@ -1137,6 +1160,7 @@
 			phys = <&pcie0_lane>;
 			phy-names = "pciephy";
 			msi-parent = <&v2m0>;
+			nvmem-cells = <&pcie0_disable>;
 			status = "disabled";
 		};
 
