@@ -684,6 +684,22 @@
 				bias-disable;
 			};
 
+			gps_pins: gps_pins {
+                                blsp3_uart_pinmux {
+                                        pins = "gpio17", "gpio18";
+                                        function = "blsp3_uart";
+                                        drive-strength = <8>;
+                                        bias-disable;
+                                };
+
+                                gps_on_off {
+                                        pins = "gpio7";
+                                        function = "gpio";
+                                        drive-strength = <8>;
+                                        bias-pull-down;
+                                };
+                        };
+
 			mdio_pins: mdio-state {
 				mux_0 {
 					pins = "gpio38";

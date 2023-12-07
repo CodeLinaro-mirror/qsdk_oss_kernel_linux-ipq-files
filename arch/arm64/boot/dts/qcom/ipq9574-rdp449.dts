@@ -21,6 +21,7 @@
 	aliases {
 		serial0 = &blsp1_uart2;
 		serial1 = &blsp1_uart4;
+		serial2 = &blsp1_uart3;
 		ethernet0 = "/soc/dp1";
 		ethernet1 = "/soc/dp2";
 		ethernet2 = "/soc/dp3";
@@ -387,6 +388,12 @@
 
 &blsp1_uart2 {
 	pinctrl-0 = <&uart2_pins>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+&blsp1_uart3 {
+	pinctrl-0 = <&gps_pins>;
 	pinctrl-names = "default";
 	status = "okay";
 };
