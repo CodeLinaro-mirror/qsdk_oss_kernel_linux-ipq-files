@@ -192,9 +192,6 @@
 			reg = <0x3a504000 0x4000>;
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
-			mdio-bus = <&mdio>;
-			qcom,phy-mdio-addr = <30>;
-			qcom,link-poll = <1>;
 			phy-mode = "sgmii";
 		};
 
