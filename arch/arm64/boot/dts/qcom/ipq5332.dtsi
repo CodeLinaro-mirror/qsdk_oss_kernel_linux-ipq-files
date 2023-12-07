@@ -193,6 +193,10 @@
 		};
 	};
 
+	ctx_save: ctx-save {
+		compatible = "qti,ctxt-save-ipq5332";
+	};
+
 	pmu {
 		compatible = "arm,cortex-a53-pmu";
 		interrupts = <GIC_PPI 7 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_HIGH)>;
