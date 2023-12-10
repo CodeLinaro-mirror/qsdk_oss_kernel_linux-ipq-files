@@ -707,9 +707,7 @@ static int copy_userpd_bootargs(struct bootargs_smem_info *boot_args,
 {
 	struct q6_wcss *upd_wcss = upd_rproc->priv;
 	int ret = 0;
-#ifndef CONFIG_QCOM_NON_SECURE_PIL
 	const struct firmware *fw;
-#endif
 	struct q6_userpd_bootargs upd_bootargs = {0};
 	struct device *dev = upd_wcss->dev;
 
@@ -723,29 +721,32 @@ static int copy_userpd_bootargs(struct bootargs_smem_info *boot_args,
 	/* PID */
 	upd_bootargs.pid = qcom_get_pd_asid(dev->of_node) + 1;
 
-#ifndef CONFIG_QCOM_NON_SECURE_PIL
-		ret = request_firmware(&fw, upd_rproc->firmware, upd_wcss->dev);
-		if (ret < 0) {
-			dev_err(upd_wcss->dev, "request_firmware failed: %d\n",	ret);
-			return ret;
-		}
-
-		/* Load address */
-		upd_bootargs.bootaddr = rproc_get_boot_addr(upd_rproc, fw);
-
-		/* PIL data size */
-		upd_bootargs.data_size = qcom_mdt_get_file_size(fw);
-
-		release_firmware(fw);
-#else
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
+	if (upd_wcss->backdoor) {
 		/* Load address */
 		upd_bootargs.bootaddr = userpd_bootaddr;
 		upd_rproc->bootaddr = userpd_bootaddr;
 
 		/* PIL data size */
 		upd_bootargs.data_size = userpd_size;
+		goto memcpy_to_smem;
+	};
 #endif
+	ret = request_firmware(&fw, upd_rproc->firmware, upd_wcss->dev);
+	if (ret < 0)
+		return ret;
 
+	/* Load address */
+	upd_bootargs.bootaddr = rproc_get_boot_addr(upd_rproc, fw);
+
+	/* PIL data size */
+	upd_bootargs.data_size = qcom_mdt_get_file_size(fw);
+
+	release_firmware(fw);
+
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
+memcpy_to_smem:
+#endif
 	/* copy into smem bootargs array*/
 	memcpy_toio(boot_args->smem_bootargs_ptr,
 		    &upd_bootargs, sizeof(struct q6_userpd_bootargs));
@@ -956,6 +957,7 @@ static int q6_wcss_load(struct rproc *rproc, const struct firmware *fw)
 		dev_err(wcss->dev, "request_firmware failed: %d\n", ret);
 		return ret;
 	}
+	rproc->bootaddr = rproc_get_boot_addr(rproc, fw);
 #endif
 
 	/* load m3 firmware */
@@ -974,6 +976,16 @@ static int q6_wcss_load(struct rproc *rproc, const struct firmware *fw)
 				return ret;
 		}
 	}
+
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
+	ret = qcom_mdt_load_no_init(wcss->dev, fw, rproc->firmware,
+				    desc->pasid, wcss->mem_region,
+				    wcss->mem_phys, wcss->mem_size,
+				    &wcss->mem_reloc);
+
+	release_firmware(fw);
+	return ret;
+#endif
 
 	return qcom_mdt_load(wcss->dev, fw, rproc->firmware,
 				desc->pasid, wcss->mem_region,
@@ -1022,6 +1034,16 @@ static int wcss_ahb_pcie_pd_load(struct rproc *rproc, const struct firmware *fw)
 		pd_asid = qcom_get_pd_asid(wcss->dev->of_node);
 		pasid = (pd_asid << 8) | UPD_SWID;
 	}
+
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
+	ret = qcom_mdt_load_no_init(wcss->dev, fw, rproc->firmware,
+				    pasid, wcss->mem_region,
+				    wcss->mem_phys, wcss->mem_size,
+				    &wcss->mem_reloc);
+
+	release_firmware(fw);
+	return ret;
+#endif
 
 	return desc->mdt_load_sec(wcss->dev, fw, rproc->firmware,
 				pasid, wcss->mem_region,
