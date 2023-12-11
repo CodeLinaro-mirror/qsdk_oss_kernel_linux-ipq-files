@@ -28,7 +28,7 @@
 #include <linux/fs.h>
 #include <linux/device.h>
 #include <linux/kobject.h>
-#include <linux/qcom_scm.h>
+#include <linux/firmware/qcom/qcom_scm.h>
 #include <linux/sysfs.h>
 #include <linux/dma-map-ops.h>
 #include <linux/string.h>

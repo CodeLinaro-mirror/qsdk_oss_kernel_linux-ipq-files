@@ -14,7 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <linux/qcom_scm.h>
+#include <linux/firmware/qcom/qcom_scm.h>
 #include "qwes.h"
 
 dev_t dev;

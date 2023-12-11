@@ -26,7 +26,7 @@
 #include <linux/slab.h>
 #include <linux/types.h>
 #include <linux/device.h>
-#include <linux/qcom_scm.h>
+#include <linux/firmware/qcom/qcom_scm.h>
 #include <asm/cacheflush.h>
 #include <linux/dma-map-ops.h>
 #include <linux/kernel_read_file.h>

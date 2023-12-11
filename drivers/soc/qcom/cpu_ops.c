@@ -29,7 +29,7 @@
 #include <asm/cpu_ops.h>
 #include <asm/cputype.h>
 #include <asm/smp_plat.h>
-#include <linux/qcom_scm.h>
+#include <linux/firmware/qcom/qcom_scm.h>
 
 
 #include <linux/io.h>

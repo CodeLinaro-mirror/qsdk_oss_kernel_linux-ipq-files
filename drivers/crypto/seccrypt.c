@@ -13,7 +13,7 @@
 #include <linux/mod_devicetable.h>
 #include <crypto/scatterwalk.h>
 #include <linux/err.h>
-#include <linux/qcom_scm.h>
+#include <linux/firmware/qcom/qcom_scm.h>
 #include <linux/dma-mapping.h>
 
 #define SEC_MAX_KEY_SIZE	64

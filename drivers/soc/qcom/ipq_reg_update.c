@@ -19,7 +19,7 @@
 #include <linux/of.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
-#include <linux/qcom_scm.h>
+#include <linux/firmware/qcom/qcom_scm.h>
 
 #define MEM_NOC_XM_APP0_QOSGEN_MAINCTL_LOW 0x6088
 #define MEM_NOC_XM_APP0_QOSGEN_REGUL0CTL_LOW 0x60C0

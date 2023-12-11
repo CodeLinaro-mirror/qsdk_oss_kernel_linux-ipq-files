@@ -20,7 +20,7 @@
 #include <linux/debugfs.h> /* this is for DebugFS libraries */
 #include <linux/fs.h>
 #include <linux/dma-mapping.h>
-#include <linux/qcom_scm.h>
+#include <linux/firmware/qcom/qcom_scm.h>
 #include <linux/slab.h>
 #include <linux/irqdomain.h>
 #include <linux/interrupt.h>

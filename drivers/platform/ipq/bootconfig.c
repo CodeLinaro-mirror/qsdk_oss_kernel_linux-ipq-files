@@ -35,7 +35,7 @@
 #include <linux/init.h>
 #include <linux/blkdev.h>
 #include <linux/pagemap.h>
-#include <linux/qcom_scm.h>
+#include <linux/firmware/qcom/qcom_scm.h>
 #include <linux/soc/qcom/smem.h>
 #include "bootconfig.h"
 

@@ -20,7 +20,7 @@
 #include <linux/dma-direction.h>
 #include <linux/dma-mapping.h>
 #include <linux/firmware.h>
-#include <linux/qcom_scm.h>
+#include <linux/firmware/qcom/qcom_scm.h>
 #include "soc/qcom/license_manager.h"
 
 #define LICENSE_BUF_MAX 	(512 * 1024) //512KB

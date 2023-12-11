@@ -27,7 +27,7 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/power/qcom/apm.h>
-#include <linux/qcom_scm.h>
+#include <linux/firmware/qcom/qcom_scm.h>
 
 /*
  *        VDD_APCC
