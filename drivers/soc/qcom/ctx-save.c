@@ -1477,8 +1477,7 @@ static int ctx_save_probe(struct platform_device *pdev)
 	if (!scm_regsave)
 		return -ENOMEM;
 
-	ret = qti_scm_regsave(SCM_SVC_UTIL, SCM_CMD_SET_REGSAVE,
-			scm_regsave, prop->crashdump_page_size);
+	ret = qcom_scm_regsave(scm_regsave, prop->crashdump_page_size);
 
 	if (ret) {
 		pr_err("Setting register save address failed.\n"
@@ -1510,8 +1509,9 @@ static int ctx_save_probe(struct platform_device *pdev)
 
 #ifdef CONFIG_QCA_MINIDUMP
 	ret = register_module_notifier(&wlan_module_exit_nb);
-    if (ret)
-        dev_err(&pdev->dev, "Failed to register WLAN  module exit notifier\n");
+	if (ret) {
+		dev_err(&pdev->dev, "Failed to register WLAN  module exit notifier\n");
+	}
 
 	ret = atomic_notifier_chain_register(&panic_notifier_list,
 				&wlan_panic_nb);
