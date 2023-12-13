@@ -293,7 +293,11 @@ static void skb_recycler_free_skb(struct sk_buff_head *list)
 	while ((skb = skb_peek(list)) != NULL) {
 		skbuff_debugobj_activate(skb);
 		__skb_unlink(skb, list);
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0))
 		skb_release_data(skb);
+#else
+		skb_release_data(skb, SKB_CONSUMED, false);
+#endif
 		kfree_skbmem(skb);
 	}
 	spin_unlock_irqrestore(&list->lock, flags);

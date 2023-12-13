@@ -24,7 +24,7 @@
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/cpu.h>
-#include <linux/module.h>
+#include <linux/version.h>
 #include <linux/types.h>
 #include <linux/kernel.h>
 #include <linux/mm.h>
