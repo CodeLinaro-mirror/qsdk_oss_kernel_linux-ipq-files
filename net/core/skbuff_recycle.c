@@ -133,14 +133,16 @@ inline struct sk_buff *skb_recycler_alloc(struct net_device *dev,
 		 * DS previously
 		 */
 		if (reset_skb || !recycled_for_ds) {
-			shinfo = skb_shinfo(skb);
-			prefetchw(shinfo);
+			if (!is_fast_recycled) {
+				shinfo = skb_shinfo(skb);
+				prefetchw(shinfo);
+				zero_struct(shinfo, offsetof(struct skb_shared_info, dataref));
+				atomic_set(&shinfo->dataref, 1);
+			}
 			zero_struct(skb, offsetof(struct sk_buff, tail));
 			refcount_set(&skb->users, 1);
 			skb->mac_header = (typeof(skb->mac_header))~0U;
 			skb->transport_header = (typeof(skb->transport_header))~0U;
-			zero_struct(shinfo, offsetof(struct skb_shared_info, dataref));
-			atomic_set(&shinfo->dataref, 1);
 		}
 		skb->data = skb->head + NET_SKB_PAD;
 		skb_reset_tail_pointer(skb);
