@@ -472,7 +472,7 @@
 					"phy_ahb";
 			mode-fixed = <2>; /* TBD */
 			x2 = <1>;
-			/*status = "disabled";*/
+			status = "disabled";
 		};
 
 		msm_imem: qcom,msm-imem@8600000 {
