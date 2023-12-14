@@ -192,6 +192,102 @@
 				   <0 358 4>;			/* PPEDS Node #3(RxFill Desc ring id #3) Rx Fill IRQ info */
 
 		};
+
+		qfprom@a4000 {
+			apc_fuse: apc_fuse@342 {
+				reg = <0x342 0x2>;
+				bits = <2 6>;
+			};
+
+			mx_fuse: mx_fuse@33c {
+				reg = <0x33c 0x2>;
+				bits = <5 5>;
+			};
+
+			cx_fuse: cx_fuse@339 {
+				reg = <0x339 0x2>;
+				bits = <7 5>;
+			};
+
+			cpr_rev: cpr_rev@359 {
+				reg = <0x359 0x1>;
+				bits = <0 3>;
+			};
+		};
+
+		apc_rail: apc-gpio-regulator {
+			compatible = "regulator-gpio";
+			regulator-name = "vdd-apc";
+			regulator-type = "voltage";
+			regulator-boot-on;
+			regulator-always-on;
+			regulator-min-microvolt = <850000>;
+			regulator-max-microvolt = <925000>;
+			regulator-ramp-delay = <250>; /* 20ms */
+			gpios = <&tlmm 57 GPIO_ACTIVE_HIGH>;
+			gpios-states = <0x1>;
+			states = <850000 0>, <925000 1>;
+		};
+
+		cx_rail: cx-gpio-regulator {
+			compatible = "regulator-gpio";
+			regulator-name = "vdd-cx";
+			regulator-type = "voltage";
+			regulator-boot-on;
+			regulator-always-on;
+			regulator-min-microvolt = <800000>;
+			regulator-max-microvolt = <863000>;
+			regulator-ramp-delay = <250>; /* 20ms */
+			gpios = <&tlmm 47 GPIO_ACTIVE_HIGH>;
+			gpios-states = <0x1>;
+			states = <800000 0>, <863000 1>;
+		};
+
+		mx_rail: mx-gpio-regulator {
+			compatible = "regulator-gpio";
+			regulator-name = "vdd-mx";
+			regulator-type = "voltage";
+			regulator-boot-on;
+			regulator-always-on;
+			regulator-min-microvolt = <850000>;
+			regulator-max-microvolt = <925000>;
+			regulator-ramp-delay = <250>; /* 20ms */
+			gpios = <&tlmm 45 GPIO_ACTIVE_HIGH>;
+			gpios-states = <0x1>;
+			states = <850000 0>, <925000 1>;
+		};
+
+		qcom,gpio-regulator {
+			compatible = "qcom,ipq9574-gpio-regulator";
+			reg = <0xa4000 0x1000>;
+			reg-names = "fuse_base";
+			apc-supply = <&apc_rail>;
+			cx-supply = <&cx_rail>;
+			mx-supply = <&mx_rail>;
+			nvmem-cells = <&apc_fuse>, <&cx_fuse>, <&mx_fuse>, <&cpr_rev>;
+			nvmem-cell-names = "apc", "cx", "mx", "cpr";
+			/* AL01 RDP's scaled voltage can only support upto CPU Freq
+			 * 1.8 GHz. But SKUs like IPQ9574/IPQ9570 supports 2.2GHz of
+			 * CPU freq. So, if we do scaling on AL01 + IPQ9574/IPQ9570,
+			 * then voltage becomes insufficient when CPU operates at 2.2GHz.
+			 * Below quirk disables the voltage scaling if AL01 has
+			 * IPQ9574/IPQ9570
+			 */
+			skip-voltage-scaling-turboL1-sku-quirk;
+		};
+
+		dummy_reg_cpu: dummy-regulator@1 {
+			compatible = "regulator-fixed";
+			regulator-name = "dummy-reg-cpu";
+			regulator-min-microvolt = <1075000>;
+			regulator-max-microvolt = <1075000>;
+			regulator-always-on;
+			regulator-boot-on;
+		};
+	};
+
+	rpm-glink {
+		status = "disabled";
 	};
 };
 
@@ -306,29 +402,6 @@
 	status = "okay";
 };
 
-&rpm_requests {
-	regulators {
-		compatible = "qcom,rpm-mp5496-regulators";
-
-		ipq9574_s1: s1 {
-		 /*
-		 * During kernel bootup, the SoC runs at 800MHz with 875mV set by the bootloaders.
-		 * During regulator registration, kernel not knowing the initial voltage,
-		 * considers it as zero and brings up the regulators with minimum supported voltage.
-		 * Updating the regulator-min-microvolt with SVS voltage of 725000uV so that
-		 * the regulators are brought up with 725000uV which is sufficient for all the
-		 * corner parts to operate at 800MHz
-		 */
-			regulator-min-microvolt = <587500>;
-			regulator-max-microvolt = <1075000>;
-		};
-		ipq9574_s2: s2 {
-			regulator-min-microvolt = <700000>;
-			regulator-max-microvolt = <1000000>;
-		};
-	};
-};
-
 &tlmm {
 	pci0_pin: pci0-default-state {
 		pins = "gpio23";
@@ -399,37 +472,53 @@
 	clock-frequency = <24000000>;
 };
 
+&cpu_opp_table {
+	opp-936000000 {
+		opp-microvolt = <1075000>;
+	};
+
+	opp-1104000000 {
+		opp-microvolt = <1075000>;
+	};
+
+	opp-1200000000 {
+		opp-microvolt = <1075000>;
+	};
+
+	opp-1416000000 {
+		opp-microvolt = <1075000>;
+	};
+
+	opp-1488000000 {
+		opp-microvolt = <1075000>;
+	};
+
+	opp-1800000000 {
+		opp-microvolt = <1075000>;
+	};
+
+	opp-2208000000 {
+		opp-microvolt = <1075000>;
+	};
+};
+
 &CPU0 {
-	cpu-supply = <&apc_vreg>;
+	cpu-supply = <&dummy_reg_cpu>;
 };
 
 &CPU1 {
-	cpu-supply = <&apc_vreg>;
+	cpu-supply = <&dummy_reg_cpu>;
 };
 
 &CPU2 {
-	cpu-supply = <&apc_vreg>;
+	cpu-supply = <&dummy_reg_cpu>;
 };
 
 &CPU3 {
-	cpu-supply = <&apc_vreg>;
+	cpu-supply = <&dummy_reg_cpu>;
 };
 
 &license_manager {
-	status = "okay";
-};
-
-&apc_apm {
-	status = "okay";
-};
-
-&apc_cpr {
-	vdd-supply = <&ipq9574_s1>;
-	status = "okay";
-};
-
-&npu_cpr {
-	vdd-supply = <&ipq9574_s2>;
 	status = "okay";
 };
 
