@@ -539,6 +539,10 @@
 	};
 };
 
+&license_manager {
+	status = "okay";
+};
+
 &usb3 {
 	qcom,multiplexed-phy;
 	status = "okay";
