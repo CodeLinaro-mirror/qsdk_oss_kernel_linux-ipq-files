@@ -240,20 +240,88 @@ struct qmi_elem_info qmi_lm_feature_list_resp_msg_v01_ei[] = {
 };
 EXPORT_SYMBOL(qmi_lm_feature_list_resp_msg_v01_ei);
 
-static int lm_get_license_in_tlv(struct lm_svc_ctx *svc, bool rescan) {
-	struct device *dev = svc->dev;
-	const struct firmware *licenseinfo = NULL;
+static int lm_read_license_file(struct lm_svc_ctx *svc, const char *filename)
+{
 	const struct firmware *license = NULL;
-	char *ptr = NULL;
-	char *token = NULL;
-	char *magic = NULL;
-	void *buf, *lic_info_buf;
+	struct device *dev = svc->dev;
 	size_t lic_size_aligned;
+	char *magic = NULL;
+	void *buf;
+	int ret;
+
+	dev_dbg(dev,"License file: %s\n",filename);
+
+	ret = request_firmware(&license, filename, dev);
+	if(ret || !license->data || !license->size) {
+		dev_err(svc->dev,"%s file is not present\n", filename);
+		/* if ret is zero, then call release_firmware */
+		if (!ret)
+			release_firmware(license);
+		return -ENOENT;
+	}
+
+	/* Copy license data in TLV format at license_buf. Each
+	 * license data size are 4 bytes aligned */
+	lic_size_aligned = ALIGN(license->size, 4);
+
+	if (svc->license_buf_len + lic_size_aligned + HEADER_SIZE > LICENSE_BUF_MAX) {
+		dev_err(svc->dev, "License files exceeded the MAX %d Bytes\n",
+					LICENSE_BUF_MAX);
+		svc->license_files->num_of_file = 0;
+		release_firmware(license);
+		return -ENOMEM;
+	}
+
+	/* Take a copy license file names */
+	memcpy(svc->license_files->file_name[svc->license_files->num_of_file],
+			filename, FILE_NAME_MAX);
+	svc->license_files->num_of_file = svc->license_files->num_of_file + 1;
+
+	buf = svc->license_buf + svc->license_buf_len;
+
+	magic = LICENSE_MAGIC;
+
+	memcpy(buf, magic, MAGIC_SIZE);
+	memcpy(buf + MAGIC_SIZE,
+			(void *)&license->size, TLV_LENGTH_SIZE);
+	memcpy(buf + HEADER_SIZE,
+			license->data, license->size);
+
+	svc->license_buf_len = svc->license_buf_len + lic_size_aligned + HEADER_SIZE;
+
+	release_firmware(license);
+
+	return 0;
+}
+
+static int lm_get_license_in_tlv(struct lm_svc_ctx *svc, bool rescan) {
 	int ret = 0, file_count = 0, files_accounted = 0;
+	const struct firmware *licenseinfo = NULL;
+	struct device *dev = svc->dev;
+	const char *filename = NULL;
+	void *lic_info_buf;
+	char *token = NULL;
+	char *ptr = NULL;
 
 	/* Check the buffer status again */
 	if (svc->license_buf_valid && !rescan)
 		return 0;
+
+	/* Reset the License data length and file names copies*/
+	svc->license_buf_len = 0;
+	svc->license_files->num_of_file = 0;
+
+	/* Check if license file name present in DTS */
+	if (of_property_read_string(dev->of_node, "license-file", &filename) == 0) {
+		if (filename != NULL && (strlen(filename) != 0)) {
+			dev_dbg(dev, "License file name present in DTS\n");
+			ret = lm_read_license_file(svc, filename);
+			/* set license_buffer is valid */
+			if (svc->license_buf_len)
+				svc->license_buf_valid = true;
+			return ret;
+		}
+	}
 
 	lic_info_buf = kmalloc(MAX_LICENSE_INFO_SIZE, GFP_KERNEL);
 	if(!lic_info_buf)
@@ -312,10 +380,6 @@ static int lm_get_license_in_tlv(struct lm_svc_ctx *svc, bool rescan) {
 	dev_dbg(dev,"%s file is present with %d license file names\n",
 			LICENSE_INFO_CONF_PATH, file_count);
 
-	/* Reset the License data length */
-	svc->license_buf_len = 0;
-	svc->license_files->num_of_file = 0;
-
 	while (((token = strsep(&ptr, " ")) != NULL) && (files_accounted < file_count)) {
 		/* Increment the accounted file count */
 		files_accounted++;
@@ -334,48 +398,9 @@ static int lm_get_license_in_tlv(struct lm_svc_ctx *svc, bool rescan) {
 			continue;
 		}
 
-		dev_dbg(dev,"License file: %s\n",token);
-
-		ret = request_firmware(&license, token, dev);
-		if(ret || !license->data || !license->size) {
-			dev_err(svc->dev,"%s file is not present\n", token);
-			/* if ret is zero, then call release_firmware */
-			if (!ret)
-				release_firmware(license);
-			continue;
-		}
-
-		/* Copy license data in TLV format at license_buf. Each
-		 * license data size are 4 bytes aligned */
-		lic_size_aligned = ALIGN(license->size, 4);
-
-		if (svc->license_buf_len + lic_size_aligned + HEADER_SIZE > LICENSE_BUF_MAX) {
-			dev_err(svc->dev, "License files exceeded the MAX %d Bytes\n",
-						LICENSE_BUF_MAX);
-			svc->license_files->num_of_file = 0;
-			ret = -ENOMEM;
-			release_firmware(license);
+		ret = lm_read_license_file(svc, token);
+		if (ret < 0 && ret!= -ENOENT)
 			goto err_licenseinfo;
-		}
-
-		/* Take a copy license file names */
-		memcpy(svc->license_files->file_name[svc->license_files->num_of_file],
-				token, FILE_NAME_MAX);
-		svc->license_files->num_of_file = svc->license_files->num_of_file + 1;
-
-		buf = svc->license_buf + svc->license_buf_len;
-
-		magic = LICENSE_MAGIC;
-
-		memcpy(buf, magic, MAGIC_SIZE);
-		memcpy(buf + MAGIC_SIZE,
-				(void *)&license->size, TLV_LENGTH_SIZE);
-		memcpy(buf + HEADER_SIZE,
-				license->data, license->size);
-
-		svc->license_buf_len = svc->license_buf_len + lic_size_aligned + HEADER_SIZE;
-
-		release_firmware(license);
 	}
 
 	/* set license_buffer is valid */
