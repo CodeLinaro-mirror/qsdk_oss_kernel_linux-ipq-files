@@ -239,6 +239,10 @@
 	clock-frequency = <24000000>;
 };
 
+&license_manager {
+	status = "okay";
+};
+
 &qpic_bam {
 	status = "okay";
 };

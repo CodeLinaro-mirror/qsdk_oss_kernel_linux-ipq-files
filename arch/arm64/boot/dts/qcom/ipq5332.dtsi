@@ -2371,8 +2371,10 @@
 		};
 	};
 
-	license_manager {
+	license_manager: license_manager {
 		compatible = "qti,license-manager-service";
+		license-file = "";
+		status = "disabled";
 	};
 
 	timer {
