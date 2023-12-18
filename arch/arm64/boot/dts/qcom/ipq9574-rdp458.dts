@@ -19,6 +19,7 @@
 
 	aliases {
 		serial0 = &blsp1_uart2;
+		serial2 = &blsp1_uart3;
 		ethernet0 = "/soc/dp1";
 		ethernet1 = "/soc/dp2";
 		ethernet2 = "/soc/dp3";
@@ -179,7 +180,7 @@
 				   <0 352 4>,			/* Rx desc ring id #21 IRQ info */
 				   <0 353 4>,			/* Rx desc ring id #22 IRQ info */
 				   <0 354 4>,			/* Rx desc ring id #23 IRQ info */
-				   <0 261 4>,			/* Misc error IRQ info */
+				   <0 499 4>,			/* Misc error IRQ info */
 				   <0 364 4>,			/* PPEDS Node #1(TxComp ring id #1) TxComplete IRQ info */
 				   <0 332 4>,			/* PPEDS Node #1(Rx Desc ring id #1) Rx Desc IRQ info */
 				   <0 356 4>,			/* PPEDS Node #1(RxFill Desc ring id #1) Rx Fill IRQ info */
@@ -202,6 +203,12 @@
 
 	pcie0_rp {
 		reg = <0 0 0 0 0>;
+
+		wifi@0 {
+			boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
+					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
+					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
+		};
 	};
 };
 
@@ -217,6 +224,12 @@
 
 	pcie2_rp {
 		reg = <0 0 0 0 0>;
+
+		wifi@2 {
+			boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
+					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
+					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
+		};
 	};
 };
 
@@ -256,6 +269,12 @@
 
 &blsp1_uart2 {
 	pinctrl-0 = <&uart2_pins>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+&blsp1_uart3 {
+	pinctrl-0 = <&gps_pins>;
 	pinctrl-names = "default";
 	status = "okay";
 };
@@ -394,6 +413,10 @@
 
 &CPU3 {
 	cpu-supply = <&apc_vreg>;
+};
+
+&license_manager {
+	status = "okay";
 };
 
 &apc_apm {

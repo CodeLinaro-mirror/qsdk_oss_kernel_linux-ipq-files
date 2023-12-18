@@ -193,6 +193,10 @@
 		};
 	};
 
+	ctx_save: ctx-save {
+		compatible = "qti,ctxt-save-ipq5332";
+	};
+
 	pmu {
 		compatible = "arm,cortex-a53-pmu";
 		interrupts = <GIC_PPI 7 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_HIGH)>;
@@ -313,6 +317,21 @@
 			tsens_base1: base1@3e2 {
 				reg = <0x3e2 0x2>;
 				bits = <5 10>;
+			};
+
+			pcie0_disable: pcie0_disable@25 {
+				reg = <0x25 0x1>;
+				bits = <3 1>;
+			};
+
+			pcie1_disable: pcie1_disable@25 {
+				reg = <0x25 0x1>;
+				bits = <4 1>;
+			};
+
+			pcie2_disable: pcie2_disable@25 {
+				reg = <0x25 0x1>;
+				bits = <2 1>;
 			};
 		};
 
@@ -505,13 +524,13 @@
 				mux_0 {
 					pins = "gpio25";
 					function = "mdc0";
-					drive-strength = <8>;
-					bias-disable;
+					drive-strength = <2>;
+					bias-pull-up;
 				};
 				mux_1 {
 					pins = "gpio26";
 					function = "mdio0";
-					drive-strength = <8>;
+					drive-strength = <2>;
 					bias-pull-up;
 				};
 			};
@@ -838,7 +857,7 @@
 
 		mdio: mdio@90000 {
 			compatible = "qcom,qca-mdio", "qcom,ipq40xx-mdio";
-			reg = <0x90000 0x64>, <0x7A00610 0x4>, <0x7A10610 0x4>, <0x9B780 8>;
+			reg = <0x90000 0x64>, <0x7A00610 0x4>, <0x7A10610 0x4>, <0x9B000 0x800>;
 			reg-names = "ppe", "eth_ldo1", "eth_ldo2", "cmn_blk";
 			#address-cells = <1>;
 			#size-cells = <1>;
@@ -1872,7 +1891,7 @@
 
 		/* 1L controller with 2L/2x1L Flexible PHY 2nd lane */
 		pcie2: pcie@10000000 {
-			compatible = "qcom,pcie-ipq5332";
+			compatible = "qti,pcie-ipq5332";
 			reg =  <0x10000000 0xf1d>,
 			       <0x10000f20 0xa8>,
 			       <0x10001000 0x1000>,
@@ -1949,6 +1968,7 @@
 				      "aux";
 
 			msi-parent = <&v2m0>;
+			nvmem-cells = <&pcie2_disable>;
 			status = "disabled";
 		};
 
@@ -1956,7 +1976,7 @@
 		 * Connected to the 1st lane of the Flexible PHY in 1L mode
 		 */
 		pcie1: pcie@18000000 {
-			compatible = "qcom,pcie-ipq5332";
+			compatible = "qti,pcie-ipq5332";
 			reg =  <0x18000000 0xf1d>,
 			       <0x18000f20 0xa8>,
 			       <0x18001000 0x1000>,
@@ -2034,12 +2054,13 @@
 				      "aux";
 
 			msi-parent = <&v2m0>;
+			nvmem-cells = <&pcie1_disable>;
 			status = "disabled";
 		};
 
 		/* 1L controller with USB/PCIe combo PHY */
 		pcie0: pcie@20000000 {
-			compatible = "qcom,pcie-ipq5332";
+			compatible = "qti,pcie-ipq5332";
 			reg =  <0x20000000 0xf1d>,
 			       <0x20000f20 0xa8>,
 			       <0x20001000 0x1000>,
@@ -2116,6 +2137,7 @@
 				      "aux";
 
 			msi-parent = <&v2m0>;
+			nvmem-cells = <&pcie0_disable>;
 			status = "disabled";
 		};
 
@@ -2349,8 +2371,10 @@
 		};
 	};
 
-	license_manager {
+	license_manager: license_manager {
 		compatible = "qti,license-manager-service";
+		license-file = "";
+		status = "disabled";
 	};
 
 	timer {
@@ -2399,7 +2423,7 @@
 			trips {
 				misc-critical {
 					temperature = <125000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 			};
@@ -2413,13 +2437,13 @@
 			trips {
 				cpu-top-critical {
 					temperature = <115000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 
 				cpu-passive {
 					temperature = <105000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "passive";
 				};
 			};
@@ -2433,7 +2457,7 @@
 			trips {
 				top-glue-critical {
 					temperature = <125000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 			};

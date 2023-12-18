@@ -198,6 +198,8 @@ struct mhitest_platform {
 	int d_instance;
 /* klog level for mhitest driver */
 	enum MHITEST_DEBUG_KLVL  mhitest_klog_lvl;
+	bool soc_reset_requested;
+	struct completion soc_reset_request;
 };
 enum MHI_STATE {
 	MHI_INIT,
@@ -252,3 +254,4 @@ int mhitest_pci_set_mhi_state(struct mhitest_platform *, enum MHI_STATE);
 void mhitest_pci_disable_bus(struct mhitest_platform *);
 int mhitest_unregister_ramdump(struct mhitest_platform *);
 int mhitest_pci_remove_all(struct mhitest_platform *);
+void mhitest_pci_soc_reset(struct mhitest_platform *mplat);

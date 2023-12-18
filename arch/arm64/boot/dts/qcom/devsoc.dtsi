@@ -10,6 +10,8 @@
 #include <dt-bindings/clock/qcom,devsoc-gcc.h>
 #include <dt-bindings/reset/qcom,devsoc-gcc.h>
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/clock/qcom,devsoc-nsscc.h>
+#include <dt-bindings/reset/qcom,devsoc-nsscc.h>
 
 / {
 	#address-cells = <2>;
@@ -24,6 +26,24 @@
 
 		xo: xo {
 			compatible = "fixed-clock";
+			#clock-cells = <0>;
+		};
+
+		cmn_pll_nss_clk_375m: cmn-pll-nss-clk-375m {
+			compatible = "fixed-clock";
+			clock-frequency = <375000000>;
+			#clock-cells = <0>;
+		};
+
+		cmn_pll_nss_clk_300m: cmn-pll-nss-clk-300m {
+			compatible = "fixed-clock";
+			clock-frequency = <300000000>;
+			#clock-cells = <0>;
+		};
+
+		gcc_gpll0_out_aux: gcc-gpll0-out-aux {
+			compatible = "fixed-clock";
+			clock-frequency = <800000000>;
 			#clock-cells = <0>;
 		};
 	};
@@ -460,6 +480,21 @@
 			#power-domain-cells = <1>;
                 };
 
+		nsscc: nsscc@39b00000{
+			compatible = "qcom,ipq54xx-nsscc";
+			reg = <0x39b00000 0x80000>;
+			clocks = <&xo>,
+				<&cmn_pll_nss_clk_375m>,
+				<&cmn_pll_nss_clk_300m>,
+				<&gcc_gpll0_out_aux>;
+			clock-names = "xo",
+					"cmn_pll_nss_clk_375m",
+					"cmn_pll_nss_clk_300m",
+					"gcc_gpll0_out_aux";
+			#clock-cells = <0x1>;
+			#reset-cells = <0x1>;
+		};
+
 		tcsr_mutex: hwlock@1905000 {
 			compatible = "qcom,tcsr-mutex";
 			reg = <0x1905000 0x20000>;
@@ -610,6 +645,8 @@
 			#redistributor-regions = <1>;
 			redistributor-stride = <0x0 0x20000>;
 			interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH>;
+			mbi-ranges = <672 128>;
+			msi-controller;
 		};
 
 		ess-instance {
@@ -618,8 +655,139 @@
 				compatible = "qcom,ess-switch-ipq54xx";
 				switch_access_mode = "local bus";
 				reg = <0x3a000000 0x1000000>;
-				clocks = <&gcc GCC_CMN_12GPLL_AHB_CLK>;
-				clock-names = "cmn_ahb_clk";
+				clocks = <&gcc GCC_CMN_12GPLL_AHB_CLK>,
+					<&gcc GCC_CMN_12GPLL_SYS_CLK>,
+					<&gcc GCC_UNIPHY0_AHB_CLK>,
+					<&gcc GCC_UNIPHY0_SYS_CLK>,
+					<&gcc GCC_UNIPHY1_AHB_CLK>,
+					<&gcc GCC_UNIPHY1_SYS_CLK>,
+					<&gcc GCC_UNIPHY2_AHB_CLK>,
+					<&gcc GCC_UNIPHY2_SYS_CLK>,
+					<&gcc GCC_NSSNOC_NSSCC_CLK>,
+					<&gcc GCC_NSSCC_CLK>,
+					<&gcc GCC_NSSNOC_SNOC_1_CLK>,
+					<&gcc GCC_NSSNOC_SNOC_CLK>,
+			//		<&gcc GCC_IM_SLEEP_CLK>,
+					<&nsscc NSS_CC_PORT1_MAC_CLK>,
+					<&nsscc NSS_CC_PORT2_MAC_CLK>,
+					<&nsscc NSS_CC_PORT3_MAC_CLK>,
+					<&nsscc NSS_CC_PPE_SWITCH_CLK>,
+					<&nsscc NSS_CC_PPE_SWITCH_CFG_CLK>,
+					<&nsscc NSS_CC_NSSNOC_PPE_CLK>,
+					<&nsscc NSS_CC_NSSNOC_PPE_CFG_CLK>,
+					<&nsscc NSS_CC_PPE_EDMA_CLK>,
+					<&nsscc NSS_CC_PPE_EDMA_CFG_CLK>,
+					<&nsscc NSS_CC_PPE_SWITCH_IPE_CLK>,
+					<&nsscc NSS_CC_PPE_SWITCH_BTQ_CLK>,
+					<&nsscc NSS_CC_PORT1_RX_CLK>,
+					<&nsscc NSS_CC_PORT1_TX_CLK>,
+					<&nsscc NSS_CC_PORT2_RX_CLK>,
+					<&nsscc NSS_CC_PORT2_TX_CLK>,
+					<&nsscc NSS_CC_PORT3_RX_CLK>,
+					<&nsscc NSS_CC_PORT3_TX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT1_RX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT1_TX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT2_RX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT2_TX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT3_RX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT3_TX_CLK>;
+				clock-names = "cmn_ahb_clk",
+					"cmn_sys_clk",
+					"uniphy0_ahb_clk",
+					"uniphy0_sys_clk",
+					"uniphy1_ahb_clk",
+					"uniphy1_sys_clk",
+					"uniphy2_ahb_clk",
+					"uniphy2_sys_clk",
+					"gcc_nssnoc_nsscc_clk",
+					"gcc_nsscc_clk",
+					"gcc_nssnoc_snoc_1_clk",
+					"gcc_nssnoc_snoc_clk",
+			//		"gcc_im_sleep_clk",
+					"port1_mac_clk",
+					"port2_mac_clk",
+					"port3_mac_clk",
+					"nss_ppe_clk",
+					"nss_ppe_cfg_clk",
+					"nssnoc_ppe_clk",
+					"nssnoc_ppe_cfg_clk",
+					"nss_edma_clk",
+					"nss_edma_cfg_clk",
+					"nss_ppe_ipe_clk",
+					"nss_ppe_btq_clk",
+					"nss_port1_rx_clk",
+					"nss_port1_tx_clk",
+					"nss_port2_rx_clk",
+					"nss_port2_tx_clk",
+					"nss_port3_rx_clk",
+					"nss_port3_tx_clk",
+					"uniphy0_port1_rx_clk",
+					"uniphy0_port1_tx_clk",
+					"uniphy1_port5_rx_clk",
+					"uniphy1_port5_tx_clk",
+					"uniphy2_port6_rx_clk",
+					"uniphy2_port6_tx_clk";
+				resets = <&nsscc NSS_CC_PPE_BCR>,
+					<&gcc GCC_UNIPHY0_BCR>,
+					<&gcc GCC_UNIPHY1_BCR>,
+					<&gcc GCC_UNIPHY2_BCR>,
+/*
+					<&gcc GCC_UNIPHY0_AHB_CLK_ARES>,
+					<&gcc GCC_UNIPHY1_AHB_CLK_ARES>,
+					<&gcc GCC_UNIPHY2_AHB_CLK_ARES>,
+					<&gcc GCC_UNIPHY0_SYS_CLK_ARES>,
+					<&gcc GCC_UNIPHY1_SYS_CLK_ARES>,
+					<&gcc GCC_UNIPHY2_SYS_CLK_ARES>,
+					<&gcc GCC_UNIPHY0_XPCS_ARES>,
+					<&gcc GCC_UNIPHY1_XPCS_ARES>,
+					<&gcc GCC_UNIPHY2_XPCS_ARES>,
+*/
+					<&nsscc NSS_CC_UNIPHY_PORT1_RX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT1_TX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT2_RX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT2_TX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT3_RX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT3_TX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT1_RX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT1_TX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT2_RX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT2_TX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT3_RX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT3_TX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT1_MAC_CLK_ARES>,
+					<&nsscc NSS_CC_PORT2_MAC_CLK_ARES>,
+					<&nsscc NSS_CC_PORT3_MAC_CLK_ARES>;
+				reset-names = "ppe_rst",
+					"uniphy0_soft_rst",
+					"uniphy1_soft_rst",
+					"uniphy2_soft_rst",
+/*
+					"uniphy0_ahb_rst",
+					"uniphy1_ahb_rst",
+					"uniphy2_ahb_rst",
+					"uniphy0_sys_rst",
+					"uniphy1_sys_rst",
+					"uniphy2_sys_rst",
+					"uniphy0_xpcs_rst",
+					"uniphy1_xpcs_rst",
+					"uniphy2_xpcs_rst",
+*/
+					"uniphy_port1_rx_rst",
+					"uniphy_port1_tx_rst",
+					"uniphy_port2_rx_rst",
+					"uniphy_port2_tx_rst",
+					"uniphy_port3_rx_rst",
+					"uniphy_port3_tx_rst",
+					"nss_port1_rx_rst",
+					"nss_port1_tx_rst",
+					"nss_port2_rx_rst",
+					"nss_port2_tx_rst",
+					"nss_port3_rx_rst",
+					"nss_port3_tx_rst",
+					"nss_port1_mac_rst",
+					"nss_port2_mac_rst",
+					"nss_port3_mac_rst";
+
 			};
 		};
 
@@ -692,6 +860,44 @@
 			compatible = "qcom,ess-uniphy";
 			reg = <0x7a00000 0x30000>;
 			uniphy_access_mode = "local bus";
+		};
+
+		edma@3ab00000 {
+			compatible = "qcom,edma";
+			reg = <0x3ab00000 0xef800>;
+			reg-names = "edma-reg-base";
+			reset-names = "edma_rst";
+			clocks = <&nsscc NSS_CC_NSS_CSR_CLK>,
+				<&nsscc NSS_CC_NSSNOC_NSS_CSR_CLK>,
+				<&nsscc NSS_CC_CE_APB_CLK>,
+				<&nsscc NSS_CC_CE_AXI_CLK>,
+				<&nsscc NSS_CC_NSSNOC_CE_APB_CLK>,
+				<&nsscc NSS_CC_NSSNOC_CE_AXI_CLK>,
+				<&gcc GCC_NSS_TS_CLK>,
+				<&gcc GCC_NSSCC_CLK>,
+				<&gcc GCC_NSSCFG_CLK>,
+				<&gcc GCC_NSSNOC_ATB_CLK>,
+				<&gcc GCC_NSSNOC_NSSCC_CLK>,
+				<&gcc GCC_NSSNOC_MEMNOC_CLK>,
+				<&gcc GCC_NSSNOC_MEM_NOC_1_CLK>,
+				<&gcc GCC_NSSNOC_PCNOC_1_CLK>,
+				<&gcc GCC_NSSNOC_QOSGEN_REF_CLK>,
+				<&gcc GCC_NSSNOC_SNOC_1_CLK>,
+				<&gcc GCC_NSSNOC_SNOC_CLK>,
+				<&gcc GCC_NSSNOC_TIMEOUT_REF_CLK>,
+				<&gcc GCC_NSSNOC_XO_DCD_CLK>,
+				<&gcc GCC_GEMNOC_NSSNOC_CLK>;
+			clock-names = "nss-csr-clk", "nss-nssnoc-csr-clk", "nss-ce-apb-clk",
+				"nss-ce-axi-clk", "nss-nssnoc-ce-apb-clk", "nss-nssnoc-ce-axi-clk",
+				"nss-ts-clk", "nss-nsscc-clk", "nss-nsscfg-clk", "nss-nssnoc-atb-clk",
+				"nss-nssnoc-nsscc-clk", "nss-nssnoc-memnoc-clk", "nss-nssnoc-mem-noc-1-clk",
+				"nss-nssnoc-pcnoc-1-clk", "nss-nssnoc-qosgen-ref-clk", "nss-nssnoc-snoc-1-clk",
+				"nss-nssnoc-snoc-clk", "nss-nssnoc-timeout-ref-clk", "nss-nssnoc-xo-dcd-clk",
+				"nss-gemnoc-nssnoc-clk";
+                };
+
+		nss-ppe {
+			compatible = "qcom,nss-ppe";
 		};
 
 		apcs_glb: mailbox@f400004 {
@@ -795,9 +1001,8 @@
 					<0 0 0 3 &intc 0 481 IRQ_TYPE_LEVEL_HIGH>, /* int_c */
 					<0 0 0 4 &intc 0 482 IRQ_TYPE_LEVEL_HIGH>; /* int_d */
 
-			interrupts = <GIC_SPI 478 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI 470 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "global_irq", "msi";
+			interrupts = <GIC_SPI 478 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "global_irq";
 
 			clocks = <&gcc GCC_PCIE3_AXI_M_CLK>,
 				 <&gcc GCC_PCIE3_AXI_S_CLK>,
@@ -843,6 +1048,8 @@
 				      "ahb",
 				      "aux";
 
+			msi-parent = <&intc>;
+
 			pinctrl-0 = <&pcie3_default_state>;
 			pinctrl-names = "default";
 
@@ -879,9 +1086,8 @@
 					<0 0 0 3 &intc 0 466 IRQ_TYPE_LEVEL_HIGH>, /* int_c */
 					<0 0 0 4 &intc 0 467 IRQ_TYPE_LEVEL_HIGH>; /* int_d */
 
-			interrupts = <GIC_SPI 463 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI 455 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "global_irq", "msi";
+			interrupts = <GIC_SPI 463 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "global_irq";
 
 			clocks = <&gcc GCC_PCIE2_AXI_M_CLK>,
 				 <&gcc GCC_PCIE2_AXI_S_CLK>,
@@ -927,6 +1133,8 @@
 				      "ahb",
 				      "aux";
 
+			msi-parent = <&intc>;
+
 			pinctrl-0 = <&pcie2_default_state>;
 			pinctrl-names = "default";
 
@@ -963,9 +1171,8 @@
 					<0 0 0 3 &intc 0 451 IRQ_TYPE_LEVEL_HIGH>, /* int_c */
 					<0 0 0 4 &intc 0 452 IRQ_TYPE_LEVEL_HIGH>; /* int_d */
 
-			interrupts = <GIC_SPI 448 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI 440 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "global_irq", "msi";
+			interrupts = <GIC_SPI 448 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "global_irq";
 
 			clocks = <&gcc GCC_PCIE1_AXI_M_CLK>,
 				 <&gcc GCC_PCIE1_AXI_S_CLK>,
@@ -1011,6 +1218,8 @@
 				      "ahb",
 				      "aux";
 
+			msi-parent = <&intc>;
+
 			pinctrl-0 = <&pcie1_default_state>;
 			pinctrl-names = "default";
 
@@ -1047,9 +1256,8 @@
 					<0 0 0 3 &intc 0 436 IRQ_TYPE_LEVEL_HIGH>, /* int_c */
 					<0 0 0 4 &intc 0 437 IRQ_TYPE_LEVEL_HIGH>; /* int_d */
 
-			interrupts = <GIC_SPI 433 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI 425 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "global_irq", "msi";
+			interrupts = <GIC_SPI 433 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "global_irq";
 
 			clocks = <&gcc GCC_PCIE0_AXI_M_CLK>,
 				 <&gcc GCC_PCIE0_AXI_S_CLK>,
@@ -1094,6 +1302,8 @@
 				      "axi_s_sticky",
 				      "ahb",
 				      "aux";
+
+			msi-parent = <&intc>;
 
 			pinctrl-0 = <&pcie0_default_state>;
 			pinctrl-names = "default";

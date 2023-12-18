@@ -10,6 +10,7 @@
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
+#include <dt-bindings/leds/common.h>
 #include "ipq5332.dtsi"
 #include "ipq5332-default-memory.dtsi"
 
@@ -59,11 +60,14 @@
 
 		leds {
 			compatible = "gpio-leds";
-			pinctrl-0 = <&leds_pins>;
+			pinctrl-0 = <&gpio_leds_default>;
 			pinctrl-names = "default";
-			led@36 {
+
+			led-0 {
+				color = <LED_COLOR_ID_GREEN>;
+				function = LED_FUNCTION_WLAN;
 				gpios = <&tlmm 36 GPIO_ACTIVE_HIGH>;
-				linux,default-trigger = "led_2g";
+				linux,default-trigger = "phy0tx";
 				default-state = "off";
 			};
 		};
@@ -123,6 +127,7 @@
 				switch_lan_bmp = <0x1e>; /* lan port bitmap */
 				switch_wan_bmp = <0x0>;  /* wan port bitmap */
 				link-polling-required = <0>;
+				fdb_sync = "interrupt";
 				link-intr-gpio = <&tlmm 23 GPIO_ACTIVE_HIGH>;
 
 				qcom,port_phyinfo {
@@ -187,9 +192,6 @@
 			reg = <0x3a504000 0x4000>;
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
-			mdio-bus = <&mdio>;
-			qcom,phy-mdio-addr = <30>;
-			qcom,link-poll = <1>;
 			phy-mode = "sgmii";
 		};
 
@@ -454,7 +456,7 @@
 		bias-pull-up;
 	};
 
-	leds_pins: leds-state {
+	gpio_leds_default: gpio-leds-default-state {
 		pins = "gpio36";
 		function = "gpio";
 		drive-strength = <8>;
@@ -499,6 +501,10 @@
 		};
 	};
 
+};
+
+&license_manager {
+	status = "okay";
 };
 
 &usb3 {

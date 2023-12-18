@@ -21,6 +21,7 @@
 	aliases {
 		serial0 = &blsp1_uart2;
 		serial1 = &blsp1_uart4;
+		serial2 = &blsp1_uart3;
 		ethernet0 = "/soc/dp1";
 		ethernet1 = "/soc/dp2";
 		ethernet2 = "/soc/dp3";
@@ -213,48 +214,52 @@
 			device_type = "network";
 			compatible = "qcom,nss-dp";
 			qcom,id = <1>;
-			reg = <0x3a001000 0x200>;
-			qcom,mactype = <0>;
+			reg = <0x3a500000 0x4000>;
+			qcom,mactype = <1>;
 			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
-			qcom,phy-mdio-addr = <16>;
+			qcom,phy-mdio-addr = <1>;
 			phy-mode = "sgmii";
+			qcom,ppe-offload-disabled = <1>;
 		};
 
 		dp2 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
 			qcom,id = <2>;
-			reg = <0x3a001200 0x200>;
-			qcom,mactype = <0>;
+			reg = <0x3a504000 0x4000>;
+			qcom,mactype = <1>;
 			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
-			qcom,phy-mdio-addr = <17>;
+			qcom,phy-mdio-addr = <2>;
 			phy-mode = "sgmii";
+			qcom,ppe-offload-disabled = <1>;
 		};
 
 		dp3 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
 			qcom,id = <3>;
-			reg = <0x3a001400 0x200>;
-			qcom,mactype = <0>;
+			reg = <0x3a508000 0x4000>;
+			qcom,mactype = <1>;
 			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
-			qcom,phy-mdio-addr = <18>;
+			qcom,phy-mdio-addr = <3>;
 			phy-mode = "sgmii";
+			qcom,ppe-offload-disabled = <1>;
 		};
 
 		dp4 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
 			qcom,id = <4>;
-			reg = <0x3a001600 0x200>;
-			qcom,mactype = <0>;
+			reg = <0x3a50c000 0x4000>;
+			qcom,mactype = <1>;
 			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
-			qcom,phy-mdio-addr = <19>;
+			qcom,phy-mdio-addr = <4>;
 			phy-mode = "sgmii";
+			qcom,ppe-offload-disabled = <1>;
 		};
 
 		dp5 {
@@ -263,9 +268,7 @@
 			qcom,id = <5>;
 			reg = <0x3a510000 0x4000>;
 			qcom,mactype = <1>;
-			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
-			qcom,phy-mdio-addr = <8>;
 			phy-mode = "sgmii";
 		};
 
@@ -294,7 +297,11 @@
 			qcom,rx-page-mode = <0>;		/* Rx fill ring page mode */
 			qcom,tx-map-priority-level = <1>;	/* Tx priority level per port */
 			qcom,rx-map-priority-level = <1>;	/* Rx priority level per core */
-			qcom,ppeds-num = <0>;			/* Number of PPEDS nodes */
+			qcom,ppeds-num = <3>;			/* Number of PPEDS nodes */
+			/* PPE-DS node format: <Rx-fill Tx-cmpl Rx Tx Queue-base Queue-count> */
+			qcom,ppeds-map = <1 1 1 1 32 8>,	/* PPEDS Node#0 ring and queue map */
+					<2 2 2 2 40 8>,		/* PPEDS Node#1 ring and queue map */
+					<3 3 3 3 48 8>;		/* PPEDS Node#2 ring and queue map */
 			qcom,txdesc-map = <8 9 10 11>,		/* Port0 per-core Tx ring map */
 					<12 13 14 15>,		/* Port1 per-core Tx ring map */
 					<16 17 18 19>,		/* Port2 per-core Tx ring map */
@@ -351,9 +358,90 @@
 				   <0 352 4>,			/* Rx desc ring id #21 IRQ info */
 				   <0 353 4>,			/* Rx desc ring id #22 IRQ info */
 				   <0 354 4>,			/* Rx desc ring id #23 IRQ info */
-				   <0 261 4>;			/* Misc error IRQ info */
+				   <0 499 4>,			/* Misc error IRQ info */
+				   <0 364 4>,			/* PPEDS Node #1(TxComp ring id #1) TxComplete IRQ info */
+				   <0 332 4>,			/* PPEDS Node #1(Rx Desc ring id #1) Rx Desc IRQ info */
+				   <0 356 4>,			/* PPEDS Node #1(RxFill Desc ring id #1) Rx Fill IRQ info */
+				   <0 365 4>,			/* PPEDS Node #2(TxComp ring id #2) TxComplete IRQ info */
+				   <0 333 4>,			/* PPEDS Node #2(Rx Desc ring id #2) Rx Desc IRQ info */
+				   <0 357 4>,			/* PPEDS Node #2(RxFill Desc ring id #2) Rx Fill IRQ info */
+				   <0 366 4>,			/* PPEDS Node #3(TxComp ring id #3) TxComplete IRQ info */
+				   <0 334 4>,			/* PPEDS Node #3(Rx Desc ring id #3) Rx Desc IRQ info */
+				   <0 358 4>;			/* PPEDS Node #3(RxFill Desc ring id #3) Rx Fill IRQ info */
 		};
 
+		qfprom@a4000 {
+			apc_fuse: apc_sturbo_fuse@340 {
+				reg = <0x340 0x2>;
+				bits = <6 6>;
+			};
+
+			mx_fuse: mx_nom_fuse@33c {
+				reg = <0x33c 0x2>;
+				bits = <5 5>;
+			};
+
+			cpr_rev: cpr_rev@359 {
+				reg = <0x359 0x1>;
+				bits = <0 3>;
+			};
+		};
+
+		apc_rail1: apc-gpio-regulator {
+			compatible = "regulator-gpio";
+			regulator-name = "vdd-apc";
+			regulator-type = "voltage";
+			regulator-boot-on;
+			regulator-always-on;
+			regulator-min-microvolt = <1004000>;
+			regulator-max-microvolt = <1068000>;
+			regulator-ramp-delay = <250>; /* 20ms */
+			gpios = <&tlmm 45 GPIO_ACTIVE_HIGH>;
+			gpios-states = <0x1>;
+			states = <1004000 0>, <1068000 1>;
+		};
+
+		cx_rail: cx-gpio-regulator {
+			compatible = "regulator-gpio";
+			regulator-name = "vdd-cx";
+			regulator-type = "voltage";
+			regulator-boot-on;
+			regulator-always-on;
+			regulator-min-microvolt = <850000>;
+			regulator-max-microvolt = <910000>;
+			regulator-ramp-delay = <250>; /* 20ms */
+			gpios = <&tlmm 47 GPIO_ACTIVE_HIGH>;
+			gpios-states = <0x1>;
+			states = <850000 0>, <910000 1>;
+		};
+
+		apc_rail2: apc2-gpio-regulator {
+			compatible = "regulator-gpio";
+			regulator-name = "vdd-apc2";
+			regulator-type = "voltage";
+			regulator-boot-on;
+			regulator-always-on;
+			regulator-min-microvolt = <863000>;
+			regulator-max-microvolt = <1068000>;
+			regulator-ramp-delay = <250>; /* 20ms */
+			gpios = <&tlmm 57 GPIO_ACTIVE_HIGH>;
+			gpios-states = <0x1>;
+			states = <863000 0>, <1068000 1>;
+		};
+
+		qcom,gpio-regulator {
+			compatible = "qcom,ipq9574-4state-gpio-regulator";
+			reg = <0xa4000 0x1000>;
+			reg-names = "fuse_base";
+			apc-supply = <&apc_rail1>;
+			cx-supply = <&cx_rail>;
+			nvmem-cells = <&apc_fuse>, <&mx_fuse>, <&cpr_rev>;
+			nvmem-cell-names = "apc", "cx", "cpr";
+		};
+	};
+
+	rpm-glink {
+		status = "disabled";
 	};
 };
 
@@ -368,7 +456,9 @@
 
 		wifi@2 {
 			reg = <0 0 0 0 0>;
-
+			boot-args = <0x2 0x4 0xFF 0x3 0x0 0x0  /* MX Rail, Invalid GPIO, Drive strength 0x3 */
+					0x5 0x4 0x34 0x3 0x0 0x16 /* CX Rail, GPIO52, Drive strength 0x3, CPR1_fuse 0x0, CPR0_fuse 0x16 */
+					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 			memory-region = <&qcn9224_pcie2>;
 			qcom,board_id = <0x04>;
 			qcom,wsi = <&wsi>;
@@ -392,7 +482,9 @@
 
 		wifi@3 {
 			reg = <0 0 0 0 0>;
-
+			boot-args = <0x2 0x4 0xFF 0x3 0x0 0x0  /* MX Rail, Invalid GPIO, Drive strength 0x3 */
+					0x5 0x4 0x34 0x3 0x0 0x16 /* CX Rail, GPIO52, Drive strength 0x3, CPR1_fuse 0x0, CPR0_fuse 0x16 */
+					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 			memory-region = <&qcn9224_pcie3>;
 			qcom,board_id = <0x02>;
 			qcom,wsi = <&wsi>;
@@ -441,8 +533,14 @@
 	status = "okay";
 };
 
+&blsp1_uart3 {
+	pinctrl-0 = <&gps_pins>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
 &blsp1_uart4 {
-	pinctrl-0 = <&uart4_pins>;
+	pinctrl-0 = <&QCC710_pins &pta_QCC710>;
 	pinctrl-names = "default";
 	status = "okay";
 };
@@ -475,29 +573,6 @@
 
 &ssphy_0 {
 	status = "okay";
-};
-
-&rpm_requests {
-	regulators {
-		compatible = "qcom,rpm-mp5496-regulators";
-
-		ipq9574_s1: s1 {
-		 /*
-		 * During kernel bootup, the SoC runs at 800MHz with 875mV set by the bootloaders.
-		 * During regulator registration, kernel not knowing the initial voltage,
-		 * considers it as zero and brings up the regulators with minimum supported voltage.
-		 * Updating the regulator-min-microvolt with SVS voltage of 725000uV so that
-		 * the regulators are brought up with 725000uV which is sufficient for all the
-		 * corner parts to operate at 800MHz
-		 */
-			regulator-min-microvolt = <587500>;
-			regulator-max-microvolt = <1075000>;
-		};
-		ipq9574_s2: s2 {
-			regulator-min-microvolt = <700000>;
-			regulator-max-microvolt = <1000000>;
-		};
-	};
 };
 
 &tlmm {
@@ -538,11 +613,40 @@
 		bias-pull-up;
 	};
 
-	uart4_pins: uart4-pins {
-		pins = "gpio50", "gpio51", "gpio52", "gpio53";
-		function = "blsp4_uart";
-		drive-strength = <8>;
-		bias-disable;
+	QCC710_pins: QCC710_pins {
+		uart4_pins: uart4-pins {
+			pins = "gpio50", "gpio51", "gpio52", "gpio53";
+			function = "blsp4_uart";
+			drive-strength = <8>;
+			bias-disable;
+		};
+		QCC710_reset {
+			pins = "gpio19";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+	};
+
+	pta_QCC710: pta_QCC710 {
+		pta1_0 {
+			pins = "gpio56";
+			function = "pta1_0";
+			drive-strength = <8>;
+			bias-disable;
+		};
+		pta1_1 {
+			pins = "gpio54";
+			function = "pta1_1";
+			drive-strength = <8>;
+			bias-disable;
+		};
+		pta1_2 {
+			pins = "gpio55";
+			function = "pta1_2";
+			drive-strength = <8>;
+			bias-disable;
+		};
 	};
 
 	spi_0_pins: spi-0-pins {
@@ -584,33 +688,53 @@
 	clock-frequency = <24000000>;
 };
 
+&cpu_opp_table {
+	opp-936000000 {
+		opp-microvolt = <863000>;
+	};
+
+	opp-1104000000 {
+		opp-microvolt = <863000>;
+	};
+
+	opp-1200000000 {
+		opp-microvolt = <863000>;
+	};
+
+	opp-1416000000 {
+		opp-microvolt = <863000>;
+	};
+
+	opp-1488000000 {
+		opp-microvolt = <1068000>;
+	};
+
+	opp-1800000000 {
+		opp-microvolt = <1068000>;
+	};
+
+	opp-2208000000 {
+		opp-microvolt = <1068000>;
+	};
+};
+
 &CPU0 {
-	cpu-supply = <&apc_vreg>;
+	cpu-supply = <&apc_rail2>;
 };
 
 &CPU1 {
-	cpu-supply = <&apc_vreg>;
+	cpu-supply = <&apc_rail2>;
 };
 
 &CPU2 {
-	cpu-supply = <&apc_vreg>;
+	cpu-supply = <&apc_rail2>;
 };
 
 &CPU3 {
-	cpu-supply = <&apc_vreg>;
+	cpu-supply = <&apc_rail2>;
 };
 
-&apc_apm {
-	status = "okay";
-};
-
-&apc_cpr {
-	vdd-supply = <&ipq9574_s1>;
-	status = "okay";
-};
-
-&npu_cpr {
-	vdd-supply = <&ipq9574_s2>;
+&license_manager {
 	status = "okay";
 };
 

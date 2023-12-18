@@ -220,6 +220,10 @@
 		};
 	};
 
+	ctx_save: ctx-save {
+		compatible = "qti,ctxt-save-ipq9574";
+	};
+
 	firmware {
 		qfprom {
 			compatible = "qcom,qfprom-sec";
@@ -319,6 +323,12 @@
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
+
+		nss@40000000 {
+			no-map;
+			reg = <0x0 0x40000000 0x0 0x02000000>;
+			status = "disabled";
+		};
 
 		tzapp:tzapp@49600000 {  /* TZAPPS */
 		#if !defined(__IPQ_MEM_PROFILE_512_MB__)
@@ -593,6 +603,26 @@
 				reg = <0x15 0x2>;
 				bits = <7 2>;
 			};
+
+			pcie0_disable: pcie0_disable@1c {
+				reg = <0x1c 0x1>;
+				bits = <2 1>;
+			};
+
+			pcie1_disable: pcie1_disable@1c {
+				reg = <0x1c 0x1>;
+				bits = <3 1>;
+			};
+
+			pcie2_disable: pcie2_disable@1c {
+				reg = <0x1c 0x1>;
+				bits = <4 1>;
+			};
+
+			pcie3_disable: pcie3_disable@1c {
+				reg = <0x1c 0x1>;
+				bits = <5 1>;
+			};
 		};
 
 		rng: rng@e3000 {
@@ -620,6 +650,7 @@
 			clock-names = "iface", "bus", "core";
 			dmas = <&cryptobam 2>, <&cryptobam 3>;
 			dma-names = "rx", "tx";
+			qce,cmd_desc_support;
 		};
 
 		rpm_msg_ram: sram@60000 {
@@ -653,6 +684,22 @@
 				drive-strength = <8>;
 				bias-disable;
 			};
+
+			gps_pins: gps_pins {
+                                blsp3_uart_pinmux {
+                                        pins = "gpio17", "gpio18";
+                                        function = "blsp3_uart";
+                                        drive-strength = <8>;
+                                        bias-disable;
+                                };
+
+                                gps_on_off {
+                                        pins = "gpio7";
+                                        function = "gpio";
+                                        drive-strength = <8>;
+                                        bias-pull-down;
+                                };
+                        };
 
 			mdio_pins: mdio-state {
 				mux_0 {
@@ -793,7 +840,7 @@
 		};
 
 		pcie1_x1: pci@10000000 {
-			compatible = "qcom,pcie-ipq9574";
+			compatible = "qti,pcie-ipq9574";
 			reg =  <0x10000000 0xf1d>,
 			       <0x10000F20 0xa8>,
 			       <0x10001000 0x1000>,
@@ -875,11 +922,12 @@
 			phys = <&pcie1_lane>;
 			phy-names = "pciephy";
 			msi-parent = <&v2m0>;
+			nvmem-cells = <&pcie1_disable>;
 			status = "disabled";
 		};
 
 		pcie3_x2: pci@18000000 {
-			compatible = "qcom,pcie-ipq9574";
+			compatible = "qti,pcie-ipq9574";
 			reg =  <0x18000000 0xf1d>,
 			       <0x18000F20 0xa8>,
 			       <0x18001000 0x1000>,
@@ -960,11 +1008,12 @@
 			phys = <&pcie3_lanes>;
 			phy-names = "pciephy";
 			msi-parent = <&v2m0>;
+			nvmem-cells = <&pcie3_disable>;
 			status = "disabled";
 		};
 
 		pcie2_x2: pci@20000000 {
-			compatible = "qcom,pcie-ipq9574";
+			compatible = "qti,pcie-ipq9574";
 			reg =  <0x20000000 0xf1d>,
 			       <0x20000F20 0xa8>,
 			       <0x20001000 0x1000>,
@@ -1045,11 +1094,12 @@
 			phys = <&pcie2_lanes>;
 			phy-names = "pciephy";
 			msi-parent = <&v2m0>;
+			nvmem-cells = <&pcie2_disable>;
 			status = "disabled";
 		};
 
 		pcie0_x1: pci@28000000 {
-			compatible = "qcom,pcie-ipq9574";
+			compatible = "qti,pcie-ipq9574";
 			reg =  <0x28000000 0xf1d>,
 			       <0x28000F20 0xa8>,
 			       <0x28001000 0x1000>,
@@ -1131,6 +1181,7 @@
 			phys = <&pcie0_lane>;
 			phy-names = "pciephy";
 			msi-parent = <&v2m0>;
+			nvmem-cells = <&pcie0_disable>;
 			status = "disabled";
 		};
 
@@ -2794,7 +2845,7 @@
 
 		mdio: mdio@90000 {
 			compatible = "qcom,qca-mdio", "qcom,ipq40xx-mdio";
-			reg = <0x90000 0x64>, <0x9B780 8>;
+			reg = <0x90000 0x64>, <0x9B000 0x800>;
 			reg-names = "ppe", "cmn_blk";
 			#address-cells = <1>;
 			#size-cells = <1>;
@@ -3293,7 +3344,10 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges;
-			reg = <0x0cd00000 0x4040>;
+			reg = <0x0cd00000 0x4040>,
+			      <0xCB50000 0x8>;
+			reg-names = "qdsp6",
+				    "wcmn";
 			interrupts-extended = <&intc GIC_SPI 325 IRQ_TYPE_EDGE_RISING>,
 					      <&wcss_smp2p_in 0 0>,
 					      <&wcss_smp2p_in 1 0>,
@@ -3936,7 +3990,7 @@
 			trips {
 				nss-top-critical {
 					temperature = <125000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 			};
@@ -3950,7 +4004,7 @@
 			trips {
 				ubi_0-critical {
 					temperature = <125000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 			};
@@ -3964,7 +4018,7 @@
 			trips {
 				ubi_1-critical {
 					temperature = <125000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 			};
@@ -3978,7 +4032,7 @@
 			trips {
 				ubi_2-critical {
 					temperature = <125000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 			};
@@ -3992,7 +4046,7 @@
 			trips {
 				ubi_3-critical {
 					temperature = <125000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 			};
@@ -4006,7 +4060,7 @@
 			trips {
 				cpu-critical {
 					temperature = <125000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 			};
@@ -4020,7 +4074,7 @@
 			trips {
 				cpu-critical {
 					temperature = <125000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 			};
@@ -4034,13 +4088,13 @@
 			trips {
 				cpu-critical {
 					temperature = <120000>;
-					hysteresis = <10000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 
 				cpu-passive {
 					temperature = <110000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "passive";
 				};
 			};
@@ -4054,13 +4108,13 @@
 			trips {
 				cpu-critical {
 					temperature = <120000>;
-					hysteresis = <10000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 
 				cpu-passive {
 					temperature = <110000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "passive";
 				};
 			};
@@ -4074,13 +4128,13 @@
 			trips {
 				cpu-critical {
 					temperature = <120000>;
-					hysteresis = <10000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 
 				cpu-passive {
 					temperature = <110000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "passive";
 				};
 			};
@@ -4094,13 +4148,13 @@
 			trips {
 				cpu-critical {
 					temperature = <120000>;
-					hysteresis = <10000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 
 				cpu3_thermal_alert: cpu-passive {
 					temperature = <110000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "passive";
 				};
 			};
@@ -4125,7 +4179,7 @@
 			trips {
 				wcss_phyb-critical {
 					temperature = <125000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 			};
@@ -4139,15 +4193,17 @@
 			trips {
 				top_glue-critical {
 					temperature = <125000>;
-					hysteresis = <1000>;
+					hysteresis = <9000>;
 					type = "critical";
 				};
 			};
 		};
 	};
 
-	license_manager {
+	license_manager: license_manager {
 		compatible = "qti,license-manager-service";
+		license-file = "";
+		status = "disabled";
 	};
 
 	timer {

@@ -74,6 +74,7 @@ int mhitest_ss_shutdown(struct rproc *subsys_desc)
 
 	mplat = subsys_desc->priv;
 
+	mhitest_pci_soc_reset(mplat);
 	mhitest_pci_set_mhi_state(mplat, MHI_POWER_OFF);
 	mhitest_pci_set_mhi_state(mplat, MHI_DEINIT);
 	mhitest_pci_remove_all(mplat);

@@ -21,6 +21,7 @@
 	aliases {
 		serial0 = &blsp1_uart2;
 		serial1 = &blsp1_uart4;
+		serial2 = &blsp1_uart3;
 		ethernet0 = "/soc/dp1";
 		ethernet1 = "/soc/dp2";
 		ethernet2 = "/soc/dp3";
@@ -278,7 +279,7 @@
 				   <0 352 4>,			/* Rx desc ring id #21 IRQ info */
 				   <0 353 4>,			/* Rx desc ring id #22 IRQ info */
 				   <0 354 4>,			/* Rx desc ring id #23 IRQ info */
-				   <0 261 4>;			/* Misc error IRQ info */
+				   <0 499 4>;			/* Misc error IRQ info */
 		};
 	};
 };
@@ -364,8 +365,14 @@
 	status = "okay";
 };
 
+&blsp1_uart3 {
+	pinctrl-0 = <&gps_pins>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
 &blsp1_uart4 {
-	pinctrl-0 = <&uart4_pins>;
+	pinctrl-0 = <&QCC710_pins &pta_QCC710>;
 	pinctrl-names = "default";
 	status = "okay";
 };
@@ -538,11 +545,40 @@
 		drive-strength = <8>;
 	};
 
-	uart4_pins: uart4-pins {
-		pins = "gpio50", "gpio51", "gpio52", "gpio53";
-		function = "blsp4_uart";
-		drive-strength = <8>;
-		bias-disable;
+	QCC710_pins: QCC710_pins {
+		uart4_pins: uart4-pins {
+			pins = "gpio50", "gpio51", "gpio52", "gpio53";
+			function = "blsp4_uart";
+			drive-strength = <8>;
+			bias-disable;
+		};
+		QCC710_reset {
+			pins = "gpio19";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+	};
+
+	pta_QCC710: pta_QCC710 {
+		pta1_0 {
+			pins = "gpio56";
+			function = "pta1_0";
+			drive-strength = <8>;
+			bias-disable;
+		};
+		pta1_1 {
+			pins = "gpio54";
+			function = "pta1_1";
+			drive-strength = <8>;
+			bias-disable;
+		};
+		pta1_2 {
+			pins = "gpio55";
+			function = "pta1_2";
+			drive-strength = <8>;
+			bias-disable;
+		};
 	};
 
 	spi_0_pins: spi-0-pins {
