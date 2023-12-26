@@ -2455,31 +2455,27 @@
 
 		ssphy_0: phy@7d000 {
 			compatible = "qcom,ipq9574-qmp-usb3-phy";
-			reg = <0x7d000 0x1c4>;
-			#clock-cells = <1>;
-			#address-cells = <1>;
-			#size-cells = <1>;
-			ranges;
+			reg = <0x0007d000 0xa00>;
+			#phy-cells = <0>;
 
 			clocks = <&gcc GCC_USB0_AUX_CLK>,
-				 <&gcc GCC_USB0_PHY_CFG_AHB_CLK>;
-			clock-names = "aux", "cfg_ahb";
+				 <&xo_board_clk>,
+				 <&gcc GCC_USB0_PHY_CFG_AHB_CLK>,
+				 <&gcc GCC_USB0_PIPE_CLK>;
+			clock-names = "aux",
+				      "ref",
+				      "cfg_ahb",
+				      "pipe";
 
-			resets =  <&gcc GCC_USB0_PHY_BCR>,
+			resets = <&gcc GCC_USB0_PHY_BCR>,
 				 <&gcc GCC_USB3PHY_0_PHY_BCR>;
-			reset-names = "phy","common";
-			status = "disabled";
+			reset-names = "phy",
+				      "phy_phy";
 
-			usb0_ssphy: phy@7d200 {
-				reg = <0x0007d200 0x130>,	/* tx */
-				      <0x0007d400 0x200>,	/* rx */
-				      <0x0007d800 0x1f8>,	/* pcs  */
-				      <0x0007d600 0x044>;	/* pcs misc */
-				#phy-cells = <0>;
-				clocks = <&gcc GCC_USB0_PIPE_CLK>;
-				clock-names = "pipe0";
-				clock-output-names = "usb0_pipe_clk";
-			};
+			#clock-cells = <0>;
+			clock-output-names = "usb0_pipe_clk";
+
+			status = "disabled";
 		};
 
 		usb3: usb3@8a00000 {
@@ -2515,7 +2511,7 @@
 				clocks = <&gcc GCC_USB0_MOCK_UTMI_CLK>;
 				clock-names = "ref";
 				interrupts = <GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>;
-				phys = <&qusb_phy_0>, <&usb0_ssphy>;
+				phys = <&qusb_phy_0>, <&ssphy_0>;
 				phy-names = "usb2-phy", "usb3-phy";
 				tx-fifo-resize;
 				snps,is-utmi-l1-suspend;
