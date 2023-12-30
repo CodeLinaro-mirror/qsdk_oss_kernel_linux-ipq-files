@@ -1,0 +1,165 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * Dev SoC Emulation board device tree source
+ *
+ * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ */
+
+/dts-v1/;
+
+#include "devsoc.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. DevSoc-EMULATION-FBC";
+	compatible = "qcom,devsoc-ap-emulation", "qcom,devsoc";
+
+	/*Timer freq for rumi = timer freq / 100*/
+	clocks {
+		sleep_clk: sleep-clk {
+			clock-frequency = <320>;
+		};
+
+		xo: xo {
+			clock-frequency = <240000>;
+		};
+	};
+
+	aliases {
+		serial0 = &uart0;
+	};
+
+	chosen {
+		stdout-path = "serial0";
+	};
+
+	soc@0 {
+		qupv3: geniqup@1ac0000 {
+			status = "okay";
+
+			uart0: serial@1a80000 {
+				pinctrl-0 = <&qup_uart0_default>;
+				pinctrl-names = "default";
+				status = "okay";
+			};
+
+			spi0: spi@1a90000 {
+				pinctrl-0 = <&qup_spi0_default>;
+				pinctrl-names = "default";
+				status = "okay";
+
+				flash@0 {
+					compatible = "spansion,s25fs128s1", "jedec,spi-nor";
+					#address-cells = <1>;
+					#size-cells = <1>;
+					reg = <0>;
+					spi-max-frequency = <50000000>;
+				};
+			};
+		};
+
+#ifdef __QCOM_NON_SECURE_PIL__
+		q6v5_wcss: remoteproc@d100000 {
+			qcom,emulation;
+			qcom,nosecure;
+			bootaddr = <0x8a900000>;
+			q6_wcss_pd1: remoteproc_pd1 {
+				qcom,emulation;
+				qcom,nosecure;
+				bootaddr = <0x8a900000>;
+			};
+		};
+#endif
+
+		/* Timer freq for rumi = timer freq / 100 */
+		timer@f420000 {
+			clock-frequency = <240000>;
+		};
+	};
+
+	/* Timer freq for rumi = timer freq / 100 */
+	timer {
+		clock-frequency = <240000>;
+	};
+};
+
+&qpic_bam {
+	status = "okay";
+};
+
+&qpic_nand {
+	status = "okay";
+};
+
+&sdhc {
+	/* over-ride the frequency to 48Mhz for emulation platform */
+	max-frequency = <48000000>;
+	/* Force 3.3V, because only that will support on emulation platform */
+	mmc-ddr-3_3v;
+	/* quirk to disable SDR104, SDR50 modes */
+	no-1-8-v;
+	max-frequency = <192000000>;
+	bus-width = <4>;
+	non-removable;
+	status = "okay";
+};
+
+&pcie0 {
+	max-link-speed = <1>;
+	phys = <>;
+	phy-names = "";
+	status = "disabled";
+
+	pcie0_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
+&pcie1 {
+	max-link-speed = <1>;
+	phys = <>;
+	phy-names = "";
+	status = "disabled";
+
+	pcie1_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
+&pcie2 {
+	max-link-speed = <1>;
+	phys = <>;
+	phy-names = "";
+	status = "disabled";
+
+	pcie2_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
+&pcie3 {
+	max-link-speed = <1>;
+	phys = <>;
+	phy-names = "";
+	status = "disabled";
+
+	pcie3_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
