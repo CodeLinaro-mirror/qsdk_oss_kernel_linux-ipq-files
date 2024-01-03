@@ -150,7 +150,7 @@
 	};
 
 	cpu_opp_table: opp-table-cpu {
-		compatible = "operating-points-v2-ipq9574";
+		compatible = "operating-points-v2-kryo-cpu";
 		opp-shared;
 		nvmem-cells = <&cpu_speed_bin>;
 		nvmem-cell-names = "speed_bin";
@@ -2826,7 +2826,7 @@
 				     "qcom,ipq6018-apcs-apps-global";
 			reg = <0x0b111000 0x1000>;
 			#clock-cells = <1>;
-			clocks = <&a73pll>, <&xo_board_clk>, <&gcc_gpll0_out_aux>;
+			clocks = <&a73pll>, <&xo_board_clk>, <&gcc GPLL0>;
 			clock-names = "pll", "xo", "gpll0";
 			#mbox-cells = <1>;
 		};
