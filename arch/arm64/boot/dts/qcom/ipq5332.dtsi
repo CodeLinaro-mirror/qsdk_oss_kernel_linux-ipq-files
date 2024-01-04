@@ -238,8 +238,8 @@
 			no-map;
 		};
 
-		bootloader@49c00000 {
-			reg = <0x0 0x49c00000 0x0 0x900000>;
+		bootloader@4a000000 {
+			reg = <0x0 0x4a000000 0x0 0x500000>;
 			no-map;
 		};
 
