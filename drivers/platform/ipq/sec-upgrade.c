@@ -34,6 +34,9 @@
 #include <linux/uaccess.h>
 #include <linux/io.h>
 #include <linux/of.h>
+#include <linux/elf.h>
+#include <linux/decompress/unlzma.h>
+#include <linux/decompress/generic.h>
 
 #define QFPROM_MAX_VERSION_EXCEEDED             0x10
 #define QFPROM_IS_AUTHENTICATE_CMD_RSP_SIZE	0x2
@@ -50,6 +53,7 @@
 static int gl_version_enable;
 static int version_commit_enable;
 static int fuse_blow_size_req;
+static int decompress_error;
 
 enum qti_sec_img_auth_args {
 	QTI_SEC_IMG_SW_TYPE,
@@ -335,6 +339,77 @@ store_version_commit(struct device *dev,
 	return generic_version(dev, buf, 0, 2, count);
 }
 
+struct elf_info {
+	Elf32_Off offset;
+	Elf32_Word filesz;
+	Elf32_Word memsize;
+};
+
+#define PT_LZMA_FLAG		0x8000000
+#define PT_COMPRESS_FLAG	(PT_LOOS + PT_LZMA_FLAG + PT_LOAD)
+#define IS_ELF(ehdr) ((ehdr).e_ident[EI_MAG0] == ELFMAG0 && \
+			(ehdr).e_ident[EI_MAG1] == ELFMAG1 && \
+			(ehdr).e_ident[EI_MAG2] == ELFMAG2 && \
+			(ehdr).e_ident[EI_MAG3] == ELFMAG3)
+
+bool is_compressed(void *header, struct elf_info *info)
+{
+	Elf32_Ehdr *elf_hdr = (Elf32_Ehdr*) header;
+	Elf32_Phdr *prg_hdr;
+	bool com_flg = false;
+
+	if(!IS_ELF(*((Elf32_Ehdr*) header))) {
+		printk("Invalid Image\n");
+		return com_flg;
+	}
+
+	prg_hdr = (Elf32_Phdr *) ((unsigned long)elf_hdr + elf_hdr->e_phoff);
+	for (int i = 0; i < elf_hdr->e_phnum; i++, prg_hdr++) {
+		if (prg_hdr->p_type == PT_COMPRESS_FLAG) {
+			com_flg = true;
+			info->filesz = prg_hdr->p_filesz;
+			info->offset = prg_hdr->p_offset;
+			info->memsize= prg_hdr->p_memsz;
+			break;
+		}
+	}
+
+	return com_flg;
+}
+
+static void error(char *x)
+{
+        printk(KERN_ERR "%s\n", x);
+	decompress_error = 1;
+}
+
+
+int img_decompress(void *file_buf, long size, void *out_buf, struct elf_info *info) {
+	decompress_fn decompressor = NULL;
+	const char *compress_name = NULL;
+	int ret = -EINVAL;
+	unsigned long my_inptr;
+	const unsigned char *comp_data = (char *)file_buf;
+	long comp_size = size;
+
+	decompressor = decompress_method(comp_data, comp_size, &compress_name);
+
+	if(!decompressor || !compress_name)
+	{
+		printk("[%s] decompress method is not configured\n", __func__);
+		ret = -EINVAL;
+		goto exit;
+	}
+
+	ret = decompressor((char*) comp_data, comp_size, NULL, NULL, (char*) out_buf, &my_inptr, error);
+	if(decompress_error)
+		ret = -EIO;
+	else
+		ret = 0;
+exit:
+	return ret;
+}
+
 static ssize_t
 store_sec_auth(struct device *dev,
 			struct device_attribute *sec_attr,
@@ -352,6 +427,8 @@ store_sec_auth(struct device *dev,
 	u32 scm_cmd_id;
 	void *hash_file_buf = NULL;
 	void *data = NULL;
+	void *out_data = NULL;
+	struct elf_info info = {0};
 
 	file_name = kzalloc(count+1, GFP_KERNEL);
 	if (file_name == NULL)
@@ -416,13 +493,37 @@ store_sec_auth(struct device *dev,
 	memset_io(file_buf, 0x0, img_size);
 
 	if (data != NULL) {
-		memcpy_toio(file_buf, data, size);
+
+		if(is_compressed(data, &info)) {
+			out_data = kzalloc(info.memsize, GFP_KERNEL);
+			if(!out_data) {
+				pr_err("%s: Memory allocation failed for out_data buffer\n", __func__);
+				goto un_map;
+			}
+			if(!img_decompress(data + info.offset, info.filesz, out_data, &info)) {
+				printk("Uncompressed!\n");
+				if(!IS_ELF(*((Elf32_Ehdr*) out_data))) {
+					printk("Invalid uncompressed Image\n");
+					goto free_out_data;
+				} else {
+					printk("uncompressed MBN extracted!\n");
+					size = info.memsize;
+				}
+				memcpy_toio(file_buf, out_data, info.memsize);
+			} else {
+				printk("Failed uncompress!\n");
+				goto free_out_data;
+			}
+		} else {
+			memcpy_toio(file_buf, data, size);
+		}
+
 		vfree(data);
 		data = NULL;
 		data_size = 0;
 	} else {
 		pr_err("%s data is null\n",sec_auth_token[QTI_SEC_IMG_ADDR]);
-		goto un_map;
+		goto free_out_data;
 	}
 
 	if (sec_auth_token[QTI_SEC_HASH_ADDR] != NULL) {
@@ -433,14 +534,14 @@ store_sec_auth(struct device *dev,
 			pr_err("%s File open failed\n", sec_auth_token[QTI_SEC_HASH_ADDR]);
 			ret = -EINVAL;
 			data = NULL;
-			goto un_map;
+			goto free_out_data;
 		}
 		hash_size = data_size;
 		hash_file_buf = kzalloc(hash_size, GFP_KERNEL);
 
 		if (!hash_file_buf) {
 			pr_err("%s: Memory allocation failed for hash file buffer\n", __func__);
-			goto un_map;
+			goto free_out_data;
 		}
 
 		if (data != NULL) {
@@ -449,7 +550,7 @@ store_sec_auth(struct device *dev,
 			data = NULL;
 		} else {
 			pr_err("%s data is null\n",sec_auth_token[QTI_SEC_HASH_ADDR]);
-			goto un_map;
+			goto hash_buf_alloc_err;
 		}
 
 		scm_cmd_id = QCOM_KERNEL_META_AUTH_CMD;
@@ -465,13 +566,16 @@ store_sec_auth(struct device *dev,
 		ret = qcom_sec_upgrade_auth(scm_cmd_id, sw_type, size, img_addr);
 		if (ret) {
 			pr_err("sec_upgrade_auth failed with return=%d\n", ret);
-			goto un_map;
+			goto free_out_data;
 		}
 	}
 	ret = count;
 
 hash_buf_alloc_err:
         kfree(hash_file_buf);
+free_out_data:
+	if(out_data)
+		kfree(out_data);
 un_map:
 	iounmap(file_buf);
 put_node:
