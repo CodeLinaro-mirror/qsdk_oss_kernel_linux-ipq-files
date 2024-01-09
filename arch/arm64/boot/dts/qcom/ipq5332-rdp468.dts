@@ -3,7 +3,7 @@
  * IPQ5332 RDP468 board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 /dts-v1/;
@@ -171,6 +171,7 @@
 			phy-mode = "sgmii";
 			qcom,mht-dev = <1>;
 			qcom,is_switch_connected = <1>;
+			qcom,ppe-offload-disabled = <1>;
 		};
 
 		/* EDMA host driver configuration for the board */
