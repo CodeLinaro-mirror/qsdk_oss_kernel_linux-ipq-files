@@ -463,7 +463,7 @@ static void *lm_get_license_meta_buffer(dma_addr_t *dma_addr) {
 
 static void *lm_get_ecdsa_buffer(dma_addr_t *dma_addr, dma_addr_t nonce_dma_addr) {
 	struct lm_svc_ctx *svc = lm_svc;
-	u32 ecdsa_consumed;
+	u32 ecdsa_consumed = 0;
 	char *magic;
 	int ret;
 	u32 license_metadata_len = 8;

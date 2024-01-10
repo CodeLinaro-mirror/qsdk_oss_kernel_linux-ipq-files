@@ -334,13 +334,13 @@ struct sbl_if_dualboot_info_type_v2 *read_bootconfig_emmc(struct block_device *b
 
 	folio = read_mapping_folio(mapping, n >> PAGE_SECTORS_SHIFT, NULL);
 	if (IS_ERR(folio)) {
-		kfree(bootconfig_emmc);
 		return NULL;
 	}
 	bootconfig_emmc = kmemdup(folio_address(folio) + offset_in_folio(folio, n * SECTOR_SIZE), 512, GFP_KERNEL);
 
-	if ((bootconfig_emmc->magic_start != SMEM_DUAL_BOOTINFO_MAGIC_START) &&
-		(bootconfig_emmc->magic_start != SMEM_DUAL_BOOTINFO_MAGIC_START_TRYMODE)) {
+	if (bootconfig_emmc &&
+	    bootconfig_emmc->magic_start != SMEM_DUAL_BOOTINFO_MAGIC_START &&
+	    bootconfig_emmc->magic_start != SMEM_DUAL_BOOTINFO_MAGIC_START_TRYMODE) {
 		pr_alert("Magic not found\n");
 		kfree(bootconfig_emmc);
 		return NULL;
