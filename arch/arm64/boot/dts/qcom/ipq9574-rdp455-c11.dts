@@ -1,22 +1,21 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 /*
- * IPQ9574 RDP467 board device tree source
+ * IPQ9574 RDP455 board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 /dts-v1/;
 
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/input/input.h>
 #include <dt-bindings/leds/common.h>
 #include "ipq9574-qcn9224-default-memory.dtsi"
 #include "ipq9574.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. IPQ9574/RDP467/AP-AL02-C20";
-	compatible = "qcom,ipq9574-ap-al02-c20", "qcom,ipq9574-rdp467", "qcom,ipq9574";
+	model = "Qualcomm Technologies, Inc. IPQ9574/RDP455/AP-AL02-C11";
+	compatible = "qcom,ipq9574-ap-al02-c11", "qcom,ipq9574-rdp455", "qcom,ipq9574";
 
 	aliases {
 		serial0 = &blsp1_uart2;
@@ -107,6 +106,20 @@
 			};
 		};
 
+		leds {
+			compatible = "gpio-leds";
+			pinctrl-0 = <&gpio_leds_default>;
+			pinctrl-names = "default";
+
+			led-0 {
+				color = <LED_COLOR_ID_GREEN>;
+				function = LED_FUNCTION_WLAN;
+				gpios = <&tlmm 64 GPIO_ACTIVE_LOW>;
+				linux,default-trigger = "phy0tx";
+				default-state = "off";
+			};
+		};
+
 		dp1 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
@@ -192,12 +205,11 @@
 			qcom,rx-page-mode = <0>;		/* Rx fill ring page mode */
 			qcom,tx-map-priority-level = <1>;	/* Tx priority level per port */
 			qcom,rx-map-priority-level = <1>;	/* Rx priority level per core */
-			qcom,ppeds-num = <4>;			/* Number of PPEDS nodes */
+			qcom,ppeds-num = <3>;			/* Number of PPEDS nodes */
 			/* PPE-DS node format: <Rx-fill Tx-cmpl Rx Tx Queue-base Queue-count> */
-			qcom,ppeds-map = <1 1 1 1 32 8>,        /* PPEDS Node#0 ring and queue map */
-					<2 2 2 2 40 8>,         /* PPEDS Node#1 ring and queue map */
-					<3 3 3 3 48 8>,         /* PPEDS Node#2 ring and queue map */
-					<0 0 0 0 56 8>;         /* PPEDS Node#3 ring and queue map */
+			qcom,ppeds-map = <1 1 1 1 32 8>,	/* PPEDS Node#0 ring and queue map */
+					<2 2 2 2 40 8>,		/* PPEDS Node#1 ring and queue map */
+					<3 3 3 3 48 8>;		/* PPEDS Node#2 ring and queue map */
 			qcom,txdesc-map = <8 9 10 11>,		/* Port0 per-core Tx ring map */
 					<12 13 14 15>,		/* Port1 per-core Tx ring map */
 					<16 17 18 19>,		/* Port2 per-core Tx ring map */
@@ -255,70 +267,18 @@
 				   <0 353 4>,			/* Rx desc ring id #22 IRQ info */
 				   <0 354 4>,			/* Rx desc ring id #23 IRQ info */
 				   <0 499 4>,			/* Misc error IRQ info */
-				   <0 364 4>,			/* PPEDS Node #0(TxComp ring id #1) TxComplete IRQ info */
-				   <0 332 4>,			/* PPEDS Node #0(Rx Desc ring id #1) Rx Desc IRQ info */
-				   <0 356 4>,			/* PPEDS Node #0(RxFill Desc ring id #1) Rx Fill IRQ info */
-				   <0 365 4>,			/* PPEDS Node #1(TxComp ring id #2) TxComplete IRQ info */
-				   <0 333 4>,			/* PPEDS Node #1(Rx Desc ring id #2) Rx Desc IRQ info */
-				   <0 357 4>,			/* PPEDS Node #1(RxFill Desc ring id #2) Rx Fill IRQ info */
-				   <0 366 4>,			/* PPEDS Node #2(TxComp ring id #3) TxComplete IRQ info */
-				   <0 334 4>,			/* PPEDS Node #2(Rx Desc ring id #3) Rx Desc IRQ info */
-				   <0 358 4>,			/* PPEDS Node #2(RxFill Desc ring id #3) Rx Fill IRQ info */
-				   <0 363 4>,			/* PPEDS Node #3(TxComp ring id #0) TxComplete IRQ info */
-				   <0 331 4>,			/* PPEDS Node #3(Rx Desc ring id #0) Rx Desc IRQ info */
-				   <0 355 4>;			/* PPEDS Node #3(RxFill Desc ring id #0) Rx Fill IRQ info */
-		};
+				   <0 364 4>,			/* PPEDS Node #1(TxComp ring id #1) TxComplete IRQ info */
+				   <0 332 4>,			/* PPEDS Node #1(Rx Desc ring id #1) Rx Desc IRQ info */
+				   <0 356 4>,			/* PPEDS Node #1(RxFill Desc ring id #1) Rx Fill IRQ info */
+				   <0 365 4>,			/* PPEDS Node #2(TxComp ring id #2) TxComplete IRQ info */
+				   <0 333 4>,			/* PPEDS Node #2(Rx Desc ring id #2) Rx Desc IRQ info */
+				   <0 357 4>,			/* PPEDS Node #2(RxFill Desc ring id #2) Rx Fill IRQ info */
+				   <0 366 4>,			/* PPEDS Node #3(TxComp ring id #3) TxComplete IRQ info */
+				   <0 334 4>,			/* PPEDS Node #3(Rx Desc ring id #3) Rx Desc IRQ info */
+				   <0 358 4>;			/* PPEDS Node #3(RxFill Desc ring id #3) Rx Fill IRQ info */
 
-		leds {
-			compatible = "gpio-leds";
-			pinctrl-0 = <&gpio_leds_default>;
-			pinctrl-names = "default";
-
-			led-0 {
-				color = <LED_COLOR_ID_GREEN>;
-				function = LED_FUNCTION_WLAN;
-				gpios = <&tlmm 64 GPIO_ACTIVE_LOW>;
-				linux,default-trigger = "phy0tx";
-				default-state = "off";
-			};
-		};
-
-		gpio_keys {
-			compatible = "gpio-keys";
-			pinctrl-0 = <&button_pins>;
-			pinctrl-names = "default";
-			status = "okay";
-
-			button@1 {
-				label = "wps";
-				linux,code = <KEY_WPS_BUTTON>;
-				gpios = <&tlmm 37 GPIO_ACTIVE_LOW>;
-				linux,input-type = <1>;
-				debounce-interval = <60>;
-			};
 		};
 	};
-};
-
-&pcie0_x1 {
-	pinctrl-0 = <&pci0_pin>;
-	pinctrl-names = "default";
-	perst-gpio = <&tlmm 23 GPIO_ACTIVE_LOW>;
-	status = "okay";
-
-	pcie0_rp {
-		reg = <0 0 0 0 0>;
-
-		wifi@0 {
-			boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
-					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
-					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
-		};
-	};
-};
-
-&pcie0_phy {
-	status = "okay";
 };
 
 &pcie1_x1 {
@@ -486,14 +446,6 @@
 };
 
 &tlmm {
-	pci0_pin: pci0-default-state {
-		pins = "gpio23";
-		function = "gpio";
-		drive-strength = <8>;
-		bias-pull-up;
-		output-low;
-	};
-
 	pci1_pin: pci1-default-state {
 		pins = "gpio26";
 		function = "gpio";
@@ -532,11 +484,11 @@
 		bias-pull-up;
 	};
 
-	button_pins: button-state {
-		pins = "gpio37";
-		function = "gpio";
+	spi_0_pins: spi-0-pins {
+		pins = "gpio11", "gpio12", "gpio13", "gpio14";
+		function = "blsp0_spi";
 		drive-strength = <8>;
-		bias-pull-up;
+		bias-disable;
 	};
 
 	QCC710_pins: QCC710_pins {
@@ -575,13 +527,6 @@
 		};
 	};
 
-	spi_0_pins: spi-0-pins {
-		pins = "gpio11", "gpio12", "gpio13", "gpio14";
-		function = "blsp0_spi";
-		drive-strength = <8>;
-		bias-disable;
-	};
-
 	qspi_nand_pins: qspi_nand_pins {
 		qspi_clock {
 			pins = "gpio5";
@@ -604,6 +549,7 @@
 			bias-disable;
 		};
 	};
+
 };
 
 &usb3 {
@@ -645,5 +591,13 @@
 
 &npu_cpr {
 	vdd-supply = <&ipq9574_s2>;
+	status = "okay";
+};
+
+&q6_region {
+	status = "okay";
+};
+
+&q6v5_wcss {
 	status = "okay";
 };
