@@ -543,6 +543,10 @@
 
 };
 
+&license_manager {
+	status = "okay";
+};
+
 &usb3 {
 	qcom,select-utmi-as-pipe-clk;
 	status = "okay";

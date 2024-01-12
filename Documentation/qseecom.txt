@@ -162,7 +162,7 @@ RSA Sign data:
     or
     cat import_key_blob.txt > /sys/rsa_sec_key/rsa_key_blob
 (2) echo -n "data.txt" > /sys/rsa_sec_key/rsa_sign
-    (Note: data.txt is the input file that can contain plain data upto size 8k)
+    (Note: data.txt is the input file that can contain plain data upto size 2k)
 (3) cat /sys/rsa_sec_key/rsa_sign > signed_data.txt
 
 RSA Verification of Signature:
@@ -170,7 +170,7 @@ RSA Verification of Signature:
     or
     cat import_key_blob.txt > /sys/rsa_sec_key/rsa_key_blob
 (2) echo -n "data.txt" > /sys/rsa_sec_key/rsa_sign
-    (Note: data.txt is the input file that can contain plain data upto size 8k)
+    (Note: data.txt is the input file that can contain plain data upto size 2k)
 (3) cat signed_data.txt > /sys/rsa_sec_key/rsa_verify
 (4) cat /sys/rsa_sec_key/rsa_verify > verification_result.txt
 (5) cat verification_result.txt

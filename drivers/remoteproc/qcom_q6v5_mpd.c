@@ -481,8 +481,13 @@ static int wcss_ahb_pcie_pd_start(struct rproc *rproc)
 	struct q6_wcss *wcss = rproc->priv;
 	const struct wcss_data *desc = of_device_get_match_data(wcss->dev);
 	u8 pd_asid = qcom_get_pd_asid(wcss->dev->of_node);
-	u32 pasid = desc->pasid;
+	u32 pasid;
 	int ret;
+
+	if (!desc)
+		return -EINVAL;
+
+	pasid = desc->pasid;
 
 	if (desc->reset_seq && wcss->need_mem_protection) {
 		if (!pasid)
@@ -628,8 +633,13 @@ static int wcss_ahb_pcie_pd_stop(struct rproc *rproc)
 	struct rproc *rpd_rproc = dev_get_drvdata(wcss->dev->parent);
 	const struct wcss_data *desc = of_device_get_match_data(wcss->dev);
 	u8 pd_asid = qcom_get_pd_asid(wcss->dev->of_node);
-	u32 pasid = desc->pasid;
+	u32 pasid;
 	int ret;
+
+	if (!desc)
+		return -EINVAL;
+
+	pasid = desc->pasid;
 
 	if (rproc->state != RPROC_CRASHED && wcss->q6.stop_bit) {
 		ret = qcom_q6v5_request_stop(&wcss->q6, NULL);
@@ -1080,6 +1090,12 @@ static void q6_wcss_copy_segment(struct rproc *rproc,
 
 	if (base < 0 || base + size > wcss->mem_size) {
 		ptr = devm_ioremap_wc(dev, segment->da, segment->size);
+		if (!ptr) {
+			dev_err(dev, "Failed to ioremap segment %pad size %zx\n",
+				&segment->da, segment->size);
+			return;
+		}
+
 		memcpy(dest, ptr + offset, size);
 		devm_iounmap(dev, ptr);
 	} else {

@@ -286,15 +286,22 @@ inline bool skb_recycler_consume_list_fast(struct sk_buff_head *skb_list)
 
 static void skb_recycler_free_skb(struct sk_buff_head *list)
 {
-	struct sk_buff *skb = NULL;
+	struct sk_buff *skb = NULL, *next = NULL;
 	unsigned long flags;
 
 	spin_lock_irqsave(&list->lock, flags);
 	while ((skb = skb_peek(list)) != NULL) {
 		skbuff_debugobj_activate(skb);
+		next = skb->next;
 		__skb_unlink(skb, list);
 		skb_release_data(skb);
 		kfree_skbmem(skb);
+		/*
+		 * Update the skb->sum for next due to skb_link operation
+		 */
+		if (next) {
+			skbuff_debugobj_sum_update(next);
+		}
 	}
 	spin_unlock_irqrestore(&list->lock, flags);
 }
@@ -394,12 +401,19 @@ static void skb_recycler_flush_task(struct work_struct *work)
 	unsigned long flags;
 	struct sk_buff_head *h;
 	struct sk_buff_head tmp;
+	struct sk_buff *skb = NULL;
 
 	skb_queue_head_init(&tmp);
 
 	h = &get_cpu_var(recycle_list);
 	local_irq_save(flags);
 	skb_queue_splice_init(h, &tmp);
+	/*
+	 * Update the sum for first skb present in tmp list.
+	 * Since the skb is changed in splice init
+	 */
+	skb = skb_peek(&tmp);
+	skbuff_debugobj_sum_update(skb);
 	local_irq_restore(flags);
 	put_cpu_var(recycle_list);
 	skb_recycler_free_skb(&tmp);
@@ -408,6 +422,8 @@ static void skb_recycler_flush_task(struct work_struct *work)
 	h = &get_cpu_var(recycle_spare_list);
 	local_irq_save(flags);
 	skb_queue_splice_init(h, &tmp);
+	skb = skb_peek(&tmp);
+	skbuff_debugobj_sum_update(skb);
 	local_irq_restore(flags);
 	put_cpu_var(recycle_spare_list);
 	skb_recycler_free_skb(&tmp);
