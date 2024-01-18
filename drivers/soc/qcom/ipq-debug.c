@@ -1,5 +1,5 @@
 /* Copyright (c) 2015-2016, 2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -14,6 +14,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  */
+
+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/io.h>
 #include <linux/module.h>
@@ -36,31 +38,11 @@
 
 #define RESET_REASON_MSG_MAX_LEN        100
 
-static int restart_reason_logging(struct platform_device *pdev)
+static int restart_reason_logging(unsigned int reason)
 {
-	unsigned int reset_reason;
-	struct device_node *imem_np;
-	void __iomem *imem_base;
-	char reset_reason_msg[RESET_REASON_MSG_MAX_LEN];
+	char reset_reason_msg[RESET_REASON_MSG_MAX_LEN] = {};
 
-	memset(reset_reason_msg, 0, sizeof(reset_reason_msg));
-	imem_np = of_find_compatible_node(NULL, NULL,
-			"qcom,msm-imem-restart-reason-buf-addr");
-	if (!imem_np) {
-		dev_err(&pdev->dev,
-				"restart_reason_buf_addr imem DT node does not exist\n");
-		return -ENODEV;
-	}
-
-	imem_base = of_iomap(imem_np, 0);
-	if (!imem_base) {
-		dev_err(&pdev->dev,
-				"restart_reason_buf_addr imem offset mapping failed\n");
-		return -ENOMEM;
-	}
-	memcpy_fromio(&reset_reason, imem_base, 4);
-	iounmap(imem_base);
-	switch(reset_reason) {
+	switch(reason) {
 		case NON_SECURE_WATCHDOG:
 			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
 					"%s", "Non-Secure Watchdog ");
@@ -103,8 +85,7 @@ static int restart_reason_logging(struct platform_device *pdev)
 			break;
 	}
 
-	dev_info(&pdev->dev, "reset_reason : %s[0x%X]\n", reset_reason_msg,
-			reset_reason);
+	pr_info("reset_reason : %s[0x%X]\n", reset_reason_msg, reason);
 	return 0;
 }
 
@@ -117,21 +98,34 @@ MODULE_DEVICE_TABLE(of, ipq_debug_match_table);
 
 static int ipq_debug_probe(struct platform_device *pdev)
 {
+	struct device_node *imem_np;
+	unsigned int reset_reason;
+	void __iomem *imem_base;
 	struct device_node *np;
-	int ret;
-	unsigned int no_reset_reason = 0;
 
 	np = of_node_get(pdev->dev.of_node);
 	if (!np)
 		return 0;
 
-	no_reset_reason = of_property_read_bool(np, "no-reset-reason");
-	if (!no_reset_reason) {
-		ret = restart_reason_logging(pdev);
-		if (ret < 0) {
-			dev_err(&pdev->dev, "reset reason logging failed!\n");
-		}
+	imem_np = of_find_compatible_node(NULL, NULL,
+			"qcom,msm-imem-restart-reason-buf-addr");
+	if (!imem_np) {
+		dev_err(&pdev->dev,
+				"restart_reason_buf_addr imem DT node does not exist\n");
+		return -ENODEV;
 	}
+
+	imem_base = of_iomap(imem_np, 0);
+	of_node_put(imem_np);
+	if (!imem_base) {
+		dev_err(&pdev->dev,
+				"restart_reason_buf_addr imem offset mapping failed\n");
+		return -ENOMEM;
+	}
+	memcpy_fromio(&reset_reason, imem_base, 4);
+	iounmap(imem_base);
+
+	restart_reason_logging(reset_reason);
 
 	return 0;
 }
