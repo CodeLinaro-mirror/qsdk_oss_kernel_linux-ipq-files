@@ -112,8 +112,17 @@ struct client_target_info {
 	char file_name[QMI_LM_MAX_LICENSE_FILES_V01][FILE_NAME_MAX];
 };
 
+struct bindings_resp {
+	void *nonce_buf;
+	void *ecdsa_buf;
+	uint32_t nonce_buf_len;
+	uint32_t ecdsa_buf_len;
+	uint32_t ecdsa_consumed_len;
+};
+
 #define GET_FID_INFO 		_IOWR('L', 1, struct client_target_info)
 #define LICENSE_RESCAN 		_IO('L', 2)
+#define GET_BINDINGS		_IOWR('L', 3, struct bindings_resp)
 
 enum req_type {
 	INTERNAL,
