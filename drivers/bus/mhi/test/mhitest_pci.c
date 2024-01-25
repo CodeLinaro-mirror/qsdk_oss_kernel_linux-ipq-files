@@ -1458,30 +1458,9 @@ out:
 	return ret;
 }
 
-int mhitest_pci_probe(struct pci_dev *pci_dev, const struct pci_device_id *id)
-{
-	struct mhitest_platform *temp = get_mhitest_mplat(id->device);
-
-	MHITEST_VERB("Enter\n");
-
-	if (!temp) {
-		MHITEST_ERR("temp is null..\n");
-		return -ENOMEM;
-	}
-	MHITEST_LOG("Vendor:0x%x Device:0x%x probed id:0x%x d_instance:%d\n",
-			pci_dev->vendor, pci_dev->device, id->device,
-					temp->d_instance);
-	/* store this tho main struct*/
-	temp->pci_dev = pci_dev;
-	temp->device_id = pci_dev->device;
-	temp->pci_dev_id = id;
-	MHITEST_VERB("Exit\n");
-	return 0;
-}
-
 extern int debug_lvl;
 extern int domain;
-int mhitest_pci_probe2(struct pci_dev *pci_dev, const struct pci_device_id *id)
+int mhitest_pci_probe(struct pci_dev *pci_dev, const struct pci_device_id *id)
 {
 	struct mhitest_platform *mplat;
 	struct platform_device *plat_dev = get_plat_device();
@@ -1514,19 +1493,17 @@ int mhitest_pci_probe2(struct pci_dev *pci_dev, const struct pci_device_id *id)
 	mplat->pci_dev = pci_dev;
 	mplat->device_id = pci_dev->device;
 	mplat->pci_dev_id = id;
+	mplat->d_instance = pci_domain_nr(pci_dev->bus);
 
-	MHITEST_LOG("Vendor ID:0x%x Device ID:0x%x Probed Device ID:0x%x\n",
-			pci_dev->vendor, pci_dev->device, id->device);
+	MHITEST_LOG("Vendor ID:0x%x Device ID:0x%x Probed Device ID:0x%x Instance ID:0x%x\n",
+			pci_dev->vendor, pci_dev->device, id->device,
+			mplat->d_instance);
 
 	ret = mhitest_event_work_init(mplat);
 	if (ret)
 		goto free_mplat;
 
-	ret = mhitest_store_mplat(mplat);
-	if (ret) {
-		MHITEST_ERR("Error ret:%d\n", ret);
-		goto work_deinit;
-	}
+	mhitest_store_mplat(mplat);
 
 	ret = mhitest_subsystem_register(mplat);
 	if (ret) {
@@ -1542,7 +1519,6 @@ pci_deinit:
 	mhitest_pci_remove_all(mplat);
 	pci_load_and_free_saved_state(pci_dev, &mplat->pci_dev_default_state);
 	mhitest_remove_mplat(mplat);
-work_deinit:
 	mhitest_event_work_deinit(mplat);
 free_mplat:
 	devm_kfree(&mplat->plat_dev->dev, mplat);
@@ -1592,7 +1568,7 @@ static const struct pci_device_id mhitest_pci_id_table[] = {
 
 struct pci_driver mhitest_pci_driver = {
 	.name	  = "mhitest_pci",
-	.probe	  = mhitest_pci_probe2,
+	.probe	  = mhitest_pci_probe,
 	.remove	  = mhitest_pci_remove,
 	.id_table = mhitest_pci_id_table,
 };
