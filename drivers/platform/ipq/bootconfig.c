@@ -273,7 +273,6 @@ static int trymode_inprogress_show(struct seq_file *m, void *v)
 	static uint8_t *update_age;
 	update_age = m->private;
 	seq_printf(m, "%x\n", *update_age);
-	*update_age = WRITE_DISABLE;
 	return 0;
 }
 
