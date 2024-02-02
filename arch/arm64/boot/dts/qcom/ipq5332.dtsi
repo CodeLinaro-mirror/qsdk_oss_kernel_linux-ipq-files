@@ -444,6 +444,9 @@
 			reg = <0x4b1000 0x1000>;
 			phy-type = "gen3";
 			#phy-cells = <0>;
+
+			qti,phy-mux-regs = <&tcsr 0x10544>;
+
 			clocks = <&gcc GCC_PCIE3X2_PIPE_CLK>,
 				<&gcc GCC_SNOC_PCIE3_2LANE_M_CLK>,
 				<&gcc GCC_SNOC_PCIE3_2LANE_S_CLK>,
