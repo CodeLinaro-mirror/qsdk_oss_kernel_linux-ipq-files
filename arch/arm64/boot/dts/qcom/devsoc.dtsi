@@ -151,6 +151,13 @@
 		ranges = <0 0 0 0xffffffff>;
 		dma-ranges;
 
+		rng: rng@4c3000 {
+			compatible = "qcom,prng-ee";
+			reg = <0x004c3000 0x1000>;
+			clocks = <&gcc GCC_PRNG_AHB_CLK>;
+			clock-names = "core";
+		};
+
 		system-cache-controller@800000 {
 			compatible = "qcom,devsoc-llcc";
 			reg = <0x00800000 0x200000>, <0x00800000 0x200000>;
