@@ -357,17 +357,6 @@
 	};
 };
 
-&pcie0_phy {
-	status = "okay";
-};
-
-&pcie0 {
-	pinctrl-0 = <&pcie0_default_state>;
-	pinctrl-names = "default";
-	perst-gpios = <&tlmm 38 GPIO_ACTIVE_LOW>;
-	status = "okay";
-};
-
 &pcie1_phy_x2 {
 	status = "okay";
 };
@@ -454,14 +443,6 @@
 		function = "gpio";
 		drive-strength = <8>;
 		bias-pull-up;
-	};
-
-	pcie0_default_state: pcie0-default-state {
-		pins = "gpio38";
-		function = "gpio";
-		drive-strength = <8>;
-		bias-pull-up;
-		output-low;
 	};
 
 	pcie1_default_state: pcie1-default-state {
