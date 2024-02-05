@@ -302,10 +302,13 @@
 #define GCC_PCIE3_AUX_RESET			292
 #define GCC_PCIE3_AHB_RESET			293
 #define GCC_NSS_PARTIAL_RESET			294
+#define GCC_UNIPHY0_XPCS_ARES			295
+#define GCC_UNIPHY1_XPCS_ARES			296
+#define GCC_UNIPHY2_XPCS_ARES			297
 /* Add new resets on top of q6 bcr
  * and update MAX_GCC_RESET macro
  */
-#define MAX_GCC_RESET				294
+#define MAX_GCC_RESET				297
 #if defined(CONFIG_QCOM_NON_SECURE_PIL) || defined(__QCOM_NON_SECURE_PIL__)
 #define GCC_WCSS_Q6_BCR				(MAX_GCC_RESET + 1)
 #endif

@@ -310,6 +310,7 @@ static struct clk_regmap *gcc_devsoc_dummy_clks[] = {
 	[GCC_RBCPR_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_rbcpr_clk_src),
 	[GCC_ACC_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_acc_clk_src),
 	[GCC_SEC_CTRL_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_sec_ctrl_clk_src),
+	[GCC_IM_SLEEP_CLK] = DEFINE_DUMMY_CLK(gcc_im_sleep_clk),
 #ifdef CONFIG_QCOM_NON_SECURE_PIL
 	[GCC_Q6_TSCTR_1TO2_CLK] = DEFINE_DUMMY_CLK(gcc_q6_tsctr_1to2_clk),
 	[GCC_Q6SS_TRIG_CLK] = DEFINE_DUMMY_CLK(gcc_q6ss_trig_clk),
@@ -622,7 +623,9 @@ static const struct qcom_reset_map gcc_devsoc_resets[] = {
 	[GCC_PCIE3_AUX_RESET] = { 0x2b058, 6 },
 	[GCC_PCIE3_AHB_RESET] = { 0x2b058, 7 },
 	[GCC_NSS_PARTIAL_RESET] = { 0x17078, 0 },
-
+	[GCC_UNIPHY0_XPCS_ARES] = { 0x17050, 2 },
+	[GCC_UNIPHY1_XPCS_ARES] = { 0x17060, 2 },
+	[GCC_UNIPHY2_XPCS_ARES] = { 0x17070, 2 },
 };
 
 static const struct of_device_id gcc_devsoc_match_table[] = {
