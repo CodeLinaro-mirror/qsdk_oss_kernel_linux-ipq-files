@@ -37,12 +37,17 @@
 #include <linux/pagemap.h>
 #include <linux/qcom_scm.h>
 #include <linux/soc/qcom/smem.h>
+#include <linux/crc32.h>
+#include <linux/bio.h>
+#include <linux/blkdev.h>
 #include "bootconfig.h"
 
 
 #define WRITE_ENABLE 	1
 #define WRITE_DISABLE 	0
-#define SMEM_TRYMODE_INFO 507
+#define SMEM_TRYMODE_INFO	507
+#define SMEM_BOOT_DUALPARTINFO	503
+
 #define BOOTCONFIG_PARTITION	"0:BOOTCONFIG"
 #define BOOTCONFIG_PARTITION1	"0:BOOTCONFIG1"
 #define ROOTFS_PARTITION	"rootfs"
@@ -77,8 +82,14 @@ static unsigned long int trybit;
 static int getbinary_show(struct seq_file *m, void *v)
 {
 	struct sbl_if_dualboot_info_type_v2 *sbl_info_v2;
+	u32 size = 0;
 
 	sbl_info_v2 = m->private;
+	if(SMEM_DUAL_BOOTINFO_MAGIC_END != sbl_info_v2->magic_end) {
+		size = sizeof(struct sbl_if_dualboot_info_type_v2) - sizeof(sbl_info_v2->magic_end);
+		sbl_info_v2->magic_end = crc32_be(0, (char *)sbl_info_v2, size);
+	}
+
 	memcpy(m->buf + m->count, sbl_info_v2,
 		sizeof(struct sbl_if_dualboot_info_type_v2));
 	m->count += sizeof(struct sbl_if_dualboot_info_type_v2);
@@ -262,7 +273,6 @@ static int trymode_inprogress_show(struct seq_file *m, void *v)
 	static uint8_t *update_age;
 	update_age = m->private;
 	seq_printf(m, "%x\n", *update_age);
-	*update_age = WRITE_DISABLE;
 	return 0;
 }
 
@@ -312,13 +322,6 @@ struct sbl_if_dualboot_info_type_v2 *read_bootconfig_mtd(
 		return NULL;
 	}
 
-	if ((bootconfig_mtd->magic_start != SMEM_DUAL_BOOTINFO_MAGIC_START) &&
-		(bootconfig_mtd->magic_start != SMEM_DUAL_BOOTINFO_MAGIC_START_TRYMODE)) {
-		pr_alert("Magic not found in \"%s\"\n", master->name);
-		kfree(bootconfig_mtd);
-		return NULL;
-	}
-
 	return bootconfig_mtd;
 }
 
@@ -348,6 +351,103 @@ struct sbl_if_dualboot_info_type_v2 *read_bootconfig_emmc(struct block_device *b
 
 	return bootconfig_emmc;
 }
+
+/*
+ * Convert a number of 512B sectors to a number of pages.
+ * The result is limited to a number of pages that can fit into a BIO.
+ * Also make sure that the result is always at least 1 (page) for the cases
+ * where nr_sects is lower than the number of sectors in a page.
+ */
+
+static unsigned int __blkdev_sectors_to_bio_pages(sector_t nr_sects)
+{
+	sector_t pages = DIV_ROUND_UP_SECTOR_T(nr_sects, PAGE_SIZE / 512);
+
+	return min(pages, (sector_t)BIO_MAX_VECS);
+}
+
+int blkdev_issue_write(struct block_device *bdev, sector_t sector,
+			sector_t nr_sects, gfp_t gfp_mask, struct page *page)
+{
+	int ret = 0;
+	sector_t bs_mask;
+	struct bio *bio;
+
+	int bi_size = 0;
+	unsigned int sz;
+
+	if (bdev_read_only(bdev))
+		return -EPERM;
+
+	bs_mask = (bdev_logical_block_size(bdev) >> 9) - 1;
+	if ((sector | nr_sects) & bs_mask)
+		return -EINVAL;
+
+	bio = bio_alloc(bdev, __blkdev_sectors_to_bio_pages(nr_sects),
+			REQ_OP_WRITE, gfp_mask);
+	if (!bio) {
+		printk("Couldn't alloc bio");
+		return -1;
+	}
+
+	bio->bi_iter.bi_sector = sector;
+	bio_set_dev(bio, bdev);
+	bio_set_op_attrs(bio, REQ_OP_WRITE, 0);
+
+	sz = bdev_logical_block_size(bdev);
+	bi_size = bio_add_page(bio, page, sz, 0);
+
+	if(bi_size != sz) {
+		printk("Couldn't add page to the log block");
+		goto error;
+	}
+	if (bio)
+		ret = submit_bio_wait(bio);
+
+	return 0;
+error:
+	bio_put(bio);
+	return -1;
+}
+
+int write_bootconfig_emmc(struct block_device *bdev,
+			  struct sbl_if_dualboot_info_type_v2 *data)
+{
+	sector_t n;
+	int ret;
+	unsigned int sz;
+	struct page *page;
+	void *ptr;
+
+	n = bdev->bd_start_sect * (bdev_logical_block_size(bdev) / 512);
+
+	page = alloc_page(GFP_KERNEL);
+	if (!page) {
+		printk("Couldn't alloc log page");
+		return -ENOMEM;
+	}
+
+	ptr = kmap_atomic(page);
+	memcpy(ptr, data,
+			sizeof(struct sbl_if_dualboot_info_type_v2));
+
+	sz = min((sector_t) PAGE_SIZE, n << 9);
+	memset(ptr + sizeof(struct sbl_if_dualboot_info_type_v2), 0xff,
+			sz - sizeof(struct sbl_if_dualboot_info_type_v2));
+
+	kunmap_atomic(ptr);
+
+	ret = blkdev_issue_write(bdev, bdev->bd_start_sect,
+			n, GFP_ATOMIC,
+			page);
+
+	__free_page(page);
+
+	blkdev_put(bdev, FMODE_READ | FMODE_WRITE);
+
+	return ret;
+}
+
 #endif
 
 static ssize_t age_write(struct file *file,
@@ -472,6 +572,119 @@ exit:
 
 }
 
+static int write_to_flash (struct sbl_if_dualboot_info_type_v2 *data,
+				    const char *partition)
+{
+	struct mtd_info *mtd;
+	struct erase_info erase;
+	size_t retlen;
+	uint8_t *flash_data;
+	int i, ret = -1;
+#ifdef CONFIG_MMC
+	struct gendisk *disk = NULL;
+	struct block_device *bdev;
+	unsigned long idx;
+#endif
+
+	printk("Restoring %s\n",partition);
+
+	mtd = get_mtd_device_nm(partition);
+	if (IS_ERR(mtd)) {
+		/*Flash to EMMC*/
+
+		for (i = 0; i < MAX_MMC_DEVICE; i++) {
+
+			bdev = blkdev_get_by_dev(MKDEV(MMC_BLOCK_MAJOR,
+						i*CONFIG_MMC_BLOCK_MINORS),
+					FMODE_READ | FMODE_WRITE, NULL);
+			if (IS_ERR(bdev))
+				return PTR_ERR(bdev);
+			disk = bdev->bd_disk;
+
+			if (!disk)
+				return 0;
+
+			xa_for_each_start(&disk->part_tbl, idx, bdev, 1) {
+
+				if (bdev->bd_meta_info) {
+					if (!strcmp((char *)bdev->bd_meta_info->volname,
+								partition)) {
+						ret = write_bootconfig_emmc(bdev,
+								data);
+					}
+				}
+			}
+		}
+
+		if(ret)
+			return ret;
+
+	} else {
+
+		/*
+		 * First, let's erase the flash block.
+		 */
+		erase.addr = 0;
+		erase.len = mtd->size;
+
+		ret = mtd_erase(mtd, &erase);
+		if (ret) {
+			printk ("Failed Erasing Partition : %s\n", partition);
+			return ret;
+		}
+
+		/*
+		 * Next, write the data to flash.
+		 */
+
+		flash_data = kmalloc(mtd->size, GFP_ATOMIC);
+		if(!flash_data)
+			return -ENOMEM;
+
+		memset(flash_data, 0xff, mtd->size);
+
+		memcpy(flash_data, data,sizeof(struct sbl_if_dualboot_info_type_v2));
+
+		ret = mtd_write(mtd, 0, mtd->size, &retlen, (char *)flash_data);
+
+		kfree(flash_data);
+
+		if (ret)
+			return ret;
+		if (retlen != mtd->size)
+			return -EIO;
+	}
+	printk("[%s]: Flashed successfully\n", partition);
+	return 0;
+
+}
+
+static int restore_bootconfig_partition(u8 which_bc)
+{
+	struct sbl_if_dualboot_info_type_v2 *smem_bootconfig;
+	size_t len;
+	int ret = 0;
+
+	smem_bootconfig = qcom_smem_get(QCOM_SMEM_HOST_ANY, SMEM_BOOT_DUALPARTINFO, &len);
+	if(smem_bootconfig && ((smem_bootconfig->magic_start == SMEM_DUAL_BOOTINFO_MAGIC_START) ||
+				(smem_bootconfig->magic_start == SMEM_DUAL_BOOTINFO_MAGIC_START_TRYMODE)))
+	{
+		if(0 == which_bc) {
+			memcpy(bootconfig1, smem_bootconfig, sizeof(struct sbl_if_dualboot_info_type_v2));
+			ret = write_to_flash(bootconfig1, BOOTCONFIG_PARTITION);
+		}
+		if(1 == which_bc) {
+			memcpy(bootconfig2, smem_bootconfig, sizeof(struct sbl_if_dualboot_info_type_v2));
+			ret = write_to_flash(bootconfig2, BOOTCONFIG_PARTITION1);
+		}
+
+	} else {
+		return -1;
+	}
+
+	return ret;
+}
+
 static int __init bootconfig_partition_init(void)
 {
 	struct per_part_info *bc1_part_info;
@@ -485,6 +698,7 @@ static int __init bootconfig_partition_init(void)
 #endif
 	struct mtd_info *mtd;
 	size_t len;
+	u32 size = 0;
 
 	/*
 	 * In case of NOR\NAND boot, there is a chance that emmc
@@ -570,6 +784,48 @@ static int __init bootconfig_partition_init(void)
 
 	if (!bootconfig1 || !bootconfig2)
 		goto free_memory;
+
+	if(SMEM_DUAL_BOOTINFO_MAGIC_END != bootconfig1->magic_end ||
+			SMEM_DUAL_BOOTINFO_MAGIC_END != bootconfig2->magic_end)
+	{
+
+		u32 bootconfig1_crc, bootconfig2_crc;
+		u8 invalid_bootconfig = -1;
+		u8 is_bc1_fault, is_bc2_fault;
+
+		size = sizeof(struct sbl_if_dualboot_info_type_v2) -
+			sizeof(bootconfig1->magic_end);
+		bootconfig1_crc = crc32_be(0, (char *)bootconfig1, size);
+		bootconfig2_crc = crc32_be(0, (char *)bootconfig2, size);
+
+		is_bc1_fault = (bootconfig1_crc != bootconfig1->magic_end) &&
+			(SMEM_DUAL_BOOTINFO_MAGIC_END != bootconfig1->magic_end);
+
+		is_bc2_fault = (bootconfig2_crc != bootconfig2->magic_end) &&
+			(SMEM_DUAL_BOOTINFO_MAGIC_END != bootconfig2->magic_end);
+
+		if(is_bc1_fault && is_bc2_fault)
+		{
+			/*sysupgrade will not be supported*/
+			goto free_memory;
+		}
+		if(is_bc1_fault || is_bc2_fault)
+		{
+			printk("%s partition is corrupted\n", is_bc1_fault ?
+					BOOTCONFIG_PARTITION : BOOTCONFIG_PARTITION1);
+			invalid_bootconfig = is_bc1_fault ? 0 : 1;
+
+			ret = restore_bootconfig_partition(invalid_bootconfig);
+			if (ret) {
+				printk("Unable restore %s partition,"
+						"Please flash Bootconfig Manualy\n",
+						is_bc1_fault ? BOOTCONFIG_PARTITION :
+						BOOTCONFIG_PARTITION1);
+				goto free_memory;
+			}
+		}
+
+	}
 
 	boot_info_dir = proc_mkdir("boot_info",NULL);
 	upgrade_info_dir = proc_mkdir("upgrade_info",NULL);
