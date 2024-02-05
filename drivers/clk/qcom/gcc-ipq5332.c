@@ -570,6 +570,7 @@ static struct clk_rcg2 gcc_nss_ts_clk_src = {
 	},
 };
 
+#ifdef CONFIG_PCI
 static const struct freq_tbl ftbl_gcc_pcie3x1_0_axi_clk_src[] = {
 	F(240000000, P_GPLL4_OUT_MAIN, 5, 0, 0),
 	{ }
@@ -723,12 +724,14 @@ static struct clk_branch gcc_pcie3x2_rchg_clk = {
 		},
 	},
 };
+#endif
 
 static const struct freq_tbl ftbl_gcc_pcie_aux_clk_src[] = {
 	F(2000000, P_XO, 12, 0, 0),
 	{ }
 };
 
+#ifdef CONFIG_PCI
 static struct clk_rcg2 gcc_pcie_aux_clk_src = {
 	.cmd_rcgr = 0x28004,
 	.mnd_width = 16,
@@ -784,6 +787,7 @@ static struct clk_regmap_phy_mux gcc_pcie3x1_1_pipe_clk_src = {
 		},
 	},
 };
+#endif
 
 static const struct freq_tbl ftbl_gcc_pcnoc_bfdcd_clk_src[] = {
 	F(24000000, P_XO, 1, 0, 0),
@@ -1667,6 +1671,7 @@ static struct clk_branch gcc_nssnoc_xo_dcd_clk = {
 	},
 };
 
+#ifdef CONFIG_PCI
 static struct clk_branch gcc_pcie3x1_0_ahb_clk = {
 	.halt_reg = 0x29030,
 	.halt_check = BRANCH_HALT,
@@ -2026,6 +2031,7 @@ static struct clk_branch gcc_pcie3x2_pipe_clk = {
 		},
 	},
 };
+#endif
 
 static struct clk_branch gcc_pcnoc_lpass_clk = {
 	.halt_reg = 0x31020,
@@ -2238,6 +2244,7 @@ static struct clk_branch gcc_snoc_nssnoc_clk = {
 	},
 };
 
+#ifdef CONFIG_PCI
 static struct clk_branch gcc_snoc_pcie3_1lane_1_m_clk = {
 	.halt_reg = 0x2e050,
 	.halt_check = BRANCH_HALT,
@@ -2345,6 +2352,7 @@ static struct clk_branch gcc_snoc_pcie3_2lane_s_clk = {
 		},
 	},
 };
+#endif
 
 static struct clk_branch gcc_snoc_usb_clk = {
 	.halt_reg = 0x2e058,
@@ -2699,6 +2707,7 @@ static struct clk_regmap *gcc_ipq5332_clocks[] = {
 	[GCC_NSSNOC_SNOC_CLK] = &gcc_nssnoc_snoc_clk.clkr,
 	[GCC_NSSNOC_TIMEOUT_REF_CLK] = &gcc_nssnoc_timeout_ref_clk.clkr,
 	[GCC_NSSNOC_XO_DCD_CLK] = &gcc_nssnoc_xo_dcd_clk.clkr,
+#ifdef CONFIG_PCI
 	[GCC_PCIE3X1_0_AHB_CLK] = &gcc_pcie3x1_0_ahb_clk.clkr,
 	[GCC_PCIE3X1_0_AUX_CLK] = &gcc_pcie3x1_0_aux_clk.clkr,
 	[GCC_PCIE3X1_0_AXI_CLK_SRC] = &gcc_pcie3x1_0_axi_clk_src.clkr,
@@ -2730,11 +2739,14 @@ static struct clk_regmap *gcc_ipq5332_clocks[] = {
 	[GCC_PCIE3X2_RCHG_CLK] = &gcc_pcie3x2_rchg_clk.clkr,
 	[GCC_PCIE3X2_RCHG_CLK_SRC] = &gcc_pcie3x2_rchg_clk_src.clkr,
 	[GCC_PCIE_AUX_CLK_SRC] = &gcc_pcie_aux_clk_src.clkr,
+#endif
 	[GCC_PCNOC_BFDCD_CLK_SRC] = &gcc_pcnoc_bfdcd_clk_src.clkr,
 	[GCC_PCNOC_LPASS_CLK] = &gcc_pcnoc_lpass_clk.clkr,
 	[GCC_PRNG_AHB_CLK] = &gcc_prng_ahb_clk.clkr,
 	[GCC_Q6_AXIM_CLK_SRC] = &gcc_q6_axim_clk_src.clkr,
+#ifdef CONFIG_CORESIGHT
 	[GCC_QDSS_AT_CLK_SRC] = &gcc_qdss_at_clk_src.clkr,
+#endif
 	[GCC_QPIC_AHB_CLK] = &gcc_qpic_ahb_clk.clkr,
 	[GCC_QPIC_CLK] = &gcc_qpic_clk.clkr,
 	[GCC_QPIC_IO_MACRO_CLK] = &gcc_qpic_io_macro_clk.clkr,
@@ -2747,12 +2759,14 @@ static struct clk_regmap *gcc_ipq5332_clocks[] = {
 	[GCC_SNOC_LPASS_CFG_CLK] = &gcc_snoc_lpass_cfg_clk.clkr,
 	[GCC_SNOC_NSSNOC_1_CLK] = &gcc_snoc_nssnoc_1_clk.clkr,
 	[GCC_SNOC_NSSNOC_CLK] = &gcc_snoc_nssnoc_clk.clkr,
+#ifdef CONFIG_PCI
 	[GCC_SNOC_PCIE3_1LANE_1_M_CLK] = &gcc_snoc_pcie3_1lane_1_m_clk.clkr,
 	[GCC_SNOC_PCIE3_1LANE_1_S_CLK] = &gcc_snoc_pcie3_1lane_1_s_clk.clkr,
 	[GCC_SNOC_PCIE3_1LANE_M_CLK] = &gcc_snoc_pcie3_1lane_m_clk.clkr,
 	[GCC_SNOC_PCIE3_1LANE_S_CLK] = &gcc_snoc_pcie3_1lane_s_clk.clkr,
 	[GCC_SNOC_PCIE3_2LANE_M_CLK] = &gcc_snoc_pcie3_2lane_m_clk.clkr,
 	[GCC_SNOC_PCIE3_2LANE_S_CLK] = &gcc_snoc_pcie3_2lane_s_clk.clkr,
+#endif
 	[GCC_SNOC_USB_CLK] = &gcc_snoc_usb_clk.clkr,
 	[GCC_SYSTEM_NOC_BFDCD_CLK_SRC] = &gcc_system_noc_bfdcd_clk_src.clkr,
 	[GCC_UNIPHY0_AHB_CLK] = &gcc_uniphy0_ahb_clk.clkr,
@@ -2779,9 +2793,11 @@ static struct clk_regmap *gcc_ipq5332_clocks[] = {
 	[GCC_IM_SLEEP_CLK] = &gcc_im_sleep_clk.clkr,
 	[GCC_NSSNOC_PCNOC_1_CLK] = &gcc_nssnoc_pcnoc_1_clk.clkr,
 	[GCC_SNOC_QOSGEN_EXTREF_DIV_CLK_SRC] = &gcc_snoc_qosgen_extref_div_clk_src.clkr,
+#ifdef CONFIG_PCI
 	[GCC_PCIE3X2_PIPE_CLK_SRC] = &gcc_pcie3x2_pipe_clk_src.clkr,
 	[GCC_PCIE3X1_0_PIPE_CLK_SRC] = &gcc_pcie3x1_0_pipe_clk_src.clkr,
 	[GCC_PCIE3X1_1_PIPE_CLK_SRC] = &gcc_pcie3x1_1_pipe_clk_src.clkr,
+#endif
 	[GCC_USB0_PIPE_CLK_SRC] = &gcc_usb0_pipe_clk_src.clkr,
 };
 
@@ -2875,6 +2891,7 @@ static const struct qcom_reset_map gcc_ipq5332_resets[] = {
 	[GCC_Q6SS_ATBM_CLK_ARES] = { 0x2501c, 2 },
 	[GCC_Q6SS_PCLKDBG_CLK_ARES] = { 0x25024, 2 },
 	[GCC_Q6SS_TRIG_CLK_ARES] = { 0x250a0, 2 },
+#ifdef CONFIG_CORESIGHT
 	[GCC_QDSS_APB2JTAG_CLK_ARES] = { 0x2d060, 2 },
 	[GCC_QDSS_AT_CLK_ARES] = { 0x2d038, 2 },
 	[GCC_QDSS_BCR] = { 0x2d000 },
@@ -2891,6 +2908,7 @@ static const struct qcom_reset_map gcc_ipq5332_resets[] = {
 	[GCC_QDSS_TSCTR_DIV3_CLK_ARES] = { 0x2d04c, 2 },
 	[GCC_QDSS_TSCTR_DIV4_CLK_ARES] = { 0x2d050, 2 },
 	[GCC_QDSS_TSCTR_DIV8_CLK_ARES] = { 0x2d054, 2 },
+#endif
 	[GCC_QPIC_AHB_CLK_ARES] = { 0x32010, 2 },
 	[GCC_QPIC_CLK_ARES] = { 0x32014, 2 },
 	[GCC_QPIC_BCR] = { 0x32000 },
@@ -2904,7 +2922,9 @@ static const struct qcom_reset_map gcc_ipq5332_resets[] = {
 	[GCC_SNOC_LPASS_CFG_CLK_ARES] = { 0x2e028, 2 },
 	[GCC_SNOC_NSSNOC_1_CLK_ARES] = { 0x17090, 2 },
 	[GCC_SNOC_NSSNOC_CLK_ARES] = { 0x17084, 2 },
+#ifdef CONFIG_CORESIGHT
 	[GCC_SYS_NOC_QDSS_STM_AXI_CLK_ARES] = { 0x2e034, 2 },
+#endif
 	[GCC_SYS_NOC_WCSS_AHB_CLK_ARES] = { 0x2e030, 2 },
 	[GCC_UNIPHY0_AHB_CLK_ARES] = { 0x16010, 2 },
 	[GCC_UNIPHY0_BCR] = { 0x16000 },
