@@ -626,7 +626,7 @@
 };
 
 &mlo_global_mem0 {
-	size = <0x0 0xC00000>;
+	size = <0x0 0xD00000>;
 	status = "okay";
 };
 
