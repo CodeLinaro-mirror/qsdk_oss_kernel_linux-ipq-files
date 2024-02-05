@@ -323,13 +323,6 @@ struct sbl_if_dualboot_info_type_v2 *read_bootconfig_mtd(
 		return NULL;
 	}
 
-	if ((bootconfig_mtd->magic_start != SMEM_DUAL_BOOTINFO_MAGIC_START) &&
-		(bootconfig_mtd->magic_start != SMEM_DUAL_BOOTINFO_MAGIC_START_TRYMODE)) {
-		pr_alert("Magic not found in \"%s\"\n", master->name);
-		kfree(bootconfig_mtd);
-		return NULL;
-	}
-
 	return bootconfig_mtd;
 }
 
