@@ -52,10 +52,10 @@
      * | LINUX   |  0x4F500000  |           5MB           |
      * +---------+--------------+-------------------------+
      * |         |              |                         |
-     * |   MLO   |  0x4FA00000  |          17MB           |
+     * |   MLO   |  0x4FA00000  |          18MB           |
      * +---------+--------------+-------------------------+
      * |         |              |                         |
-     * |  WKK1   |  0x50B00000  |          50MB           |
+     * |  WKK1   |  0x50C00000  |          50MB           |
      * |         |              |                         |
      * +==================================================+
      * |                                                  |
@@ -79,7 +79,7 @@
 		/delete-node/ mlo_global_mem_0@0x4db00000;
 		/delete-node/ wcnss@4a900000;
 		/delete-node/ q6_caldb_region@4ce00000;
-		/delete-node/ qcn9224_pcie1@51e00000;
+		/delete-node/ qcn9224_pcie1@51f00000;
 		q6_mem_regions: q6_mem_regions@4A900000  {
 			no-map;
 			reg = <0x0 0x4a900000 0x0 0x4C00000>;
@@ -132,12 +132,12 @@
 
 		mlo_global_mem0: mlo_global_mem_0@4FA00000 {
 			no-map;
-			reg = <0x0 0x4FA00000 0x0 0x1100000>;
+			reg = <0x0 0x4FA00000 0x0 0x1200000>;
 		};
 
-		qcn9224_pcie1: qcn9224_pcie1@50B00000 {
+		qcn9224_pcie1: qcn9224_pcie1@50C00000 {
 			no-map;
-			reg = <0x0 0x50B00000 0x0 0x03200000>;
+			reg = <0x0 0x50C00000 0x0 0x03200000>;
 		};
 	};
 
