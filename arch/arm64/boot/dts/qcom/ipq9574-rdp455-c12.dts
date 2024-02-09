@@ -601,3 +601,8 @@
 &q6v5_wcss {
 	status = "okay";
 };
+
+&mlo_global_mem0 {
+        size = <0x0 0x1200000>;
+        status = "okay";
+};
