@@ -610,6 +610,10 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	struct lm_svc_ctx *svc = lm_svc;
 	struct client_target_info *client_info = NULL;
 	struct feature_info *itr, *tmp;
+	dma_addr_t nonce_dma_addr, ecdsa_dma_addr;
+	void *nonce_buf, *ecdsa_buf;
+	struct bindings_resp br;
+	u32 ecdsa_consumed;
 	int i, len = 0, ret = 0;
 
 	switch(cmd) {
@@ -652,6 +656,66 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			}
 
 			kfree(client_info);
+		break;
+
+		case GET_BINDINGS:
+			ret = copy_from_user(&br, argp, sizeof(struct bindings_resp));
+			if (ret) {
+				dev_err(svc->dev, "IOCTL: bindings_resp copy from user error\n");
+				return ret;
+			}
+			if ((br.nonce_buf_len != NONCE_SIZE) || (br.ecdsa_buf_len != ECDSA_DATA_SIZE)) {
+				dev_err(svc->dev, "IOCTL: nonce/ECDSA buffer size invalid\n");
+				return -EINVAL;
+			}
+
+			nonce_buf = dma_alloc_coherent(svc->dev, NONCE_SIZE,
+						       &nonce_dma_addr, GFP_KERNEL);
+			if (!nonce_buf) {
+				dev_err(svc->dev, "IOCTL: NONCE coherent mem alloc failed\n");
+				return -ENOMEM;
+			}
+
+			ecdsa_buf = dma_alloc_coherent(svc->dev, ECDSA_DATA_SIZE,
+						       &ecdsa_dma_addr, GFP_KERNEL);
+			if (!ecdsa_buf) {
+				dev_err(svc->dev, "IOCTL: ECDSA coherent mem alloc failed\n");
+				ret = -ENOMEM;
+				goto ecdsa_dma_alloc_err;
+			}
+
+			ret = copy_from_user(nonce_buf, br.nonce_buf, br.nonce_buf_len);
+			if (ret) {
+				dev_err(svc->dev, "IOCTL: NONCE copy from user error\n");
+				goto err;
+			}
+
+			ret = qti_scm_get_ecdsa_blob(QWES_SVC_ID, QWES_ECDSA_REQUEST,
+						     nonce_dma_addr, NONCE_SIZE,
+						     ecdsa_dma_addr, ECDSA_DATA_SIZE,
+						     &ecdsa_consumed);
+			if (ret) {
+				dev_err(svc->dev, "IOCTL: Failed to get the ECDSA blob from TZ, ret %d\n", ret);
+				goto err;
+			}
+
+			br.ecdsa_consumed_len = ecdsa_consumed;
+			ret = copy_to_user(br.ecdsa_buf, ecdsa_buf, ecdsa_consumed);
+			if (ret) {
+				dev_err(svc->dev, "IOCTL: ECDSA copy to user error\n");
+				goto err;
+			}
+
+			ret = copy_to_user(argp, &br, sizeof(br));
+			if (ret)
+				dev_err(svc->dev, "IOCTL: ecdsa_resp copy to user error\n");
+
+		err:
+			dma_free_coherent(svc->dev, ECDSA_DATA_SIZE, ecdsa_buf, ecdsa_dma_addr);
+
+		ecdsa_dma_alloc_err:
+			dma_free_coherent(svc->dev, NONCE_SIZE, nonce_buf, nonce_dma_addr);
+
 		break;
 
 		default:

@@ -29,6 +29,7 @@
 #define CPU_IPQ5312 594
 #define CPU_IPQ5302 595
 #define CPU_IPQ5300 624
+#define CPU_IPQ5321 650
 
 static inline int read_ipq_soc_version_major(void)
 {
@@ -100,6 +101,15 @@ static inline int cpu_is_ipq5300(void)
 #endif
 }
 
+static inline int cpu_is_ipq5321(void)
+{
+#ifdef CONFIG_ARCH_QCOM
+	return read_ipq_cpu_type() == CPU_IPQ5321;
+#else
+	return 0;
+#endif
+}
+
 static inline int cpu_is_ipq9514(void)
 {
 #ifdef CONFIG_ARCH_QCOM
@@ -159,7 +169,7 @@ static inline int cpu_is_ipq53xx(void)
 #ifdef CONFIG_ARCH_QCOM
 	return  cpu_is_ipq5332() || cpu_is_ipq5322() ||
 		cpu_is_ipq5312() || cpu_is_ipq5302() ||
-		cpu_is_ipq5300();
+		cpu_is_ipq5300() || cpu_is_ipq5321();
 #else
 	return 0;
 #endif
@@ -182,7 +192,7 @@ static inline int cpu_is_nss_crypto_enabled(void)
 	return	cpu_is_ipq5322() || cpu_is_ipq9570() ||
 		cpu_is_ipq9550() || cpu_is_ipq9574() ||
 		cpu_is_ipq9554() || cpu_is_ipq5332() ||
-		cpu_is_ipq5300();
+		cpu_is_ipq5300() || cpu_is_ipq5321();
 #else
 	return 0;
 #endif

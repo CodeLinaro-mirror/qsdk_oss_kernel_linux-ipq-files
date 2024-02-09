@@ -273,7 +273,6 @@ static int trymode_inprogress_show(struct seq_file *m, void *v)
 	static uint8_t *update_age;
 	update_age = m->private;
 	seq_printf(m, "%x\n", *update_age);
-	*update_age = WRITE_DISABLE;
 	return 0;
 }
 
@@ -319,13 +318,6 @@ struct sbl_if_dualboot_info_type_v2 *read_bootconfig_mtd(
 		pr_alert("error occured while reading from \"%s\"\n",
 				master->name);
 		bootconfig_mtd = NULL;
-		kfree(bootconfig_mtd);
-		return NULL;
-	}
-
-	if ((bootconfig_mtd->magic_start != SMEM_DUAL_BOOTINFO_MAGIC_START) &&
-		(bootconfig_mtd->magic_start != SMEM_DUAL_BOOTINFO_MAGIC_START_TRYMODE)) {
-		pr_alert("Magic not found in \"%s\"\n", master->name);
 		kfree(bootconfig_mtd);
 		return NULL;
 	}

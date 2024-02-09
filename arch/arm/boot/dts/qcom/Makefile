@@ -1,4 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0
+ifeq ($(CONFIG_IPQ_FLASH_16M_PROFILE),y)
+dtb-$(CONFIG_ARCH_QCOM) += \
+	ipq5332-rdp478.dtb
+else
 dtb-$(CONFIG_ARCH_QCOM) += \
 	qcom-apq8016-sbc.dtb \
 	qcom-apq8026-asus-sparrow.dtb \
@@ -89,3 +93,4 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	qcom-sdx55-t55.dtb \
 	qcom-sdx55-telit-fn980-tlb.dtb \
 	qcom-sdx65-mtp.dtb
+endif
