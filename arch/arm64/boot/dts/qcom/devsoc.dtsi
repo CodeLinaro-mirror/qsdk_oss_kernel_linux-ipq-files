@@ -933,6 +933,11 @@
 			#mbox-cells = <1>;
 		};
 
+		qcom,tmelcom-qmp-client {
+			compatible = "qcom,tmelcom-qmp-client";
+			mboxes = <&qmp_tmel 0>;
+		};
+
 		watchdog: watchdog@f410000 {
 			compatible = "qcom,apss-wdt-devsoc", "qcom,kpss-wdt";
 			reg = <0xf410000 0x1000>;
