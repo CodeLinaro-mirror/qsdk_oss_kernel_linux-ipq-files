@@ -1386,6 +1386,144 @@
 			status = "disabled";
 		};
 
+		wifi0: wifi@c0000000 {
+			compatible = "qcom,cnss-qca5424", "qcom,ipq5424-wifi";
+			reg = <0xc000000 0x1000000>;
+			qcom,tgt-mem-mode = <0>;
+			qcom,rproc = <&q6v5_wcss>;
+			qcom,bdf-addr = <0x4B500000 0x4B500000 0x4B500000
+					 0x0 0x0 0x0>;
+			qcom,caldb-addr = <0x4CE00000 0x4CE00000 0x0
+					   0x0 0x0 0x0>;
+			qcom,caldb-size = <0x500000>;
+			interrupts = <0 559 1>, /* misc-pulse1 */
+				<0 560 1>, /* misc-latch */
+				<0 561 1>, /* sw-exception */
+				<0 518 1>, /* ce0 */
+				<0 519 1>, /* ce1 */
+				<0 520 1>, /* ce2 */
+				<0 521 1>, /* ce3 */
+				<0 522 1>, /* ce4 */
+				<0 523 1>, /* ce5 */
+				<0 524 1>, /* ce6 */
+				<0 525 1>, /* ce7 */
+				<0 526 1>, /* ce8 */
+				<0 527 1>, /* ce9 */
+				<0 528 1>, /* ce10 */
+				<0 529 1>, /* ce11 */
+				<0 574 1>, /* host2wbm-desc-feed */
+				<0 578 1>, /* host2reo-re-injection */
+				<0 576 1>, /* host2reo-command */
+				<0 627 1>, /* host2rxdma-monitor-ring1 */
+				<0 540 1>, /* reo2ost-exception */
+				<0 549 1>, /* wbm2host-rx-release */
+				<0 580 1>, /* reo2host-status */
+				<0 537 1>, /* reo2host-destination-ring4 */
+				<0 536 1>, /* reo2host-destination-ring3 */
+				<0 535 1>, /* reo2host-destination-ring2 */
+				<0 534 1>, /* reo2host-destination-ring1 */
+				<0 571 1>, /* rxdma2host-monitor-destination-mac3 */
+				<0 571 1>, /* rxdma2host-monitor-destination-mac2 */
+				<0 567 1>, /* rxdma2host-monitor-destination-mac1 */
+				<0 637 1>, /* host2rxdma-host-buf-ring-mac3 */
+				<0 637 1>, /* host2rxdma-host-buf-ring-mac2 */
+				<0 632 1>, /* host2rxdma-host-buf-ring-mac1 */
+				<0 590 1>, /* host2tcl-input-ring4 */
+				<0 583 1>, /* host2tcl-input-ring3 */
+				<0 582 1>, /* host2tcl-input-ring2 */
+				<0 581 1>, /* host2tcl-input-ring1 */
+				<0 533 1>, /* wbm2host-tx-completions-ring4 */
+				<0 532 1>, /* wbm2host-tx-completions-ring3 */
+				<0 531 1>, /* wbm2host-tx-completions-ring2 */
+				<0 530 1>, /* wbm2host-tx-completions-ring1 */
+				<0 626 1>, /* host2tx-monitor-ring1 */
+				<0 569 1>, /* txmon2host-monitor-destination-mac3 */
+				<0 569 1>, /* txmon2host-monitor-destination-mac2 */
+				<0 565 1>, /* txmon2host-monitor-destination-mac1 */
+				<0 502 1>, /* umac_reset */
+				/* Unused Interrupts */
+				<0 558 1>, /* host2rxdma-monitor-ring3 */
+				<0 558 1>, /* host2rxdma-monitor-ring2 */
+				<0 558 1>, /* ppdu-end-interrupts-mac3 */
+				<0 558 1>, /* ppdu-end-interrupts-mac2 */
+				<0 558 1>, /* ppdu-end-interrupts-mac1 */
+				<0 558 1>, /* rxdma2host-monitor-status-ring-mac3 */
+				<0 558 1>, /* rxdma2host-monitor-status-ring-mac2 */
+				<0 558 1>, /* rxdma2host-monitor-status-ring-mac1 */
+				<0 558 1>, /* rxdma2host-destination-ring-mac3 */
+				<0 558 1>, /* rxdma2host-destination-ring-mac2 */
+				<0 558 1>; /* rxdma2host-destination-ring-mac1 */
+
+			interrupt-names = "misc-pulse1",
+				"misc-latch",
+				"sw-exception",
+				"ce0",
+				"ce1",
+				"ce2",
+				"ce3",
+				"ce4",
+				"ce5",
+				"ce6",
+				"ce7",
+				"ce8",
+				"ce9",
+				"ce10",
+				"ce11",
+				"host2wbm-desc-feed",
+				"host2reo-re-injection",
+				"host2reo-command",
+				"host2rxdma-monitor-ring1",
+				"reo2ost-exception",
+				"wbm2host-rx-release",
+				"reo2host-status",
+				"reo2host-destination-ring4",
+				"reo2host-destination-ring3",
+				"reo2host-destination-ring2",
+				"reo2host-destination-ring1",
+				"rxdma2host-monitor-destination-mac3",
+				"rxdma2host-monitor-destination-mac2",
+				"rxdma2host-monitor-destination-mac1",
+				"host2rxdma-host-buf-ring-mac3",
+				"host2rxdma-host-buf-ring-mac2",
+				"host2rxdma-host-buf-ring-mac1",
+				"host2tcl-input-ring4",
+				"host2tcl-input-ring3",
+				"host2tcl-input-ring2",
+				"host2tcl-input-ring1",
+				"wbm2host-tx-completions-ring4",
+				"wbm2host-tx-completions-ring3",
+				"wbm2host-tx-completions-ring2",
+				"wbm2host-tx-completions-ring1",
+				"host2tx-monitor-ring1",
+				"txmon2host-monitor-destination-mac3",
+				"txmon2host-monitor-destination-mac2",
+				"txmon2host-monitor-destination-mac1",
+				"umac_reset",
+				/* Unused Interrupts */
+				"host2rxdma-monitor-ring3",
+				"host2rxdma-monitor-ring2",
+				"ppdu-end-interrupts-mac3",
+				"ppdu-end-interrupts-mac2",
+				"ppdu-end-interrupts-mac1",
+				"rxdma2host-monitor-status-ring-mac3",
+				"rxdma2host-monitor-status-ring-mac2",
+				"rxdma2host-monitor-status-ring-mac1",
+				"rxdma2host-destination-ring-mac3",
+				"rxdma2host-destination-ring-mac2",
+				"rxdma2host-destination-ring-mac1";
+			/* 36 indicates GPIO number for LED_2G.
+			 * 0 indicates that the GPIO is active high.
+			 */
+			led-gpio = <&tlmm 36 0>;
+			qcom,pta-num = <0>;
+			qcom,coex-mode = <0x2>;
+			qcom,bt-active-time = <0x18>;
+			qcom,bt-priority-time = <0x12>;
+			qcom,coex-algo = <0x2>;
+			qcom,pta-priority = <0x80800505>;
+			status = "disabled";
+		};
+
 		stm: stm@6002000 {
 			compatible = "arm,coresight-stm", "arm,primecell";
 			reg = <0x06002000 0x1000>,

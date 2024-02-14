@@ -16,6 +16,77 @@
 
 	/delete-node/ firmware;
 
+	/*	  Layout for IPQ5424
+	 * +==========+==============+========================+
+	 * |         |              |                         |
+	 * |  Region | Start Offset |          Size           |
+	 * |         |              |                         |
+	 * +---------+--------------+-------------------------+
+	 * |   Q6    |              |                         |
+	 * |  code/  |  0x8A900000  |          12MB           |
+	 * |  data   |              |                         |
+	 * +---------+--------------+-------------------------+
+	 * | IPQ5424 |              |                         |
+	 * |  data   |  0x8B500000  |          30MB           |
+	 * +---------+--------------+-------------------------+
+	 * | IPQ5424 |              |                         |
+	 * | M3 Dump |  0x8D300000  |           1MB           |
+	 * +---------+--------------+-------------------------+
+	 * | IPQ5424 |              |                         |
+	 * |  QDSS   |  0x8D400000  |           1MB           |
+	 * +---------+--------------+-------------------------+
+	 * | IPQ5424 |              |                         |
+	 * |  CALDB  |  0x8D500000  |           6MB           |
+	 * +---------+--------------+-------------------------+
+	 * | IPQ5424 |              |                         |
+	 * |  MLO    |  0x8DB00000  |          18MB           |
+	 * +==================================================+
+	 * |                                                  |
+	 * |                                                  |
+	 * |                                                  |
+	 * |             Rest of memory for Linux             |
+	 * |                                                  |
+	 * |                                                  |
+	 * |                                                  |
+	 * +==================================================+
+	 */
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		q6_code_data: q6_code_data@8A900000 {
+			no-map;
+			reg = <0x0 0x8A900000 0x0 0xC00000>;
+		};
+
+		q6_devsoc_data: q6_devsoc_data@8B500000 {
+			no-map;
+			reg = <0x0 0x8B500000 0x0 0x1E00000>;
+		};
+
+		m3_dump: m3_dump@8D300000 {
+			no-map;
+			reg = <0x0 0x8D300000 0x0 0x100000>;
+		};
+
+		q6_etr_region: q6_etr_dump@8D400000 {
+			no-map;
+			reg = <0x0 0x8D400000 0x0 0x100000>;
+		};
+
+		q6_devsoc_caldb: q6_devsoc_caldb@8D500000 {
+			no-map;
+			reg = <0x0 0x8D500000 0x0 0x600000>;
+		};
+
+		mlo_global_mem0: mlo_global_mem_0@0x8DB00000 {
+			no-map;
+			reg = <0x0 0x8DB00000 0x0 0x1200000>;
+		};
+        };
+
 	/*Timer freq for rumi = timer freq / 200*/
 	clocks {
 		sleep_clk: sleep-clk {
@@ -122,4 +193,17 @@
 	psci {
 		status = "disabled";
 	};
+};
+
+&wifi0 {
+	qcom,multipd_arch;
+	qcom,rproc = <&q6_wcss_pd1>;
+	qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
+	qcom,tgt-mem-mode = <1>;
+	qcom,bdf-addr = <0x8B500000 0x8B500000 0x8B500000 0x0 0x0 0x0>;
+	qcom,caldb-addr = <0x8D500000 0x8D500000 0x8D500000 0x0 0x0 0x0>;
+	qcom,caldb-size = <0x500000>;
+	memory-region = <&q6_devsoc_data>;
+	qcom,board_id = <0x12>;
+	status = "okay";
 };
