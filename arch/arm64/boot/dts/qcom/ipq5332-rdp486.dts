@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 /*
- * IPQ5332 RDP478 board device tree source
+ * IPQ5332 RDP486 board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 /dts-v1/;
@@ -14,59 +14,71 @@
 #include <dt-bindings/leds/common.h>
 #include "ipq5332-default-memory.dtsi"
 
+
 / {
-	model = "Qualcomm Technologies, Inc. IPQ5332/RDP478/AP-MI04.1-C2";
-	compatible = "qcom,ipq5332-ap-mi04.1-c2","qcom,ipq5332-rdp478", "qcom,ipq5332";
+	model = "Qualcomm Technologies, Inc. IPQ5332/RDP442/AP-MI01.3-C3";
+	compatible = "qcom,ipq5332-ap-mi01.3-c3", "qcom,ipq5332-rdp486", "qcom,ipq5332";
+
 #ifdef __IPQ_MEM_PROFILE_512_MB__
-       /*     512M Memory Layout for IPQ5332 + QCN6432
-	* +==========+==============+========================+
-	* |         |              |                         |
-	* |  Region | Start Offset |          Size           |
-	* |         |              |                         |
-	* +---------+--------------+-------------------------+
-	* |   Q6    |              |                         |
-	* |  code/  |  0x4A900000  |          20MB           |
-	* |  data   |              |                         |
-	* +---------+--------------+-------------------------+
-	* | IPQ5332 |              |                         |
-	* |  data   |  0x4BD00000  |          17MB           |
-	* +---------+--------------+-------------------------+
-	* | IPQ5332 |              |                         |
-	* | M3 Dump |  0x4CE00000  |           1MB           |
-	* +---------+--------------+-------------------------+
-	* | IPQ5332 |              |                         |
-	* |  QDSS   |  0x4CF00000  |           1MB           |
-	* +---------+--------------+-------------------------+
-	* |IPQ5332  |              |                         |
-	* |  CALDB  |  0x4D000000  |           3MB           |
-	* +---------+--------------+-------------------------+
-	* |QCN6432_1|              |                         |
-	* |  data   |  0x4D300000  |          16MB           |
-	* +---------+--------------+-------------------------+
-	* |QCN6432_1|              |                         |
-	* | M3 Dump |  0x4E300000  |           1MB           |
-	* +---------+--------------+-------------------------+
-	* |QCN6432_1|              |                         |
-	* |  QDSS   |  0x4E400000  |           1MB           |
-	* +---------+--------------+-------------------------+
-	* |QCN6432_1|              |                         |
-	* |  CALDB  |  0x4E500000  |           5MB           |
-	* +---------+--------------+-------------------------+
-	* |QCN6432_1|              |                         |
-	* |MEM_HOLE |  0x4EA00000  |           5MB           |
-	* +---------+--------------+-------------------------+
-	* |         |              |                         |
-	* |   MLO   |  0x4EF00000  |          17MB           |
-	* +==================================================+
-	* |                                                  |
-	* |                                                  |
-	* |                                                  |
-	* |             Rest of memory for Linux             |
-	* |                                                  |
-	* |                                                  |
-	* |                                                  |
-	* +==================================================+
-	*/
+
+	/*     512M  Layout for IPQ5332 + QCN6432 + QCN6432
+	 * +==========+==============+========================+
+	 * |         |              |                         |
+	 * |  Region | Start Offset |          Size           |
+	 * |         |              |                         |
+	 * +---------+--------------+-------------------------+
+	 * |   Q6    |              |                         |
+	 * |  code/  |  0x4A900000  |          25MB           |
+	 * |  data   |              |                         |
+	 * +---------+--------------+-------------------------+
+	 * | IPQ5332 |              |                         |
+	 * |  data   |  0x4C200000  |          17MB           |
+	 * +---------+--------------+-------------------------+
+	 * | IPQ5332 |              |                         |
+	 * | M3 Dump |  0x4D300000  |           1MB           |
+	 * +---------+--------------+-------------------------+
+	 * | IPQ5332 |              |                         |
+	 * |  QDSS   |  0x4D400000  |           1MB           |
+	 * +---------+--------------+-------------------------+
+	 * | IPQ5332 |              |                         |
+	 * |  CALDB  |  0x4D500000  |           3MB           |
+	 * +---------+--------------+-------------------------+
+	 * |QCN6432_1|              |                         |
+	 * |  data   |  0x4D800000  |          16MB           |
+	 * +---------+--------------+-------------------------+
+	 * |QCN6432_1|              |                         |
+	 * | M3 Dump |  0x4E800000  |           1MB           |
+	 * +---------+--------------+-------------------------+
+	 * |QCN6432_1|              |                         |
+	 * |  QDSS   |  0x4E900000  |           1MB           |
+	 * +---------+--------------+-------------------------+
+	 * |QCN6432_1|              |                         |
+	 * |  CALDB  |  0x4EA00000  |           5MB           |
+	 * +---------+--------------+-------------------------+
+	 * |QCN6432_2|              |                         |
+	 * |  data   |  0x4EF00000  |          16MB           |
+	 * +---------+--------------+-------------------------+
+	 * |QCN6432_2|              |                         |
+	 * | M3 Dump |  0x4FF00000  |           1MB           |
+	 * +---------+--------------+-------------------------+
+	 * |QCN6432_2|              |                         |
+	 * |  QDSS   |  0x50000000  |           1MB           |
+	 * +---------+--------------+-------------------------+
+	 * |QCN6432_2|              |                         |
+	 * |  CALDB  |  0x50100000  |           5MB           |
+	 * +---------+--------------+-------------------------+
+	 * |         |              |                         |
+	 * |   MLO   |  0x50600000  |          11MB           |
+	 * +==================================================+
+	 * |                                                  |
+	 * |                                                  |
+	 * |                                                  |
+	 * |             Rest of memory for Linux             |
+	 * |                                                  |
+	 * |                                                  |
+	 * |                                                  |
+	 * +==================================================+
+	 */
 
 	reserved-memory {
 
@@ -77,101 +89,130 @@
 		/delete-node/ q6_caldb_region@4ce00000;
 
 		q6_mem_regions: q6_mem_regions@4A900000  {
+			reg = <0x0 0x4a900000 0x0 0x5D00000>;
 			no-map;
-			reg = <0x0 0x4A900000 0x0 0x4600000>;
 		};
 
 		q6_code_data: q6_code_data@4A900000 {
+			reg = <0x0 0x4a900000 0x0 0x1900000>;
 			no-map;
-			reg = <0x0 0x4A900000 0x0 0x1400000>;
 		};
 
-		q6_ipq5332_data: q6_ipq5332_data@4BD00000 {
+		q6_ipq5332_data: q6_ipq5332_data@4C200000 {
+			reg = <0x0 0x4C200000 0x0 0x1100000>;
 			no-map;
-			reg = <0x0 0x4BD00000 0x0 0x1100000>;
 		};
 
-		m3_dump: m3_dump@4CE00000 {
+		m3_dump: m3_dump@4D300000 {
+			reg = <0x0 0x4D300000 0x0 0x100000>;
 			no-map;
-			reg = <0x0 0x4CE00000 0x0 0x100000>;
 		};
 
-		q6_etr_region: q6_etr_dump@4CF00000 {
+		q6_etr_region: q6_etr_dump@4D400000 {
+			reg = <0x0 0x4D400000 0x0 0x100000>;
 			no-map;
-			reg = <0x0 0x4CF00000 0x0 0x100000>;
 		};
 
-		q6_ipq5332_caldb: q6_ipq5332_caldb@4D000000 {
+		q6_ipq5332_caldb: q6_ipq5332_caldb@4D500000 {
+			reg = <0x0 0x4D500000 0x0 0x300000>;
 			no-map;
-			reg = <0x0 0x4D000000 0x0 0x300000>;
 		};
 
-		q6_qcn6432_data_1: q6_qcn6432_data_1@4D300000 {
+		q6_qcn6432_data_1: q6_qcn6432_data_1@4D800000 {
+			reg = <0x0 0x4D800000 0x0 0x1000000>;
 			no-map;
-			reg = <0x0 0x4D300000 0x0 0x1000000>;
 		};
 
-		m3_dump_qcn6432_1: m3_dump_qcn6432_1@4E300000 {
+		m3_dump_qcn6432_1: m3_dump_qcn6432_1@4E800000 {
+			reg = <0x0 0x4E800000 0x0 0x100000>;
 			no-map;
-			reg = <0x0 0x4E300000 0x0 0x100000>;
                 };
 
-		q6_qcn6432_etr_1: q6_qcn6432_etr_1@4E400000 {
+		q6_qcn6432_etr_1: q6_qcn6432_etr_1@4E900000 {
+			reg = <0x0 0x4E900000 0x0 0x100000>;
 			no-map;
-			reg = <0x0 0x4E400000 0x0 0x100000>;
 		};
 
-		q6_qcn6432_caldb_1: q6_qcn6432_caldb_1@4E500000 {
+		q6_qcn6432_caldb_1: q6_qcn6432_caldb_1@4EA00000 {
+			reg = <0x0 0x4EA00000 0x0 0x500000>;
 			no-map;
-			reg = <0x0 0x4E500000 0x0 0x500000>;
 		};
 
-		mlo_global_mem0: mlo_global_mem_0@4EF00000 {
+		q6_qcn6432_data_2: q6_qcn6432_data_2@4EF00000 {
+			reg = <0x0 0x4EF00000 0x0 0x1000000>;
 			no-map;
-			reg = <0x0 0x4EF00000 0x0 0x1100000>;
+		};
+
+		m3_dump_qcn6432_2: m3_dump_qcn6432_2@4FF00000 {
+			reg = <0x0 0x4FF00000 0x0 0x100000>;
+			no-map;
+                };
+
+		q6_qcn6432_etr_2: q6_qcn6432_etr_2@50000000 {
+			reg = <0x0 0x50000000 0x0 0x100000>;
+			no-map;
+		};
+
+		q6_qcn6432_caldb_2: q6_qcn6432_caldb_2@50100000 {
+			reg = <0x0 0x50100000 0x0 0x500000>;
+			no-map;
+		};
+
+		mlo_global_mem0: mlo_global_mem_0@50600000 {
+			reg = <0x0 0x50600000 0x0 0xB00000>;
+			no-map;
 		};
 	};
-
 #else
-       /*   1G Memory Layout for IPQ5332 + QCN6432
+
+	/*  1G  Layout for IPQ5332 + QCN6432 + QCN6432
 	* +==========+==============+========================+
 	* |         |              |                         |
 	* |  Region | Start Offset |          Size           |
 	* |         |              |                         |
 	* +---------+--------------+-------------------------+
 	* |   Q6    |              |                         |
-	* |  code/  |  0x4A900000  |          20MB           |
+	* |  code/  |  0x4A900000  |          25MB           |
 	* |  data   |              |                         |
 	* +---------+--------------+-------------------------+
 	* | IPQ5332 |              |                         |
-	* |  data   |  0x4BD00000  |          21MB           |
+	* |  data   |  0x4C200000  |          21MB           |
 	* +---------+--------------+-------------------------+
 	* | IPQ5332 |              |                         |
-	* | M3 Dump |  0x4D200000  |           1MB           |
+	* | M3 Dump |  0x4D700000  |           1MB           |
 	* +---------+--------------+-------------------------+
 	* | IPQ5332 |              |                         |
-	* |  QDSS   |  0x4D300000  |           1MB           |
+	* |  QDSS   |  0x4D800000  |           1MB           |
 	* +---------+--------------+-------------------------+
-	* |IPQ5332  |              |                         |
-	* |  CALDB  |  0x4D400000  |           5MB           |
-	* +---------+--------------+-------------------------+
-	* |QCN6432_1|              |                         |
-	* |  data   |  0x4D900000  |          21MB           |
+	* | IPQ5332 |              |                         |
+	* |  CALDB  |  0x4D900000  |           5MB           |
 	* +---------+--------------+-------------------------+
 	* |QCN6432_1|              |                         |
-	* | M3 Dump |  0x4EE00000  |           1MB           |
+	* |  data   |  0x4DE00000  |          21MB           |
 	* +---------+--------------+-------------------------+
 	* |QCN6432_1|              |                         |
-	* |  QDSS   |  0x4EF00000  |           1MB           |
+	* | M3 Dump |  0x4F300000  |           1MB           |
 	* +---------+--------------+-------------------------+
 	* |QCN6432_1|              |                         |
-	* |  CALDB  |  0x4F000000  |           5MB           |
+	* |  QDSS   |  0x4F400000  |           1MB           |
 	* +---------+--------------+-------------------------+
 	* |QCN6432_1|              |                         |
-	* |MEM_HOLE |  0x4F500000  |           5MB           |
+	* |  CALDB  |  0x4F500000  |           5MB           |
+	* +---------+--------------+-------------------------+
+	* |QCN6432_2|              |                         |
+	* |  data   |  0x4FA00000  |          21MB           |
+	* +---------+--------------+-------------------------+
+	* |QCN6432_2|              |                         |
+	* | M3 Dump |  0x50F00000  |           1MB           |
+	* +---------+--------------+-------------------------+
+	* |QCN6432_2|              |                         |
+	* |  QDSS   |  0x51000000  |           1MB           |
+	* +---------+--------------+-------------------------+
+	* |QCN6432_2|              |                         |
+	* |  CALDB  |  0x51100000  |           5MB           |
 	* +---------+--------------+-------------------------+
 	* |         |              |                         |
-	* |   MLO   |  0x4FA00000  |          17MB           |
+	* |   MLO   |  0x51600000  |          11MB           |
 	* +==================================================+
 	* |                                                  |
 	* |                                                  |
@@ -192,57 +233,77 @@
 
 		q6_mem_regions: q6_mem_regions@4A900000  {
 			no-map;
-			reg = <0x0 0x4A900000 0x0 0x5100000>;
+			reg = <0x0 0x4a900000 0x0 0x6D00000>;
 		};
 
 		q6_code_data: q6_code_data@4A900000 {
 			no-map;
-			reg = <0x0 0x4A900000 0x0 0x1400000>;
+			reg = <0x0 0x4a900000 0x0 0x1900000>;
 		};
 
-		q6_ipq5332_data: q6_ipq5332_data@4BD00000 {
+		q6_ipq5332_data: q6_ipq5332_data@4C200000 {
 			no-map;
-			reg = <0x0 0x4BD00000 0x0 0x1500000>;
+			reg = <0x0 0x4C200000 0x0 0x1500000>;
 		};
 
-		m3_dump: m3_dump@4D200000 {
+		m3_dump: m3_dump@4D700000 {
 			no-map;
-			reg = <0x0 0x4D200000 0x0 0x100000>;
+			reg = <0x0 0x4D700000 0x0 0x100000>;
 		};
 
-		q6_etr_region: q6_etr_dump@4D300000 {
+		q6_etr_region: q6_etr_dump@4D800000 {
 			no-map;
-			reg = <0x0 0x4D300000 0x0 0x100000>;
+			reg = <0x0 0x4D800000 0x0 0x100000>;
 		};
 
-		q6_ipq5332_caldb: q6_ipq5332_caldb@4D400000 {
+		q6_ipq5332_caldb: q6_ipq5332_caldb@4D900000 {
 			no-map;
-			reg = <0x0 0x4D400000 0x0 0x500000>;
+			reg = <0x0 0x4D900000 0x0 0x500000>;
 		};
 
-		q6_qcn6432_data_1: q6_qcn6432_data_1@4D900000 {
+		q6_qcn6432_data_1: q6_qcn6432_data_1@4DE00000 {
 			no-map;
-			reg = <0x0 0x4D900000 0x0 0x1500000>;
+			reg = <0x0 0x4DE00000 0x0 0x1500000>;
 		};
 
-		m3_dump_qcn6432_1: m3_dump_qcn6432_1@4EE00000 {
+		m3_dump_qcn6432_1: m3_dump_qcn6432_1@4F300000 {
 			no-map;
-			reg = <0x0 0x4EE00000 0x0 0x100000>;
+			reg = <0x0 0x4F300000 0x0 0x100000>;
+        };
+
+		q6_qcn6432_etr_1: q6_qcn6432_etr_1@4F400000 {
+			no-map;
+			reg = <0x0 0x4F400000 0x0 0x100000>;
 		};
 
-		q6_qcn6432_etr_1: q6_qcn6432_etr_1@4EF00000 {
+		q6_qcn6432_caldb_1: q6_qcn6432_caldb_1@4F500000 {
 			no-map;
-			reg = <0x0 0x4EF00000 0x0 0x100000>;
+			reg = <0x0 0x4F500000 0x0 0x500000>;
 		};
 
-		q6_qcn6432_caldb_1: q6_qcn6432_caldb_1@4F000000 {
+		q6_qcn6432_data_2: q6_qcn6432_data_2@4FA00000 {
 			no-map;
-			reg = <0x0 0x4F000000 0x0 0x500000>;
+			reg = <0x0 0x4FA00000 0x0 0x1500000>;
 		};
 
-		mlo_global_mem0: mlo_global_mem_0@4FA00000 {
+		m3_dump_qcn6432_2: m3_dump_qcn6432_2@50F00000 {
 			no-map;
-			reg = <0x0 0x4FA00000 0x0 0x1100000>;
+			reg = <0x0 0x50F00000 0x0 0x100000>;
+		};
+
+		q6_qcn6432_etr_2: q6_qcn6432_etr_2@51000000 {
+			no-map;
+			reg = <0x0 0x51000000 0x0 0x100000>;
+		};
+
+		q6_qcn6432_caldb_2: q6_qcn6432_caldb_2@51100000 {
+			no-map;
+			reg = <0x0 0x51100000 0x0 0x500000>;
+		};
+
+		mlo_global_mem0: mlo_global_mem_0@51600000 {
+			no-map;
+			reg = <0x0 0x51600000 0x0 0xB00000>;
 		};
 	};
 #endif
@@ -263,7 +324,7 @@
 			pinctrl-0 = <&mdio1_pins &mdio0_pins>;
 			pinctrl-names = "default";
 			/*gpio51 for manhattan reset*/
-			phy-reset-gpio = <&tlmm 51 GPIO_ACTIVE_LOW &tlmm 22 GPIO_ACTIVE_LOW>;
+			phy-reset-gpio = <&tlmm 51 GPIO_ACTIVE_LOW>;
 			phyaddr_fixup = <0xC90F018>;
 			uniphyaddr_fixup = <0xC90F014>;
 			mdio_clk_fixup; /* MDIO clock sequence fix up flag */
@@ -284,9 +345,6 @@
 			phy3: ethernet-phy@3 {
 				reg = <4>;
 				fixup;
-			};
-			phy4: ethernet-phy@4 {
-				reg = <12>;
 			};
 		};
 
@@ -323,12 +381,13 @@
 			num_devices = <0x2>;
 
 			ess-switch@3a000000 {
+				pinctrl-0 = <&sfp_pins>;
 				pinctrl-names = "default";
 				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
 				switch_lan_bmp = <0x2>; /* lan port bitmap */
 				switch_wan_bmp = <0x4>; /* wan port bitmap */
 				switch_mac_mode = <0xc>; /* mac mode for uniphy instance0*/
-				switch_mac_mode1 = <0xf>; /* mac mode for uniphy instance1*/
+				switch_mac_mode1 = <0xe>; /* mac mode for uniphy instance1*/
 				switch_mac_mode2 = <0xff>; /* mac mode for uniphy instance2*/
 
 				qcom,port_phyinfo {
@@ -339,7 +398,8 @@
 					};
 					port@1 {
 						port_id = <2>;
-						phy_address = <12>;
+						phy_address = <30>;
+						media-type = "sfp"; /* fiber mode */
 					};
 				};
 			};
@@ -413,12 +473,6 @@
 			};
 		};
 
-		nss-macsec0 {
-			compatible = "qcom,nss-macsec";
-			phy_addr = <12>;
-			mdiobus = <&mdio>;
-		};
-
 		dp1 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
@@ -427,7 +481,7 @@
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
 			mdio-bus = <&mdio>;
-			qcom,phy-mdio-addr = <12>;
+			qcom,phy-mdio-addr = <30>;
 			qcom,link-poll = <1>;
 			phy-mode = "sgmii";
 		};
@@ -441,6 +495,7 @@
 			local-mac-address = [000000000000];
 			phy-mode = "sgmii";
 			qcom,mht-dev = <1>;
+			qcom,is_switch_connected = <1>;
 		};
 
 		/* EDMA host driver configuration for the board */
@@ -514,7 +569,7 @@
 
 		wsi: wsi {
 			id = <0>;
-			num_chip = <2>;
+			num_chip = <3>;
 		};
 
 		q6v5_wcss: remoteproc@d100000 {
@@ -522,6 +577,10 @@
 			memory-region = <&q6_mem_regions>;
 
 			q6_wcss_pd1: remoteproc_pd1 {
+				memory-region = <&q6_ipq5332_data>,
+						<&m3_dump>,
+						<&q6_etr_region>,
+						<&q6_ipq5332_caldb>;
 				status = "ok";
 			};
 
@@ -544,6 +603,10 @@
 				qcom,smem-state-names = "shutdown",
 							"stop",
 							"spawn";
+				memory-region = <&q6_qcn6432_data_1>,
+						<&m3_dump_qcn6432_1>,
+						<&q6_qcn6432_etr_1>,
+						<&q6_qcn6432_caldb_1>;
 				status = "ok";
 			};
 		};
@@ -557,9 +620,16 @@
 };
 
 &blsp1_uart1 {
-	pinctrl-0 = <&serial_1_pins>;
+        pinctrl-0 = <&serial_1_pins>;
+        pinctrl-names = "default";
+        status = "disabled";
+};
+
+&blsp1_i2c1 {
+	clock-frequency  = <400000>;
+	pinctrl-0 = <&i2c_1_pins>;
 	pinctrl-names = "default";
-	status = "disabled";
+	status = "okay";
 };
 
 &blsp1_spi0 {
@@ -574,6 +644,17 @@
 		#size-cells = <1>;
 		spi-max-frequency = <50000000>;
 	};
+};
+
+&sdhc {
+	bus-width = <4>;
+	max-frequency = <192000000>;
+	mmc-ddr-1_8v;
+	mmc-hs200-1_8v;
+	non-removable;
+	pinctrl-0 = <&sdc_default_state>;
+	pinctrl-names = "default";
+	status = "disabled";
 };
 
 &sleep_clk {
@@ -603,6 +684,8 @@
 		nand-bus-width = <8>;
 	};
 };
+
+/* PINCTRL */
 
 &tlmm {
 	qspi_default_state: qspi-default-state {
@@ -635,6 +718,13 @@
 		bias-pull-up;
 	};
 
+	i2c_1_pins: i2c-1-state {
+		pins = "gpio29", "gpio30";
+		function = "blsp1_i2c0";
+		drive-strength = <8>;
+		bias-pull-up;
+	};
+
 	gpio_leds_default: gpio-leds-default-state {
 		pins = "gpio36";
 		function = "gpio";
@@ -647,6 +737,35 @@
 		function = "gpio";
 		drive-strength = <8>;
 		bias-pull-up;
+	};
+
+	pwm_pins: pwm-state {
+		pins = "gpio46";
+		function = "pwm0";
+		drive-strength = <8>;
+	};
+
+	sdc_default_state: sdc-default-state {
+		clk-pins {
+			pins = "gpio13";
+			function = "sdc_clk";
+			drive-strength = <8>;
+			bias-disable;
+		};
+
+		cmd-pins {
+			pins = "gpio12";
+			function = "sdc_cmd";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+
+		data-pins {
+			pins = "gpio8", "gpio9", "gpio10", "gpio11";
+			function = "sdc_data";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
 	};
 
 	spi_0_data_clk_pins: spi-0-data-clk-state {
@@ -663,18 +782,18 @@
 		bias-pull-up;
 	};
 
-	mdio1_pins: mdio1-state {
-		mux_0 {
-			pins = "gpio27";
-			function = "mdc1";
-			drive-strength = <2>;
-			bias-pull-up;
+	sfp_pins: sfp-state {
+		sfp_rx {
+			pins = "gpio45";
+			function = "rx1";
+			bias-disable;
 		};
-		mux_1 {
-			pins = "gpio28";
-			function = "mdio1";
-			drive-strength = <2>;
-			bias-pull-up;
+		sfp_tx {
+			pins = "gpio24";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-down;
+			output-low;
 		};
 	};
 };
@@ -694,45 +813,12 @@
 	};
 };
 
-&hs_m31phy_0 {
+&pwm {
+	pinctrl-0 = <&pwm_pins>;
+	pinctrl-names = "default";
 	status = "okay";
 };
 
-&wifi0 {
-	qcom,multipd_arch;
-	qcom,rproc = <&q6_wcss_pd1>;
-	qcom,rproc_rpd = <&q6v5_wcss>;
-	qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
-	qcom,bdf-addr = <0x4BD00000 0x4BD00000 0x0 0x0 0x0 0x0>;
-	qcom,caldb-addr = <0x4D400000 0x4D000000 0x0 0x0 0x0 0x0>;
-#ifdef __IPQ_MEM_PROFILE_512_MB__
-	qcom,tgt-mem-mode = <1>;
-	qcom,caldb-size = <0x300000>;
-#else
-	qcom,tgt-mem-mode = <0>;
-	qcom,caldb-size = <0x500000>;
-#endif
-	qcom,board_id = <0x42>;
-	memory-region = <&q6_ipq5332_data>;
-	qcom,wsi = <&wsi>;
-	status = "ok";
-};
-
-&wifi1 {
-	qcom,multipd_arch;
-	qcom,rproc = <&q6_wcss_pd2>;
-	qcom,rproc_rpd = <&q6v5_wcss>;
-	qcom,userpd-subsys-name = "q6v5_wcss_userpd2";
-	qcom,bdf-addr = <0x4D900000 0x4D300000 0x0 0x0 0x0 0x0>;
-	qcom,caldb-addr = <0x4F000000 0x4E500000 0x0 0x0 0x0 0x0>;
-	qcom,caldb-size = <0x500000>;
-#ifdef __IPQ_MEM_PROFILE_512_MB__
-	qcom,tgt-mem-mode = <1>;
-#else
-	qcom,tgt-mem-mode = <0>;
-#endif
-	qcom,board_id = <0x053>;
-	memory-region = <&q6_qcn6432_data_1>;
-	qcom,wsi = <&wsi>;
-	status = "ok";
+&hs_m31phy_0 {
+	status = "okay";
 };
