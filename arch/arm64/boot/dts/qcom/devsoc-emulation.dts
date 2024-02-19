@@ -454,11 +454,11 @@
 };
 
 &qpic_bam {
-	status = "okay";
+	status = "disabled";
 };
 
 &qpic_nand {
-	status = "okay";
+	status = "disabled";
 };
 
 &sdhc {
@@ -471,7 +471,7 @@
 	max-frequency = <192000000>;
 	bus-width = <4>;
 	non-removable;
-	status = "okay";
+	status = "disabled";
 };
 
 &pcie0 {
