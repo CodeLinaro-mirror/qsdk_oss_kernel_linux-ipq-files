@@ -115,13 +115,6 @@
 	};
 
 	firmware {
-		qfprom {
-			compatible = "qcom,qfprom-sec";
-			img-addr = <0x4a100000>;
-			img-size = <0x500000>;
-			scm-cmd-id = <0x1f>;
-		};
-
 		scm {
 			compatible = "qcom,scm-ipq5332", "qcom,scm";
 			qcom,dload-mode = <&tcsr 0x6100>;
@@ -267,6 +260,14 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges = <0 0 0 0xffffffff>;
+
+		qfprom {
+			compatible = "qcom,qfprom-sec";
+			img-addr = <0x4a100000>;
+			img-size = <0x500000>;
+			scm-cmd-id = <0x1f>;
+			reg = <0xA6044 0x4>;
+		};
 
 		qfprom: efuse@a4000 {
 			compatible = "qcom,qfprom";
