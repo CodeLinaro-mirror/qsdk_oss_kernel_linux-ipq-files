@@ -3847,6 +3847,7 @@
 			coresight-name = "coresight-tmc-etr";
 			clocks = <&gcc GCC_QDSS_DAP_CLK>;
 			clock-names = "apb_pclk";
+			qcom,rproc = <&q6v5_wcss>;
 
 			in-ports {
 				port {
