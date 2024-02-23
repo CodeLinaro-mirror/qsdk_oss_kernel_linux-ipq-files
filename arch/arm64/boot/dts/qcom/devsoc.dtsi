@@ -164,6 +164,10 @@
 			reg-names = "llcc_base", "llcc_broadcast_base";
 			interrupts = <GIC_SPI 68 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
+
+			llcc-perfmon {
+				compatible = "qcom,llcc-perfmon";
+			};
 		};
 
 		tlmm: pinctrl@1000000 {
