@@ -54,6 +54,7 @@ static int gl_version_enable;
 static int version_commit_enable;
 static int fuse_blow_size_req;
 static int decompress_error;
+static int rootfs_auth_enable;
 
 enum qti_sec_img_auth_args {
 	QTI_SEC_IMG_SW_TYPE,
@@ -411,6 +412,19 @@ exit:
 }
 
 static ssize_t
+rootfs_auth_flag(struct device *dev,
+			struct device_attribute *sec_attr,
+			char *buf)
+{
+	ssize_t ret = 0;
+	if(rootfs_auth_enable)
+		ret = snprintf(buf, sizeof("Enabled"), "%s\n", "Enabled");
+	else
+		ret = snprintf(buf, sizeof("Disabled"), "%s\n", "Disabled");
+	return ret;
+}
+
+static ssize_t
 store_sec_auth(struct device *dev,
 			struct device_attribute *sec_attr,
 			const char *buf, size_t count)
@@ -588,6 +602,9 @@ free_mem:
 
 static struct device_attribute sec_attr =
 	__ATTR(sec_auth, 0644, NULL, store_sec_auth);
+
+static struct device_attribute rootfs_attr =
+	__ATTR(rootfs_auth, 0644, rootfs_auth_flag, NULL);
 
 struct kobject *sec_kobj;
 
@@ -872,6 +889,9 @@ static int qfprom_probe(struct platform_device *pdev)
 	int16_t sw_bitmap = 0;
 	struct device_node *np = pdev->dev.of_node;
 	u32 scm_cmd_id;
+	struct resource *res;
+	void __iomem *secure_boot = NULL;
+	uint32_t value = 0;
 
 	if (!qcom_scm_is_available()) {
 		pr_info("SCM call is not initialized, defering probe\n");
@@ -930,6 +950,28 @@ static int qfprom_probe(struct platform_device *pdev)
 				pr_info("Failed to register sec_auth sysfs\n");
 				kobject_put(sec_kobj);
 				sec_kobj = NULL;
+			}
+
+			err = sysfs_create_file(sec_kobj, &rootfs_attr.attr);
+			if (err) {
+				pr_info("Failed to register rootfs_auth sysfs\n");
+				kobject_put(sec_kobj);
+				sec_kobj = NULL;
+			}
+
+			res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+			secure_boot = devm_ioremap_resource(&pdev->dev, res);
+			if(IS_ERR(secure_boot))
+				return PTR_ERR(secure_boot);
+			value = readl(secure_boot);
+
+			/*
+			 * Bit5 of the fuse <SECURE_BOOTn> indicates
+			 * if rootfs auth is enabled or not
+			 */
+			if(value & BIT(5))
+			{
+				rootfs_auth_enable = 1;
 			}
 		}
 	}
