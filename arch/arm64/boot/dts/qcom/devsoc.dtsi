@@ -164,6 +164,10 @@
 			reg-names = "llcc_base", "llcc_broadcast_base";
 			interrupts = <GIC_SPI 68 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
+
+			llcc-perfmon {
+				compatible = "qcom,llcc-perfmon";
+			};
 		};
 
 		tlmm: pinctrl@1000000 {
@@ -917,6 +921,25 @@
 			reg = <0xf400004 0x6000>;
 			#clock-cells = <1>;
 			#mbox-cells = <1>;
+		};
+
+		qmp_tmel: qmp-tmel@32090000 {
+			compatible = "qti,tmel-qmp-mbox";
+			reg = <0x32090000 0x20>,
+			      <0x32091000 0x20>;
+			reg-names = "mcore", "ucore";
+
+			interrupts = <GIC_SPI 126 IRQ_TYPE_EDGE_RISING>;
+			max_pkt_size = <0x18>;
+
+			mboxes = <&apcs_glb 20>;
+			qti,early-boot;
+			#mbox-cells = <1>;
+		};
+
+		qcom,tmelcom-qmp-client {
+			compatible = "qcom,tmelcom-qmp-client";
+			mboxes = <&qmp_tmel 0>;
 		};
 
 		watchdog: watchdog@f410000 {

@@ -3,88 +3,120 @@
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
-#define pr_fmt(fmt)	"tmelcom: [%s][%d]:" fmt, __func__, __LINE__
+#define pr_fmt(fmt)	"tmelcom: %s: %d: " fmt, __func__, __LINE__
 
-#include <linux/module.h>
-#include <linux/kernel.h>
+#include <linux/delay.h>
+#include <linux/dma-direction.h>
+#include <linux/dma-mapping.h>
 #include <linux/init.h>
+#include <linux/kernel.h>
 #include <linux/mailbox_client.h>
-#include <linux/seq_file.h>
-#include <linux/debugfs.h>
-#include <linux/platform_device.h>
-#include <linux/mailbox/qmp.h>
-#include <linux/uaccess.h>
 #include <linux/mailbox_controller.h>
+#include <linux/mailbox/tmel_qmp.h>
+#include <linux/module.h>
+#include <linux/platform_device.h>
+#include <linux/uaccess.h>
 
 #include "tmelcom.h"
+#include "tmelcom_message_uids.h"
 
 struct tmelcom {
 	struct device *dev;
 	struct mbox_client cl;
 	struct mbox_chan *chan;
+	/* Mutex to ensure only one IPC transaction at a time */
 	struct mutex lock;
 	struct qmp_pkt pkt;
+	struct tmel_ipc_pkt *ipc_pkt;
+	dma_addr_t sram_dma_addr;
 	wait_queue_head_t waitq;
-	void *txbuf;
 	bool rx_done;
 };
 
 static struct tmelcom *tmeldev;
 
-/**
- * tmelcom_msg_hdr - Request/Response message header between HLOS and TME.
- *
- * This header is proceeding any request specific parameters.
- * The transaction id is used to match request with response.
- *
- * Note: glink/QMP layer provides the rx/tx data size, so user payload size
- * is calculated by reducing the header size.
- */
-struct tmelcom_msg_hdr {
-	unsigned int reserved; /* for future use */
-	unsigned int txnid;    /* transaction id */
-} __packed;
-#define TMELCOM_TX_HDR_SIZE sizeof(struct tmelcom_msg_hdr)
-#define CBOR_NUM_BYTES (sizeof(unsigned int))
-#define TMELCOM_RX_HDR_SIZE (TMELCOM_TX_HDR_SIZE + CBOR_NUM_BYTES)
-
-/*
- * CBOR encode emulation
- * Prepend tmelcom_msg_hdr space
- * CBOR tag is prepended in request
- */
-static inline size_t tmelcom_encode(struct tmelcom *tdev, const void *reqbuf,
-		size_t size)
+struct device *tmelcom_get_device(void)
 {
-	unsigned int *msg = tdev->txbuf + TMELCOM_TX_HDR_SIZE;
-	unsigned int *src = (unsigned int *)reqbuf;
+	struct tmelcom *tdev = tmeldev;
 
-	memcpy(msg, src, size);
-	return (size + TMELCOM_TX_HDR_SIZE);
+	if (!tdev)
+		return NULL;
+
+	return tdev->dev;
 }
 
-/*
- * CBOR decode emulation
- * Strip tmelcom_msg_hdr & CBOR tag
- */
-static inline size_t tmelcom_decode(struct tmelcom *tdev, void *respbuf)
+static int tmelcom_prepare_msg(struct tmelcom *tdev, uint32_t msg_uid,
+			       void *msg_buf, size_t msg_size)
 {
-	unsigned int *msg = tdev->pkt.data + TMELCOM_RX_HDR_SIZE;
-	unsigned int *rbuf = (unsigned int *)respbuf;
+	struct tmel_ipc_pkt *ipc_pkt = tdev->ipc_pkt;
+	struct ipc_header *msg_hdr = &ipc_pkt->msg_hdr;
+	struct mbox_payload *mbox_payload = &ipc_pkt->payload.mbox_payload;
+	struct sram_payload *sram_payload = &ipc_pkt->payload.sram_payload;
+	int ret;
 
-	memcpy(rbuf, msg, (tdev->pkt.size - TMELCOM_RX_HDR_SIZE));
-	return (tdev->pkt.size - TMELCOM_RX_HDR_SIZE);
+	memset(ipc_pkt, 0, sizeof(struct tmel_ipc_pkt));
+
+	msg_hdr->msg_type = TMEL_MSG_UID_MSG_TYPE(msg_uid);
+	msg_hdr->action_id = TMEL_MSG_UID_ACTION_ID(msg_uid);
+
+	pr_debug("uid: %d, msg_size: %zu msg_type:%d, action_id:%d\n",
+		 msg_uid, msg_size, msg_hdr->msg_type, msg_hdr->action_id);
+
+	if (sizeof(struct ipc_header) + msg_size <= MBOX_IPC_PACKET_SIZE) {
+		/* Mbox only */
+		msg_hdr->ipc_type = IPC_MBOX_ONLY;
+		msg_hdr->msg_len = msg_size;
+		memcpy((void *)mbox_payload, msg_buf, msg_size);
+	} else if (msg_size <= SRAM_IPC_MAX_BUF_SIZE) {
+		/* SRAM */
+		msg_hdr->ipc_type = IPC_MBOX_SRAM;
+		msg_hdr->msg_len = 8; //payload_ptr + payload_len
+
+		tdev->sram_dma_addr = dma_map_single(tdev->dev, msg_buf,
+						     msg_size,
+						     DMA_BIDIRECTIONAL);
+		ret = dma_mapping_error(tdev->dev, tdev->sram_dma_addr);
+		if (ret != 0) {
+			pr_err("SRAM DMA mapping error: %d\n", ret);
+			return ret;
+		}
+
+		sram_payload->payload_ptr = tdev->sram_dma_addr;
+		sram_payload->payload_len = msg_size;
+	} else {
+		pr_err("Invalid payload length: %zu\n", msg_size);
+	}
+
+	pr_debug("ipc_type: %d msg_len: %d\n",
+		 msg_hdr->ipc_type, msg_hdr->msg_len);
+	return 0;
+}
+
+static void tmelcom_unprepare_message(struct tmelcom *tdev,
+				      void *msg_buf, size_t msg_size)
+{
+	struct tmel_ipc_pkt *ipc_pkt = (struct tmel_ipc_pkt *)tdev->pkt.data;
+	struct mbox_payload *mbox_payload = &ipc_pkt->payload.mbox_payload;
+
+	if (ipc_pkt->msg_hdr.ipc_type == IPC_MBOX_ONLY) {
+		memcpy(msg_buf, (void *)mbox_payload, tdev->pkt.size);
+	} else if (ipc_pkt->msg_hdr.ipc_type == IPC_MBOX_SRAM) {
+		dma_unmap_single(tdev->dev, tdev->sram_dma_addr, msg_size,
+				 DMA_BIDIRECTIONAL);
+		tdev->sram_dma_addr = 0;
+	}
 }
 
 static bool tmelcom_check_rx_done(struct tmelcom *tdev)
 {
-	return  tdev->rx_done;
+	return tdev->rx_done;
 }
 
-int tmelcom_process_request(const void *reqbuf, size_t reqsize, void *respbuf,
-		size_t *respsize)
+enum tmelcom_resp tmelcom_process_request(uint32_t msg_uid, void *msg_buf,
+					  size_t msg_size)
 {
-	struct tmelcom *tdev = tmedev;
+	struct tmelcom *tdev = tmeldev;
+	struct tmel_ipc_pkt *resp_ipc_pkt;
 	long time_left = 0;
 	int ret = 0;
 
@@ -92,71 +124,67 @@ int tmelcom_process_request(const void *reqbuf, size_t reqsize, void *respbuf,
 	 * Check to handle if probe is not successful or not completed yet
 	 */
 	if (!tdev) {
-		pr_err("%s: tmelcom dev is NULL\n", __func__);
+		pr_err("tmelcom dev is NULL\n");
 		return -ENODEV;
 	}
 
-	if (!reqbuf || !reqsize || (reqsize > MBOX_MAX_MSG_LEN)) {
-		dev_err(tdev->dev, "invalid reqbuf or reqsize\n");
-		return -EINVAL;
-	}
-
-	if (!respbuf || !respsize || (*respsize > MBOX_MAX_MSG_LEN)) {
-		dev_err(tdev->dev, "invalid respbuf or respsize\n");
+	if (!msg_buf || !msg_size) {
+		pr_err("Invalid msg_buf or msg_size\n");
 		return -EINVAL;
 	}
 
 	mutex_lock(&tdev->lock);
-
 	tdev->rx_done = false;
-	tdev->pkt.size = tmelcom_encode(tdev, reqbuf, reqsize);
-	/*
-	 * Controller expects a 4 byte aligned buffer
-	 */
-	tdev->pkt.size = (tdev->pkt.size + 0x3) & ~0x3;
-	tdev->pkt.data = tdev->txbuf;
 
-	pr_debug("tmelcom encoded request size = %u\n", tdev->pkt.size);
-	print_hex_dump_bytes("tmelcom sending bytes : ",
-			DUMP_PREFIX_ADDRESS, tdev->pkt.data, tdev->pkt.size);
+	ret = tmelcom_prepare_msg(tdev, msg_uid, msg_buf, msg_size);
+	if (ret)
+		return ret;
+
+	tdev->pkt.size = sizeof(struct tmel_ipc_pkt);
+	tdev->pkt.data = (void *)tdev->ipc_pkt;
+
+	print_hex_dump_bytes("tmelcom sending bytes : ", DUMP_PREFIX_ADDRESS,
+			     tdev->pkt.data, tdev->pkt.size);
 
 	if (mbox_send_message(tdev->chan, &tdev->pkt) < 0) {
-		dev_err(tdev->dev, "failed to send qmp message\n");
+		pr_err("Failed to send qmp message\n");
 		ret = -EAGAIN;
 		goto err_exit;
 	}
 
 	time_left = wait_event_interruptible_timeout(tdev->waitq,
-			tmelcom_check_rx_done(tdev), tdev->cl.tx_tout);
+			tmelcom_check_rx_done(tdev),
+			msecs_to_jiffies(tdev->cl.tx_tout));
 
 	if (!time_left) {
-		dev_err(tdev->dev, "request timed out\n");
+		pr_err("Request timed out\n");
 		ret = -ETIMEDOUT;
 		goto err_exit;
 	}
 
-	dev_info(tdev->dev, "response received\n");
-
-	pr_debug("tmelcom received size = %u\n", tdev->pkt.size);
-	print_hex_dump_bytes("tmelcom received bytes : ",
-			DUMP_PREFIX_ADDRESS, tdev->pkt.data, tdev->pkt.size);
-
-	if (tdev->pkt.size <= TMELCOM_RX_HDR_SIZE) {
-		dev_err(tdev->dev, "invalid pkt.size received\n");
+	if (tdev->pkt.size != sizeof(struct tmel_ipc_pkt)) {
+		pr_err("Invalid pkt.size received size: %d, expected: %ld\n",
+		       tdev->pkt.size, sizeof(struct tmel_ipc_pkt));
 		ret = -EPROTO;
 		goto err_exit;
 	}
 
-	*respsize = tmelcom_decode(tdev, respbuf);
+	resp_ipc_pkt = (struct tmel_ipc_pkt *)tdev->pkt.data;
+
+	pr_debug("Response received: %d\n", resp_ipc_pkt->msg_hdr.response);
+	print_hex_dump_bytes("tmelcom received bytes : ", DUMP_PREFIX_ADDRESS,
+			     tdev->pkt.data, tdev->pkt.size);
+
+	tmelcom_unprepare_message(tdev, msg_buf, msg_size);
 
 	tdev->rx_done = false;
-	ret = 0;
+
+	ret = resp_ipc_pkt->msg_hdr.response;
 
 err_exit:
 	mutex_unlock(&tdev->lock);
 	return ret;
 }
-EXPORT_SYMBOL(tmelcom_process_request);
 
 static void tmelcom_receive_message(struct mbox_client *client, void *message)
 {
@@ -164,18 +192,19 @@ static void tmelcom_receive_message(struct mbox_client *client, void *message)
 	struct qmp_pkt *pkt = NULL;
 
 	if (!message) {
-		dev_err(tdev->dev, "spurious message received\n");
+		pr_err("spurious message received\n");
 		goto tmelcom_receive_end;
 	}
 
 	if (tdev->rx_done) {
-		dev_err(tdev->dev, "tmelcom response pending\n");
+		pr_err("tmelcom response pending\n");
 		goto tmelcom_receive_end;
 	}
 	pkt = (struct qmp_pkt *)message;
 	tdev->pkt.size = pkt->size;
 	tdev->pkt.data = pkt->data;
 	tdev->rx_done = true;
+
 tmelcom_receive_end:
 	wake_up_interruptible(&tdev->waitq);
 }
@@ -183,8 +212,6 @@ tmelcom_receive_end:
 static int tmelcom_probe(struct platform_device *pdev)
 {
 	struct tmelcom *tdev;
-	const char *label;
-	char name[32];
 
 	tdev = devm_kzalloc(&pdev->dev, sizeof(*tdev), GFP_KERNEL);
 	if (!tdev)
@@ -192,31 +219,26 @@ static int tmelcom_probe(struct platform_device *pdev)
 
 	tdev->cl.dev = &pdev->dev;
 	tdev->cl.tx_block = true;
-	tdev->cl.tx_tout = 500;
+	tdev->cl.tx_tout = 3000;
 	tdev->cl.knows_txdone = false;
 	tdev->cl.rx_callback = tmelcom_receive_message;
 
-	label = of_get_property(pdev->dev.of_node, "mbox-names", NULL);
-	if (!label)
-		return -EINVAL;
-	snprintf(name, 32, "%s_send_message", label);
-
+	/* mbox_request_chan can fail if tmel_qmp mailbox driver is not yet
+	 * probed, defer and retry here.
+	 */
 	tdev->chan = mbox_request_channel(&tdev->cl, 0);
 	if (IS_ERR(tdev->chan)) {
-		dev_err(&pdev->dev, "failed to get mbox channel\n");
+		pr_err("failed to get mbox channel, ret: %ld\n",
+		       PTR_ERR(tdev->chan));
 		return PTR_ERR(tdev->chan);
 	}
 
 	mutex_init(&tdev->lock);
 
-	if (tdev->chan) {
-		tdev->txbuf =
-			devm_kzalloc(&pdev->dev, MBOX_MAX_MSG_LEN, GFP_KERNEL);
-		if (!tdev->txbuf) {
-			dev_err(&pdev->dev, "message buffer alloc faile\n");
-			return -ENOMEM;
-		}
-	}
+	tdev->ipc_pkt = devm_kzalloc(&pdev->dev, sizeof(struct tmel_ipc_pkt),
+				     GFP_KERNEL);
+	if (!tdev->ipc_pkt)
+		return -ENOMEM;
 
 	init_waitqueue_head(&tdev->waitq);
 
@@ -224,13 +246,10 @@ static int tmelcom_probe(struct platform_device *pdev)
 	tdev->dev = &pdev->dev;
 	dev_set_drvdata(&pdev->dev, tdev);
 
-	tmedev = tdev;
+	tmeldev = tdev;
 
-	dev_info(&pdev->dev, "tmelcom probe success\n");
+	pr_info("tmelcom probe success\n");
 	return 0;
-err:
-	mbox_free_channel(tdev->chan);
-	return -ENOMEM;
 }
 
 static int tmelcom_remove(struct platform_device *pdev)
@@ -240,7 +259,7 @@ static int tmelcom_remove(struct platform_device *pdev)
 	if (tdev->chan)
 		mbox_free_channel(tdev->chan);
 
-	dev_info(&pdev->dev, "tmelcom remove success\n");
+	pr_info("Tmelcom remove success\n");
 	return 0;
 }
 
