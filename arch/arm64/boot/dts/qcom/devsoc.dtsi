@@ -1679,6 +1679,25 @@
 			};
 		};
 
+		sram@8600000 {
+			compatible = "qcom,devsoc-imem", "syscon", "simple-mfd";
+			reg = <0x08600000 0x1000>;
+			ranges = <0 0x08600000 0x1000>;
+
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			restart-reason-buf-addr@7b0 {
+				compatible = "qcom,msm-imem-restart-reason-buf-addr";
+				reg = <0x7b0 4>;
+			};
+
+			restart-reason-buf-wr-addr@7ac {
+				compatible = "qcom,imem-restart-reason-buf-wr-addr";
+				reg = <0x7ac 4>;
+			};
+		};
+
 	};
 
 	timer {
@@ -1717,5 +1736,9 @@
 			interrupt-controller;
 			#interrupt-cells = <2>;
 		};
+	};
+
+	ipq-debug {
+		compatible = "qcom,ipq-debug-devsoc";
 	};
 };
