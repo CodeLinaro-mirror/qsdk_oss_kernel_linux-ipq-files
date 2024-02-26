@@ -34,7 +34,7 @@ ________________________________________________________________________________
    Macro used to define unique TMEL Message Identifier based on
    message type and action identifier.
 */
-#define TMEL_MSG_UID_CREATE(m, a) ((uint32_t)(((m & 0xff) << 8) | (a & 0xff)))
+#define TMEL_MSG_UID_CREATE(m, a) ((u32)(((m & 0xff) << 8) | (a & 0xff)))
 
 /** Helper macro to extract the messageType from TMEL_MSG_UID. */
 #define TMEL_MSG_UID_MSG_TYPE(v)      ((v & GENMASK(15,8)) >> 8)

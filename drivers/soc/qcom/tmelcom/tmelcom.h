@@ -14,7 +14,7 @@
 #define MAX_PARAM_IN_PARAM_ID		14
 #define PARAM_CNT_FOR_PARAM_TYPE_OUTBUF	3
 #define SRAM_IPC_MAX_PARAMS		(MAX_PARAM_IN_PARAM_ID * PARAM_CNT_FOR_PARAM_TYPE_OUTBUF)
-#define SRAM_IPC_MAX_BUF_SIZE		(SRAM_IPC_MAX_PARAMS * sizeof(uint32_t))
+#define SRAM_IPC_MAX_BUF_SIZE		(SRAM_IPC_MAX_PARAMS * sizeof(u32))
 
 #define TMEL_SUCCESS                  (0x0U) ///<! Everything is going well
 #define TMEL_ERROR_GENERIC            (0x1U) ///<! Generic failure code if error is unknown
@@ -56,20 +56,20 @@ enum ipc_type {
 };
 
 struct ipc_header {
-	uint8_t ipc_type:1;
-	uint8_t msg_len:7;
-	uint8_t msg_type;
-	uint8_t action_id;
-	int8_t response;
+	u8 ipc_type:1;
+	u8 msg_len:7;
+	u8 msg_type;
+	u8 action_id;
+	s8 response;
 } __packed;
 
 struct mbox_payload {
-	uint32_t param[MBOX_IPC_MAX_PARAMS];
+	u32 param[MBOX_IPC_MAX_PARAMS];
 };
 
 struct sram_payload {
-	uint32_t payload_ptr;
-	uint32_t payload_len;
+	u32 payload_ptr;
+	u32 payload_len;
 };
 
 union ipc_payload {
@@ -82,24 +82,7 @@ struct tmel_ipc_pkt {
 	union ipc_payload payload;
 } __packed;
 
-struct tmel_msg_param_type_buf_in {
-	uint32_t buf;
-	uint32_t buf_len;
-};
-
-struct tmel_msg_param_type_buf_out {
-	uint32_t buf;
-	uint32_t buf_len;
-	uint32_t out_buf_len;
-};
-
-struct tmel_msg_param_type_buf_in_out {
-	uint32_t buf;
-	uint32_t buf_len;
-	uint32_t out_buf_len;
-};
-
-enum tmelcom_resp tmelcom_process_request(uint32_t msg_uid, void *msg_buf,
+enum tmelcom_resp tmelcom_process_request(u32 msg_uid, void *msg_buf,
 					  size_t msg_size);
 
 struct device *tmelcom_get_device(void);

@@ -12,12 +12,12 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
+#include <linux/tmelcom_ipc.h>
 
 #include "tmelcom.h"
-#include "tmelcom_ipc.h"
 #include "tmelcom_message_uids.h"
 
-int tmelcom_fuse_list_read(struct fuse_payload *fuse, size_t size)
+int tmelcom_fuse_list_read(struct tmel_fuse_payload *fuse, size_t size)
 {
 	int ret;
 	struct tmel_fuse_read_multiple_msg msg = {0};
@@ -37,7 +37,7 @@ int tmelcom_fuse_list_read(struct fuse_payload *fuse, size_t size)
 	pr_debug("dma_fuse: %pad size: %zu\n", &dma_fuse, size);
 
 	msg.status = TMEL_ERROR_GENERIC;
-	msg.fuse_read_data.buf = (uint32_t)dma_fuse;
+	msg.fuse_read_data.buf = (u32)dma_fuse;
 	msg.fuse_read_data.buf_len = size;
 
 	/*Send Fuse read row IPC call to TME*/

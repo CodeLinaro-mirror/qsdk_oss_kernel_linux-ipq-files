@@ -45,7 +45,7 @@ struct device *tmelcom_get_device(void)
 	return tdev->dev;
 }
 
-static int tmelcom_prepare_msg(struct tmelcom *tdev, uint32_t msg_uid,
+static int tmelcom_prepare_msg(struct tmelcom *tdev, u32 msg_uid,
 			       void *msg_buf, size_t msg_size)
 {
 	struct tmel_ipc_pkt *ipc_pkt = tdev->ipc_pkt;
@@ -112,7 +112,7 @@ static bool tmelcom_check_rx_done(struct tmelcom *tdev)
 	return tdev->rx_done;
 }
 
-enum tmelcom_resp tmelcom_process_request(uint32_t msg_uid, void *msg_buf,
+enum tmelcom_resp tmelcom_process_request(u32 msg_uid, void *msg_buf,
 					  size_t msg_size)
 {
 	struct tmelcom *tdev = tmeldev;
