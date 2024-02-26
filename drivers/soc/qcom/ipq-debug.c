@@ -38,6 +38,18 @@
 #define TME_L_FATAL_ERROR               0x49
 #define TME_L_WDT_BITE_FATAL_ERROR      0x69
 
+/* DevSoC specific restart reason codes */
+#define DEVSOC_POWER_ON_RESET		0x1
+#define DEVSOC_SYSTEM_RESET_OR_REBOOT	0x2
+#define DEVSOC_TME_L_SECURE_WATCHDOG	0x3
+#define DEVSOC_SECURE_WATCHDOG		0x4
+#define DEVSOC_NON_SECURE_WATCHDOG	0x5
+#define DEVSOC_HLOS_PANIC		0x6
+#define DEVSOC_EXTERNAL_WDT		0x7
+#define DEVSOC_TME_L_FORCE_RESET	0x8
+#define DEVSOC_TSENS_RESET		0x9
+#define DEVSOC_AHB_TIMEOUT		0x10
+
 #define RESET_REASON_MSG_MAX_LEN        100
 
 struct restart_reason {
@@ -49,7 +61,7 @@ static int debug_panic_handler(struct notifier_block *nb, unsigned long action,
 			       void *data)
 {
 	struct restart_reason *reason;
-	int val = 0x6;
+	int val = DEVSOC_HLOS_PANIC;
 
 	reason = container_of(nb, struct restart_reason, panic_blk);
 
@@ -110,6 +122,57 @@ static int restart_reason_logging(unsigned int reason)
 	return 0;
 }
 
+static int restart_reason_logging_devsoc(unsigned int reason)
+{
+	char reset_reason_msg[RESET_REASON_MSG_MAX_LEN] = {};
+
+	switch(reason) {
+		case DEVSOC_POWER_ON_RESET:
+			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
+					"%s", "Power on Reset");
+			break;
+		case DEVSOC_SYSTEM_RESET_OR_REBOOT:
+			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
+					"%s", "System reset or reboot");
+			break;
+		case DEVSOC_TME_L_SECURE_WATCHDOG:
+			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
+					"%s", "TME-L Secure Watchdog");
+			break;
+		case DEVSOC_SECURE_WATCHDOG:
+			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
+					"%s", "Secure Watchdog");
+			break;
+		case DEVSOC_NON_SECURE_WATCHDOG:
+			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
+					"%s", "Non-Secure Watchdog");
+			break;
+		case DEVSOC_HLOS_PANIC:
+			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
+					"%s", "HLOS Panic");
+			break;
+		case DEVSOC_EXTERNAL_WDT:
+			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
+					"%s", "External Watchdog");
+			break;
+		case DEVSOC_TME_L_FORCE_RESET:
+			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
+					"%s", "TME-L Force Reset");
+			break;
+		case DEVSOC_TSENS_RESET:
+			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
+					"%s", "TSENS Reset");
+			break;
+		case DEVSOC_AHB_TIMEOUT:
+			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
+					"%s", "AHB Timeout");
+			break;
+	}
+
+	pr_info("reset_reason : %s[0x%X]\n", reset_reason_msg, reason);
+	return 0;
+}
+
 static const struct of_device_id ipq_debug_match_table[] = {
 	{ .compatible = "qcom,ipq-debug",
 	},
@@ -161,7 +224,14 @@ static int ipq_debug_probe(struct platform_device *pdev)
 	memcpy_fromio(&reset_reason, imem_base, 4);
 	iounmap(imem_base);
 
-	restart_reason_logging(reset_reason);
+	/*
+	 * Restart reason codes are different for devsoc compared to previous
+	 * SoCs
+	 */
+	if (of_device_is_compatible(np, "qcom,ipq-debug-devsoc"))
+		restart_reason_logging_devsoc(reset_reason);
+	else
+		restart_reason_logging(reset_reason);
 
 	/*
 	 * For devsoc, kernel needs to write the restart reason in IMEM
