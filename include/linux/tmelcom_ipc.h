@@ -36,6 +36,24 @@ struct tmel_fuse_read_multiple_msg {
 	struct tmel_msg_param_type_buf_in_out fuse_read_data;
 } __packed;
 
+struct tmel_qwes_init_att_msg {
+	u32 status;
+	struct tmel_msg_param_type_buf_out rsp;
+} __packed;
+
+struct tmel_qwes_device_att_msg {
+	u32 status;
+	struct tmel_msg_param_type_buf_in req;
+	struct tmel_msg_param_type_buf_in ext_claim;
+	struct tmel_msg_param_type_buf_out rsp;
+} __packed;
+
+struct tmel_qwes_device_prov_msg {
+	u32 status;
+	struct tmel_msg_param_type_buf_in req;
+	struct tmel_msg_param_type_buf_out rsp;
+} __packed;
+
 struct tmel_secboot_sec_auth_req {
 	u32 sw_id;
 	struct tmel_msg_param_type_buf_in elf_buf;
@@ -71,6 +89,13 @@ struct tmel_secboot_teardown {
 } __packed;
 
 #ifdef CONFIG_QCOM_TMELCOM
+int tmelcom_init_attestation(u32 *key_buf, u32 key_buf_len, u32 *key_buf_size);
+int tmelcom_qwes_getattestation_report(u32 *req_buf, u32 req_buf_len,
+				       u32 *extclaim_buf, u32 extclaim_buf_len,
+				       u32 *resp_buf, u32 resp_buf_len,
+				       u32 *resp_buf_size);
+int tmelcom_qwes_device_provision(u32 *req_buf, u32 req_buf_len, u32 *resp_buf,
+				  u32 resp_buf_len, u32 *resp_buf_size);
 int tmelcom_fuse_list_read(struct tmel_fuse_payload *fuse, size_t size);
 int tmelcom_secboot_sec_auth(u32 sw_id, void *metadata, size_t size);
 int tmelcom_secboot_teardown(u32 sw_id, u32 secondary_sw_id);
@@ -92,5 +117,26 @@ static inline int tmelcom_secboot_teardown(u32 sw_id, u32 secondary_sw_id)
 	return 0;
 }
 
+static inline int tmelcom_init_attestation(u32 *key_buf, u32 key_buf_len,
+					   u32 *key_buf_size)
+{
+	return 0;
+}
+static inline int tmelcom_qwes_getattestation_report(u32 *req_buf,
+						     u32 req_buf_len,
+						     u32 *extclaim_buf,
+						     u32 extclaim_buf_len,
+						     u32 *resp_buf,
+						     u32 resp_buf_len,
+						     u32 *resp_buf_size)
+{
+	return 0;
+}
+static inline int tmelcom_qwes_device_provision(u32 *req_buf, u32 req_buf_len,
+						u32 *resp_buf, u32 resp_buf_len,
+						u32 *resp_buf_size)
+{
+	return 0;
+}
 #endif /* CONFIG_QCOM_TMELCOM */
 #endif /* _TMELCOM_IPC_H_ */
