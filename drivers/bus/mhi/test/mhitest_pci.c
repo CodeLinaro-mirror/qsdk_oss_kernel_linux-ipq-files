@@ -808,25 +808,24 @@ void mhitest_write_reg(struct mhi_controller *mhi_cntrl, void __iomem *addr,
 }
 
 void mhitest_mhi_notify_status(struct mhi_controller *mhi_cntrl,
-						enum mhi_callback reason)
+						enum mhi_callback cb_reason)
 {
 	struct mhitest_platform *temp;
+	enum mhitest_recovery_reason reason = MHI_DEFAULT;
 
 	temp = dev_get_drvdata(mhi_cntrl->cntrl_dev);
 
 	MHITEST_VERB("Enter\n");
-	if (reason > MHI_CB_FATAL_ERROR) {
+	if (cb_reason > MHI_CB_FATAL_ERROR) {
 		MHITEST_ERR("Unsupported reason :%d\n", reason);
 		return;
 	}
-	MHITEST_EMERG(":[%s]- %d\n", mhitest_get_reson_str(reason), reason);
+	MHITEST_EMERG(":[%s]- %d\n", mhitest_get_reson_str(cb_reason), cb_reason);
 
-	switch (reason) {
+	switch (cb_reason) {
 	case MHI_CB_IDLE:
 	case MHI_CB_SYS_ERROR:
-		return;
 	case MHI_CB_FATAL_ERROR:
-		reason = MHI_DEFAULT;
 		return;
 	case MHI_CB_EE_RDDM:
 		reason = MHI_RDDM;
@@ -840,7 +839,7 @@ void mhitest_mhi_notify_status(struct mhi_controller *mhi_cntrl,
 		/* check duplicate RDDM received from MHI */
 		if (mhi_get_exec_env(mhi_cntrl) == mhi_cntrl->ee) {
 			MHITEST_LOG("Skip duplicate %s(%d) received from MHI\n",
-				    mhitest_get_reson_str(reason), reason);
+				    mhitest_get_reson_str(cb_reason), cb_reason);
 			return;
 		}
 		break;
@@ -852,7 +851,7 @@ void mhitest_mhi_notify_status(struct mhi_controller *mhi_cntrl,
 		return;
 	default:
 		MHITEST_ERR("Unsupported reason --reason:[%s]-(%d)\n",
-				mhitest_get_reson_str(reason), reason);
+				mhitest_get_reson_str(cb_reason), cb_reason);
 		return;
 	}
 	mhitest_sch_do_recovery(temp, reason);
@@ -1270,7 +1269,7 @@ out:
 	return ret;
 }
 
-char *mhitest_get_mhi_state_str(enum mhi_state state)
+char *mhitest_get_mhi_state_str(enum MHI_STATE state)
 {
 	switch (state) {
 	case MHI_INIT:
