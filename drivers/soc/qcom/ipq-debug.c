@@ -24,6 +24,8 @@
 #include <linux/of_platform.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
+#include <linux/notifier.h>
+#include <linux/panic_notifier.h>
 
 #define NON_SECURE_WATCHDOG             0x1
 #define AHB_TIMEOUT                     0x3
@@ -37,6 +39,25 @@
 #define TME_L_WDT_BITE_FATAL_ERROR      0x69
 
 #define RESET_REASON_MSG_MAX_LEN        100
+
+struct restart_reason {
+	void __iomem *wr_addr;
+	struct notifier_block panic_blk;
+};
+
+static int debug_panic_handler(struct notifier_block *nb, unsigned long action,
+			       void *data)
+{
+	struct restart_reason *reason;
+	int val = 0x6;
+
+	reason = container_of(nb, struct restart_reason, panic_blk);
+
+	memcpy_toio(reason->wr_addr, &val, sizeof(int));
+	iounmap(reason->wr_addr);
+
+	return NOTIFY_DONE;
+}
 
 static int restart_reason_logging(unsigned int reason)
 {
@@ -92,47 +113,101 @@ static int restart_reason_logging(unsigned int reason)
 static const struct of_device_id ipq_debug_match_table[] = {
 	{ .compatible = "qcom,ipq-debug",
 	},
+	{ .compatible = "qcom,ipq-debug-devsoc",
+	},
 	{}
 };
 MODULE_DEVICE_TABLE(of, ipq_debug_match_table);
 
+void __iomem *ipq_debug_parse_address(struct device *dev,
+				      const char *compatible)
+{
+	struct device_node *np;
+	void __iomem *addr;
+
+	np = of_find_compatible_node(NULL, NULL, compatible);
+	if (!np) {
+		dev_err(dev, "node %s doesn't exist\n", compatible);
+		return ERR_PTR(-ENODEV);
+	}
+
+	addr = of_iomap(np, 0);
+	of_node_put(np);
+	if (!addr) {
+		dev_err(dev, "iomap failed for compatible %s\n", compatible);
+		return addr;
+	}
+
+	return addr;
+}
+
 static int ipq_debug_probe(struct platform_device *pdev)
 {
-	struct device_node *imem_np;
+	struct restart_reason *reason;
 	unsigned int reset_reason;
 	void __iomem *imem_base;
 	struct device_node *np;
+	int ret;
 
 	np = of_node_get(pdev->dev.of_node);
 	if (!np)
 		return 0;
 
-	imem_np = of_find_compatible_node(NULL, NULL,
-			"qcom,msm-imem-restart-reason-buf-addr");
-	if (!imem_np) {
-		dev_err(&pdev->dev,
-				"restart_reason_buf_addr imem DT node does not exist\n");
-		return -ENODEV;
-	}
+	imem_base = ipq_debug_parse_address(&pdev->dev,
+				"qcom,msm-imem-restart-reason-buf-addr");
+	if (IS_ERR_OR_NULL(imem_base))
+		return PTR_ERR(imem_base);
 
-	imem_base = of_iomap(imem_np, 0);
-	of_node_put(imem_np);
-	if (!imem_base) {
-		dev_err(&pdev->dev,
-				"restart_reason_buf_addr imem offset mapping failed\n");
-		return -ENOMEM;
-	}
 	memcpy_fromio(&reset_reason, imem_base, 4);
 	iounmap(imem_base);
 
 	restart_reason_logging(reset_reason);
 
+	/*
+	 * For devsoc, kernel needs to write the restart reason in IMEM
+	 * during the kernel panic.
+	 */
+
+	if (!of_device_is_compatible(np, "qcom,ipq-debug-devsoc"))
+		return 0;
+
+	reason = devm_kzalloc(&pdev->dev, sizeof(*reason), GFP_KERNEL);
+	if (!reason)
+		return -ENOMEM;
+
+	reason->wr_addr = ipq_debug_parse_address(&pdev->dev,
+				"qcom,imem-restart-reason-buf-wr-addr");
+	if (IS_ERR_OR_NULL(reason->wr_addr))
+		return PTR_ERR(reason->wr_addr);
+
+	reason->panic_blk.notifier_call = debug_panic_handler;
+	ret = atomic_notifier_chain_register(&panic_notifier_list,
+					     &reason->panic_blk);
+	if (ret) {
+		dev_err(&pdev->dev, "failed to register the panic notifier, ret is %d\n",
+			ret);
+		return ret;
+	}
+
+	platform_set_drvdata(pdev, reason);
+
+	return 0;
+}
+
+static int ipq_debug_remove(struct platform_device *pdev)
+{
+	struct restart_reason *reason = platform_get_drvdata(pdev);
+
+	if (reason)
+		atomic_notifier_chain_unregister(&panic_notifier_list,
+						 &reason->panic_blk);
 	return 0;
 }
 
 static struct platform_driver ipq_debug_driver = {
-	.probe      = ipq_debug_probe,
-	.driver     = {
+	.probe	= ipq_debug_probe,
+	.remove	= ipq_debug_remove,
+	.driver	= {
 		.name = "qcom,ipq-debug",
 		.of_match_table = ipq_debug_match_table,
 	},
@@ -141,4 +216,3 @@ static struct platform_driver ipq_debug_driver = {
 module_platform_driver(ipq_debug_driver);
 
 MODULE_DESCRIPTION("QCOM IPQ DEBUG Driver");
-
