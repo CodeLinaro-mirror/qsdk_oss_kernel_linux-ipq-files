@@ -71,6 +71,7 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	ipq5332-rdp480.dtb \
 	ipq5332-rdp481.dtb \
 	ipq5332-rdp484.dtb \
+	ipq5332-rdp486.dtb \
 	ipq5332-db-mi01.1.dtb \
 	ipq5332-db-mi02.1.dtb \
 	ipq5332-db-mi03.1.dtb \
