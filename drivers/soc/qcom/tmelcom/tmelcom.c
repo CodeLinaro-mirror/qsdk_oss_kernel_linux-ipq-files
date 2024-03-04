@@ -99,7 +99,7 @@ static void tmelcom_unprepare_message(struct tmelcom *tdev,
 	struct mbox_payload *mbox_payload = &ipc_pkt->payload.mbox_payload;
 
 	if (ipc_pkt->msg_hdr.ipc_type == IPC_MBOX_ONLY) {
-		memcpy(msg_buf, (void *)mbox_payload, tdev->pkt.size);
+		memcpy(msg_buf, (void *)mbox_payload, msg_size);
 	} else if (ipc_pkt->msg_hdr.ipc_type == IPC_MBOX_SRAM) {
 		dma_unmap_single(tdev->dev, tdev->sram_dma_addr, msg_size,
 				 DMA_BIDIRECTIONAL);
@@ -219,7 +219,8 @@ static int tmelcom_probe(struct platform_device *pdev)
 
 	tdev->cl.dev = &pdev->dev;
 	tdev->cl.tx_block = true;
-	tdev->cl.tx_tout = 3000;
+	/* IPC timeout of 30s for emulation. To be reduced to 3s post-silicon */
+	tdev->cl.tx_tout = 30000;
 	tdev->cl.knows_txdone = false;
 	tdev->cl.rx_callback = tmelcom_receive_message;
 
