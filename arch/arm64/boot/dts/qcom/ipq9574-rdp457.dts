@@ -478,24 +478,10 @@
 	};
 
 	pta_QCC710: pta_QCC710 {
-		pta1_0 {
-			pins = "gpio56";
-			function = "pta1_0";
-			drive-strength = <8>;
-			bias-disable;
-		};
-		pta1_1 {
-			pins = "gpio54";
-			function = "pta1_1";
-			drive-strength = <8>;
-			bias-disable;
-		};
-		pta1_2 {
-			pins = "gpio55";
-			function = "pta1_2";
-			drive-strength = <8>;
-			bias-disable;
-		};
+		pins = "gpio54", "gpio55", "gpio56";
+		function = "pta";
+		drive-strength = <8>;
+		bias-disable;
 	};
 
 	qspi_nand_pins: qspi_nand_pins {
