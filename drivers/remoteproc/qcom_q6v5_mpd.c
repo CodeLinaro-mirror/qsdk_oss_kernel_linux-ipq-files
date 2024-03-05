@@ -1083,7 +1083,6 @@ static void q6_wcss_copy_segment(struct rproc *rproc,
 {
 	struct q6_wcss *wcss = rproc->priv;
 	struct device *dev = wcss->dev;
-	int base;
 	void *ptr;
 
 	ptr = devm_ioremap_wc(dev, segment->da, segment->size);
