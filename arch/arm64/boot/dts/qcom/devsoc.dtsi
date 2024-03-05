@@ -114,6 +114,13 @@
 		};
 	};
 
+	firmware {
+		scm {
+			compatible = "qcom,scm-devsoc", "qcom,scm";
+			qcom,dload-mode = <&tcsr 0x25100>;
+		};
+	};
+
 	memory@80000000 {
 		device_type = "memory";
 		/* We expect the bootloader to fill in the size */

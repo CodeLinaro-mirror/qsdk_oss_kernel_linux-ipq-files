@@ -14,6 +14,8 @@
 	model = "Qualcomm Technologies, Inc. DevSoc-EMULATION";
 	compatible = "qcom,devsoc-ap-emulation", "qcom,devsoc";
 
+	/delete-node/ firmware;
+
 	/*Timer freq for rumi = timer freq / 200*/
 	clocks {
 		sleep_clk: sleep-clk {
