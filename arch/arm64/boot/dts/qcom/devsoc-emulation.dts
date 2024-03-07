@@ -14,14 +14,14 @@
 	model = "Qualcomm Technologies, Inc. DevSoc-EMULATION";
 	compatible = "qcom,devsoc-ap-emulation", "qcom,devsoc";
 
-	/*Timer freq for rumi = timer freq / 100*/
+	/*Timer freq for rumi = timer freq / 150*/
 	clocks {
 		sleep_clk: sleep-clk {
-			clock-frequency = <320>;
+			clock-frequency = <213>;
 		};
 
 		xo: xo {
-			clock-frequency = <240000>;
+			clock-frequency = <160000>;
 		};
 	};
 
@@ -437,15 +437,15 @@
 					<0 276 4>;		/* PPEDS Node #2(RxFill Desc ring id #2) Rx Fill IRQ info */
                 };
 
-		/* Timer freq for rumi = timer freq / 100 */
+		/* Timer freq for rumi = timer freq / 150 */
 		timer@f420000 {
-			clock-frequency = <240000>;
+			clock-frequency = <160000>;
 		};
 	};
 
-	/* Timer freq for rumi = timer freq / 100 */
+	/* Timer freq for rumi = timer freq / 150 */
 	timer {
-		clock-frequency = <240000>;
+		clock-frequency = <160000>;
 	};
 
 	psci {
