@@ -130,6 +130,28 @@
 		#size-cells = <2>;
 		ranges;
 
+		tzapp: tzapp@0x89900000 {
+		#if !defined(__IPQ_MEM_PROFILE_512_MB__) && !defined(__IPQ_MEM_PROFILE_256_MB__)
+			reg = <0x0 0x89900000 0x0 0x600000>;
+		#endif
+			no-map;
+		};
+
+		bootloader@0x89f00000 {
+			reg = <0x0 0x89f00000 0x0 0x600000>;
+			no-map;
+		};
+
+		sbl@0x8a500000 {
+			reg = <0x0 0x8a500000 0x0 0x100000>;
+			no-map;
+		};
+
+		tz@0x8a600000 {
+			reg = <0x0 0x8a600000 0x0 0x200000>;
+			no-map;
+		};
+
 		smem@8a800000 {
 			compatible = "qcom,smem";
 			reg = <0x0 0x8a800000 0x0 0x100000>;
