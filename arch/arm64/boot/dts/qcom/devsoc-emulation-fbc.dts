@@ -11,7 +11,7 @@
 #include "devsoc.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. DevSoc-EMULATION-FBC";
+	model = "Qualcomm Technologies, Inc. DevSoC-EMULATION-FBC";
 	compatible = "qcom,devsoc-ap-emulation", "qcom,devsoc";
 
 	/*Timer freq for rumi = timer freq / 100*/
@@ -63,11 +63,9 @@
 		q6v5_wcss: remoteproc@d100000 {
 			qcom,emulation;
 			qcom,nosecure;
-			bootaddr = <0x8a900000>;
 			q6_wcss_pd1: remoteproc_pd1 {
 				qcom,emulation;
 				qcom,nosecure;
-				bootaddr = <0x8a900000>;
 			};
 		};
 #endif
