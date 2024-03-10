@@ -269,3 +269,50 @@ dma_unmap_prov_req_buf:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(tmelcom_qwes_device_provision);
+
+int tmelcom_licensing_check(void *cbor_req, u32 req_len, void *cbor_resp,
+			    u32 resp_len, u32 *used_resp_len)
+{
+	int ret;
+	struct tmel_licensing_check_msg msg = {0};
+	struct device *dev = tmelcom_get_device();
+	dma_addr_t dma_cbor_req, dma_cbor_resp;
+
+	if (!dev || !cbor_req || !req_len || !cbor_resp || !resp_len)
+		return -EINVAL;
+
+	dma_cbor_req = dma_map_single(dev, cbor_req, req_len, DMA_BIDIRECTIONAL);
+	ret = dma_mapping_error(dev, dma_cbor_req);
+	if (ret != 0) {
+		pr_err("DMA Mapping Error, cbor_req : %d\n", ret);
+		return -EINVAL;
+	}
+
+	dma_cbor_resp = dma_map_single(dev, cbor_resp, resp_len, DMA_BIDIRECTIONAL);
+	ret = dma_mapping_error(dev, dma_cbor_resp);
+	if (ret != 0) {
+		pr_err("DMA Mapping Error, cbor_resp : %d\n", ret);
+		dma_unmap_single(dev, dma_cbor_req, req_len, DMA_BIDIRECTIONAL);
+		return -EINVAL;
+	}
+
+	msg.request.buf = dma_cbor_req;
+	msg.request.buf_len = req_len;
+	msg.response.buf = dma_cbor_resp;
+	msg.response.buf_len = resp_len;
+	ret = tmelcom_process_request(TMEL_MSG_UID_QWES_LICENSING_CHECK,
+				      &msg, sizeof(msg));
+
+	dma_unmap_single(dev, dma_cbor_req, req_len, DMA_BIDIRECTIONAL);
+	dma_unmap_single(dev, dma_cbor_resp, resp_len, DMA_BIDIRECTIONAL);
+
+	if (ret) {
+		pr_err("Failed to send SecureFIDcheck IPC: %d\n", ret);
+	} else {
+		ret = msg.status;
+		*used_resp_len = msg.response.out_buf_len;
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tmelcom_licensing_check);
