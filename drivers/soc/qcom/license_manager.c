@@ -21,6 +21,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/firmware.h>
 #include <linux/firmware/qcom/qcom_scm.h>
+#include <linux/tmelcom_ipc.h>
 #include "soc/qcom/license_manager.h"
 
 #define LICENSE_BUF_MAX 	(512 * 1024) //512KB
@@ -40,6 +41,8 @@
 #define LICENSE_INFO_START 	"[licensefile]"
 #define FILE_COUNT_STRING 	"filecount"
 #define FILE_STRING 		"file"
+#define CBOR_RESP_SIZE		2048 //2KB
+#define CBOR_RESP_MAX_SIZE	CBOR_RESP_SIZE + 8 // Magic + Length + Data
 #define MAX_LICENSE_INFO_SIZE	(sizeof(LICENSE_INFO_START) + \
 				 sizeof(FILE_COUNT_STRING) + sizeof(FILE_STRING) + \
 				 ((sizeof(FILE_STRING) + FILE_NAME_MAX + 5) * QMI_LM_MAX_LICENSE_FILES_V01))
@@ -507,20 +510,76 @@ static void *lm_get_ecdsa_buffer(dma_addr_t *dma_addr, dma_addr_t nonce_dma_addr
 	return ecdsa_buf;
 }
 
+static void *lm_get_cbor_response(dma_addr_t *dma_cbor_resp, void *cbor_req_buf, u32 cbor_req_len) {
+	struct lm_svc_ctx *svc = lm_svc;
+	void *cbor_resp, *resp_buf;
+	u32 cbor_resp_len;
+	char *magic;
+	int ret;
+
+	resp_buf = kzalloc(CBOR_RESP_SIZE, GFP_KERNEL);
+	if (!resp_buf)
+		return ERR_PTR(-ENOMEM);
+
+	/* Call the Licensing check IPC */
+	ret = tmelcom_licensing_check(cbor_req_buf, cbor_req_len, resp_buf,
+				      CBOR_RESP_SIZE, &cbor_resp_len);
+	if (ret) {
+		dev_err(svc->dev, "License check with TMEL failed: %d\n", ret);
+		kfree(resp_buf);
+		return ERR_PTR(ret);
+	}
+
+	cbor_resp = dma_alloc_coherent(svc->dev, CBOR_RESP_MAX_SIZE, dma_cbor_resp, GFP_KERNEL);
+	if (!cbor_resp) {
+		dev_err(svc->dev, "cbor_resp DMA memory creation failed\n");
+		kfree(resp_buf);
+		return ERR_PTR(-ENOMEM);
+	}
+
+	magic = "SFID";
+	memcpy(cbor_resp, magic, MAGIC_SIZE);
+	memcpy(cbor_resp + MAGIC_SIZE, (void *)&cbor_resp_len, TLV_LENGTH_SIZE);
+	memcpy(cbor_resp + HEADER_SIZE, resp_buf, cbor_resp_len);
+
+	kfree(resp_buf);
+
+	return cbor_resp;
+}
+
 void *lm_get_license(enum req_type type, dma_addr_t *dma_addr, size_t *buf_len,
-		dma_addr_t nonce_dma_addr) {
+		     dma_addr_t nonce_dma_addr, void *cbor_req_buf, u32 cbor_req_len) {
 	struct lm_svc_ctx *svc = lm_svc;
 	void *buf;
 	int ret;
 
-	if (!svc || !svc->license_feature || !svc->license_buf) {
-		ret = -EIO;
+	if (!svc || type >= TYPE_MAX) {
+		ret = -EINVAL;
 		goto err;
 	}
 
-	if (type >= TYPE_MAX) {
-		dev_dbg(svc->dev, "Invalid req_type given\n");
-		ret = -EINVAL;
+	/* If tmel-bounded, use the cbor_request and get the cbor_response from
+	 * TME-L via IPC. This feature is not supported for INTERNAL remote proc */
+	if (svc->tmel_bounded) {
+		if (type == INTERNAL) {
+			*buf_len = 0;
+			*dma_addr = 0;
+			return NULL;
+		} else {
+			buf = lm_get_cbor_response(dma_addr, cbor_req_buf, cbor_req_len);
+			if (IS_ERR(buf)) {
+				dev_err(svc->dev, "cbor_response get failed\n");
+				goto err;
+			}
+
+			*buf_len = CBOR_RESP_MAX_SIZE;
+			return buf;
+		}
+	}
+
+	/* If SoC bounded or End-point bounded */
+	if (!svc->license_feature || !svc->license_buf) {
+		ret = -EIO;
 		goto err;
 	}
 
@@ -1040,6 +1099,8 @@ static int license_manager_probe(struct platform_device *pdev)
 
 	svc->license_feature = of_property_read_bool(node, "license-feature");
 
+	svc->tmel_bounded = of_property_read_bool(node, "tmel-bounded");
+
 	if (svc->license_feature) {
 		svc->license_buf = dma_alloc_coherent(dev, LICENSE_BUF_MAX,
 				&svc->license_dma_addr, GFP_KERNEL);
@@ -1057,7 +1118,10 @@ static int license_manager_probe(struct platform_device *pdev)
 			ret = -ENOMEM;
 			goto free_lm_lic_buf;
 		}
-
+		dev_info(dev, "License Manager is %s\n",
+			 svc->soc_bounded ? "SoC Bounded" : "Endpoint Bounded");
+	} else if (svc->tmel_bounded) {
+		dev_info(dev, "License Manager is TME-L Bounded\n");
 	}
 
 	/* Create IOCTL for userspace */
@@ -1109,9 +1173,7 @@ static int license_manager_probe(struct platform_device *pdev)
 		pr_err("Unable to create license manager sysfs entry\n");
 	}
 
-	dev_info(dev, "License Manager registered. License feature is %s and %s\n",
-			svc->license_feature ? "enabled" : "disabled",
-			svc->soc_bounded ? "SoC Bounded" : "Endpoint Bounded");
+	dev_info(dev, "License Manager registered successfully\n");
 
 	return 0;
 

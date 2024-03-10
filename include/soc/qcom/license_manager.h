@@ -79,6 +79,7 @@ struct lm_svc_ctx {
 	dma_addr_t license_dma_addr;
 	size_t license_buf_len;
 	bool soc_bounded;
+	bool tmel_bounded;
 };
 
 struct feature_info {
@@ -131,10 +132,10 @@ enum req_type {
 };
 
 #ifdef CONFIG_QTI_LICENSE_MANAGER
-void *lm_get_license(enum req_type type, dma_addr_t *dma_addr, size_t *buf_len, dma_addr_t nonce_dma_addr);
+void *lm_get_license(enum req_type type, dma_addr_t *dma_addr, size_t *buf_len, dma_addr_t nonce_dma_addr, void *cbor_req_buf, u32 cbor_req_len);
 void lm_free_license(void *buf, dma_addr_t dma_addr, size_t buf_len);
 #else
-static inline void *lm_get_license(enum req_type type, dma_addr_t *dma_addr, size_t *buf_len, dma_addr_t nonce_dma_addr)
+static inline void *lm_get_license(enum req_type type, dma_addr_t *dma_addr, size_t *buf_len, dma_addr_t nonce_dma_addr, void *cbor_req_buf, u32 cbor_req_len)
 {
 	return NULL;
 }
