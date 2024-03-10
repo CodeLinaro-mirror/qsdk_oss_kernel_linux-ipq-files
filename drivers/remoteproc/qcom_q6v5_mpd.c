@@ -719,7 +719,7 @@ static void load_license_params_to_bootargs(struct device *dev,
 	u32 rd_val;
 	struct license_bootargs lic_bootargs = {0x0};
 
-	lic_param.buf = lm_get_license(INTERNAL, &lic_param.dma_buf, &lic_param.size, 0);
+	lic_param.buf = lm_get_license(INTERNAL, &lic_param.dma_buf, &lic_param.size, 0, NULL, 0);
 	if (!lic_param.buf) {
 		dev_info(dev, "No license file passed in bootargs\n");
 		return;
