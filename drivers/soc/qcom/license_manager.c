@@ -216,6 +216,37 @@ struct qmi_elem_info qmi_lm_feature_list_req_msg_v01_ei[] = {
 					   serial_number),
 	},
 	{
+		.data_type      = QMI_OPT_FLAG,
+		.elem_len       = 1,
+		.elem_size      = sizeof(u8),
+		.array_type       = NO_ARRAY,
+		.tlv_type       = 0x16,
+		.offset         = offsetof(struct
+					   qmi_lm_feature_list_req_msg_v01,
+					   req_buff_valid),
+	},
+	{
+		.data_type      = QMI_DATA_LEN,
+		.elem_len       = 1,
+		.elem_size      = sizeof(u16),
+		.array_type       = NO_ARRAY,
+		.tlv_type       = 0x16,
+		.offset         = offsetof(struct
+					   qmi_lm_feature_list_req_msg_v01,
+					   req_buff_len),
+	},
+	{
+		.data_type      = QMI_UNSIGNED_1_BYTE,
+		.elem_len       = QMI_LM_MAX_BUFF_SIZE_V01,
+		.elem_size      = sizeof(u8),
+		.array_type       = VAR_LEN_ARRAY,
+		.tlv_type       = 0x16,
+		.offset         = offsetof(struct
+					   qmi_lm_feature_list_req_msg_v01,
+					   req_buff),
+	},
+
+	{
 		.data_type      = QMI_EOTI,
 		.array_type       = NO_ARRAY,
 		.tlv_type       = QMI_COMMON_TLV_TYPE,
@@ -234,6 +265,36 @@ struct qmi_elem_info qmi_lm_feature_list_resp_msg_v01_ei[] = {
 					   qmi_lm_feature_list_resp_msg_v01,
 					   resp),
 		.ei_array      = qmi_response_type_v01_ei,
+	},
+	{
+		.data_type      = QMI_OPT_FLAG,
+		.elem_len       = 1,
+		.elem_size      = sizeof(u8),
+		.array_type       = NO_ARRAY,
+		.tlv_type       = 0x10,
+		.offset         = offsetof(struct
+					   qmi_lm_feature_list_resp_msg_v01,
+					   resp_buff_valid),
+	},
+	{
+		.data_type      = QMI_DATA_LEN,
+		.elem_len       = 1,
+		.elem_size      = sizeof(u16),
+		.array_type       = NO_ARRAY,
+		.tlv_type       = 0x10,
+		.offset         = offsetof(struct
+					   qmi_lm_feature_list_resp_msg_v01,
+					   resp_buff_len),
+	},
+	{
+		.data_type      = QMI_UNSIGNED_1_BYTE,
+		.elem_len       = QMI_LM_MAX_BUFF_SIZE_V01,
+		.elem_size      = sizeof(u8),
+		.array_type       = VAR_LEN_ARRAY,
+		.tlv_type       = 0x10,
+		.offset         = offsetof(struct
+					   qmi_lm_feature_list_resp_msg_v01,
+					   resp_buff),
 	},
 	{
 		.data_type      = QMI_EOTI,
@@ -872,10 +933,6 @@ static void qmi_handle_feature_list_req(struct qmi_handle *handle,
 	}
 	resp->resp.result = QMI_RESULT_FAILURE_V01;
 
-	if(!req->feature_list_valid) {
-		pr_err("No Features are licensed in node 0x%x\n",sq->sq_node);
-	}
-
 	licensed_features = kzalloc(sizeof(*licensed_features), GFP_KERNEL);
 	if (!licensed_features) {
 		pr_err("%s: Memory allocation failed for feature list\n",
@@ -887,6 +944,7 @@ static void qmi_handle_feature_list_req(struct qmi_handle *handle,
 	licensed_features->sq_port = sq->sq_port;
 	licensed_features->reserved = req->reserved;
 	if(!req->feature_list_valid) {
+		pr_debug("No Features are licensed in node 0x%x\n",sq->sq_node);
 		licensed_features->len = 0;
 	} else {
 		licensed_features->len = req->feature_list_len;
@@ -949,6 +1007,19 @@ static void qmi_handle_feature_list_req(struct qmi_handle *handle,
 	}
 
 	list_add_tail(&licensed_features->node, &lm_svc->clients_feature_list);
+
+	/* Process CBOR_request if valid */
+	if (req->req_buff_valid && req->req_buff_len < QMI_LM_MAX_BUFF_SIZE_V01) {
+		/* call tmel IPC and get response */
+		ret = tmelcom_licensing_check(req->req_buff, req->req_buff_len, resp->resp_buff,
+					      QMI_LM_MAX_BUFF_SIZE_V01, &resp->resp_buff_len);
+		if (ret) {
+			pr_err("%s: Licensing check IPC failed: %d\n", __func__, ret);
+			goto send_resp;
+		} else
+			resp->resp_buff_valid = true;
+	}
+
 	resp->resp.result = QMI_RESULT_SUCCESS_V01;
 
 send_resp:

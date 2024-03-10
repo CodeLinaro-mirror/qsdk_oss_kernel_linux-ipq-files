@@ -35,6 +35,7 @@
 #define QMI_LM_MAX_CHIPINFO_ID_LEN_V01 32
 #define QMI_LM_MAX_FEATURE_LIST_V01 100
 #define QMI_LM_MAX_LICENSE_FILES_V01 20
+#define QMI_LM_MAX_BUFF_SIZE_V01	2048
 
 #define CLIENT_MAX 		6
 #define FILE_NAME_MAX 		128
@@ -55,13 +56,19 @@ struct qmi_lm_feature_list_req_msg_v01 {
 	u32 jtag_id;
 	u8 serial_number_valid;
 	u64 serial_number;
+	u8 req_buff_valid;
+	u32 req_buff_len;
+	u8 req_buff[QMI_LM_MAX_BUFF_SIZE_V01];
 };
-#define QMI_LM_FEATURE_LIST_REQ_MSG_V01_MAX_MSG_LEN 527
+#define QMI_LM_FEATURE_LIST_REQ_MSG_V01_MAX_MSG_LEN 2580
 
 struct qmi_lm_feature_list_resp_msg_v01 {
 	struct qmi_response_type_v01 resp;
+	u8 resp_buff_valid;
+	u32 resp_buff_len;
+	u8 resp_buff[QMI_LM_MAX_BUFF_SIZE_V01];
 };
-#define QMI_LM_FEATURE_LIST_RESP_MSG_V01_MAX_MSG_LEN 7
+#define QMI_LM_FEATURE_LIST_RESP_MSG_V01_MAX_MSG_LEN 2060
 
 struct lm_files {
 	int num_of_file;
