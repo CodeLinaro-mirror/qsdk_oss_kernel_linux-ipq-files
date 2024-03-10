@@ -82,6 +82,10 @@
 	};
 };
 
+&license_manager {
+	status = "okay";
+};
+
 &qmp_tmel {
 	status = "okay";
 };
