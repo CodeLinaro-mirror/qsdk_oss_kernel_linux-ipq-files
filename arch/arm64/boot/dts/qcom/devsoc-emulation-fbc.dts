@@ -82,6 +82,14 @@
 	};
 };
 
+&qmp_tmel {
+	status = "okay";
+};
+
+&tmelcom {
+	status = "okay";
+};
+
 &qpic_bam {
 	status = "okay";
 };

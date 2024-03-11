@@ -964,11 +964,13 @@
 			mboxes = <&apcs_glb 20>;
 			qti,early-boot;
 			#mbox-cells = <1>;
+			status = "disabled";
 		};
 
-		qcom,tmelcom-qmp-client {
+		tmelcom: qcom,tmelcom-qmp-client {
 			compatible = "qcom,tmelcom-qmp-client";
 			mboxes = <&qmp_tmel 0>;
+			status = "disabled";
 		};
 
 		watchdog: watchdog@f410000 {
