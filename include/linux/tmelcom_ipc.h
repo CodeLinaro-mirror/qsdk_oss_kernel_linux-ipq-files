@@ -70,7 +70,27 @@ struct tmel_secboot_teardown {
 	struct tmel_secboot_teardown_resp resp;
 } __packed;
 
+#ifdef CONFIG_QCOM_TMELCOM
 int tmelcom_fuse_list_read(struct tmel_fuse_payload *fuse, size_t size);
 int tmelcom_secboot_sec_auth(u32 sw_id, void *metadata, size_t size);
 int tmelcom_secboot_teardown(u32 sw_id, u32 secondary_sw_id);
+#else
+static inline int tmelcom_fuse_list_read(struct tmel_fuse_payload *fuse,
+					 size_t size)
+{
+	return 0;
+}
+
+static inline int tmelcom_secboot_sec_auth(u32 sw_id, void *metadata,
+					   size_t size)
+{
+	return 0;
+}
+
+static inline int tmelcom_secboot_teardown(u32 sw_id, u32 secondary_sw_id)
+{
+	return 0;
+}
+
+#endif /* CONFIG_QCOM_TMELCOM */
 #endif /* _TMELCOM_IPC_H_ */
