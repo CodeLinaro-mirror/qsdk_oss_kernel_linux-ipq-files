@@ -21,6 +21,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= ipq5332-rdp478.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq5332-rdp479.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq5332-rdp480.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq5332-rdp481.dtb
+dtb-$(CONFIG_ARCH_QCOM)	+= ipq5332-rdp483.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq5332-rdp484.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq5332-rdp486.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq5332-db-mi01.1.dtb
