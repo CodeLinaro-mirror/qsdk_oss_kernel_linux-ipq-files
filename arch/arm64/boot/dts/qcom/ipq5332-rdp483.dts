@@ -421,7 +421,7 @@
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
 			mdio-bus = <&mdio>;
-			qcom,phy-mdio-addr = <12>;
+			qcom,phy-mdio-addr = <4>;
 			qcom,link-poll = <1>;
 			phy-mode = "sgmii";
 		};
@@ -434,6 +434,7 @@
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
 			phy-mode = "sgmii";
+			qcom,ppe-offload-disabled = <1>;
 			qcom,mht-dev = <1>;
 		};
 
