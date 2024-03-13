@@ -220,8 +220,11 @@ static int handle_upd_in_rpd_crash(void *data)
 		upd_pdev = of_find_device_by_node(upd_np);
 		upd_rproc = platform_get_drvdata(upd_pdev);
 
-		if (upd_rproc->state != RPROC_SUSPENDED)
+		mutex_lock(&upd_rproc->lock);
+		if (upd_rproc->state != RPROC_SUSPENDED) {
+			mutex_unlock(&upd_rproc->lock);
 			continue;
+		}
 
 		/* load firmware */
 		ret = request_firmware(&firmware_p, upd_rproc->firmware,
@@ -229,6 +232,7 @@ static int handle_upd_in_rpd_crash(void *data)
 		if (ret < 0) {
 			dev_err(&upd_pdev->dev, "request_firmware failed: %d\n",
 				ret);
+			mutex_unlock(&upd_rproc->lock);
 			continue;
 		}
 
@@ -238,20 +242,25 @@ static int handle_upd_in_rpd_crash(void *data)
 			dev_err(&upd_pdev->dev, "failed to start %s\n",
 				upd_rproc->name);
 		release_firmware(firmware_p);
+		mutex_unlock(&upd_rproc->lock);
 
 		for_each_available_child_of_node(upd_np, temp) {
 			upd_pdev = of_find_device_by_node(temp);
 			upd_rproc = platform_get_drvdata(upd_pdev);
 
-			if (upd_rproc->state != RPROC_SUSPENDED)
+			mutex_lock(&upd_rproc->lock);
+			if (upd_rproc->state != RPROC_SUSPENDED) {
+				mutex_unlock(&upd_rproc->lock);
 				continue;
+			}
 
 			/* load firmware */
 			ret = request_firmware(&firmware_p, upd_rproc->firmware,
 					       &upd_pdev->dev);
 			if (ret < 0) {
-				dev_err(&upd_pdev->dev,
-					"request_firmware failed: %d\n", ret);
+				dev_err(&upd_pdev->dev, "request_firmware failed: %d\n",
+					ret);
+				mutex_unlock(&upd_rproc->lock);
 				continue;
 			}
 
@@ -261,6 +270,7 @@ static int handle_upd_in_rpd_crash(void *data)
 				dev_err(&upd_pdev->dev, "failed to start %s\n",
 					upd_rproc->name);
 			release_firmware(firmware_p);
+			mutex_unlock(&upd_rproc->lock);
 		}
 	}
 	rpd_wcss->state = WCSS_NORMAL;
@@ -584,8 +594,11 @@ static int q6_wcss_stop(struct rproc *rproc)
 			complete(&upd_wcss->q6.start_done);
 			complete(&upd_wcss->q6.stop_done);
 
-			if (upd_rproc->state == RPROC_OFFLINE)
+			mutex_lock(&upd_rproc->lock);
+			if (upd_rproc->state == RPROC_OFFLINE) {
+				mutex_unlock(&upd_rproc->lock);
 				continue;
+			}
 
 			upd_rproc->state = RPROC_CRASHED;
 
@@ -595,6 +608,7 @@ static int q6_wcss_stop(struct rproc *rproc)
 				dev_err(&upd_pdev->dev, "failed to stop %s\n",
 					upd_rproc->name);
 			upd_rproc->state = RPROC_SUSPENDED;
+			mutex_unlock(&upd_rproc->lock);
 
 			for_each_available_child_of_node(upd_np, temp) {
 				upd_pdev = of_find_device_by_node(temp);
@@ -604,8 +618,11 @@ static int q6_wcss_stop(struct rproc *rproc)
 				complete(&upd_wcss->q6.start_done);
 				complete(&upd_wcss->q6.stop_done);
 
-				if (upd_rproc->state == RPROC_OFFLINE)
+				mutex_lock(&upd_rproc->lock);
+				if (upd_rproc->state == RPROC_OFFLINE) {
+					mutex_unlock(&upd_rproc->lock);
 					continue;
+				}
 
 				upd_rproc->state = RPROC_CRASHED;
 
@@ -616,6 +633,7 @@ static int q6_wcss_stop(struct rproc *rproc)
 						upd_rproc->name);
 
 				upd_rproc->state = RPROC_SUSPENDED;
+				mutex_unlock(&upd_rproc->lock);
 			}
 		}
 		wcss->state = WCSS_RESTARTING;
