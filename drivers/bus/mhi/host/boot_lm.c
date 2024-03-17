@@ -23,6 +23,8 @@
 #define PCIE_REG_FOR_BOOT_ARGS			PCIE_SOC_PCIE_REG_PCIE_SCRATCH_0
 
 #define NONCE_SIZE                              34
+#define CBOR_REQ_MAGIC				"SFID"
+#define CBOR_REQ_SIZE				2048
 
 static int mhi_select_window(struct mhi_controller *mhi_cntrl, u32 addr)
 {
@@ -74,6 +76,11 @@ void mhi_free_nonce_buffer(struct mhi_controller *mhi_cntrl)
 				mhi_cntrl->nonce_dma_addr);
 		mhi_cntrl->nonce_buf = NULL;
 	}
+
+	if (mhi_cntrl->cbor_req != NULL) {
+		kfree(mhi_cntrl->cbor_req);
+		mhi_cntrl->cbor_req = NULL;
+	}
 }
 
 static int mhi_get_nonce(struct mhi_controller *mhi_cntrl)
@@ -112,6 +119,47 @@ static int mhi_get_nonce(struct mhi_controller *mhi_cntrl)
 			/* Copy the read value to nonce_buf */
 			memcpy(mhi_cntrl->nonce_buf + i, &rd_val, 4);
 		}
+
+		/* Check for CBOR request which is in TLV format */
+		/* Check for Type "SFID" */
+		sram_addr += NONCE_SIZE + 2; //2 Bytes reserved
+		rd_addr = (sram_addr & WINDOW_RANGE_MASK) + WINDOW_START;
+		ret = mhi_read_reg(mhi_cntrl, mhi_cntrl->regs, rd_addr, &rd_val);
+		if (ret)
+			return ret;
+
+		if (strncmp((const char *)&rd_val, CBOR_REQ_MAGIC, 4))
+			return 0;
+
+		/* Get the CBOR Length */
+		sram_addr += 4;
+		rd_addr = (sram_addr & WINDOW_RANGE_MASK) + WINDOW_START;
+		ret = mhi_read_reg(mhi_cntrl, mhi_cntrl->regs, rd_addr, &mhi_cntrl->cbor_req_len);
+		if (ret)
+			return ret;
+
+		if (!mhi_cntrl->cbor_req_len || mhi_cntrl->cbor_req_len > CBOR_REQ_SIZE) {
+			dev_err(dev, "CBOR_NONCE length is invalid %u\n", mhi_cntrl->cbor_req_len);
+			return -EIO;
+		}
+
+		/* Allocate memory and read the CBOR_REQ */
+		mhi_cntrl->cbor_req = kzalloc(CBOR_REQ_SIZE, GFP_KERNEL);
+		if (!mhi_cntrl->cbor_req)
+			return -ENOMEM;
+
+		/* Get the CBOR Value */
+		sram_addr += 4;
+		for (i=0; i < mhi_cntrl->cbor_req_len; i+=4) {
+			/* Calculate read address based on the Window range and read it */
+			rd_addr = ((sram_addr + i) & WINDOW_RANGE_MASK) + WINDOW_START;
+			ret = mhi_read_reg(mhi_cntrl, mhi_cntrl->regs, rd_addr, &rd_val);
+			if (ret)
+				return ret;
+
+			/* Copy the read value to cbor_req buffer */
+			memcpy(mhi_cntrl->cbor_req + i, &rd_val, 4);
+		}
 	}
 	else {
 		dev_err(dev, "No NONCE from device\n");
@@ -134,7 +182,10 @@ void mhi_download_fw_license(struct mhi_controller *mhi_cntrl)
 	}
 
 	mhi_cntrl->license_buf = lm_get_license(EXTERNAL, &mhi_cntrl->license_dma_addr,
-			&mhi_cntrl->license_buf_size, mhi_cntrl->nonce_dma_addr);
+						&mhi_cntrl->license_buf_size,
+						mhi_cntrl->nonce_dma_addr,
+						mhi_cntrl->cbor_req,
+						mhi_cntrl->cbor_req_len);
 
 	if (!mhi_cntrl->license_buf) {
 		mhi_free_nonce_buffer(mhi_cntrl);
