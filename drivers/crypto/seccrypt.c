@@ -126,6 +126,35 @@ static int seccrypt_setkey_sec(unsigned int keylen)
 	return qti_set_qcekey_sec(&key, sizeof(struct sec_config_key_sec));
 }
 
+static inline struct skcipher_alg *__crypto_skcipher_alg(
+	struct crypto_alg *alg)
+{
+	return container_of(alg, struct skcipher_alg, base);
+}
+
+static inline struct crypto_istat_cipher *skcipher_get_stat(
+	struct skcipher_alg *alg)
+{
+#ifdef CONFIG_CRYPTO_STATS
+	return &alg->stat;
+#else
+	return NULL;
+#endif
+}
+
+static inline int crypto_skcipher_errstat(struct skcipher_alg *alg, int err)
+{
+	struct crypto_istat_cipher *istat = skcipher_get_stat(alg);
+
+	if (!IS_ENABLED(CONFIG_CRYPTO_STATS))
+		return err;
+
+	if (err && err != -EINPROGRESS && err != -EBUSY)
+		atomic64_inc(&istat->err_cnt);
+
+	return err;
+}
+
 static inline struct sec_alg_template *sec_to_cipher_tmpl(struct crypto_skcipher *tfm)
 {
 	struct skcipher_alg *alg = crypto_skcipher_alg(tfm);
@@ -245,36 +274,44 @@ static int crypto_skcipher_decrypt_tz(struct skcipher_request *req,
 					struct sec_alg_template *tmpl, int encrypt)
 {
 	struct crypto_skcipher *tfm = crypto_skcipher_reqtfm(req);
-	struct crypto_alg *alg = tfm->base.__crt_alg;
-	unsigned int cryptlen = req->cryptlen;
+	struct skcipher_alg *alg = crypto_skcipher_alg(tfm);
 	int ret;
-	crypto_stats_get(alg);
+
+	if (IS_ENABLED(CONFIG_CRYPTO_STATS)) {
+		struct crypto_istat_cipher *istat = skcipher_get_stat(alg);
+
+		atomic64_inc(&istat->decrypt_cnt);
+		atomic64_add(req->cryptlen, &istat->decrypt_tlen);
+	}
 
 	if (crypto_skcipher_get_flags(tfm) & CRYPTO_TFM_NEED_KEY)
 		ret = -ENOKEY;
 	else
 		ret = seccrypt_tz(req, tmpl, encrypt);
 
-	crypto_stats_skcipher_decrypt(cryptlen, ret, alg);
-	return ret;
+	return crypto_skcipher_errstat(alg, ret);
 }
 
 static int crypto_skcipher_encrypt_tz(struct skcipher_request *req,
 					struct sec_alg_template *tmpl, int encrypt)
 {
 	struct crypto_skcipher *tfm = crypto_skcipher_reqtfm(req);
-	struct crypto_alg *alg = tfm->base.__crt_alg;
-	unsigned int cryptlen = req->cryptlen;
+	struct skcipher_alg *alg = crypto_skcipher_alg(tfm);
 	int ret;
-	crypto_stats_get(alg);
+
+	if (IS_ENABLED(CONFIG_CRYPTO_STATS)) {
+		struct crypto_istat_cipher *istat = skcipher_get_stat(alg);
+
+		atomic64_inc(&istat->encrypt_cnt);
+		atomic64_add(req->cryptlen, &istat->encrypt_tlen);
+	}
 
 	if (crypto_skcipher_get_flags(tfm) & CRYPTO_TFM_NEED_KEY)
 		ret = -ENOKEY;
 	else
 		ret = seccrypt_tz(req, tmpl, encrypt);
 
-	crypto_stats_skcipher_encrypt(cryptlen, ret, alg);
-	return ret;
+	return crypto_skcipher_errstat(alg, ret);
 }
 
 static int sec_skcipher_crypt(struct skcipher_request *req, int encrypt)
