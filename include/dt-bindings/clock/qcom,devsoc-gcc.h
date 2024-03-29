@@ -227,10 +227,18 @@
 #define GCC_ACC_CLK_SRC				237
 #define GCC_SEC_CTRL_CLK_SRC			238
 #define GCC_IM_SLEEP_CLK			239
+#define GCC_USB1_MASTER_CLK_SRC			240
+#define GCC_USB1_MASTER_CLK			241
+#define GCC_USB1_MOCK_UTMI_CLK_SRC		242
+#define GCC_USB1_MOCK_UTMI_DIV_CLK_SRC		243
+#define GCC_USB1_MOCK_UTMI_CLK			244
+#define GCC_USB1_SLEEP_CLK			245
+#define GCC_USB1_PHY_CFG_AHB_CLK		246
+
 /* Add new clocks on top of q6 bring up clocks
  * and update MAX_GCC_CLOCKS macro
  */
-#define MAX_GCC_CLOCKS				239
+#define MAX_GCC_CLOCKS				246
 #if defined(CONFIG_QCOM_NON_SECURE_PIL) || defined(__QCOM_NON_SECURE_PIL__)
 #define GCC_Q6_TSCTR_1TO2_CLK			(MAX_GCC_CLOCKS + 1)
 #define GCC_Q6SS_TRIG_CLK			(MAX_GCC_CLOCKS + 2)

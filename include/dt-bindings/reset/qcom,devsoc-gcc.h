@@ -305,10 +305,12 @@
 #define GCC_UNIPHY0_XPCS_ARES			295
 #define GCC_UNIPHY1_XPCS_ARES			296
 #define GCC_UNIPHY2_XPCS_ARES			297
+#define GCC_USB1_BCR				298
+#define GCC_QUSB2_1_PHY_BCR			299
 /* Add new resets on top of q6 bcr
  * and update MAX_GCC_RESET macro
  */
-#define MAX_GCC_RESET				297
+#define MAX_GCC_RESET				299
 #if defined(CONFIG_QCOM_NON_SECURE_PIL) || defined(__QCOM_NON_SECURE_PIL__)
 #define GCC_WCSS_Q6_BCR				(MAX_GCC_RESET + 1)
 #endif

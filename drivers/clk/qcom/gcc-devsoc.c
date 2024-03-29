@@ -311,6 +311,14 @@ static struct clk_regmap *gcc_devsoc_dummy_clks[] = {
 	[GCC_ACC_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_acc_clk_src),
 	[GCC_SEC_CTRL_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_sec_ctrl_clk_src),
 	[GCC_IM_SLEEP_CLK] = DEFINE_DUMMY_CLK(gcc_im_sleep_clk),
+	[GCC_USB1_MASTER_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_usb1_master_clk_src),
+	[GCC_USB1_MASTER_CLK] = DEFINE_DUMMY_CLK(gcc_usb1_master_clk),
+	[GCC_USB1_MOCK_UTMI_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_usb1_mock_utmi_clk_src),
+	[GCC_USB1_MOCK_UTMI_DIV_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_usb1_mock_utmi_div_clk_src),
+	[GCC_USB1_MOCK_UTMI_CLK] = DEFINE_DUMMY_CLK(gcc_usb1_mock_utmi_clk),
+	[GCC_USB1_SLEEP_CLK] = DEFINE_DUMMY_CLK(gcc_usb1_sleep_clk),
+	[GCC_USB1_PHY_CFG_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_usb1_phy_cfg_ahb_clk),
+
 #ifdef CONFIG_QCOM_NON_SECURE_PIL
 	[GCC_Q6_TSCTR_1TO2_CLK] = DEFINE_DUMMY_CLK(gcc_q6_tsctr_1to2_clk),
 	[GCC_Q6SS_TRIG_CLK] = DEFINE_DUMMY_CLK(gcc_q6ss_trig_clk),
@@ -626,6 +634,8 @@ static const struct qcom_reset_map gcc_devsoc_resets[] = {
 	[GCC_UNIPHY0_XPCS_ARES] = { 0x17050, 2 },
 	[GCC_UNIPHY1_XPCS_ARES] = { 0x17060, 2 },
 	[GCC_UNIPHY2_XPCS_ARES] = { 0x17070, 2 },
+	[GCC_USB1_BCR] = { 0x3C000, 0 },
+	[GCC_QUSB2_1_PHY_BCR] = { 0x3C030, 0 },
 };
 
 static const struct of_device_id gcc_devsoc_match_table[] = {

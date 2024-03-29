@@ -69,6 +69,30 @@
 		timer@f420000 {
 			clock-frequency = <160000>;
 		};
+
+		usb2@1e00000 {
+			status = "disabled";
+
+			dwc3@1e00000 {
+				usb-phy = <>;
+				phys = <>;
+				phy-names = "";
+				snps,quirk-fladj = <0x8c00c8a0>;
+				snps,quirk-guctl = <0xc804010>;
+			};
+		};
+
+		usb3@8a00000 {
+			status = "disabled";
+
+			dwc3@8a00000 {
+				usb-phy = <>;
+				phys = <>;
+				phy-names = "";
+				snps,quirk-fladj = <0x8c00c8a0>;
+				snps,quirk-guctl = <0xc804010>;
+			};
+		};
 	};
 
 	/* Timer freq for rumi = timer freq / 150 */
