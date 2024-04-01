@@ -59,16 +59,11 @@
 			};
 		};
 
-#ifdef __QCOM_NON_SECURE_PIL__
 		q6v5_wcss: remoteproc@d100000 {
-			qcom,emulation;
-			qcom,nosecure;
-			q6_wcss_pd1: remoteproc_pd1 {
-				qcom,emulation;
-				qcom,nosecure;
-			};
+			compatible = "qcom,devsoc-q6v5-wcss-sec";
+
+			/delete-node/ remoteproc_pd1;
 		};
-#endif
 
 		/* Timer freq for rumi = timer freq / 150 */
 		timer@f420000 {
