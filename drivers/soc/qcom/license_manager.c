@@ -43,6 +43,7 @@
 #define FILE_STRING 		"file"
 #define CBOR_RESP_SIZE		2048 //2KB
 #define CBOR_RESP_MAX_SIZE	CBOR_RESP_SIZE + 8 // Magic + Length + Data
+#define TTIME_REQ_PARAMS_SIZE	256
 #define MAX_LICENSE_INFO_SIZE	(sizeof(LICENSE_INFO_START) + \
 				 sizeof(FILE_COUNT_STRING) + sizeof(FILE_STRING) + \
 				 ((sizeof(FILE_STRING) + FILE_NAME_MAX + 5) * QMI_LM_MAX_LICENSE_FILES_V01))
@@ -726,14 +727,16 @@ static int lm_release(struct inode *inode, struct file *file)
 
 static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-	void __user *argp = (void __user *)arg;
-	struct lm_svc_ctx *svc = lm_svc;
 	struct client_target_info *client_info = NULL;
-	struct feature_info *itr, *tmp;
 	dma_addr_t nonce_dma_addr, ecdsa_dma_addr;
-	void *nonce_buf, *ecdsa_buf;
+	void *nonce_buf, *ecdsa_buf, *ttime_buf;
+	void __user *argp = (void __user *)arg;
+	u32 ecdsa_consumed, ttime_buf_used_len;
+	struct ttime_get_req_params ttime_rp;
+	struct lm_svc_ctx *svc = lm_svc;
+	struct feature_info *itr, *tmp;
+	struct ttime_set ttime_st;
 	struct bindings_resp br;
-	u32 ecdsa_consumed;
 	int i, len = 0, ret = 0;
 
 	switch(cmd) {
@@ -835,6 +838,76 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 		ecdsa_dma_alloc_err:
 			dma_free_coherent(svc->dev, NONCE_SIZE, nonce_buf, nonce_dma_addr);
+
+		break;
+
+		case TTIME_GET_REQ_PARAMS:
+			ret = copy_from_user(&ttime_rp, argp, sizeof(struct ttime_get_req_params));
+			if (ret) {
+				dev_err(svc->dev, "IOCTL: TTIME get req params from user error\n");
+				return ret;
+			}
+			if (ttime_rp.buf_len != TTIME_REQ_PARAMS_SIZE) {
+				dev_err(svc->dev, "IOCTL: TTIME get req params size invalid\n");
+				return -EINVAL;
+			}
+
+			ttime_buf = kzalloc(TTIME_REQ_PARAMS_SIZE, GFP_KERNEL);
+			if (!ttime_buf) {
+				dev_err(svc->dev, "IOCTL: TTIME get req params mem alloc failed\n");
+				return -ENOMEM;
+			}
+
+			ret = tmelcom_ttime_get_req_params(ttime_buf, TTIME_REQ_PARAMS_SIZE, &ttime_buf_used_len);
+			if (ret) {
+				dev_err(svc->dev, "IOCTL: TTIME get req params IPC failed: %d\n", ret);
+				goto err_params;
+			}
+
+			ttime_rp.used_buf_len = ttime_buf_used_len;
+			ret = copy_to_user(ttime_rp.params_buf, ttime_buf, ttime_buf_used_len);
+			if (ret) {
+				dev_err(svc->dev, "IOCTL: TTIME get req params copy to user error\n");
+				goto err_params;
+			}
+
+			ret = copy_to_user(argp, &ttime_rp, sizeof(ttime_rp));
+			if (ret)
+				dev_err(svc->dev, "IOCTL: TTIME get req params copy to user error\n");
+		err_params:
+			kfree(ttime_buf);
+
+		break;
+
+		case TTIME_SET:
+			ret = copy_from_user(&ttime_st, argp, sizeof(struct ttime_set));
+			if (ret) {
+				dev_err(svc->dev, "IOCTL: TTIME set copy from user error\n");
+				return ret;
+			}
+
+			if (!ttime_st.buf_len) {
+				dev_err(svc->dev, "IOCTL: TTIME set invalid buf len\n");
+				return -EINVAL;
+			}
+
+			ttime_buf = kzalloc(ttime_st.buf_len, GFP_KERNEL);
+			if (!ttime_buf) {
+				dev_err(svc->dev, "IOCTL: TTIME set mem alloc failed\n");
+				return -ENOMEM;
+			}
+
+			ret = copy_from_user(ttime_buf, ttime_st.ttime_buf, ttime_st.buf_len);
+			if (ret) {
+				dev_err(svc->dev, "IOCTL: ttime_buf copy from user error\n");
+				goto set_err;
+			}
+
+			ret = tmelcom_ttime_set(ttime_buf, ttime_st.buf_len);
+			if (ret)
+				dev_err(svc->dev, "IOCTL: TTIME set IPC failed: %d\n", ret);
+		set_err:
+			kfree(ttime_buf);
 
 		break;
 
