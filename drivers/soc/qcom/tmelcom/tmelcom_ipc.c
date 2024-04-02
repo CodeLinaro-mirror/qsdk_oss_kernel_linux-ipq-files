@@ -316,3 +316,72 @@ int tmelcom_licensing_check(void *cbor_req, u32 req_len, void *cbor_resp,
 	return ret;
 }
 EXPORT_SYMBOL_GPL(tmelcom_licensing_check);
+
+int tmelcom_ttime_get_req_params(void *params_buf, u32 buf_len, u32 *used_buf_len)
+{
+	struct tmel_ttime_get_req_params msg = {0};
+	struct device *dev = tmelcom_get_device();
+	dma_addr_t dma_params_buf;
+	int ret;
+
+	if (!dev || !params_buf || !buf_len || !used_buf_len)
+		return -EINVAL;
+
+	dma_params_buf = dma_map_single(dev, params_buf, buf_len, DMA_BIDIRECTIONAL);
+	if (ret) {
+		pr_err("DMA Mapping Error, ttime_get_req : %d\n", ret);
+		return -EINVAL;
+	}
+
+	msg.status = TMEL_ERROR_GENERIC;
+	msg.params.buf = dma_params_buf;
+	msg.params.buf_len = buf_len;
+
+	ret = tmelcom_process_request(TMEL_MSG_UID_QWES_TTIME_CLOUD_REQUEST,
+				      &msg, sizeof(msg));
+
+	dma_unmap_single(dev, dma_params_buf, buf_len, DMA_BIDIRECTIONAL);
+
+	if (ret) {
+		pr_err("Failed to send TTIME get req params IPC: %d\n", ret);
+	} else {
+		ret = msg.status;
+		*used_buf_len = msg.params.out_buf_len;
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tmelcom_ttime_get_req_params);
+
+int tmelcom_ttime_set(void *ttime_buf, u32 buf_len)
+{
+	struct device *dev = tmelcom_get_device();
+	struct tmel_ttime_set msg = {0};
+	dma_addr_t dma_ttime_buf;
+	int ret;
+
+	if (!dev || !ttime_buf || !buf_len)
+		return -EINVAL;
+
+	dma_ttime_buf = dma_map_single(dev, ttime_buf, buf_len, DMA_BIDIRECTIONAL);
+	if (ret) {
+		pr_err("DMA Mapping Error, ttime_set: %d\n", ret);
+		return -EINVAL;
+	}
+
+	msg.status = TMEL_ERROR_GENERIC;
+	msg.ttime.buf = dma_ttime_buf;
+	msg.ttime.buf_len = buf_len;
+
+	ret = tmelcom_process_request(TMEL_MSG_UID_QWES_TTIME_SET, &msg, sizeof(msg));
+
+	dma_unmap_single(dev, dma_ttime_buf, buf_len, DMA_BIDIRECTIONAL);
+
+	if (ret)
+		pr_err("Failed to send TTIME set IPC: %d\n", ret);
+	else
+		ret = msg.status;
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tmelcom_ttime_set);

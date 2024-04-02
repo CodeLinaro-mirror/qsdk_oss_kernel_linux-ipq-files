@@ -94,6 +94,16 @@ struct tmel_licensing_check_msg {
 	struct tmel_msg_param_type_buf_out response;
 } __packed;
 
+struct tmel_ttime_get_req_params {
+	u32 status;
+	struct tmel_msg_param_type_buf_out params;
+} __packed;
+
+struct tmel_ttime_set {
+	u32 status;
+	struct tmel_msg_param_type_buf_in ttime;
+} __packed;
+
 #ifdef CONFIG_QCOM_TMELCOM
 int tmelcom_init_attestation(u32 *key_buf, u32 key_buf_len, u32 *key_buf_size);
 int tmelcom_qwes_getattestation_report(u32 *req_buf, u32 req_buf_len,
@@ -107,6 +117,8 @@ int tmelcom_secboot_sec_auth(u32 sw_id, void *metadata, size_t size);
 int tmelcom_secboot_teardown(u32 sw_id, u32 secondary_sw_id);
 int tmelcom_licensing_check(void *cbor_req, u32 req_len, void *cbor_resp,
 			    u32 resp_len, u32 *used_resp_len);
+int tmelcom_ttime_get_req_params(void *params_buf, u32 buf_len, u32 *used_buf_len);
+int tmelcom_ttime_set(void *ttime_buf, u32 buf_len);
 #else
 static inline int tmelcom_fuse_list_read(struct tmel_fuse_payload *fuse,
 					 size_t size)
@@ -150,6 +162,17 @@ static inline int tmelcom_qwes_device_provision(u32 *req_buf, u32 req_buf_len,
 static inline int tmelcom_licensing_check(void *cbor_req, u32 req_len,
 					  void *cbor_resp, u32 resp_len,
 					  u32 *used_resp_len)
+{
+	return -ENOTSUPP;
+}
+
+static inline int tmelcom_ttime_get_req_params(void *params_buf, u32 buf_len,
+					       u32 *used_buf_len)
+{
+	return -ENOTSUPP;
+}
+
+static inline int tmelcom_ttime_set(void *ttime_buf, u32 buf_len)
 {
 	return -ENOTSUPP;
 }
