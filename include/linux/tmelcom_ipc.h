@@ -128,7 +128,7 @@ static inline int tmelcom_secboot_teardown(u32 sw_id, u32 secondary_sw_id)
 static inline int tmelcom_init_attestation(u32 *key_buf, u32 key_buf_len,
 					   u32 *key_buf_size)
 {
-	return 0;
+	return -ENOTSUPP;
 }
 static inline int tmelcom_qwes_getattestation_report(u32 *req_buf,
 						     u32 req_buf_len,
@@ -138,13 +138,13 @@ static inline int tmelcom_qwes_getattestation_report(u32 *req_buf,
 						     u32 resp_buf_len,
 						     u32 *resp_buf_size)
 {
-	return 0;
+	return -ENOTSUPP;
 }
 static inline int tmelcom_qwes_device_provision(u32 *req_buf, u32 req_buf_len,
 						u32 *resp_buf, u32 resp_buf_len,
 						u32 *resp_buf_size)
 {
-	return 0;
+	return -ENOTSUPP;
 }
 
 static inline int tmelcom_licensing_check(void *cbor_req, u32 req_len,
