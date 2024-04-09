@@ -1,0 +1,545 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (C) 2016-2018 Linaro Ltd.
+ * Copyright (C) 2014 Sony Mobile Communications AB
+ * Copyright (c) 2012-2018, 2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023, 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ */
+#include <linux/clk.h>
+#include <linux/delay.h>
+#include <linux/io.h>
+#include <linux/iopoll.h>
+#include <linux/kernel.h>
+#include <linux/of_address.h>
+#include <linux/of_device.h>
+#include <linux/of_reserved_mem.h>
+#include <linux/module.h>
+#include <linux/platform_device.h>
+#include <linux/reset.h>
+#include <linux/soc/qcom/mdt_loader.h>
+#include <linux/soc/qcom/smem.h>
+#include <linux/firmware/qcom/qcom_scm.h>
+#include <linux/tmelcom_ipc.h>
+#include <soc/qcom/license_manager.h>
+
+#include "qcom_common.h"
+#include "qcom_q6v5.h"
+#include "remoteproc_internal.h"
+
+#define WCSS_CRASH_REASON		421
+#define WCSS_SMEM_HOST			1
+#define RPD_SWID			0xD
+
+#define Q6_BOOT_ARGS_SMEM_SIZE		4096
+#define LIC_BOOTARGS_HEADER_TYPE        0x3
+
+#define RESET_CMD_ID			0x18
+
+static int debug_wcss;
+
+enum q6_bootargs_version {
+	VERSION1 = 1,
+	VERSION2,
+};
+
+struct q6v5_wcss_sec {
+	struct device *dev;
+	struct qcom_rproc_glink glink_subdev;
+	struct qcom_rproc_ssr ssr_subdev;
+	struct qcom_q6v5 q6;
+	phys_addr_t mem_phys;
+	phys_addr_t mem_reloc;
+	void *mem_region;
+	size_t mem_size;
+	int crash_reason_smem;
+	void *metadata;
+	size_t metadata_len;
+};
+
+struct wcss_data {
+	const char *q6_firmware_name;
+	int crash_reason_smem;
+	int remote_id;
+	const struct rproc_ops *ops;
+	bool need_auto_boot;
+	u32 pasid;
+	u8 bootargs_version;
+};
+
+struct bootargs_smem_info {
+	void *smem_base_ptr;
+	void *smem_elem_cnt_ptr;
+	void *smem_bootargs_ptr;
+};
+
+struct license_params {
+	dma_addr_t dma_buf;
+	void *buf;
+	size_t size;
+};
+
+static struct license_params lic_param;
+
+struct bootargs_header {
+	u8 type;
+	u8 length;
+};
+
+struct license_bootargs {
+	struct bootargs_header header;
+	u8 license_type;
+	u32 addr;
+	u32 size;
+} __packed;
+
+static int q6v5_wcss_sec_start(struct rproc *rproc)
+{
+	struct q6v5_wcss_sec *wcss = rproc->priv;
+	int ret;
+	const struct wcss_data *desc;
+
+	desc = of_device_get_match_data(wcss->dev);
+	if (!desc)
+		return -EINVAL;
+
+	qcom_q6v5_prepare(&wcss->q6);
+
+	if (debug_wcss) {
+		ret = qcom_scm_break_q6_start(RESET_CMD_ID);
+		if (ret) {
+			dev_err(wcss->dev, "breaking q6 failed\n");
+			return ret;
+		}
+	}
+
+	ret = tmelcom_secboot_sec_auth(desc->pasid, wcss->metadata,
+				       wcss->metadata_len);
+	if (ret) {
+		dev_err(wcss->dev, "wcss_reset failed\n");
+		return ret;
+	}
+
+wait_for_start:
+	ret = qcom_q6v5_wait_for_start(&wcss->q6, msecs_to_jiffies(10000));
+	if (ret == -ETIMEDOUT) {
+		if (debug_wcss)
+			goto wait_for_start;
+		else
+			dev_err(wcss->dev, "start timed out\n");
+	}
+
+	if (lic_param.buf) {
+		lm_free_license(lic_param.buf, lic_param.dma_buf, lic_param.size);
+		lic_param.buf = NULL;
+	}
+	return ret;
+}
+
+static int q6v5_wcss_sec_stop(struct rproc *rproc)
+{
+	struct q6v5_wcss_sec *wcss = rproc->priv;
+	int ret;
+	const struct wcss_data *desc =
+			of_device_get_match_data(wcss->dev);
+
+	if (!desc)
+		return -EINVAL;
+
+	ret = tmelcom_secboot_teardown(desc->pasid, 0);
+	if (ret) {
+		dev_err(wcss->dev, "not able to shutdown\n");
+		return ret;
+	}
+
+	qcom_q6v5_unprepare(&wcss->q6);
+
+	return 0;
+}
+
+static void *q6v5_wcss_sec_da_to_va(struct rproc *rproc, u64 da, size_t len,
+				    bool *is_iomem)
+{
+	struct q6v5_wcss_sec *wcss = rproc->priv;
+	int offset;
+
+	offset = da - wcss->mem_reloc;
+	if (offset < 0 || offset + len > wcss->mem_size)
+		return NULL;
+
+	return wcss->mem_region + offset;
+}
+
+static
+void load_license_params_to_bootargs(struct device *dev,
+				     struct bootargs_smem_info *boot_args)
+{
+	u16 cnt;
+	u32 rd_val;
+	struct license_bootargs lic_bootargs = {0x0};
+
+	lic_param.buf = lm_get_license(INTERNAL, &lic_param.dma_buf, &lic_param.size, 0);
+	if (!lic_param.buf) {
+		dev_info(dev, "No license file passed in bootargs\n");
+		return;
+	}
+
+	/* No of elements */
+	cnt = *((u16 *)boot_args->smem_elem_cnt_ptr);
+	cnt += sizeof(struct license_bootargs);
+	memcpy_toio(boot_args->smem_elem_cnt_ptr, &cnt, sizeof(u16));
+
+	/* TYPE */
+	lic_bootargs.header.type = LIC_BOOTARGS_HEADER_TYPE;
+
+	/* LENGTH */
+	lic_bootargs.header.length =
+			sizeof(lic_bootargs) - sizeof(lic_bootargs.header);
+
+	/* license type */
+	if (!of_property_read_u32(dev->of_node, "license-type", &rd_val))
+		lic_bootargs.license_type = (u8)rd_val;
+
+	/* ADDRESS */
+	lic_bootargs.addr = (u32)lic_param.dma_buf;
+
+	/* License file size */
+	lic_bootargs.size = lic_param.size;
+	memcpy_toio(boot_args->smem_bootargs_ptr,
+		    &lic_bootargs, sizeof(lic_bootargs));
+	boot_args->smem_bootargs_ptr += sizeof(lic_bootargs);
+
+	dev_info(dev, "License file copied in bootargs\n");
+}
+
+static int share_bootargs_to_q6(struct device *dev)
+{
+	int ret;
+	u32 smem_id, rd_val;
+	const char *key = "qcom,bootargs_smem";
+	size_t size;
+	u16 cnt, tmp, version;
+	void *ptr;
+	u8 *bootargs_arr;
+	struct device_node *np = dev->of_node;
+	struct bootargs_smem_info boot_args;
+	const struct wcss_data *desc =
+				of_device_get_match_data(dev);
+
+	if (!desc)
+		return -EINVAL;
+
+	ret = of_property_read_u32(np, key, &smem_id);
+	if (ret) {
+		pr_err("failed to get smem id\n");
+		return ret;
+	}
+
+	ret = qcom_smem_alloc(WCSS_SMEM_HOST, smem_id, Q6_BOOT_ARGS_SMEM_SIZE);
+	if (ret && ret != -EEXIST) {
+		pr_err("failed to allocate q6 bootargs smem segment\n");
+		return ret;
+	}
+
+	boot_args.smem_base_ptr = qcom_smem_get(WCSS_SMEM_HOST, smem_id, &size);
+	if (IS_ERR(boot_args.smem_base_ptr)) {
+		pr_err("Unable to acquire smp2p item(%d) ret:%ld\n",
+		       smem_id, PTR_ERR(boot_args.smem_base_ptr));
+		return PTR_ERR(boot_args.smem_base_ptr);
+	}
+	ptr = boot_args.smem_base_ptr;
+
+	/*get physical address*/
+	pr_info("smem physical address:0x%lX\n",
+		(uintptr_t)qcom_smem_virt_to_phys(ptr));
+
+	/*Version*/
+	version = desc->bootargs_version;
+	memcpy_toio(ptr, &version, sizeof(version));
+	ptr += sizeof(version);
+	boot_args.smem_elem_cnt_ptr = ptr;
+
+	ret = of_property_count_u32_elems(np, "boot-args");
+	cnt = ret;
+	if (ret < 0) {
+		if (ret == -ENODATA) {
+			pr_err("failed to read boot args ret:%d\n", ret);
+			return ret;
+		}
+		cnt = 0;
+	}
+
+	/* No of elements */
+	memcpy_toio(ptr, &cnt, sizeof(u16));
+	ptr += sizeof(u16);
+
+	bootargs_arr = kzalloc(cnt, GFP_KERNEL);
+	if (!bootargs_arr)
+		return -ENOMEM;
+
+	for (tmp = 0; tmp < cnt; tmp++) {
+		ret = of_property_read_u32_index(np, "boot-args", tmp, &rd_val);
+		if (ret) {
+			pr_err("failed to read boot args\n");
+			kfree(bootargs_arr);
+			return ret;
+		}
+		bootargs_arr[tmp] = (u8)rd_val;
+	}
+
+	/* Copy bootargs */
+	memcpy_toio(ptr, bootargs_arr, cnt);
+	ptr += (cnt);
+	boot_args.smem_bootargs_ptr = ptr;
+
+	of_node_put(np);
+	kfree(bootargs_arr);
+
+	load_license_params_to_bootargs(dev, &boot_args);
+
+	return 0;
+}
+
+static int q6v5_wcss_sec_load(struct rproc *rproc, const struct firmware *fw)
+{
+	struct q6v5_wcss_sec *wcss = rproc->priv;
+	int ret;
+	const struct wcss_data *desc =
+				of_device_get_match_data(wcss->dev);
+
+	if (!desc)
+		return -EINVAL;
+
+	/* Share boot args to Q6 remote processor */
+	ret = share_bootargs_to_q6(wcss->dev);
+	if (ret && ret != -EINVAL) {
+		dev_err(wcss->dev,
+			"boot args sharing with q6 failed %d\n",
+			ret);
+		return ret;
+	}
+
+	/* Read metadata */
+	wcss->metadata = qcom_mdt_read_metadata(fw, &wcss->metadata_len,
+						rproc->firmware, wcss->dev);
+	if (IS_ERR(wcss->metadata)) {
+		ret = PTR_ERR(wcss->metadata);
+		dev_err(wcss->dev, "error %d reading firmware %s metadata\n",
+			ret, rproc->firmware);
+		return ret;
+	}
+
+	/* Load firmware into DDR */
+	return qcom_mdt_load_no_init(wcss->dev, fw, rproc->firmware,
+				desc->pasid, wcss->mem_region,
+				wcss->mem_phys, wcss->mem_size,
+				&wcss->mem_reloc);
+}
+
+static unsigned long q6v5_wcss_sec_panic(struct rproc *rproc)
+{
+	struct q6v5_wcss_sec *wcss = rproc->priv;
+
+	return qcom_q6v5_panic(&wcss->q6);
+}
+
+static
+void q6v5_wcss_sec_copy_segment(struct rproc *rproc,
+				struct rproc_dump_segment *segment,
+				void *dest, size_t offset, size_t size)
+{
+	struct q6v5_wcss_sec *wcss = rproc->priv;
+	struct device *dev = wcss->dev;
+	void *ptr;
+
+	ptr = devm_ioremap_wc(dev, segment->da, segment->size);
+	if (!ptr) {
+		dev_err(dev, "Failed to ioremap segment %pad size %zx\n",
+			&segment->da, segment->size);
+		return;
+	}
+
+	memcpy(dest, ptr + offset, size);
+	devm_iounmap(dev, ptr);
+}
+
+static int q6v5_wcss_sec_dump_segments(struct rproc *rproc,
+				       const struct firmware *fw)
+{
+	struct device *dev = rproc->dev.parent;
+	struct reserved_mem *rmem = NULL;
+	struct device_node *node;
+	int num_segs, index = 0;
+	int ret;
+
+	/* Parse through additional reserved memory regions for the rproc
+	 * and add them to the coredump segments
+	 */
+	num_segs = of_count_phandle_with_args(dev->of_node,
+					      "memory-region", NULL);
+	while (index < num_segs) {
+		node = of_parse_phandle(dev->of_node,
+					"memory-region", index);
+		if (!node)
+			return -EINVAL;
+
+		rmem = of_reserved_mem_lookup(node);
+		if (!rmem) {
+			dev_err(dev, "unable to acquire memory-region index %d num_segs %d\n",
+				index, num_segs);
+			return -EINVAL;
+		}
+
+		of_node_put(node);
+
+		dev_dbg(dev, "Adding segment 0x%pa size 0x%pa",
+			&rmem->base, &rmem->size);
+		ret = rproc_coredump_add_custom_segment(rproc,
+							rmem->base,
+							rmem->size,
+							q6v5_wcss_sec_copy_segment,
+							NULL);
+		if (ret)
+			return ret;
+
+		index++;
+	}
+
+	return 0;
+}
+
+static const struct rproc_ops q6v5_wcss_sec_devsoc_ops = {
+	.start = q6v5_wcss_sec_start,
+	.stop = q6v5_wcss_sec_stop,
+	.da_to_va = q6v5_wcss_sec_da_to_va,
+	.load = q6v5_wcss_sec_load,
+	.get_boot_addr = rproc_elf_get_boot_addr,
+	.panic = q6v5_wcss_sec_panic,
+	.parse_fw = q6v5_wcss_sec_dump_segments,
+};
+
+static int q6_alloc_memory_region(struct q6v5_wcss_sec *wcss)
+{
+	struct reserved_mem *rmem = NULL;
+	struct device_node *node;
+	struct device *dev = wcss->dev;
+
+	node = of_parse_phandle(dev->of_node, "memory-region", 0);
+	if (node)
+		rmem = of_reserved_mem_lookup(node);
+
+	of_node_put(node);
+
+	if (!rmem) {
+		dev_err(dev, "unable to acquire memory-region\n");
+		return -EINVAL;
+	}
+
+	wcss->mem_phys = rmem->base;
+	wcss->mem_reloc = rmem->base;
+	wcss->mem_size = rmem->size;
+	wcss->mem_region = devm_ioremap_wc(dev, wcss->mem_phys, wcss->mem_size);
+	if (!wcss->mem_region) {
+		dev_err(dev, "unable to map memory region: %pa+%pa\n",
+			&rmem->base, &rmem->size);
+		return -EBUSY;
+	}
+	return 0;
+}
+
+static int q6v5_wcss_sec_probe(struct platform_device *pdev)
+{
+	const struct wcss_data *desc;
+	struct q6v5_wcss_sec *wcss;
+	const char *fw_name = NULL;
+	struct rproc *rproc;
+	int ret;
+
+	desc = of_device_get_match_data(&pdev->dev);
+	if (!desc)
+		return -EINVAL;
+
+	of_property_read_string(pdev->dev.of_node, "firmware", &fw_name);
+	if (!fw_name)
+		fw_name = desc->q6_firmware_name;
+
+	rproc = rproc_alloc(&pdev->dev, pdev->name, desc->ops,
+			    fw_name, sizeof(*wcss));
+	if (!rproc) {
+		dev_err(&pdev->dev, "failed to allocate rproc\n");
+		return -ENOMEM;
+	}
+	wcss = rproc->priv;
+	wcss->dev = &pdev->dev;
+
+	ret = q6_alloc_memory_region(wcss);
+	if (ret)
+		goto free_rproc;
+
+	ret = qcom_q6v5_init(&wcss->q6, pdev, rproc, desc->remote_id,
+			     desc->crash_reason_smem, NULL, NULL);
+	if (ret) {
+		dev_err(&pdev->dev, "Failed to initialize: %d", ret);
+		goto free_rproc;
+	}
+
+	qcom_add_glink_subdev(rproc, &wcss->glink_subdev, "q6wcss");
+
+	qcom_add_ssr_subdev(rproc, &wcss->ssr_subdev, pdev->name);
+
+	rproc->auto_boot = desc->need_auto_boot;
+	rproc->dump_conf = RPROC_COREDUMP_INLINE;
+	rproc_coredump_set_elf_info(rproc, ELFCLASS32, EM_NONE);
+	ret = rproc_add(rproc);
+	if (ret)
+		goto free_rproc;
+
+	platform_set_drvdata(pdev, rproc);
+
+	return 0;
+
+free_rproc:
+	rproc_free(rproc);
+
+	return ret;
+}
+
+static int q6v5_wcss_sec_remove(struct platform_device *pdev)
+{
+	struct rproc *rproc = platform_get_drvdata(pdev);
+	struct q6v5_wcss_sec *wcss = rproc->priv;
+
+	qcom_q6v5_deinit(&wcss->q6);
+
+	rproc_del(rproc);
+	rproc_free(rproc);
+
+	return 0;
+}
+
+static const struct wcss_data q6_devsoc_res_init = {
+	.q6_firmware_name = "devsoc/q6_fw0.mdt",
+	.crash_reason_smem = WCSS_CRASH_REASON,
+	.remote_id = WCSS_SMEM_HOST,
+	.ops = &q6v5_wcss_sec_devsoc_ops,
+	.pasid = RPD_SWID,
+	.bootargs_version = VERSION2,
+};
+
+static const struct of_device_id q6v5_wcss_sec_of_match[] = {
+	{ .compatible = "qcom,devsoc-q6v5-wcss-sec", .data = &q6_devsoc_res_init },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, q6v5_wcss_sec_of_match);
+
+static struct platform_driver q6v5_wcss_sec_driver = {
+	.probe = q6v5_wcss_sec_probe,
+	.remove = q6v5_wcss_sec_remove,
+	.driver = {
+		.name = "qcom-q6v5-wcss-sec",
+		.of_match_table = q6v5_wcss_sec_of_match,
+	},
+};
+module_platform_driver(q6v5_wcss_sec_driver);
+module_param(debug_wcss, int, 0644);
+MODULE_DESCRIPTION("Hexagon WCSS Secure Peripheral Image Loader");
+MODULE_LICENSE("GPL v2");
