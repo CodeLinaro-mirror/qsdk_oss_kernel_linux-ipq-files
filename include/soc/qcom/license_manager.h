@@ -128,9 +128,22 @@ struct bindings_resp {
 	uint32_t ecdsa_consumed_len;
 };
 
+struct ttime_get_req_params {
+	void *params_buf;
+	u32 buf_len;
+	u32 used_buf_len;
+};
+
+struct ttime_set {
+	void *ttime_buf;
+	u32 buf_len;
+};
+
 #define GET_FID_INFO 		_IOWR('L', 1, struct client_target_info)
 #define LICENSE_RESCAN 		_IO('L', 2)
 #define GET_BINDINGS		_IOWR('L', 3, struct bindings_resp)
+#define TTIME_GET_REQ_PARAMS	_IOWR('L', 4, struct ttime_get_req_params)
+#define TTIME_SET		_IOWR('L', 5, struct ttime_set)
 
 enum req_type {
 	INTERNAL,
