@@ -26,6 +26,7 @@
 #include <linux/err.h>
 #include <linux/uaccess.h>
 #include <linux/vmalloc.h>
+#include <linux/tmelcom_ipc.h>
 
 #define QWES_M3_KEY_BUFF_MAX_SIZE 128
 #define QWES_RESP_BUFF_MAX_SIZE 2048

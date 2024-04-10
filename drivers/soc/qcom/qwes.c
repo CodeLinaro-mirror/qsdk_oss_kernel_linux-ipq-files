@@ -84,9 +84,12 @@ static long qwes_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				ret = -ENOMEM;
 				goto key_buf_alloc_err;
 			}
-
-			ret = qcom_scm_get_device_attestation_ephimeral_key(key_buf,
-						QWES_M3_KEY_BUFF_MAX_SIZE, key_len);
+			ret = tmelcom_init_attestation(key_buf,
+					QWES_M3_KEY_BUFF_MAX_SIZE, key_len);
+			if (ret == -ENOTSUPP) {
+				ret = qcom_scm_get_device_attestation_ephimeral_key(
+					key_buf, QWES_M3_KEY_BUFF_MAX_SIZE, key_len);
+			}
 			if (ret) {
 				pr_err("qwes init attestation scm failed : %d\n", ret);
 				goto key_len_alloc_err;
@@ -162,9 +165,14 @@ static long qwes_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 					goto claim_buf_alloc_err;
 				}
 			}
-			ret = qcom_scm_get_device_attestation_response(req_buf,
-					ar.req_buf_len, claim_buf, ar.claim_buf_len, resp_buf,
-					QWES_RESP_BUFF_MAX_SIZE, resp_size);
+			ret = tmelcom_qwes_getattestation_report(req_buf,
+				ar.req_buf_len, claim_buf, ar.claim_buf_len,
+				resp_buf, QWES_RESP_BUFF_MAX_SIZE, resp_size);
+			if (ret == -ENOTSUPP) {
+				ret = qcom_scm_get_device_attestation_response(req_buf,
+					ar.req_buf_len, claim_buf, ar.claim_buf_len,
+					resp_buf, QWES_RESP_BUFF_MAX_SIZE, resp_size);
+			}
 			if (ret) {
 				pr_err("qwes attestation response scm failed : %d\n", ret);
 				goto claim_buf_alloc_err;
@@ -226,9 +234,15 @@ static long qwes_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				pr_err("Error : prov req buf data write failed !\n");
 				goto prov_resp_buf_alloc_err;
 			}
-			ret = qcom_scm_get_device_provision_response(req_buf,
+			ret = tmelcom_qwes_device_provision(req_buf,
 					pr.req_buf_len, resp_buf,
 					QWES_RESP_BUFF_MAX_SIZE, resp_size);
+
+			if (ret == -ENOTSUPP) {
+				ret = qcom_scm_get_device_provision_response(req_buf,
+					pr.req_buf_len, resp_buf,
+					QWES_RESP_BUFF_MAX_SIZE, resp_size);
+			}
 			if (ret) {
 				pr_err("qwes provision response scm failed : %d\n", ret);
 				goto prov_resp_buf_alloc_err;
