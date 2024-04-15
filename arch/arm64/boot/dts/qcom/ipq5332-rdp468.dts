@@ -94,13 +94,6 @@
 						phy-handle = <&phy2>;
 						phy-mode = "usxgmii";
 					};
-
-					port@4 {
-						reg = <4>;
-						label = "lan4";
-						phy-handle = <&phy3>;
-						phy-mode = "usxgmii";
-					};
 				};
 			};
 		};
