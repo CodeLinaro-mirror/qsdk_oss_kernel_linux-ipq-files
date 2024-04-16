@@ -63,7 +63,17 @@
 			compatible = "qcom,devsoc-q6v5-wcss-sec";
 			status = "okay";
 
-			/delete-node/ remoteproc_pd1;
+#ifdef __QCOM_NON_SECURE_PIL__
+			qcom,emulation;
+			qcom,nosecure;
+#endif
+			q6_wcss_pd1: remoteproc_pd1 {
+				status = "disabled";
+#ifdef __QCOM_NON_SECURE_PIL__
+				qcom,emulation;
+				qcom,nosecure;
+#endif
+			};
 		};
 
 		/* Timer freq for rumi = timer freq / 150 */

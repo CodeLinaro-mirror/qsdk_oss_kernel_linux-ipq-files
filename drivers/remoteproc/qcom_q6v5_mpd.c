@@ -1515,8 +1515,10 @@ static int q6_wcss_probe(struct platform_device *pdev)
 	if (ret)
 		goto free_rproc;
 
-	if (of_property_read_bool(pdev->dev.of_node, "qcom,nosecure"))
+	if (of_property_read_bool(pdev->dev.of_node, "qcom,nosecure")) {
 		wcss->need_mem_protection = false;
+		rproc_set_feature(rproc, RPROC_FEAT_NON_SECURE_PIL);
+	}
 
 	wcss->is_emulation = of_property_read_bool(pdev->dev.of_node,
 						   "qcom,emulation");
