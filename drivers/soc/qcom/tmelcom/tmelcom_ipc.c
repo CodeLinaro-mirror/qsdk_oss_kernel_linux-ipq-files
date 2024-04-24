@@ -385,3 +385,58 @@ int tmelcom_ttime_set(void *ttime_buf, u32 buf_len)
 	return ret;
 }
 EXPORT_SYMBOL_GPL(tmelcom_ttime_set);
+
+int tmelcom_licensing_install(void *license_buf, u32 license_len, void *ident_buf,
+			      u32 ident_len, u32 *ident_used_len, u32 *flags)
+{
+	dma_addr_t dma_license_buf, dma_ident_buf;
+	struct device *dev = tmelcom_get_device();
+	struct tmel_licensing_install msg = {0};
+	int ret;
+
+	if (!dev || !license_buf || !license_len || !ident_buf ||
+	    !ident_len || !ident_used_len)
+		return -EINVAL;
+
+	dma_license_buf = dma_map_single(dev, license_buf, license_len,
+					 DMA_BIDIRECTIONAL);
+	ret = dma_mapping_error(dev, dma_license_buf);
+	if (ret != 0) {
+		pr_err("DMA Mapping Error, license_buf: %d\n", ret);
+		return -EINVAL;
+	}
+
+	dma_ident_buf = dma_map_single(dev, ident_buf, ident_len,
+				       DMA_BIDIRECTIONAL);
+	ret = dma_mapping_error(dev, dma_ident_buf);
+	if (ret != 0) {
+		pr_err("DMA Mapping Error, identifier_buf: %d\n", ret);
+		dma_unmap_single(dev, dma_license_buf, license_len,
+				 DMA_BIDIRECTIONAL);
+		return -EINVAL;
+	}
+
+	msg.status = TMEL_ERROR_GENERIC;
+	msg.license.buf = dma_license_buf;
+	msg.license.buf_len = license_len;
+	msg.identifier.buf = dma_ident_buf;
+	msg.identifier.buf_len = ident_len;
+
+	ret = tmelcom_process_request(TMEL_MSG_UID_QWES_LICENSING_INSTALL,
+				      &msg, sizeof(msg));
+
+	dma_unmap_single(dev, dma_license_buf, license_len, DMA_BIDIRECTIONAL);
+	dma_unmap_single(dev, dma_ident_buf, ident_len, DMA_BIDIRECTIONAL);
+
+	if (ret) {
+		pr_err("%s : Failed to send IPC: %d\n", __func__, ret);
+	} else {
+		ret = msg.status;
+		*ident_used_len = msg.identifier.out_buf_len;
+		*flags = msg.flags;
+	}
+
+	return ret;
+
+}
+EXPORT_SYMBOL_GPL(tmelcom_licensing_install);
