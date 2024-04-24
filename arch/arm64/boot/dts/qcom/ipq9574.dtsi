@@ -1365,6 +1365,7 @@
 			qcom,wlan-ramdump-dynamic = <0x600000>;
 			qca,auto-restart;
 			interrupt-bmap = <0x100512>;
+			node_id = <0>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
 			/* qcn9224 tgt-mem-mode=1 layout - 37MB
 			 * +=========+==============+=========+
@@ -1635,6 +1636,7 @@
 			qcom,wlan-ramdump-dynamic = <0x600000>;
 			qca,auto-restart;
 			interrupt-bmap = <0x100512>;
+			node_id = <1>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
 			/* qcn9224 tgt-mem-mode=1 layout - 37MB
 			 * +=========+==============+=========+
@@ -1905,6 +1907,7 @@
 			qcom,wlan-ramdump-dynamic = <0x600000>;
 			qca,auto-restart;
 			interrupt-bmap = <0x100512>;
+			node_id = <2>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
 			/* qcn9224 tgt-mem-mode=1 layout - 37MB
 			 * +=========+==============+=========+
@@ -2175,6 +2178,7 @@
 			qcom,wlan-ramdump-dynamic = <0x600000>;
 			qca,auto-restart;
 			interrupt-bmap = <0x100512>;
+			node_id = <3>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
 			/* qcn9224 tgt-mem-mode=1 layout - 37MB
 			 * +=========+==============+=========+
