@@ -76,8 +76,8 @@
 #define WCSS_ECAHB			0x58
 #define CNOC_WCSS_AHB			0xC0AC
 
-static long userpd_bootaddr;
-static long userpd_size;
+static ulong userpd_bootaddr;
+static ulong userpd_size;
 #endif
 static int debug_wcss;
 /**
@@ -1767,8 +1767,8 @@ static struct platform_driver q6_wcss_driver = {
 module_platform_driver(q6_wcss_driver);
 module_param(debug_wcss, int, 0644);
 #ifdef CONFIG_QCOM_NON_SECURE_PIL
-module_param(userpd_bootaddr, long, 0644);
-module_param(userpd_size, long, 0644);
+module_param(userpd_bootaddr, ulong, 0644);
+module_param(userpd_size, ulong, 0644);
 #endif
 MODULE_DESCRIPTION("Hexagon WCSS Multipd Peripheral Image Loader");
 MODULE_LICENSE("GPL v2");
