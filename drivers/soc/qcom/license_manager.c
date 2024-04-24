@@ -359,6 +359,50 @@ static int lm_read_license_file(struct lm_svc_ctx *svc, const char *filename)
 	return 0;
 }
 
+static int lm_check_license_info(const struct firmware *licenseinfo, char **ptr)
+{
+	struct lm_svc_ctx *svc = lm_svc;
+	int ret, file_count = 0;
+	char *token = NULL;
+
+	/* Check the license_info.conf has minimum size */
+	if (licenseinfo->size < (sizeof(LICENSE_INFO_START) + sizeof(FILE_COUNT_STRING))) {
+		dev_err(svc->dev, "%s file not meeting the minimum size\n", LICENSE_INFO_CONF_PATH);
+		return -EINVAL;
+	}
+
+	/* Check the license_info.conf start */
+	if (strncmp(licenseinfo->data, LICENSE_INFO_START, sizeof(LICENSE_INFO_START)-1)) {
+		dev_err(svc->dev, "%s : %s not present\n", LICENSE_INFO_CONF_PATH, LICENSE_INFO_START);
+		return -EINVAL;
+	}
+
+	/* Check the filecount string and get the value */
+	*ptr = (char *)licenseinfo->data + sizeof(LICENSE_INFO_START);
+	token = strsep(ptr, " ");
+	if (!token || !*token || strncmp(token, FILE_COUNT_STRING, sizeof(FILE_COUNT_STRING))) {
+		dev_err(svc->dev, "%s: %s string not present\n", LICENSE_INFO_CONF_PATH, FILE_COUNT_STRING);
+		return -EINVAL;
+	}
+
+	token = strsep(ptr, "\n");
+	if (!token || !*token) {
+		dev_err(svc->dev, "%s file count not valid\n", LICENSE_INFO_CONF_PATH);
+		return -EINVAL;
+	}
+
+	ret = kstrtoint(token, 0, &file_count);
+	if (ret || file_count <= 0 || file_count > QMI_LM_MAX_LICENSE_FILES_V01)  {
+		dev_err(svc->dev, "%s file count is invalid %d\n", LICENSE_INFO_CONF_PATH, file_count);
+		return -EINVAL;
+	}
+
+	dev_dbg(svc->dev,"%s file is present with %d license file names\n",
+			LICENSE_INFO_CONF_PATH, file_count);
+
+	return file_count;
+}
+
 static int lm_get_license_in_tlv(struct lm_svc_ctx *svc, bool rescan) {
 	int ret = 0, file_count = 0, files_accounted = 0;
 	const struct firmware *licenseinfo = NULL;
@@ -405,45 +449,11 @@ static int lm_get_license_in_tlv(struct lm_svc_ctx *svc, bool rescan) {
 		return -ENOENT;
 	}
 
-	/* Check the license_info.conf has minimum size */
-	if (licenseinfo->size < (sizeof(LICENSE_INFO_START) + sizeof(FILE_COUNT_STRING))) {
-		dev_err(svc->dev, "%s file not meeting the minimum size\n", LICENSE_INFO_CONF_PATH);
-		ret = -EINVAL;
+	file_count = lm_check_license_info(licenseinfo, &ptr);
+	if (file_count <= 0) {
+		ret = -ENOENT;
 		goto err_licenseinfo;
 	}
-
-	/* Check the license_info.conf start */
-	if (strncmp(licenseinfo->data, LICENSE_INFO_START, sizeof(LICENSE_INFO_START)-1)) {
-		dev_err(svc->dev, "%s : %s not present\n", LICENSE_INFO_CONF_PATH, LICENSE_INFO_START);
-		ret = -EINVAL;
-		goto err_licenseinfo;
-	}
-
-	/* Check the filecount string and get the value */
-	ptr = (char *)licenseinfo->data + sizeof(LICENSE_INFO_START);
-	token = strsep(&ptr, " ");
-	if (!token || !*token || strncmp(token, FILE_COUNT_STRING, sizeof(FILE_COUNT_STRING))) {
-		dev_err(svc->dev, "%s: %s string not present\n", LICENSE_INFO_CONF_PATH, FILE_COUNT_STRING);
-		ret = -EINVAL;
-		goto err_licenseinfo;
-	}
-
-	token = strsep(&ptr, "\n");
-	if (!token || !*token) {
-		dev_err(svc->dev, "%s file count not valid\n", LICENSE_INFO_CONF_PATH);
-		ret = -EINVAL;
-		goto err_licenseinfo;
-	}
-
-	ret = kstrtoint(token, 0, &file_count);
-	if (ret || file_count <= 0 || file_count > QMI_LM_MAX_LICENSE_FILES_V01)  {
-		dev_err(svc->dev, "%s file count is invalid %d\n", LICENSE_INFO_CONF_PATH, file_count);
-		ret = -EINVAL;
-		goto err_licenseinfo;
-	}
-
-	dev_dbg(dev,"%s file is present with %d license file names\n",
-			LICENSE_INFO_CONF_PATH, file_count);
 
 	while (((token = strsep(&ptr, " ")) != NULL) && (files_accounted < file_count)) {
 		/* Increment the accounted file count */
@@ -715,6 +725,125 @@ void lm_free_license(void *buf, dma_addr_t dma_addr, size_t buf_len) {
 }
 EXPORT_SYMBOL_GPL(lm_free_license);
 
+static int lm_install_license(struct lm_svc_ctx *svc, const char *filename,
+			      struct lm_install_resp *install_resp)
+{
+	const struct firmware *license = NULL;
+	struct device *dev = svc->dev;
+	void *lic_data_buf;
+	int ret;
+
+	dev_dbg(dev,"License file: %s\n",filename);
+
+	ret = request_firmware(&license, filename, dev);
+	if(ret || !license->data || !license->size) {
+		dev_err(dev,"%s file is not present\n", filename);
+		/* if ret is zero, then call release_firmware */
+		if (!ret)
+			release_firmware(license);
+		return -ENOENT;
+	}
+
+	lic_data_buf = kzalloc(license->size, GFP_KERNEL);
+	if (!lic_data_buf) {
+		dev_err(dev, "Failed to allocate memory for license\n");
+		ret = -ENOMEM;
+		goto err_license;
+	}
+
+	memcpy(lic_data_buf, license->data, license->size);
+
+	/* Install the license via IPC and get the response */
+	ret = tmelcom_licensing_install(lic_data_buf, license->size,
+					install_resp->identifier,
+					LICENSE_IDENT_MAX_LEN,
+					&install_resp->ident_len,
+					&install_resp->flags);
+	if (ret)
+		dev_err(dev, "License Install IPC failed 0x%x\n", ret);
+
+	kfree(lic_data_buf);
+err_license:
+	release_firmware(license);
+
+	return ret;
+}
+
+static int lm_install_licenses_to_tmel(struct lm_install_info *install_info)
+{
+	int ret = 0, file_count = 0, files_accounted = 0;
+	const struct firmware *licenseinfo = NULL;
+	struct lm_install_resp install_resp;
+	struct lm_svc_ctx *svc = lm_svc;
+	struct device *dev = svc->dev;
+	void *lic_info_buf;
+	char *token = NULL;
+	char *ptr = NULL;
+
+	lic_info_buf = kzalloc(MAX_LICENSE_INFO_SIZE, GFP_KERNEL);
+	if(!lic_info_buf)
+		return -ENOMEM;
+
+	/* Request the license_info.conf file */
+	ret = request_firmware_into_buf(&licenseinfo, LICENSE_INFO_CONF_PATH, dev,
+					lic_info_buf, MAX_LICENSE_INFO_SIZE);
+
+	if(ret || !licenseinfo->data || !licenseinfo->size) {
+		dev_err(dev, "%s file is not valid\n",LICENSE_INFO_CONF_PATH);
+		/* if ret is zero, then call release_firmware */
+		if (!ret)
+			release_firmware(licenseinfo);
+		kfree(lic_info_buf);
+		return -ENOENT;
+	}
+
+	file_count = lm_check_license_info(licenseinfo, &ptr);
+	if (file_count <= 0) {
+		ret = -ENOENT;
+		goto err_licenseinfo;
+	}
+
+	install_info->num_of_resp = 0;
+
+	while (((token = strsep(&ptr, " ")) != NULL) && (files_accounted < file_count)) {
+		/* Increment the accounted file count */
+		files_accounted++;
+
+		/* Check file string is present */
+		if (!*token || strncmp(token, FILE_STRING, sizeof(FILE_STRING))) {
+			dev_err(dev, "%s: File name syntax is wrong\n", LICENSE_INFO_CONF_PATH);
+			token = strsep(&ptr, "\n");
+			continue;
+		}
+
+		/* Get the file name */
+		token = strsep(&ptr, "\n");
+		if (!token || !*token) {
+			dev_err(dev, "%s: File name is wrong\n",LICENSE_INFO_CONF_PATH);
+			continue;
+		}
+
+		memset(&install_resp, 0, sizeof(struct lm_install_resp));
+
+		ret = lm_install_license(svc, token, &install_resp);
+		if (ret) {
+			dev_err(dev, "%s failed\n",__func__);
+			goto err_licenseinfo;
+		}
+
+		/* Copy the license response of a file to the license info */
+		memcpy((void *)&install_info->lm_resp[install_info->num_of_resp], (void *)&install_resp,
+		       sizeof(struct lm_install_resp));
+		install_info->num_of_resp += 1;
+	}
+
+err_licenseinfo:
+	release_firmware(licenseinfo);
+	kfree(lic_info_buf);
+
+	return ret;
+}
+
 static int lm_open(struct inode *inode, struct file *file)
 {
 	return 0;
@@ -727,9 +856,9 @@ static int lm_release(struct inode *inode, struct file *file)
 
 static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
+	void *nonce_buf, *ecdsa_buf, *ttime_buf, *install_info;
 	struct client_target_info *client_info = NULL;
 	dma_addr_t nonce_dma_addr, ecdsa_dma_addr;
-	void *nonce_buf, *ecdsa_buf, *ttime_buf;
 	void __user *argp = (void __user *)arg;
 	u32 ecdsa_consumed, ttime_buf_used_len;
 	struct ttime_get_req_params ttime_rp;
@@ -908,6 +1037,42 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				dev_err(svc->dev, "IOCTL: TTIME set IPC failed: %d\n", ret);
 		set_err:
 			kfree(ttime_buf);
+
+		break;
+
+		case GET_TMEL_BOUNDED:
+			ret = put_user(svc->tmel_bounded, (int __user *)arg);
+			if (ret) {
+				dev_err(svc->dev, "IOCTL: Get TMEL bounded failed\n");
+				return ret;
+			}
+		break;
+
+		case LICENSE_INSTALL:
+			if (!svc->tmel_bounded) {
+				dev_err(svc->dev, "License install not supported\n");
+				return -EINVAL;
+			}
+
+			install_info = kzalloc(sizeof(struct lm_install_info), GFP_KERNEL);
+			if (!install_info) {
+				dev_err(svc->dev, "IOCTL: License install mem alloc error\n");
+				return -ENOMEM;
+			}
+
+			/* Install license files to TME-L */
+			ret = lm_install_licenses_to_tmel(install_info);
+			if (ret) {
+				dev_err(svc->dev, "IOCTL: Install License to tmel error\n");
+				kfree(install_info);
+				return ret;
+			}
+
+			ret = copy_to_user(argp, install_info, sizeof(struct lm_install_info));
+			if (ret)
+				dev_err(svc->dev, "copy to user error\n");
+
+			kfree(install_info);
 
 		break;
 
@@ -1199,6 +1364,16 @@ static ssize_t store_license_rescan(struct kobject *k, struct kobj_attribute *at
 static struct kobj_attribute lm_license_rescan_attr =
 	__ATTR(license_rescan, 0200, NULL, store_license_rescan);
 
+static ssize_t show_tmel_bounded(struct kobject *k, struct kobj_attribute *attr,
+				 char *buf)
+{
+	struct lm_svc_ctx *svc = lm_svc;
+	return snprintf(buf, PAGE_SIZE, "%d", svc->tmel_bounded);
+}
+
+static struct kobj_attribute lm_tmel_bounded_attr =
+	__ATTR(tmel_bounded, 0400, show_tmel_bounded,  NULL);
+
 static void lm_qmi_svc_bye_cb(struct qmi_handle *qmi, unsigned int node)
 {
 	struct feature_info *itr, *tmp;
@@ -1311,6 +1486,10 @@ static int license_manager_probe(struct platform_device *pdev)
 		}
 		if (sysfs_create_file(lm_kobj, &lm_license_rescan_attr.attr)) {
 			dev_err(dev, "Cannot create license_rescan sysfs file for lm\n");
+			kobject_put(lm_kobj);
+		}
+		if (sysfs_create_file(lm_kobj, &lm_tmel_bounded_attr.attr)) {
+			dev_err(dev, "Cannot create tmel_bounded sysfs file for lm\n");
 			kobject_put(lm_kobj);
 		}
 	} else {
