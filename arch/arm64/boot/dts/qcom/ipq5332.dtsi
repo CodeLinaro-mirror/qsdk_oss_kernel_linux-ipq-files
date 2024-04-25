@@ -343,6 +343,13 @@
 			clock-names = "core";
 		};
 
+		reg_update: reg-update@400000 {
+			compatible = "ipq,53xx-reg-update";
+			reg = <0x00400000 0x6200>, <0x01d80000 0x4000>;
+			reg-names = "memnoc_53xx", "nssnoc";
+			status = "okay";
+		};
+
 		pcie0_phy: phy@4b0000 {
 			compatible = "qca,uni-pcie-phy-gen3";
 			reg = <0x4b0000 0x800>;
