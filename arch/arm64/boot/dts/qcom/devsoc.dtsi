@@ -524,6 +524,68 @@
 			};
 		};
 
+		softsku@a6000 {
+			compatible = "qcom,qfprom";
+			reg = <0xA6000 0x1000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			apss_cpu_freq: apss_cpu_freq@234 {
+				reg = <0x234 0x1>;
+				bits = <0 8>;
+			};
+
+			ddr_space_limit: ddr_space_limit@23c {
+				reg = <0x23c 0x1>;
+				bits = <0 1>;
+			};
+
+			pcie0_disable: pcie0_disable@244 {
+				reg = <0x244 0x1>;
+				bits = <0 1>;
+			};
+
+			pcie1_disable: pcie1_disable@24c {
+				reg = <0x24c 0x1>;
+				bits = <0 1>;
+			};
+
+			pcie2_disable: pcie2_disable@254 {
+				reg = <0x254 0x1>;
+				bits = <0 1>;
+			};
+
+			pcie3_disable: pcie3_disable@25c {
+				reg = <0x25c 0x1>;
+				bits = <0 1>;
+			};
+
+			uniphy0_disable: uniphy0_disable@264 {
+				reg = <0x264 0x1>;
+				bits = <0 1>;
+			};
+
+			uniphy1_disable: uniphy1_disable@26c {
+				reg = <0x26c 0x1>;
+				bits = <0 1>;
+			};
+
+			uniphy2_disable: uniphy2_disable@274 {
+				reg = <0x274 0x1>;
+				bits = <0 1>;
+			};
+
+			nss_disable: nss_disable@284 {
+				reg = <0x284 0x1>;
+				bits = <0 1>;
+			};
+
+			usb_disable: usb_disable@28c {
+				reg = <0x28c 0x1>;
+				bits = <0 1>;
+			};
+		};
+
 		gcc: clock-controller@1800000 {
 			compatible = "qcom,devsoc-gcc";
 			reg = <0x01800000 0x40000>;
@@ -1120,6 +1182,7 @@
 				      "aux";
 
 			msi-parent = <&intc>;
+			nvmem-cells = <&pcie3_disable>;
 
 			pinctrl-0 = <&pcie3_default_state>;
 			pinctrl-names = "default";
@@ -1205,6 +1268,7 @@
 				      "aux";
 
 			msi-parent = <&intc>;
+			nvmem-cells = <&pcie2_disable>;
 
 			pinctrl-0 = <&pcie2_default_state>;
 			pinctrl-names = "default";
@@ -1290,6 +1354,7 @@
 				      "aux";
 
 			msi-parent = <&intc>;
+			nvmem-cells = <&pcie1_disable>;
 
 			pinctrl-0 = <&pcie1_default_state>;
 			pinctrl-names = "default";
@@ -1375,6 +1440,7 @@
 				      "aux";
 
 			msi-parent = <&intc>;
+			nvmem-cells = <&pcie0_disable>;
 
 			pinctrl-0 = <&pcie0_default_state>;
 			pinctrl-names = "default";
