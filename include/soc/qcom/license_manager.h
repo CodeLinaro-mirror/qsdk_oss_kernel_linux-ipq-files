@@ -39,6 +39,8 @@
 
 #define CLIENT_MAX 		6
 #define FILE_NAME_MAX 		128
+#define LICENSE_IDENT_MAX_LEN	16
+#define TMEL_BOUND_MAX_LICENSE_FILES	30
 
 struct qmi_lm_feature_list_req_msg_v01 {
 	u32 reserved;
@@ -139,11 +141,24 @@ struct ttime_set {
 	u32 buf_len;
 };
 
+struct lm_install_resp {
+	u32 ident_len;
+	u8 identifier[LICENSE_IDENT_MAX_LEN];
+	u32 flags;
+};
+
+struct lm_install_info {
+	struct lm_install_resp lm_resp[TMEL_BOUND_MAX_LICENSE_FILES];
+	u32 num_of_resp;
+};
+
 #define GET_FID_INFO 		_IOWR('L', 1, struct client_target_info)
 #define LICENSE_RESCAN 		_IO('L', 2)
 #define GET_BINDINGS		_IOWR('L', 3, struct bindings_resp)
 #define TTIME_GET_REQ_PARAMS	_IOWR('L', 4, struct ttime_get_req_params)
 #define TTIME_SET		_IOWR('L', 5, struct ttime_set)
+#define GET_TMEL_BOUNDED	_IOWR('L', 6, u32)
+#define LICENSE_INSTALL		_IOWR('L', 7, struct lm_install_info)
 
 enum req_type {
 	INTERNAL,
