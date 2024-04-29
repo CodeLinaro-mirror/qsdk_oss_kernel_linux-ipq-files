@@ -618,8 +618,21 @@
 		};
 
 		tcsr: syscon@1937000 {
-			compatible = "qcom,tcsr-devsoc", "syscon";
-			reg = <0x1937000 0x21000>;
+			compatible = "qcom,tcsr-devsoc", "syscon", "simple-mfd";
+			reg = <0x01937000 0x2a000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0x0 0x01937000 0x2a000>;
+
+			 pwm: pwm@a010 {
+				compatible = "qcom,ipq9574-pwm";
+				reg = <0xa010 0x20>;
+				clocks = <&gcc GCC_ADSS_PWM_CLK>;
+				assigned-clocks = <&gcc GCC_ADSS_PWM_CLK>;
+				assigned-clock-rates = <100000000>;
+				#pwm-cells = <2>;
+				status = "disabled";
+			};
 		};
 
 		qupv3: geniqup@1ac0000 {
