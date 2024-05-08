@@ -97,6 +97,7 @@
 			qcom,emulation;
 			qcom,nosecure;
 			bootaddr = <0x8a900000>;
+			status = "okay";
 			q6_wcss_pd1: remoteproc_pd1 {
 				qcom,emulation;
 				qcom,nosecure;
@@ -584,4 +585,8 @@
 			pins = "gpio42";
 		};
 	};
+};
+
+&q6_region {
+	status = "okay";
 };

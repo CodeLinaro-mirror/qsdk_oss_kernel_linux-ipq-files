@@ -170,6 +170,7 @@
 		q6_region: wcnss@8a900000 {
 			reg = <0x0 0x8a900000 0x0 0x02300000>;
 			no-map;
+			status = "disabled";
 		};
 	};
 
@@ -735,6 +736,7 @@
 			qcom,bootargs_smem = <507>;
 			qcom,bootargs_version = <2>;
 			qcom,userpd-bootargs;
+			status = "disabled";
 
 			glink-edge {
 				interrupts = <GIC_SPI 500 IRQ_TYPE_EDGE_RISING>;
