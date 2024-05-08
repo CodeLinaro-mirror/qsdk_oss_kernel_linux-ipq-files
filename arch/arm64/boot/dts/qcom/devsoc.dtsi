@@ -309,7 +309,7 @@
 
 			pcie0_default_state: pcie0-default-state {
 				perst-n-pins {
-					pins = "gpio39";
+					pins = "gpio25";
 					function = "gpio";
 					drive-strength = <2>;
 					bias-pull-down;
@@ -319,7 +319,7 @@
 
 			pcie1_default_state: pcie1-default-state {
 				perst-n-pins {
-					pins = "gpio40";
+					pins = "gpio28";
 					function = "gpio";
 					drive-strength = <2>;
 					bias-pull-down;
@@ -329,7 +329,7 @@
 
 			pcie2_default_state: pcie2-default-state {
 				perst-n-pins {
-					pins = "gpio41";
+					pins = "gpio31";
 					function = "gpio";
 					drive-strength = <2>;
 					bias-pull-down;
@@ -339,7 +339,7 @@
 
 			pcie3_default_state: pcie3-default-state {
 				perst-n-pins {
-					pins = "gpio42";
+					pins = "gpio34";
 					function = "gpio";
 					drive-strength = <2>;
 					bias-pull-down;
