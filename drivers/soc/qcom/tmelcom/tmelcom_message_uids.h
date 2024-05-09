@@ -229,6 +229,7 @@ ________________________________________________________________________________
 #define TMEL_ACTION_QWES_LICENSING_ENFORCEHWFEATURES     0x05
 #define TMEL_ACTION_QWES_TTIME_CLOUD_REQUEST             0x06
 #define TMEL_ACTION_QWES_TTIME_SET                       0x07
+#define TMEL_ACTION_QWES_LICENSING_TBDLICENSES           0x09
 
 /*--------------------------------------------------------------------------
   Action ID's for TMEL_MSG_CDUMP
@@ -851,6 +852,12 @@ ________________________________________________________________________________
  */
 #define TMEL_MSG_UID_QWES_TTIME_SET            TMEL_MSG_UID_CREATE(TMEL_MSG_QWES,\
                                                          TMEL_ACTION_QWES_TTIME_SET)
+
+/*
+ * Get the list of to be deleted licenses
+ */
+#define TMEL_MSG_UID_QWES_LICENSING_TBDLICENSES		TMEL_MSG_UID_CREATE(TMEL_MSG_QWES,\
+							TMEL_ACTION_QWES_LICENSING_TBDLICENSES)
 
 /*----------------------------------------------------------------------------
   UID's for TMEL_MSG_CDUMP
