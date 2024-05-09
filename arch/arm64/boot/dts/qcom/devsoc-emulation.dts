@@ -586,3 +586,29 @@
 		};
 	};
 };
+
+&tlmm {
+	pcie0_default_state: pcie0-default-state {
+		perst-n-pins {
+			pins = "gpio39";
+		};
+	};
+
+	pcie1_default_state: pcie1-default-state {
+		perst-n-pins {
+			pins = "gpio40";
+		};
+	};
+
+	pcie2_default_state: pcie2-default-state {
+		perst-n-pins {
+			pins = "gpio41";
+		};
+	};
+
+	pcie3_default_state: pcie3-default-state {
+		perst-n-pins {
+			pins = "gpio42";
+		};
+	};
+};
