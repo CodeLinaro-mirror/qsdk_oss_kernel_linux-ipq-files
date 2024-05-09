@@ -151,6 +151,7 @@
 			qcom,emulation;
 			qcom,nosecure;
 			bootaddr = <0x8a900000>;
+			status = "okay";
 			q6_wcss_pd1: remoteproc_pd1 {
 				qcom,emulation;
 				qcom,nosecure;
@@ -205,5 +206,9 @@
 	qcom,caldb-size = <0x500000>;
 	memory-region = <&q6_devsoc_data>;
 	qcom,board_id = <0x12>;
+	status = "okay";
+};
+
+&q6_region {
 	status = "okay";
 };
