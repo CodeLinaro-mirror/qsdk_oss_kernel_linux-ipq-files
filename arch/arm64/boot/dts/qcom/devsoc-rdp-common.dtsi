@@ -1,0 +1,53 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * DEVSOC RDP board common device tree source
+ *
+ * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ */
+
+/dts-v1/;
+
+#include "devsoc.dtsi"
+
+/ {
+	aliases {
+		serial0 = &uart0;
+	};
+
+	chosen {
+		stdout-path = "serial0";
+	};
+
+	soc@0 {
+		qupv3: geniqup@1ac0000 {
+			status = "okay";
+
+			uart0: serial@1a80000 {
+				pinctrl-0 = <&qup_uart0_default>;
+				pinctrl-names = "default";
+				status = "okay";
+			};
+		};
+	};
+};
+
+&sleep_clk {
+	clock-frequency = <32000>;
+};
+
+&xo {
+	clock-frequency = <24000000>;
+};
+
+&license_manager {
+	status = "okay";
+};
+
+&qmp_tmel {
+	status = "okay";
+};
+
+&tmelcom {
+	status = "okay";
+};
