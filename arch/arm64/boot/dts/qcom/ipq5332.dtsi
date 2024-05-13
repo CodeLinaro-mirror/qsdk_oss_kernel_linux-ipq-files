@@ -127,7 +127,7 @@
 		};
 
 		scm {
-			compatible = "qcom,scm-ipq5332", "qcom,scm";
+			compatible = "qcom,scm-ipq9574", "qcom,scm";
 			qcom,dload-mode = <&tcsr 0x6100>;
 		};
 	};
