@@ -3,7 +3,7 @@
  * IPQ9574 RDP467 board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 /dts-v1/;
@@ -301,8 +301,13 @@
 };
 
 &wsi {
-	id = <0>;
-	num_chip = <4>;
+        id = <0>;
+        num_chip = <4>;
+	status = "okay";
+        chip_info = <0 2 1 3>,
+		    <1 2 0 2>,
+		    <2 2 3 1>,
+		    <3 2 2 0>;
 };
 
 &pcie0_x1 {
@@ -321,6 +326,7 @@
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 			memory-region = <&qcn9224_pcie0>, <&mhi_region0>;
 			qcom,wsi = <&wsi>;
+			qcom,wsi_index = <0>;
 			qcom,board_id = <0x01>;
 			qcom,pta-num = <0>;
 			qcom,coex-mode = <0x2>;
@@ -355,6 +361,7 @@
 			memory-region = <&qcn9224_pcie1>, <&mhi_region1>;
 			qcom,board_id = <0x11>;
 			qcom,wsi = <&wsi>;
+			qcom,wsi_index = <3>;
 			qcom,msi = <0x10>;
 		};
 	};
@@ -381,6 +388,7 @@
 			memory-region = <&qcn9224_pcie2>, <&mhi_region2>;
 			qcom,board_id = <0x04>;
 			qcom,wsi = <&wsi>;
+			qcom,wsi_index = <2>;
 		};
 	};
 };
@@ -406,6 +414,7 @@
 			memory-region = <&qcn9224_pcie3>, <&mhi_region3>;
 			qcom,board_id = <0x12>;
 			qcom,wsi = <&wsi>;
+			qcom,wsi_index = <1>;
 		};
 	};
 };

@@ -2,7 +2,7 @@
 /*
  * IPQ5332 device tree source
  *
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <dt-bindings/clock/qcom,apss-ipq.h>
@@ -801,6 +801,10 @@
 
 		pcm_lb: pcm_lb@0 {
 			compatible = "qca,ipq5332-pcm-lb";
+			status = "disabled";
+		};
+
+		wsi: wsi {
 			status = "disabled";
 		};
 

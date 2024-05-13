@@ -3,7 +3,7 @@
  * IPQ5332 RDP446 board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 /dts-v1/;
@@ -477,6 +477,10 @@
 		wsi: wsi {
 			id = <0>;
 			num_chip = <3>;
+			status = "okay";
+			chip_info = <0 2 1 2>,
+				    <1 2 0 2>,
+				    <2 2 0 1>;
 		};
 
 		q6v5_wcss: remoteproc@d100000 {
@@ -722,6 +726,7 @@
 	mem-region = <&q6_ipq5332_data>;
 	memory-region = <&q6_ipq5332_data>;
 	qcom,wsi = <&wsi>;
+	qcom,wsi_index = <0>;
 	status = "okay";
 };
 
@@ -738,6 +743,7 @@
 	mem-region = <&q6_qcn6432_data_1>;
 	memory-region = <&q6_qcn6432_data_1>;
 	qcom,wsi = <&wsi>;
+	qcom,wsi_index = <1>;
 	status = "okay";
 };
 
@@ -754,5 +760,6 @@
 	mem-region = <&q6_qcn6432_data_2>;
 	memory-region = <&q6_qcn6432_data_2>;
 	qcom,wsi = <&wsi>;
+	qcom,wsi_index = <2>;
 	status = "okay";
 };
