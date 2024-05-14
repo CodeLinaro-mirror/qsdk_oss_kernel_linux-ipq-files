@@ -440,3 +440,42 @@ int tmelcom_licensing_install(void *license_buf, u32 license_len, void *ident_bu
 
 }
 EXPORT_SYMBOL_GPL(tmelcom_licensing_install);
+
+int tmelcom_licensing_get_toBeDel_licenses(void *toBeDelLic_buf, u32 toBeDelLic_len,
+					   u32 *used_toBeDelLic_len)
+
+{
+	struct tmel_licensing_ToBeDel_licenses msg = {0};
+	struct device *dev = tmelcom_get_device();
+	dma_addr_t dma_toBeDelLic_buf;
+	int ret;
+
+	if (!dev || !toBeDelLic_buf || !toBeDelLic_len || !used_toBeDelLic_len)
+		return -EINVAL;
+
+	dma_toBeDelLic_buf = dma_map_single(dev, toBeDelLic_buf, toBeDelLic_len,
+					    DMA_BIDIRECTIONAL);
+	if (ret) {
+		pr_err("DMA Mapping Error, toBeDeletedLicense buffer : %d\n", ret);
+		return -EINVAL;
+	}
+
+	msg.status = TMEL_ERROR_GENERIC;
+	msg.toBeDelLicenses.buf = dma_toBeDelLic_buf;
+	msg.toBeDelLicenses.buf_len = toBeDelLic_len;
+
+	ret = tmelcom_process_request(TMEL_MSG_UID_QWES_LICENSING_TBDLICENSES,
+				      &msg, sizeof(msg));
+
+	dma_unmap_single(dev, dma_toBeDelLic_buf, toBeDelLic_len, DMA_BIDIRECTIONAL);
+
+	if (ret) {
+		pr_err("Failed to send GetToBeDeletedLicenses IPC: %d\n", ret);
+	} else {
+		ret = msg.status;
+		*used_toBeDelLic_len = msg.toBeDelLicenses.out_buf_len;
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tmelcom_licensing_get_toBeDel_licenses);
