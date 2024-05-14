@@ -488,6 +488,7 @@
 };
 
 &sdhc {
+	qcom,emulation;
 	/* over-ride the frequency to 48Mhz for emulation platform */
 	max-frequency = <48000000>;
 	/* Force 3.3V, because only that will support on emulation platform */
