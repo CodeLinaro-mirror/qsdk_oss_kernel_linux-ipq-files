@@ -859,6 +859,7 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	void *nonce_buf, *ecdsa_buf, *ttime_buf, *install_info;
 	struct client_target_info *client_info = NULL;
 	dma_addr_t nonce_dma_addr, ecdsa_dma_addr;
+	struct lm_get_toBeDel_lic *toBeDel_lic;
 	void __user *argp = (void __user *)arg;
 	u32 ecdsa_consumed, ttime_buf_used_len;
 	struct ttime_get_req_params ttime_rp;
@@ -1074,6 +1075,34 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 			kfree(install_info);
 
+		break;
+
+		case GET_TOBEDEL_LICENSES:
+			if (!svc->tmel_bounded) {
+				dev_err(svc->dev, "License install not supported\n");
+				return -EINVAL;
+			}
+
+			toBeDel_lic = kzalloc(sizeof(struct lm_get_toBeDel_lic), GFP_KERNEL);
+			if (!toBeDel_lic) {
+				dev_err(svc->dev, "IOCTL: get_toBeDel_lic mem alloc error\n");
+				return -ENOMEM;
+			}
+
+			ret = tmelcom_licensing_get_toBeDel_licenses(toBeDel_lic->identifiers,
+								     sizeof(toBeDel_lic->identifiers),
+								     &toBeDel_lic->used_len);
+			if (ret) {
+				dev_err(svc->dev, "get_toBeDel_lic with TMEL failed: %d\n", ret);
+				kfree(toBeDel_lic);
+				return ret;
+			}
+
+			ret = copy_to_user(argp, toBeDel_lic, sizeof(struct lm_get_toBeDel_lic));
+			if (ret)
+				dev_err(svc->dev, "IOCTL: ECDSA copy to user error\n");
+
+			kfree(toBeDel_lic);
 		break;
 
 		default:

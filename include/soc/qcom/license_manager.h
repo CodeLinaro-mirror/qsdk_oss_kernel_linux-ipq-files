@@ -152,6 +152,11 @@ struct lm_install_info {
 	u32 num_of_resp;
 };
 
+struct lm_get_toBeDel_lic {
+	u64 identifiers[TMEL_BOUND_MAX_LICENSE_FILES];
+	u32 used_len;
+};
+
 #define GET_FID_INFO 		_IOWR('L', 1, struct client_target_info)
 #define LICENSE_RESCAN 		_IO('L', 2)
 #define GET_BINDINGS		_IOWR('L', 3, struct bindings_resp)
@@ -159,6 +164,7 @@ struct lm_install_info {
 #define TTIME_SET		_IOWR('L', 5, struct ttime_set)
 #define GET_TMEL_BOUNDED	_IOWR('L', 6, u32)
 #define LICENSE_INSTALL		_IOWR('L', 7, struct lm_install_info)
+#define GET_TOBEDEL_LICENSES	_IOWR('L', 8, struct lm_get_toBeDel_lic)
 
 enum req_type {
 	INTERNAL,
