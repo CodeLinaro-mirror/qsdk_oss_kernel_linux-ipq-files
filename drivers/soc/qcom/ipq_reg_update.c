@@ -147,8 +147,8 @@ static int reg_update_probe(struct platform_device *pdev)
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "memnoc_53xx");
 	if(res) {
 		memnoc_base = devm_ioremap_resource(&pdev->dev, res);
-		if(IS_ERR(base))
-			return PTR_ERR(base);
+		if(IS_ERR(memnoc_base))
+			return PTR_ERR(memnoc_base);
 	}
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "nssnoc");
