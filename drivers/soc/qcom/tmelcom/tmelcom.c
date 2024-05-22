@@ -163,7 +163,7 @@ enum tmelcom_resp tmelcom_process_request(u32 msg_uid, void *msg_buf,
 	}
 
 	if (tdev->pkt.size != sizeof(struct tmel_ipc_pkt)) {
-		pr_err("Invalid pkt.size received size: %d, expected: %ld\n",
+		pr_err("Invalid pkt.size received size: %d, expected: %zu\n",
 		       tdev->pkt.size, sizeof(struct tmel_ipc_pkt));
 		ret = -EPROTO;
 		goto err_exit;
