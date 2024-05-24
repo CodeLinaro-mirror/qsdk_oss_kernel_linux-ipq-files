@@ -760,7 +760,7 @@ static int lm_install_license(struct lm_svc_ctx *svc, const char *filename,
 					&install_resp->ident_len,
 					&install_resp->flags);
 	if (ret)
-		dev_err(dev, "License Install IPC failed 0x%x\n", ret);
+		dev_err(dev, "%s Install IPC status:%d\n", filename, ret);
 
 	kfree(lic_data_buf);
 err_license:
@@ -826,16 +826,18 @@ static int lm_install_licenses_to_tmel(struct lm_install_info *install_info)
 		memset(&install_resp, 0, sizeof(struct lm_install_resp));
 
 		ret = lm_install_license(svc, token, &install_resp);
-		if (ret) {
-			dev_err(dev, "%s failed\n",__func__);
+		if (ret < 0 && ret != -ENOENT)
 			goto err_licenseinfo;
+		else if (!ret) {
+			/* Copy the license response of a file to the license info */
+			memcpy((void *)&install_info->lm_resp[install_info->num_of_resp],
+			       (void *)&install_resp, sizeof(struct lm_install_resp));
+			install_info->num_of_resp += 1;
 		}
-
-		/* Copy the license response of a file to the license info */
-		memcpy((void *)&install_info->lm_resp[install_info->num_of_resp], (void *)&install_resp,
-		       sizeof(struct lm_install_resp));
-		install_info->num_of_resp += 1;
 	}
+
+	/* If last License failed, return 0 to process other licenses */
+	ret = 0;
 
 err_licenseinfo:
 	release_firmware(licenseinfo);
