@@ -1027,12 +1027,16 @@
 
 		wifi1: wifi1@c0000000 {
 			compatible = "qcom,cnss-qcn6432" , "qcom,qcn6432-wifi";
+			interrupt-bmap = <0x100510>;
+			interrupt-names = "umac_reset";
 			msi-parent = <&v2m0>;
 			status = "disabled";
 		};
 
 		wifi2: wifi2@c0000000 {
 			compatible = "qcom,cnss-qcn6432" , "qcom,qcn6432-wifi";
+			interrupt-bmap = <0x100510>;
+			interrupt-names = "umac_reset";
 			msi-parent = <&v2m0>;
 			status = "disabled";
 		};
@@ -1576,6 +1580,12 @@
 				"mhi0",
 				"inta";
 
+			status = "disabled";
+		};
+
+		wifi5: wifi5@f00000 {
+			compatible  = "qcom,cnss-qcn9160";
+			msi-parent = <&v2m0>;
 			status = "disabled";
 		};
 

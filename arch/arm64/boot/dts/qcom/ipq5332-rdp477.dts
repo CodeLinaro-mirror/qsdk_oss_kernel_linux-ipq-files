@@ -12,13 +12,88 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/leds/common.h>
-#include "ipq5332-default-memory.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ5332/RDP477/AP-MI01.3-C2";
 	compatible = "qcom,ipq5332-ap-mi01.3-c2", "qcom,ipq5332-rdp477", "qcom,ipq5332";
 
-#ifdef __IPQ_MEM_PROFILE_512_MB__
+#ifdef __IPQ_MEM_PROFILE_256_MB__
+	/*	 LM256 Memory Layout for IPQ5332 + QCN6432
+	 * +==========+==============+========================+
+	 * |         |              |                         |
+	 * |  Region | Start Offset |          Size           |
+	 * |         |              |                         |
+	 * +---------+--------------+-------------------------+
+	 * |   Q6    |              |                         |
+	 * |  code/  |  0x4A900000  |          20MB           |
+	 * |  data   |              |                         |
+	 * +---------+--------------+-------------------------+
+	 * | IPQ5332 |              |                         |
+	 * |  data   |  0x4BD00000  |          13MB           |
+	 * +---------+--------------+-------------------------+
+	 * | IPQ5332 |              |                         |
+	 * | M3 Dump |  0x4CA00000  |           1MB           |
+	 * +---------+--------------+-------------------------+
+	 * |QCN6432_1|              |                         |
+	 * |  data   |  0x4CE00000  |          14MB           |
+	 * +---------+--------------+-------------------------+
+	 * |QCN6432_1|              |                         |
+	 * | M3 Dump |  0x4DC00000  |           1MB           |
+	 * +---------+--------------+-------------------------+
+	 * |         |              |                         |
+	 * |   MLO   |  0x4E000000  |           9MB           |
+	 * +==================================================+
+	 * |                                                  |
+	 * |                                                  |
+	 * |                                                  |
+	 * |             Rest of memory for Linux             |
+	 * |                                                  |
+	 * |                                                  |
+	 * |                                                  |
+	 * +==================================================+
+	 */
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		q6_mem_regions: q6_mem_regions@4A900000  {
+			no-map;
+			reg = <0x0 0x4a900000 0x0 0x2100000>;
+		};
+
+		q6_code_data: q6_code_data@4A900000 {
+			no-map;
+			reg = <0x0 0x4a900000 0x0 0x1400000>;
+		};
+
+		q6_ipq5332_data: q6_ipq5332_data@4BD00000 {
+			no-map;
+			reg = <0x0 0x4BD00000 0x0 0xD00000>;
+		};
+
+		m3_dump: m3_dump@4CA00000 {
+			no-map;
+			reg = <0x0 0x4CA00000 0x0 0x100000>;
+		};
+
+		q6_qcn6432_data_1: q6_qcn6432_data_1@4CE00000 {
+			no-map;
+			reg = <0x0 0x4CE00000 0x0 0xE00000>;
+		};
+
+		m3_dump_qcn6432_1: m3_dump_qcn6432_1@4DC00000 {
+			no-map;
+			reg = <0x0 0x4DC00000 0x0 0x100000>;
+                };
+
+		mlo_global_mem0: mlo_global_mem_0@4E000000 {
+			no-map;
+			reg = <0x0 0x4E000000 0x0 0x900000>;
+		};
+	};
+#elif __IPQ_MEM_PROFILE_512_MB__
        /*	512M Memory Layout for IPQ5332 + QCN6432
 	* +==========+==============+========================+
 	* |         |              |                         |
@@ -70,12 +145,9 @@
 	*/
 
 	reserved-memory {
-
-		/delete-node/ m3_dump@4cc00000;
-		/delete-node/ q6_etr_dump@1;
-		/delete-node/ mlo_global_mem_0@0x4db00000;
-		/delete-node/ wcnss@4a900000;
-		/delete-node/ q6_caldb_region@4ce00000;
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
 
 		q6_mem_regions: q6_mem_regions@4A900000  {
 			no-map;
@@ -183,12 +255,9 @@
 	* +==================================================+
 	*/
 	reserved-memory {
-
-		/delete-node/ m3_dump@4cc00000;
-		/delete-node/ q6_etr_dump@1;
-		/delete-node/ mlo_global_mem_0@0x4db00000;
-		/delete-node/ wcnss@4a900000;
-		/delete-node/ q6_caldb_region@4ce00000;
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
 
 		q6_mem_regions: q6_mem_regions@4A900000  {
 		        no-map;
@@ -549,9 +618,14 @@
 
 		q6v5_wcss: remoteproc@d100000 {
 			boot-args = <0x1 0x4 0x3 0x0 0x26 0x2>;
-			memory-region = <&q6_mem_regions>;
+			memory-region = <&q6_mem_regions>, <&mlo_global_mem0>;
 
 			q6_wcss_pd1: remoteproc_pd1 {
+			memory-region = <&q6_ipq5332_data>, <&m3_dump>,
+#ifndef __IPQ_MEM_PROFILE_256_MB__
+					<&q6_etr_region>, <&q6_ipq5332_caldb>,
+#endif
+					<&mlo_global_mem0>;
 				status = "ok";
 			};
 
@@ -573,6 +647,13 @@
 				qcom,smem-state-names = "shutdown",
 							"stop",
 							"spawn";
+				memory-region = <&q6_qcn6432_data_1>,
+						<&m3_dump_qcn6432_1>,
+#ifndef __IPQ_MEM_PROFILE_256_MB__
+						<&q6_qcn6432_etr_1>,
+						<&q6_qcn6432_caldb_1>,
+#endif
+						<&mlo_global_mem0>;
 				status = "ok";
 			};
 		};
@@ -781,9 +862,11 @@
 	qcom,rproc = <&q6_wcss_pd1>;
 	qcom,rproc_rpd = <&q6v5_wcss>;
 	qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
-	qcom,bdf-addr = <0x4BD00000 0x4BD00000 0x0 0x0 0x0 0x0>;
+	qcom,bdf-addr = <0x4BD00000 0x4BD00000 0x4BD00000 0x0 0x0 0x0>;
 	qcom,caldb-addr = <0x4D400000 0x4D000000 0x0 0x0 0x0 0x0>;
-#ifdef __IPQ_MEM_PROFILE_512_MB__
+#ifdef __IPQ_MEM_PROFILE_256_MB__
+	qcom,tgt-mem-mode = <2>;
+#elif __IPQ_MEM_PROFILE_512_MB__
 	qcom,tgt-mem-mode = <1>;
 	qcom,caldb-size = <0x300000>;
 #else
@@ -801,16 +884,21 @@
 	qcom,rproc = <&q6_wcss_pd2>;
 	qcom,rproc_rpd = <&q6v5_wcss>;
 	qcom,userpd-subsys-name = "q6v5_wcss_userpd2";
-	qcom,bdf-addr = <0x4D900000 0x4D300000 0x0 0x0 0x0 0x0>;
+	qcom,bdf-addr = <0x4D900000 0x4D300000 0x4CE00000 0x0 0x0 0x0>;
 	qcom,caldb-addr = <0x4F000000 0x4E500000 0x0 0x0 0x0 0x0>;
-	qcom,caldb-size = <0x500000>;
-#ifdef __IPQ_MEM_PROFILE_512_MB__
+#ifdef __IPQ_MEM_PROFILE_256_MB__
+	qcom,tgt-mem-mode = <2>;
+#elif __IPQ_MEM_PROFILE_512_MB__
 	qcom,tgt-mem-mode = <1>;
+	qcom,caldb-size = <0x500000>;
 #else
 	qcom,tgt-mem-mode = <0>;
+	qcom,caldb-size = <0x500000>;
 #endif
 	qcom,board_id = <0x060>;
 	memory-region = <&q6_qcn6432_data_1>;
 	qcom,wsi = <&wsi>;
+	qcom,pci_slot_id = <0>;
+	interrupts = <0 33 1>;
 	status = "ok";
 };
