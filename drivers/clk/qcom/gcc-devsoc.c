@@ -352,9 +352,9 @@ static const struct qcom_reset_map gcc_devsoc_resets[] = {
 	[GCC_UNIPHY2_BCR] = { 0x17064, 0 },
 #ifdef CONFIG_QCOM_NON_SECURE_PIL
 	[GCC_WCSS_Q6_BCR] = { 0x18000, 0 },
+	[GCC_WAPSS_BCR] = { 0x18008, 0 },
 #endif
 	[GCC_WCSS_BCR] = { 0x18004, 0 },
-	[GCC_WAPSS_BCR] = { 0x18008, 0 },
 	[GCC_SEC_CTRL_BCR] = { 0x1a000, 0 },
 	[GCC_TME_SEC_BUS_BCR] = { 0xa1030, 0 },
 	[GCC_ADSS_BCR] = { 0x1c000, 0 },

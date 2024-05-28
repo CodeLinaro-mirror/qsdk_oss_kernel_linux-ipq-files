@@ -701,8 +701,10 @@
 #ifdef __QCOM_NON_SECURE_PIL__
 			reg = <0xd100000 0x4040>;
 			reg-names = "qdsp6";
-			resets = <&gcc GCC_WCSS_Q6_BCR>;
-			reset-names = "wcss_q6_reset";
+			resets = <&gcc GCC_WCSS_Q6_BCR>,
+				 <&gcc GCC_WAPSS_BCR>;
+			reset-names = "wcss_q6_reset",
+				      "wapss_reset";
 			clocks = <&gcc GCC_Q6_TSCTR_1TO2_CLK>,
 				 <&gcc GCC_Q6SS_TRIG_CLK>,
 				 <&gcc GCC_Q6_AHB_S_CLK>,

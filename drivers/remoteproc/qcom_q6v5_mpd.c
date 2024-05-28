@@ -125,6 +125,7 @@ struct q6_wcss {
 	void __iomem *wcmn_base;
 #ifdef CONFIG_QCOM_NON_SECURE_PIL
 	struct reset_control *wcss_q6_reset;
+	struct reset_control *wapss_reset;
 	struct regmap *tcsr_map;
 	u32 tcsr_boot;
 	u32 tcsr_halt;
@@ -552,6 +553,7 @@ static int q6_powerdown(struct q6_wcss *wcss)
 	} while	(!val);
 
 	reset_control_assert(wcss->wcss_q6_reset);
+	reset_control_assert(wcss->wapss_reset);
 
 	ret = disable_clocks(wcss);
 	if (ret)
@@ -561,6 +563,7 @@ static int q6_powerdown(struct q6_wcss *wcss)
 	for (loop = 0; loop < 20; loop++)
 		mdelay(1);
 	reset_control_deassert(wcss->wcss_q6_reset);
+	reset_control_deassert(wcss->wapss_reset);
 
 	return ret;
 }
@@ -1403,6 +1406,13 @@ static int devsoc_init_reset(struct q6_wcss *wcss)
 	if (IS_ERR(wcss->wcss_q6_reset)) {
 		dev_err(wcss->dev, "unable to acquire wcss_q6_reset\n");
 		return PTR_ERR(wcss->wcss_q6_reset);
+	}
+
+	wcss->wapss_reset =
+		devm_reset_control_get_exclusive(dev, "wapss_reset");
+	if (IS_ERR(wcss->wapss_reset)) {
+		dev_err(wcss->dev, "unable to acquire wapss_reset\n");
+		return PTR_ERR(wcss->wapss_reset);
 	}
 
 	return 0;
