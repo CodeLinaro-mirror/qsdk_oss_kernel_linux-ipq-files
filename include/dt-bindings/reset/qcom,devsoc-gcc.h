@@ -25,7 +25,9 @@
 #define GCC_UNIPHY1_BCR				15
 #define GCC_UNIPHY2_BCR				16
 #define GCC_WCSS_BCR				17
+#if defined(CONFIG_QCOM_NON_SECURE_PIL) || defined(__QCOM_NON_SECURE_PIL__)
 #define GCC_WAPSS_BCR				18
+#endif
 #define GCC_SEC_CTRL_BCR			19
 #define GCC_TME_SEC_BUS_BCR			20
 #define GCC_ADSS_BCR				21
