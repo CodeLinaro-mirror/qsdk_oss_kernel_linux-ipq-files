@@ -71,6 +71,18 @@
 		qupv3: geniqup@1ac0000 {
 			status = "okay";
 
+			i2c0: i2c@1a88000 {
+				pinctrl-0 = <&qup_i2c0_default>;
+				pinctrl-names = "default";
+				status = "okay";
+			};
+
+			i2c1: i2c@1a8c000 {
+				pinctrl-0 = <&qup_i2c1_default>;
+				pinctrl-names = "default";
+				status = "okay";
+			};
+
 			uart0: serial@1a80000 {
 				pinctrl-0 = <&qup_uart0_default>;
 				pinctrl-names = "default";

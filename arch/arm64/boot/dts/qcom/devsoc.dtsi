@@ -226,6 +226,36 @@
 			interrupt-controller;
 			#interrupt-cells = <2>;
 
+			qup_i2c0_default: qup-i2c0-default-state {
+				qup_i2c0_scl {
+					pins = "gpio14";
+					function = "i2c0_scl";
+					drive-strength = <8>;
+					bias-disable;
+				};
+				qup_i2c0_sda {
+					pins = "gpio15";
+					function = "i2c0_sda";
+					drive-strength = <8>;
+					bias-disable;
+				};
+			};
+
+			qup_i2c1_default: qup-i2c1-default-state {
+				qup_i2c1_scl {
+					pins = "gpio16";
+					function = "i2c1_scl";
+					drive-strength = <8>;
+					bias-disable;
+				};
+				qup_i2c1_sda {
+					pins = "gpio17";
+					function = "i2c1_sda";
+					drive-strength = <8>;
+					bias-disable;
+				};
+			};
+
 			qup_uart0_default: qup-uart0-default-state {
 				qup_uart0_tx: tx-pins {
 					pins = "gpio13";
@@ -671,6 +701,26 @@
 				clocks = <&gcc GCC_QUPV3_UART1_CLK>;
 				clock-names = "se";
 				interrupts = <GIC_SPI 340 IRQ_TYPE_LEVEL_HIGH>;
+				status = "disabled";
+			};
+
+			i2c0: i2c@1a88000 {
+				compatible = "qcom,geni-i2c";
+				reg = <0x1a88000 0x4000>;
+				clocks = <&gcc GCC_QUPV3_I2C0_CLK>;
+				clock-names = "se";
+				clock-frequency = <400000>;
+				interrupts = <GIC_SPI 341 IRQ_TYPE_LEVEL_HIGH>;
+				status = "disabled";
+			};
+
+			i2c1: i2c@1a8c000 {
+				compatible = "qcom,geni-i2c";
+				reg = <0x1a8c000 0x4000>;
+				clocks = <&gcc GCC_QUPV3_I2C1_CLK>;
+				clock-names = "se";
+				clock-frequency = <400000>;
+				interrupts = <GIC_SPI 342 IRQ_TYPE_LEVEL_HIGH>;
 				status = "disabled";
 			};
 
