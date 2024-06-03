@@ -613,6 +613,18 @@
 			pins = "gpio42";
 		};
 	};
+
+	qup_uart0_default: qup-uart0-default-state {
+		qup_uart0_tx: tx-pins {
+			pins = "gpio13";
+			bias-disable;
+		};
+
+		qup_uart0_rx: rx-pins {
+			pins = "gpio12";
+			bias-disable;
+		};
+	};
 };
 
 &q6_region {
