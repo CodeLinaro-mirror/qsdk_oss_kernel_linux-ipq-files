@@ -22,6 +22,7 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	devsoc-emulation-fbc.dtb \
 	devsoc-rdp466.dtb \
 	devsoc-rdp485.dtb \
+	devsoc-rdp487.dtb \
 	qcom-ipq4018-ap120c-ac.dtb \
 	qcom-ipq4018-ap120c-ac-bit.dtb \
 	qcom-ipq4018-jalapeno.dtb \
