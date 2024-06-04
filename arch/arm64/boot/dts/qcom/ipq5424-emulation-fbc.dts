@@ -47,13 +47,11 @@
 			i2c0: i2c@1a88000 {
 				pinctrl-0 = <&qup_i2c0_default>;
 				pinctrl-names = "default";
-				status = "okay";
 			};
 
 			i2c1: i2c@1a8c000 {
 				pinctrl-0 = <&qup_i2c1_default>;
 				pinctrl-names = "default";
-				status = "okay";
 			};
 
 			spi0: spi@1a90000 {
