@@ -11,6 +11,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= devsoc-emulation-fbc.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= devsoc-rdp466.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= devsoc-rdp485.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= devsoc-rdp487.dtb
+dtb-$(CONFIG_ARCH_QCOM)	+= devsoc-db-mr01.1.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq5018-rdp432-c2.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq5332-rdp441.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq5332-rdp442.dtb
