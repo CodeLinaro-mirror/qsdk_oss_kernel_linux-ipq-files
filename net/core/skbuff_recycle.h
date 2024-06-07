@@ -72,6 +72,19 @@ struct global_recycler {
 };
 #endif
 
+#ifdef CONFIG_SMP
+static __always_inline int get_cpu_index(void)
+{
+	int cpu_index = smp_processor_id();
+	return cpu_index;
+}
+#else
+int get_cpu_index(void)
+{
+	return 0;
+}
+#endif
+
 static __always_inline void zero_struct(void *v, int size)
 {
 	u32 *s = (u32 *)v;
