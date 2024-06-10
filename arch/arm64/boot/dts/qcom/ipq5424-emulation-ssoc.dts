@@ -226,3 +226,7 @@
 		};
 	};
 };
+
+&tsens {
+	status = "disabled";
+};
