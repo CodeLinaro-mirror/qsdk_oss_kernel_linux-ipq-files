@@ -28,6 +28,7 @@
 
 #define WCSS_CRASH_REASON		421
 #define WCSS_SMEM_HOST			1
+#define WCSS_PASID			0x6
 #define RPD_SWID			0xD
 
 #define Q6_BOOT_ARGS_SMEM_SIZE		4096
@@ -64,6 +65,7 @@ struct wcss_data {
 	bool need_auto_boot;
 	u32 pasid;
 	u8 bootargs_version;
+	bool tmelcom_support;
 };
 
 struct bootargs_smem_info {
@@ -112,8 +114,12 @@ static int q6v5_wcss_sec_start(struct rproc *rproc)
 		}
 	}
 
-	ret = tmelcom_secboot_sec_auth(desc->pasid, wcss->metadata,
-				       wcss->metadata_len);
+	if (desc->tmelcom_support)
+		ret = tmelcom_secboot_sec_auth(desc->pasid, wcss->metadata,
+					       wcss->metadata_len);
+	else
+		ret = qcom_scm_pas_auth_and_reset(desc->pasid);
+
 	if (ret) {
 		dev_err(wcss->dev, "wcss_reset failed\n");
 		return ret;
@@ -145,7 +151,11 @@ static int q6v5_wcss_sec_stop(struct rproc *rproc)
 	if (!desc)
 		return -EINVAL;
 
-	ret = tmelcom_secboot_teardown(desc->pasid, 0);
+	if (desc->tmelcom_support)
+		ret = tmelcom_secboot_teardown(desc->pasid, 0);
+	else
+		ret = qcom_scm_pas_shutdown(desc->pasid);
+
 	if (ret) {
 		dev_err(wcss->dev, "not able to shutdown\n");
 		return ret;
@@ -330,10 +340,16 @@ static int q6v5_wcss_sec_load(struct rproc *rproc, const struct firmware *fw)
 	}
 
 	/* Load firmware into DDR */
-	return qcom_mdt_load_no_init(wcss->dev, fw, rproc->firmware,
-				desc->pasid, wcss->mem_region,
-				wcss->mem_phys, wcss->mem_size,
-				&wcss->mem_reloc);
+	if (desc->tmelcom_support)
+		return qcom_mdt_load_no_init(wcss->dev, fw, rproc->firmware,
+					     desc->pasid, wcss->mem_region,
+					     wcss->mem_phys, wcss->mem_size,
+					     &wcss->mem_reloc);
+	else
+		return qcom_mdt_load(wcss->dev, fw, rproc->firmware,
+				     desc->pasid, wcss->mem_region,
+				     wcss->mem_phys, wcss->mem_size,
+				     &wcss->mem_reloc);
 }
 
 static unsigned long q6v5_wcss_sec_panic(struct rproc *rproc)
@@ -524,10 +540,32 @@ static const struct wcss_data q6_devsoc_res_init = {
 	.ops = &q6v5_wcss_sec_devsoc_ops,
 	.pasid = RPD_SWID,
 	.bootargs_version = VERSION2,
+	.tmelcom_support = true,
+};
+
+static const struct wcss_data q6_ipq5332_res_init = {
+	.q6_firmware_name = "IPQ5332/q6_fw0.mdt",
+	.crash_reason_smem = WCSS_CRASH_REASON,
+	.remote_id = WCSS_SMEM_HOST,
+	.ops = &q6v5_wcss_sec_devsoc_ops,
+	.pasid = RPD_SWID,
+	.bootargs_version = VERSION2,
+	.tmelcom_support = false,
+};
+
+static const struct wcss_data q6_ipq9574_res_init = {
+	.q6_firmware_name = "IPQ9574/q6_fw.mdt",
+	.crash_reason_smem = WCSS_CRASH_REASON,
+	.remote_id = WCSS_SMEM_HOST,
+	.ops = &q6v5_wcss_sec_devsoc_ops,
+	.pasid = WCSS_PASID,
+	.tmelcom_support = false,
 };
 
 static const struct of_device_id q6v5_wcss_sec_of_match[] = {
 	{ .compatible = "qcom,devsoc-q6v5-wcss-sec", .data = &q6_devsoc_res_init },
+	{ .compatible = "qcom,ipq5332-q6v5-wcss-sec", .data = &q6_ipq5332_res_init },
+	{ .compatible = "qcom,ipq9574-q6v5-wcss-sec", .data = &q6_ipq9574_res_init },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, q6v5_wcss_sec_of_match);
