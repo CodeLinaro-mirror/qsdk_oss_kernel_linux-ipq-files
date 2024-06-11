@@ -8,6 +8,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= apq8096-ifc6640.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= devsoc-emulation.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= devsoc-emulation-ssoc.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= devsoc-emulation-fbc.dtb
+dtb-$(CONFIG_ARCH_QCOM)	+= devsoc-rdp464.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= devsoc-rdp466.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= devsoc-rdp485.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= devsoc-rdp487.dtb

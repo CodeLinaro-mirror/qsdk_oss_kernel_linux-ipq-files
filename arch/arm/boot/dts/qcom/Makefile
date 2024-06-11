@@ -20,6 +20,7 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	devsoc-emulation.dtb \
 	devsoc-emulation-ssoc.dtb \
 	devsoc-emulation-fbc.dtb \
+	devsoc-rdp464.dtb \
 	devsoc-rdp466.dtb \
 	devsoc-rdp485.dtb \
 	devsoc-rdp487.dtb \
