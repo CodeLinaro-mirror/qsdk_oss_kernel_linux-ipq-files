@@ -225,6 +225,7 @@
 
 	ctx_save: ctx-save {
 		compatible = "qti,ctxt-save-ipq9574";
+		memory-region = <&minidump_mem>;
 	};
 
 	firmware {
@@ -352,6 +353,10 @@
 			compatible = "qcom,smem";
 			reg = <0x0 0x4aa00000 0x0 0x00100000>;
 			hwlocks = <&tcsr_mutex 3>;
+			no-map;
+		};
+
+		minidump_mem: minidump_mem@0 {
 			no-map;
 		};
 	};
