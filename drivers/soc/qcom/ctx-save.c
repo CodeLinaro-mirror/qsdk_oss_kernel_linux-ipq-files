@@ -7,7 +7,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
-#include <linux/qcom_scm.h>
+#include <linux/firmware/qcom/qcom_scm.h>
 #include <linux/utsname.h>
 #include <linux/sizes.h>
 #include <soc/qcom/ctx-save.h>
@@ -26,6 +26,8 @@
 #include <uapi/linux/major.h>
 #include <linux/highmem.h>
 #include <linux/ioctl.h>
+#include <linux/blkdev.h>
+#include <linux/panic_notifier.h>
 
 typedef struct ctx_save_tlv_msg {
 	unsigned char *msg_buffer;
@@ -142,7 +144,7 @@ struct dumpdev {
     fmode_t fmode;
     struct mini_hdr hdr;
     struct list_head dump_segments;
-} minidump = {"minidump", &mini_dump_ops, FMODE_UNSIGNED_OFFSET | FMODE_EXCL};
+} minidump = {"minidump", &mini_dump_ops, FMODE_UNSIGNED_OFFSET | BLK_OPEN_EXCL};
 
 #define MINIDUMP_IOCTL_MAGIC    'm'
 #define MINIDUMP_IOCTL_PREPARE_HDR _IOR(MINIDUMP_IOCTL_MAGIC, 0, int)
@@ -426,7 +428,7 @@ int do_minidump(void) {
         goto reg_failed;
     }
 
-    dump_class = class_create(THIS_MODULE, "minidump");
+    dump_class = class_create("minidump");
     if (IS_ERR(dump_class)) {
         ret = PTR_ERR(dump_class);
         pr_err("Unable to create dump class = %d\n", ret);
@@ -462,7 +464,7 @@ EXPORT_SYMBOL(do_minidump);
 *
 * Return: 0
 */
-static void sysrq_minidump_handler(int key)
+static void sysrq_minidump_handler(u8 key)
 {
     int ret =0;
     ret = do_minidump();
@@ -1320,9 +1322,7 @@ int minidump_dump_wlan_modules(void){
 				if ((!strcmp(".bss", mod->sect_attrs->attrs[i].battr.attr.name))) {
 					module_tlv_info.start = (unsigned long)
 					mod->sect_attrs->attrs[i].address;
-					module_tlv_info.size = (unsigned long)mod->core_layout.base
-						+ (unsigned long) mod->core_layout.size -
-						(unsigned long)mod->sect_attrs->attrs[i].address;
+					module_tlv_info.size = (unsigned long)mod->sect_attrs->attrs[i].address - (unsigned long )mod->mem[MOD_TEXT].base + (unsigned long)mod->mem[MOD_TEXT].size;
 #ifdef CONFIG_QCA_MINIDUMP_DEBUG
 					pr_err("\n MINIDUMP VA .bss start=%lx module=%s",
 						(unsigned long)mod->sect_attrs->attrs[i].address,
