@@ -17,14 +17,14 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	qcom-apq8074-dragonboard.dtb \
 	qcom-apq8084-ifc6540.dtb \
 	qcom-apq8084-mtp.dtb \
-	devsoc-emulation.dtb \
-	devsoc-emulation-ssoc.dtb \
-	devsoc-emulation-fbc.dtb \
-	devsoc-rdp464.dtb \
-	devsoc-rdp466.dtb \
-	devsoc-rdp485.dtb \
-	devsoc-rdp487.dtb \
-	devsoc-db-mr01.1.dtb \
+	ipq5424-emulation.dtb \
+	ipq5424-emulation-ssoc.dtb \
+	ipq5424-emulation-fbc.dtb \
+	ipq5424-rdp464.dtb \
+	ipq5424-rdp466.dtb \
+	ipq5424-rdp485.dtb \
+	ipq5424-rdp487.dtb \
+	ipq5424-db-mr01.1.dtb \
 	qcom-ipq4018-ap120c-ac.dtb \
 	qcom-ipq4018-ap120c-ac-bit.dtb \
 	qcom-ipq4018-jalapeno.dtb \
@@ -61,8 +61,6 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	ipq9574-db-al02-c1.dtb \
 	ipq9574-db-al02-c2.dtb \
 	ipq9574-db-al02-c3.dtb \
-	devsoc-emulation.dtb \
-	devsoc-emulation-ssoc.dtb \
 	ipq5332-rdp441.dtb \
 	ipq5332-rdp442.dtb \
 	ipq5332-rdp446.dtb \
