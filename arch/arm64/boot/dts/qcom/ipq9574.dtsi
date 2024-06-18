@@ -3525,6 +3525,7 @@
 				 <&nsscc NSS_CC_NSSNOC_IMEM_QSB_CLK>,
 				 <&nsscc NSS_CC_IMEM_AHB_CLK>,
 				 <&nsscc NSS_CC_NSSNOC_IMEM_AHB_CLK>,
+				 <&nsscc NSS_CC_PPE_EDMA_CLK>,
 				 <&gcc GCC_MEM_NOC_NSSNOC_CLK>,
 				 <&gcc GCC_NSS_TBU_CLK>,
 				 <&gcc GCC_NSS_TS_CLK>,
@@ -3542,7 +3543,7 @@
 				 <&gcc GCC_NSSNOC_XO_DCD_CLK>;
 			clock-names = "nss-csr-clk", "nss-nssnoc-csr-clk",
 				      "nss-imem-qsb-clk", "nss-nssnoc-imem-qsb-clk",
-				      "nss-imem-ahb-clk", "nss-nssnoc-imem-ahb-clk",
+				      "nss-imem-ahb-clk", "nss-nssnoc-imem-ahb-clk", "nss-edma-clk",
 				      "nss-mem-noc-nssnoc-clk", "nss-tbu-clk", "nss-ts-clk",
 				      "nss-nsscc-clk", "nss-nsscfg-clk", "nss-nsscnoc-atb-clk",
 				      "nss-nssnoc-mem-noc-1-clk", "nss-nssnoc-memnoc-clk", "nss-nssnoc-nsscc-clk",
