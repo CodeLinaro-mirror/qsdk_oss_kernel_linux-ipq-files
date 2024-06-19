@@ -3,7 +3,7 @@
  * IPQ5332 RDP473 board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 /dts-v1/;
@@ -465,6 +465,7 @@
 		wsi: wsi {
 			id = <0>;
 			num_chip = <3>;
+			status = "okay";
 		};
 
 		q6v5_wcss: remoteproc@d100000 {

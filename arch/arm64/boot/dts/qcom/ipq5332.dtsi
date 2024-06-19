@@ -804,6 +804,10 @@
 			status = "disabled";
 		};
 
+		wsi: wsi {
+			status = "disabled";
+		};
+
 		seccrypt: qcom,seccrypt {
 			compatible = "qcom,seccrypt";
 			status = "okay";
