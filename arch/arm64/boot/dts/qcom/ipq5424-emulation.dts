@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 /*
- * Dev SoC Emulation board device tree source
+ * IPQ5424 Emulation board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
@@ -11,8 +11,8 @@
 #include "ipq5424.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. DevSoc-EMULATION";
-	compatible = "qcom,devsoc-ap-emulation", "qcom,devsoc";
+	model = "Qualcomm Technologies, Inc. IPQ5424-EMULATION";
+	compatible = "qcom,ipq5424-ap-emulation", "qcom,ipq5424";
 
 	/delete-node/ firmware;
 	/delete-node/ qti,tzlog;

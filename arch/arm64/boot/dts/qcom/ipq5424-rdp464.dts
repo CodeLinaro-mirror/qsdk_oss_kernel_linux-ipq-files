@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 /*
- * DEVSOC RDP464 board device tree source
+ * IPQ5424 RDP464 board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
@@ -11,8 +11,8 @@
 #include "ipq5424-rdp-common.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. DEVSOC RDP464";
-	compatible = "qcom,devsoc-rdp464", "qcom,devsoc";
+	model = "Qualcomm Technologies, Inc. IPQ5424 RDP464";
+	compatible = "qcom,ipq5424-rdp464", "qcom,ipq5424";
 
 	soc@0 {
 		qupv3: geniqup@1ac0000 {

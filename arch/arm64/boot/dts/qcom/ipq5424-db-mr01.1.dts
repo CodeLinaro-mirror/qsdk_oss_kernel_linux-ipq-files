@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 /*
- * DEVSOC DB MR01.1 board device tree source
+ * IPQ5424 DB MR01.1 board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
@@ -11,8 +11,8 @@
 #include "ipq5424-rdp-common.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. DEVSOC DB-MR01.1";
-	compatible = "qcom,devsoc-db-mr01.1", "qcom,devsoc";
+	model = "Qualcomm Technologies, Inc. IPQ5424 DB-MR01.1";
+	compatible = "qcom,ipq5424-db-mr01.1", "qcom,ipq5424";
 
 	soc@0 {
 		qupv3: geniqup@1ac0000 {

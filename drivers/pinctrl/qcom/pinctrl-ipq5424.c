@@ -50,7 +50,7 @@
 		.intr_detection_width = 2,	\
 	}
 
-static const struct pinctrl_pin_desc devsoc_pins[] = {
+static const struct pinctrl_pin_desc ipq5424_pins[] = {
 	PINCTRL_PIN(0, "GPIO_0"),
 	PINCTRL_PIN(1, "GPIO_1"),
 	PINCTRL_PIN(2, "GPIO_2"),
@@ -156,7 +156,7 @@ DECLARE_MSM_GPIO_PINS(47);
 DECLARE_MSM_GPIO_PINS(48);
 DECLARE_MSM_GPIO_PINS(49);
 
-enum devsoc_functions {
+enum ipq5424_functions {
 	msm_mux_atest_char,
 	msm_mux_atest_char0,
 	msm_mux_atest_char1,
@@ -663,7 +663,7 @@ static const char * const resout_groups[] = {
 	"gpio49",
 };
 
-static const struct pinfunction devsoc_functions[] = {
+static const struct pinfunction ipq5424_functions[] = {
 	MSM_PIN_FUNCTION(atest_char),
 	MSM_PIN_FUNCTION(atest_char0),
 	MSM_PIN_FUNCTION(atest_char1),
@@ -765,7 +765,7 @@ static const struct pinfunction devsoc_functions[] = {
 	MSM_PIN_FUNCTION(wci6),
 };
 
-static const struct msm_pingroup devsoc_groups[] = {
+static const struct msm_pingroup ipq5424_groups[] = {
 	PINGROUP(0, sdc_data, qspi_data, pwm2, wci0, wci0, _, _, _, _),
 	PINGROUP(1, sdc_data, qspi_data, pwm2, wci1, wci1, _, _, _, _),
 	PINGROUP(2, sdc_data, qspi_data, pwm2, _, _, _, _, _, _),
@@ -843,47 +843,47 @@ static const struct msm_pingroup devsoc_groups[] = {
 	PINGROUP(49, resout, _, _, _, _, _, _, _, _),
 };
 
-static const struct msm_pinctrl_soc_data devsoc_pinctrl = {
-	.pins = devsoc_pins,
-	.npins = ARRAY_SIZE(devsoc_pins),
-	.functions = devsoc_functions,
-	.nfunctions = ARRAY_SIZE(devsoc_functions),
-	.groups = devsoc_groups,
-	.ngroups = ARRAY_SIZE(devsoc_groups),
+static const struct msm_pinctrl_soc_data ipq5424_pinctrl = {
+	.pins = ipq5424_pins,
+	.npins = ARRAY_SIZE(ipq5424_pins),
+	.functions = ipq5424_functions,
+	.nfunctions = ARRAY_SIZE(ipq5424_functions),
+	.groups = ipq5424_groups,
+	.ngroups = ARRAY_SIZE(ipq5424_groups),
 	.ngpios = 50,
 };
 
-static int devsoc_pinctrl_probe(struct platform_device *pdev)
+static int ipq5424_pinctrl_probe(struct platform_device *pdev)
 {
-	return msm_pinctrl_probe(pdev, &devsoc_pinctrl);
+	return msm_pinctrl_probe(pdev, &ipq5424_pinctrl);
 }
 
-static const struct of_device_id devsoc_pinctrl_of_match[] = {
-	{ .compatible = "qcom,devsoc-tlmm", },
+static const struct of_device_id ipq5424_pinctrl_of_match[] = {
+	{ .compatible = "qcom,ipq5424-tlmm", },
 	{ },
 };
-MODULE_DEVICE_TABLE(of, devsoc_pinctrl_of_match);
+MODULE_DEVICE_TABLE(of, ipq5424_pinctrl_of_match);
 
-static struct platform_driver devsoc_pinctrl_driver = {
+static struct platform_driver ipq5424_pinctrl_driver = {
 	.driver = {
-		.name = "devsoc-tlmm",
-		.of_match_table = devsoc_pinctrl_of_match,
+		.name = "ipq5424-tlmm",
+		.of_match_table = ipq5424_pinctrl_of_match,
 	},
-	.probe = devsoc_pinctrl_probe,
+	.probe = ipq5424_pinctrl_probe,
 	.remove = msm_pinctrl_remove,
 };
 
-static int __init devsoc_pinctrl_init(void)
+static int __init ipq5424_pinctrl_init(void)
 {
-	return platform_driver_register(&devsoc_pinctrl_driver);
+	return platform_driver_register(&ipq5424_pinctrl_driver);
 }
-arch_initcall(devsoc_pinctrl_init);
+arch_initcall(ipq5424_pinctrl_init);
 
-static void __exit devsoc_pinctrl_exit(void)
+static void __exit ipq5424_pinctrl_exit(void)
 {
-	platform_driver_unregister(&devsoc_pinctrl_driver);
+	platform_driver_unregister(&ipq5424_pinctrl_driver);
 }
-module_exit(devsoc_pinctrl_exit);
+module_exit(ipq5424_pinctrl_exit);
 
-MODULE_DESCRIPTION("QTI DEVSOC TLMM driver");
+MODULE_DESCRIPTION("QTI IPQ5424 TLMM driver");
 MODULE_LICENSE("GPL");

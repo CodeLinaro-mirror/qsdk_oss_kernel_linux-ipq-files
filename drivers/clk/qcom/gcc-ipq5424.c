@@ -11,8 +11,8 @@
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 
-#include <dt-bindings/clock/qcom,devsoc-gcc.h>
-#include <dt-bindings/reset/qcom,devsoc-gcc.h>
+#include <dt-bindings/clock/qcom,ipq5424-gcc.h>
+#include <dt-bindings/reset/qcom,ipq5424-gcc.h>
 
 #include "clk-alpha-pll.h"
 #include "clk-branch.h"
@@ -88,7 +88,7 @@ static const struct clk_ops clk_dummy_ops = {
 	 },                                                      \
 	 })
 
-static struct clk_regmap *gcc_devsoc_dummy_clks[] = {
+static struct clk_regmap *gcc_ipq5424_dummy_clks[] = {
 	[GPLL0_MAIN] = DEFINE_DUMMY_CLK(gpll0_main),
 	[GPLL0] = DEFINE_DUMMY_CLK(gpll0),
 	[GPLL4_MAIN] = DEFINE_DUMMY_CLK(gpll4_main),
@@ -332,7 +332,7 @@ static struct clk_regmap *gcc_devsoc_dummy_clks[] = {
 #endif
 };
 
-static const struct qcom_reset_map gcc_devsoc_resets[] = {
+static const struct qcom_reset_map gcc_ipq5424_resets[] = {
 	[GCC_QUPV3_BCR] = { 0x01000, 0 },
 	[GCC_QUPV3_I2C0_BCR] = { 0x02000, 0 },
 	[GCC_QUPV3_UART0_BCR] = { 0x02020, 0 },
@@ -638,13 +638,13 @@ static const struct qcom_reset_map gcc_devsoc_resets[] = {
 	[GCC_QUSB2_1_PHY_BCR] = { 0x3C030, 0 },
 };
 
-static const struct of_device_id gcc_devsoc_match_table[] = {
-        { .compatible = "qcom,devsoc-gcc" },
+static const struct of_device_id gcc_ipq5424_match_table[] = {
+        { .compatible = "qcom,ipq5424-gcc" },
         { }
 };
-MODULE_DEVICE_TABLE(of, gcc_devsoc_match_table);
+MODULE_DEVICE_TABLE(of, gcc_ipq5424_match_table);
 
-static const struct regmap_config gcc_devsoc_regmap_config = {
+static const struct regmap_config gcc_ipq5424_regmap_config = {
 	.reg_bits       = 32,
 	.reg_stride     = 4,
 	.val_bits       = 32,
@@ -652,38 +652,38 @@ static const struct regmap_config gcc_devsoc_regmap_config = {
 	.fast_io        = true,
 };
 
-static const struct qcom_cc_desc gcc_devsoc_dummy_desc = {
-	.config = &gcc_devsoc_regmap_config,
-	.clks = gcc_devsoc_dummy_clks,
-	.num_clks = ARRAY_SIZE(gcc_devsoc_dummy_clks),
-	.resets = gcc_devsoc_resets,
-	.num_resets = ARRAY_SIZE(gcc_devsoc_resets),
+static const struct qcom_cc_desc gcc_ipq5424_dummy_desc = {
+	.config = &gcc_ipq5424_regmap_config,
+	.clks = gcc_ipq5424_dummy_clks,
+	.num_clks = ARRAY_SIZE(gcc_ipq5424_dummy_clks),
+	.resets = gcc_ipq5424_resets,
+	.num_resets = ARRAY_SIZE(gcc_ipq5424_resets),
 };
 
-static int gcc_devsoc_probe(struct platform_device *pdev)
+static int gcc_ipq5424_probe(struct platform_device *pdev)
 {
-	return qcom_cc_probe(pdev, &gcc_devsoc_dummy_desc);
+	return qcom_cc_probe(pdev, &gcc_ipq5424_dummy_desc);
 }
 
-static struct platform_driver gcc_devsoc_driver = {
-	.probe = gcc_devsoc_probe,
+static struct platform_driver gcc_ipq5424_driver = {
+	.probe = gcc_ipq5424_probe,
 	.driver = {
-		.name   = "qcom,gcc-devsoc",
-		.of_match_table = gcc_devsoc_match_table,
+		.name   = "qcom,gcc-ipq5424",
+		.of_match_table = gcc_ipq5424_match_table,
 	},
 };
 
-static int __init gcc_devsoc_init(void)
+static int __init gcc_ipq5424_init(void)
 {
-	return platform_driver_register(&gcc_devsoc_driver);
+	return platform_driver_register(&gcc_ipq5424_driver);
 }
-core_initcall(gcc_devsoc_init);
+core_initcall(gcc_ipq5424_init);
 
-static void __exit gcc_devsoc_exit(void)
+static void __exit gcc_ipq5424_exit(void)
 {
-	platform_driver_unregister(&gcc_devsoc_driver);
+	platform_driver_unregister(&gcc_ipq5424_driver);
 }
-module_exit(gcc_devsoc_exit);
+module_exit(gcc_ipq5424_exit);
 
-MODULE_DESCRIPTION("Qualcomm Technologies, Inc. GCC DEVSOC Driver");
+MODULE_DESCRIPTION("Qualcomm Technologies, Inc. GCC IPQ5424 Driver");
 MODULE_LICENSE("GPLv2");

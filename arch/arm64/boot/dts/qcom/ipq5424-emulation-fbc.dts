@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 /*
- * Dev SoC Emulation board device tree source
+ * IPQ5424 Emulation board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
@@ -11,8 +11,8 @@
 #include "ipq5424.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. DevSoC-EMULATION-FBC";
-	compatible = "qcom,devsoc-ap-emulation", "qcom,devsoc";
+	model = "Qualcomm Technologies, Inc. IPQ5424-EMULATION-FBC";
+	compatible = "qcom,ipq5424-ap-emulation", "qcom,ipq5424";
 
 	/*Timer freq for rumi = timer freq / 150*/
 	clocks {
@@ -70,7 +70,7 @@
 		};
 
 		q6v5_wcss: remoteproc@d100000 {
-			compatible = "qcom,devsoc-q6v5-wcss-sec";
+			compatible = "qcom,ipq5424-q6v5-wcss-sec";
 			status = "okay";
 
 #ifdef __QCOM_NON_SECURE_PIL__

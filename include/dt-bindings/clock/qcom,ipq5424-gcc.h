@@ -4,8 +4,8 @@
  * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
-#ifndef _DT_BINDINGS_CLOCK_IPQ_GCC_DEVSOC_H
-#define _DT_BINDINGS_CLOCK_IPQ_GCC_DEVSOC_H
+#ifndef _DT_BINDINGS_CLOCK_IPQ_GCC_IPQ5424_H
+#define _DT_BINDINGS_CLOCK_IPQ_GCC_IPQ5424_H
 
 #define GPLL0_MAIN				0
 #define GPLL0					1

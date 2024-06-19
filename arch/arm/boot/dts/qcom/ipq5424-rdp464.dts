@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 /*
- * DEVSOC RDP464 board device tree source
+ * IPQ5424 RDP464 board device tree source
  *
  * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */

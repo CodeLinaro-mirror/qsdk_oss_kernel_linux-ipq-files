@@ -1358,7 +1358,7 @@ static int init_irq(struct qcom_q6v5 *q6,
 }
 
 #ifdef CONFIG_QCOM_NON_SECURE_PIL
-static int devsoc_init_q6_clock(struct q6_wcss *wcss)
+static int ipq5424_init_q6_clock(struct q6_wcss *wcss)
 {
 	int ret = 0;
 	int i;
@@ -1397,7 +1397,7 @@ static int devsoc_init_q6_clock(struct q6_wcss *wcss)
 	return ret;
 }
 
-static int devsoc_init_reset(struct q6_wcss *wcss)
+static int ipq5424_init_reset(struct q6_wcss *wcss)
 {
 	struct device *dev = wcss->dev;
 
@@ -1643,10 +1643,10 @@ static const struct wcss_data q6_ipq5332_res_init = {
 	.bootargs_version = VERSION2,
 };
 
-static const struct wcss_data q6_devsoc_res_init = {
+static const struct wcss_data q6_ipq5424_res_init = {
 #ifdef CONFIG_QCOM_NON_SECURE_PIL
-	.init_clock = devsoc_init_q6_clock,
-	.init_reset = devsoc_init_reset,
+	.init_clock = ipq5424_init_q6_clock,
+	.init_reset = ipq5424_init_reset,
 #endif
 	.init_irq = qcom_q6v5_init,
 	.q6_firmware_name = "IPQ5332/q6_fw0.mdt",
@@ -1748,13 +1748,13 @@ static const struct wcss_data wcss_text_ipq5332_res_init = {
 static const struct of_device_id q6_wcss_of_match[] = {
 	{ .compatible = "qcom,ipq5018-q6-mpd", .data = &q6_ipq5018_res_init },
 	{ .compatible = "qcom,ipq5332-q6-mpd", .data = &q6_ipq5332_res_init },
-	{ .compatible = "qcom,devsoc-q6-mpd", .data = &q6_devsoc_res_init },
+	{ .compatible = "qcom,ipq5424-q6-mpd", .data = &q6_ipq5424_res_init },
 	{ .compatible = "qcom,ipq9574-q6-mpd", .data = &q6_ipq9574_res_init },
 	{ .compatible = "qcom,ipq5018-wcss-ahb-mpd",
 		.data = &wcss_ahb_ipq5018_res_init },
 	{ .compatible = "qcom,ipq5332-wcss-ahb-mpd",
 		.data = &wcss_ahb_ipq5332_res_init },
-	{ .compatible = "qcom,devsoc-wcss-ahb-mpd",
+	{ .compatible = "qcom,ipq5424-wcss-ahb-mpd",
 		.data = &wcss_ahb_ipq5332_res_init },
 	{ .compatible = "qcom,ipq9574-wcss-ahb-mpd",
 		.data = &wcss_ahb_ipq9574_res_init },

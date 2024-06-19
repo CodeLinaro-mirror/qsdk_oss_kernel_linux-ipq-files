@@ -4,8 +4,8 @@
  * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
-#ifndef _DT_BINDINGS_RESET_IPQ_GCC_DEVSOC_H
-#define _DT_BINDINGS_RESET_IPQ_GCC_DEVSOC_H
+#ifndef _DT_BINDINGS_RESET_IPQ_GCC_IPQ5424_H
+#define _DT_BINDINGS_RESET_IPQ_GCC_IPQ5424_H
 
 #define GCC_QUPV3_BCR				0
 #define GCC_QUPV3_I2C0_BCR			1
