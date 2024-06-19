@@ -28,20 +28,6 @@ struct obj_walking {
 	void **d;
 };
 
-#ifdef CONFIG_ARM
-static int walkstack(struct stackframe *frame, void *p)
-{
-	struct obj_walking *w = (struct obj_walking *)p;
-	unsigned long pc = frame->pc;
-
-	if (w->pos < 9) {
-		w->d[w->pos++] = (void *)pc;
-		return 0;
-	}
-
-	return 1;
-}
-#else
 static bool walkstack(void *p, unsigned long pc)
 {
 	struct obj_walking *w = (struct obj_walking *)p;
@@ -53,24 +39,13 @@ static bool walkstack(void *p, unsigned long pc)
 
 	return false;
 }
-#endif
 
 static void get_stacktrace(void **stack)
 {
 	struct obj_walking w = {0, stack};
 	void *p = &w;
 
-#ifdef CONFIG_ARM
-	struct stackframe frame;
-	register unsigned long current_sp asm ("sp");
-	frame.sp = current_sp;
-
-	frame.fp = (unsigned long)__builtin_frame_address(0);
-	frame.pc = (unsigned long)get_stacktrace;
-	walk_stackframe(&frame, walkstack, p);
-#else
 	arch_stack_walk(walkstack, p, current, NULL);
-#endif
 }
 
 void *__wrap___kmalloc(size_t size, gfp_t flags)
