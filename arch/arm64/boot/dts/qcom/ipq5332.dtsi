@@ -1697,32 +1697,32 @@
 					};
 					port@1 {
 						port_id = <1>;
-						ucast_queue = <204 211>;
+						ucast_queue = <144 159>;
 						mcast_queue = <272 275>;
-						l0sp = <51 52>;
-						l0cdrr = <108 115>;
-						l0edrr = <108 115>;
-						l1cdrr = <23 24>;
-						l1edrr = <23 24>;
+						l0sp = <36 39>;
+						l0cdrr = <48 63>;
+						l0edrr = <48 63>;
+						l1cdrr = <8 11>;
+						l1edrr = <8 11>;
 					};
 					port@2 {
 						port_id = <2>;
-						ucast_queue = <212 219>;
+						ucast_queue = <160 175>;
 						mcast_queue = <276 279>;
-						l0sp = <53 54>;
-						l0cdrr = <116 123>;
-						l0edrr = <116 123>;
-						l1cdrr = <25 26>;
-						l1edrr = <25 26>;
+						l0sp = <40 43>;
+						l0cdrr = <64 79>;
+						l0edrr = <64 79>;
+						l1cdrr = <12 15>;
+						l1edrr = <12 15>;
 					};
 					reserved {
-						ucast_queue = <64 203>;
+						ucast_queue = <64 143>;
 						mcast_queue = <264 271>;
-						l0sp = <1 50>;
-						l0cdrr = <8 107>;
-						l0edrr = <8 107>;
-						l1cdrr = <1 22>;
-						l1edrr = <1 22>;
+						l0sp = <1 35>;
+						l0cdrr = <8 47>;
+						l0edrr = <8 47>;
+						l1cdrr = <1 7>;
+						l1edrr = <1 7>;
 					};
 				};
 
@@ -1795,23 +1795,21 @@
 						port_id = <1>;
 						l1scheduler {
 							group@0 {
-								sp = <51>;
-								cfg = <0 23 0 23>;
+								sp = <36>;
+								cfg = <0 8 0 8>;
 							};
 							group@1 {
-								sp = <52>;
-								cfg = <1 24 1 24>;
+								sp = <37>;
+								cfg = <0 8 0 8>;
 							};
 						};
 						l0scheduler {
 							group@0 {
-								ucast_queue = <204>;
-								ucast_loop_pri = <8>;
-								/* max priority per SP */
-								ucast_max_pri = <4>;
+								ucast_queue = <144>;
+								ucast_loop_pri = <16>;
 								mcast_queue = <272>;
 								mcast_loop_pri = <4>;
-								cfg = <51 0 108 0 108>;
+								cfg = <36 0 48 0 48>;
 							};
 						};
 					};
@@ -1819,22 +1817,21 @@
 						port_id = <2>;
 						l1scheduler {
 							group@0 {
-								sp = <53>;
-								cfg = <0 25 0 25>;
+								sp = <40>;
+								cfg = <0 12 0 12>;
 							};
 							group@1 {
-								sp = <54>;
-								cfg = <1 26 1 26>;
+								sp = <41>;
+								cfg = <0 12 0 12>;
 							};
 						};
 						l0scheduler {
 							group@0 {
-								ucast_queue = <212>;
-								ucast_loop_pri = <8>;
-								ucast_max_pri = <4>;
+								ucast_queue = <160>;
+								ucast_loop_pri = <16>;
 								mcast_queue = <276>;
 								mcast_loop_pri = <4>;
-								cfg = <53 0 116 0 116>;
+								cfg = <40 0 64 0 64>;
 							};
 						};
 					};
