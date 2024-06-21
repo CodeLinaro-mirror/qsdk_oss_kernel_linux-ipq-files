@@ -32,21 +32,21 @@
 #define MMU_FILE_ENTRY_LEN 33
 
 /* TLV_Types */
-typedef enum {
-    CTX_SAVE_LOG_DUMP_TYPE_INVALID,
-    CTX_SAVE_LOG_DUMP_TYPE_UNAME,
-    CTX_SAVE_LOG_DUMP_TYPE_DMESG,
-    CTX_SAVE_LOG_DUMP_TYPE_LEVEL1_PT,
-    CTX_SAVE_LOG_DUMP_TYPE_WLAN_MOD,
-    CTX_SAVE_LOG_DUMP_TYPE_WLAN_MOD_DEBUGFS,
-    CTX_SAVE_LOG_DUMP_TYPE_WLAN_MOD_INFO,
-    CTX_SAVE_LOG_DUMP_TYPE_WLAN_MMU_INFO,
-    CTX_SAVE_LOG_DUMP_TYPE_EMPTY,
-} minidump_tlv_type_t;
+enum minidump_tlv_type {
+    QCA_WDT_LOG_DUMP_TYPE_INVALID,
+    QCA_WDT_LOG_DUMP_TYPE_UNAME,
+    QCA_WDT_LOG_DUMP_TYPE_DMESG,
+    QCA_WDT_LOG_DUMP_TYPE_LEVEL1_PT,
+    QCA_WDT_LOG_DUMP_TYPE_WLAN_MOD,
+    QCA_WDT_LOG_DUMP_TYPE_WLAN_MOD_DEBUGFS,
+    QCA_WDT_LOG_DUMP_TYPE_WLAN_MOD_INFO,
+    QCA_WDT_LOG_DUMP_TYPE_WLAN_MMU_INFO,
+    QCA_WDT_LOG_DUMP_TYPE_EMPTY,
+};
 
-int minidump_fill_segments_internal(const uint64_t start_addr, uint64_t size, minidump_tlv_type_t type, const char *name, int islowmem);
-int minidump_fill_segments(const uint64_t start_addr, uint64_t size, minidump_tlv_type_t type, const char *name);
-int minidump_store_module_info(const char *name , const unsigned long va, const unsigned long pa, minidump_tlv_type_t type);
+int minidump_fill_segments_internal(const uint64_t start_addr, uint64_t size, enum minidump_tlv_type type, const char *name, int islowmem);
+int minidump_fill_segments(const uint64_t start_addr, uint64_t size, enum minidump_tlv_type type, const char *name);
+int minidump_store_module_info(const char *name , const unsigned long va, const unsigned long pa, enum minidump_tlv_type type);
 int minidump_store_mmu_info(const unsigned long va, const unsigned long pa);
 int minidump_remove_segments(const uint64_t virtual_address);
 int do_minidump(void);
