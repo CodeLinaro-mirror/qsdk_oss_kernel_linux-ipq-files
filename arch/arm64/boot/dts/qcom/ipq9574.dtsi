@@ -61,7 +61,7 @@
 			#clock-cells = <0>;
 		};
 
-		xo_board_clk: xo-board-clk {
+		xo: xo {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
 		};
@@ -721,7 +721,7 @@
 		gcc: clock-controller@1800000 {
 			compatible = "qcom,ipq9574-gcc";
 			reg = <0x01800000 0x80000>;
-			clocks = <&xo_board_clk>,
+			clocks = <&xo>,
 				 <&sleep_clk>,
 				 <&bias_pll_ubi_nc_clk>,
 				 <&pcie30_phy0_pipe_clk>,
@@ -741,7 +741,7 @@
 				 <&bias_pll_nss_noc_clk>,
 				 <&bias_pll_ubi_nc_clk>,
 				 <&gcc_gpll0_out_aux>,
-				 <&xo_board_clk>;
+				 <&xo>;
 			clock-names = "bias_pll_cc_clk",
 				      "bias_pll_nss_noc_clk",
 				      "bias_pll_ubi_nc_clk",
@@ -2450,7 +2450,7 @@
 			#phy-cells = <0>;
 
 			clocks = <&gcc GCC_USB0_PHY_CFG_AHB_CLK>,
-				<&xo_board_clk>;
+				<&xo>;
 			clock-names = "cfg_ahb", "ref";
 
 			resets = <&gcc GCC_QUSB2_0_PHY_BCR>;
@@ -2463,7 +2463,7 @@
 			#phy-cells = <0>;
 
 			clocks = <&gcc GCC_USB0_AUX_CLK>,
-				 <&xo_board_clk>,
+				 <&xo>,
 				 <&gcc GCC_USB0_PHY_CFG_AHB_CLK>,
 				 <&gcc GCC_USB0_PIPE_CLK>;
 			clock-names = "aux",
@@ -2580,7 +2580,7 @@
 
 			clocks = <&gcc GCC_SDCC1_AHB_CLK>,
 				 <&gcc GCC_SDCC1_APPS_CLK>,
-				 <&xo_board_clk>,
+				 <&xo>,
 				 <&gcc GCC_SDCC1_ICE_CORE_CLK>;
 			clock-names = "iface", "core", "xo", "ice";
 			non-removable;
@@ -2831,7 +2831,7 @@
 				     "qcom,ipq6018-apcs-apps-global";
 			reg = <0x0b111000 0x1000>;
 			#clock-cells = <1>;
-			clocks = <&a73pll>, <&xo_board_clk>, <&gcc GPLL0>;
+			clocks = <&a73pll>, <&xo>, <&gcc GPLL0>;
 			clock-names = "pll", "xo", "gpll0";
 			#mbox-cells = <1>;
 		};
@@ -2840,7 +2840,7 @@
 			compatible = "qcom,ipq9574-a73pll";
 			reg = <0x0b116000 0x40>;
 			#clock-cells = <0>;
-			clocks = <&xo_board_clk>;
+			clocks = <&xo>;
 			clock-names = "xo";
 		};
 
