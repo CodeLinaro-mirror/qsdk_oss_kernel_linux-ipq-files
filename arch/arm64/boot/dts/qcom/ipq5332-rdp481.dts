@@ -12,7 +12,6 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/leds/common.h>
-#include "ipq5332-default-memory.dtsi"
 
     /*    Layout for IPQ5332 + QCN6432 + QCN9224
      * +==========+==============+========================+
@@ -52,10 +51,14 @@
      * | LINUX   |  0x4F500000  |           5MB           |
      * +---------+--------------+-------------------------+
      * |         |              |                         |
-     * |   MLO   |  0x4FA00000  |          17MB           |
+     * |   MLO   |  0x4FA00000  |          18MB           |
      * +---------+--------------+-------------------------+
      * |         |              |                         |
-     * |  WKK1   |  0x50B00000  |          50MB           |
+     * |  WKK1   |  0x50C00000  |          50MB           |
+     * |         |              |                         |
+     * +---------+--------------+-------------------------+
+     * |         |              |                         |
+     * |  MHI1   |    DYNAMIC   |          9MB            |
      * |         |              |                         |
      * +==================================================+
      * |                                                  |
@@ -73,13 +76,10 @@
 	compatible = "qcom,ipq5332-ap-mi01.14", "qcom,ipq5332-ap-rdp481", "qcom,ipq5332-rdp481", "qcom,ipq5332";
 
 	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
 
-		/delete-node/ m3_dump@4cc00000;
-		/delete-node/ q6_etr_dump@1;
-		/delete-node/ mlo_global_mem_0@0x4db00000;
-		/delete-node/ wcnss@4a900000;
-		/delete-node/ q6_caldb_region@4ce00000;
-		/delete-node/ qcn9224_pcie1@51e00000;
 		q6_mem_regions: q6_mem_regions@4A900000  {
 			no-map;
 			reg = <0x0 0x4a900000 0x0 0x4C00000>;
@@ -132,13 +132,19 @@
 
 		mlo_global_mem0: mlo_global_mem_0@4FA00000 {
 			no-map;
-			reg = <0x0 0x4FA00000 0x0 0x1100000>;
+			reg = <0x0 0x4FA00000 0x0 0x1200000>;
 		};
 
-		qcn9224_pcie1: qcn9224_pcie1@50B00000 {
+		qcn9224_pcie1: qcn9224_pcie1@50C00000 {
 			no-map;
-			reg = <0x0 0x50B00000 0x0 0x03200000>;
+			reg = <0x0 0x50C00000 0x0 0x03200000>;
 		};
+
+		mhi_region1: dma_pool1@1 {
+			compatible = "shared-dma-pool";
+			no-map;
+			size = <0x0 0x00900000>;
+                };
 	};
 
 	aliases {
@@ -453,13 +459,14 @@
 
 		q6v5_wcss: remoteproc@d100000 {
 			boot-args = <0x1 0x4 0x3 0x0 0x26 0x2>;
-			memory-region = <&q6_mem_regions>;
+			memory-region = <&q6_mem_regions>, <&mlo_global_mem0>;
 
 			q6_wcss_pd1: remoteproc_pd1 {
 				memory-region = <&q6_ipq5332_data>,
 						<&m3_dump>,
 						<&q6_etr_region>,
-						<&q6_ipq5332_caldb>;
+						<&q6_ipq5332_caldb>,
+						<&mlo_global_mem0>;
 			};
 
 			q6_wcss_pd2: remoteproc_pd2 {
@@ -483,7 +490,8 @@
 				memory-region = <&q6_qcn6432_data_1>,
 						<&m3_dump_qcn6432_1>,
 						<&q6_qcn6432_etr_1>,
-						<&q6_qcn6432_caldb_1>;
+						<&q6_qcn6432_caldb_1>,
+						<&mlo_global_mem0>;
 				status = "okay";
 			};
 		};
@@ -761,9 +769,44 @@
 	qcom,board_id = <0x060>;
 	memory-region = <&q6_qcn6432_data_1>;
 	qcom,wsi = <&wsi>;
+	qcom,pci_slot_id = <0>;
+	interrupts = <0 33 1>;
 	status = "okay";
 };
 
 &qcn9224_pcie1 {
 	status = "okay";
+};
+
+&mhi_region1 {
+	status = "ok";
+};
+
+&wifi3 {
+	hremote_node = <&qcn9224_pcie1>;
+	/* QCN9224 radio 6G
+	 * +=========+==============+=========+
+	 * |  Region | Start Offset |   Size  |
+	 * +---------+--------------+---------+
+	 * | HREMOTE |  0x50C00000  |   28MB  |
+	 * +---------+--------------+---------+
+	 * | M3 Dump |  0x52800000  |   1MB   |
+	 * +---------+--------------+---------+
+	 * |   ETR   |  0x52900000  |   1MB   |
+	 * +---------+--------------+---------+
+	 * |  Caldb  |  0x52A00000  |   8MB   |
+	 * +---------+--------------+---------+
+	 * |Pageable |  0x53200000  |  12MB   |
+	 * +==================================+
+	 */
+	base-addr = <0x50C00000>;
+	m3-dump-addr = <0x52800000>;
+	etr-addr = <0x52900000>;
+	caldb-addr = <0x52A00000>;
+	pageable-addr = <0x53200000>;
+	hremote-size = <0x1C00000>;
+	pageable-size = <0xC00000>;
+	tgt-mem-mode = <0x0>;
+	board_id = <0x16>;
+	status = "ok";
 };
