@@ -22,7 +22,7 @@
 			#clock-cells = <0>;
 		};
 
-		xo_board: xo-board-clk {
+		xo: xo {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
 		};
@@ -583,7 +583,7 @@
 			#clock-cells = <1>;
 			#reset-cells = <1>;
 			#power-domain-cells = <1>;
-			clocks = <&xo_board>,
+			clocks = <&xo>,
 				 <&sleep_clk>,
 				 <&pcie_2lane_phy_pipe_clk>,
 				 <&pcie_2lane_phy_pipe_clk_x1>,
@@ -593,7 +593,7 @@
 		nsscc: nsscc@39b00000{
 			compatible = "qcom,nsscc-ipq5332";
 			reg = <0x39b00000 0x80000>;
-			clocks = <&xo_board>,
+			clocks = <&xo>,
 				<&cmn_pll_nss_clk_200m>,
 				<&cmn_pll_nss_clk_300m>,
 				<&gcc_gpll0_out_aux>;
@@ -639,7 +639,7 @@
 
 			clocks = <&gcc GCC_SDCC1_AHB_CLK>,
 				 <&gcc GCC_SDCC1_APPS_CLK>,
-				 <&xo_board>;
+				 <&xo>;
 			clock-names = "iface", "core", "xo";
 			status = "disabled";
 		};
@@ -858,7 +858,7 @@
 				     "qcom,ipq6018-apcs-apps-global";
 			reg = <0x0b111000 0x1000>;
 			#clock-cells = <1>;
-			clocks = <&a53pll>, <&xo_board>, <&gcc_gpll0_out_aux>;
+			clocks = <&a53pll>, <&xo>, <&gcc_gpll0_out_aux>;
 			clock-names = "pll", "xo", "gpll0";
 			#mbox-cells = <1>;
 		};
@@ -867,7 +867,7 @@
 			compatible = "qcom,ipq5332-a53pll";
 			reg = <0x0b116000 0x40>;
 			#clock-cells = <0>;
-			clocks = <&xo_board>;
+			clocks = <&xo>;
 			clock-names = "xo";
 		};
 
