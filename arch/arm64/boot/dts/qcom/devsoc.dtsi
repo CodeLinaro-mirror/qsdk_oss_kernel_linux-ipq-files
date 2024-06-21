@@ -2029,6 +2029,11 @@
 				reg = <0x7b0 4>;
 			};
 
+			restart-reason-buf-q6-addr@7b4 {
+				compatible = "qcom,imem-restart-reason-buf-q6-addr";
+				reg = <0x7b4 4>;
+			};
+
 			restart-reason-buf-wr-addr@7ac {
 				compatible = "qcom,imem-restart-reason-buf-wr-addr";
 				reg = <0x7ac 4>;
@@ -2215,5 +2220,6 @@
 
 	ipq-debug {
 		compatible = "qcom,ipq-debug-devsoc";
+		qcom,rproc = <&q6v5_wcss>;
 	};
 };
