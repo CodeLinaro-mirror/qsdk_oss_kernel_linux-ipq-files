@@ -628,7 +628,7 @@
 	status = "okay";
 };
 
-&xo_board_clk {
+&xo {
 	clock-frequency = <24000000>;
 };
 
