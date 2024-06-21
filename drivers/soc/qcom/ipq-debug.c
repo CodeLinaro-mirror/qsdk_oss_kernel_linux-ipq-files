@@ -26,6 +26,8 @@
 #include <linux/of_device.h>
 #include <linux/notifier.h>
 #include <linux/panic_notifier.h>
+#include <linux/remoteproc/qcom_rproc.h>
+#include <linux/remoteproc.h>
 
 #define NON_SECURE_WATCHDOG             0x1
 #define AHB_TIMEOUT                     0x3
@@ -48,13 +50,18 @@
 #define DEVSOC_EXTERNAL_WDT		0x7
 #define DEVSOC_TME_L_FORCE_RESET	0x8
 #define DEVSOC_TSENS_RESET		0x9
-#define DEVSOC_AHB_TIMEOUT		0x10
+#define DEVSOC_AHB_TIMEOUT		0xA
+#define DEVSOC_INTERNAL_Q6_CRASH	0xB
 
 #define RESET_REASON_MSG_MAX_LEN        100
 
 struct restart_reason {
 	void __iomem *wr_addr;
 	struct notifier_block panic_blk;
+	struct notifier_block	ssr_blk;
+	struct notifier_block	atomic_ssr_blk;
+	void *cookie;
+	void *atomic_cookie;
 };
 
 static int debug_panic_handler(struct notifier_block *nb, unsigned long action,
@@ -62,11 +69,45 @@ static int debug_panic_handler(struct notifier_block *nb, unsigned long action,
 {
 	struct restart_reason *reason;
 	int val = DEVSOC_HLOS_PANIC;
+	int tmp;
 
 	reason = container_of(nb, struct restart_reason, panic_blk);
 
-	memcpy_toio(reason->wr_addr, &val, sizeof(int));
+	/* If the reason is DEVSOC_INTERNAL_Q6_CRASH, then the rproc recovery
+	 * is not enabled, so treat it as INTERNAL_Q6_CRASH, not as HLOS_PANIC.
+	 */
+	memcpy_fromio(&tmp, reason->wr_addr, sizeof(int));
+	if (tmp != DEVSOC_INTERNAL_Q6_CRASH)
+		memcpy_toio(reason->wr_addr, &val, sizeof(int));
+
 	iounmap(reason->wr_addr);
+
+	return NOTIFY_DONE;
+}
+
+static int ipq_debug_atomic_ssr_handler(struct notifier_block *nb,
+					unsigned long action, void *data)
+{
+	struct restart_reason *reason;
+	int val = DEVSOC_INTERNAL_Q6_CRASH;
+
+	reason = container_of(nb, struct restart_reason, atomic_ssr_blk);
+
+	memcpy_toio(reason->wr_addr, &val, sizeof(int));
+
+	return NOTIFY_DONE;
+}
+
+static int ipq_debug_ssr_handler(struct notifier_block *nb,
+				 unsigned long action, void *data)
+{
+	struct restart_reason *reason;
+	int val = 0;
+
+	reason = container_of(nb, struct restart_reason, ssr_blk);
+
+	if (action == QCOM_SSR_BEFORE_POWERUP)
+		memcpy_toio(reason->wr_addr, &val, sizeof(int));
 
 	return NOTIFY_DONE;
 }
@@ -122,7 +163,7 @@ static int restart_reason_logging(unsigned int reason)
 	return 0;
 }
 
-static int restart_reason_logging_devsoc(unsigned int reason)
+static int restart_reason_logging_devsoc(unsigned int reason, unsigned int q6_reason)
 {
 	char reset_reason_msg[RESET_REASON_MSG_MAX_LEN] = {};
 
@@ -167,6 +208,14 @@ static int restart_reason_logging_devsoc(unsigned int reason)
 			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
 					"%s", "AHB Timeout");
 			break;
+		case DEVSOC_INTERNAL_Q6_CRASH:
+			if (q6_reason != 0)
+				scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
+						"%s[0x%X]", "Internal Q6 Fatal error", q6_reason);
+			else
+				scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
+						"%s", "Internal Q6 WDT error");
+			break;
 	}
 
 	pr_info("reset_reason : %s[0x%X]\n", reset_reason_msg, reason);
@@ -204,11 +253,68 @@ void __iomem *ipq_debug_parse_address(struct device *dev,
 	return addr;
 }
 
+static bool is_rproc_device_available(void)
+{
+	struct device_node *node;
+
+	node = of_find_node_by_name(NULL, "remoteproc");
+	if (!of_device_is_available(node))
+		return false;
+
+	of_node_put(node);
+	return true;
+}
+
+static int ipq_debug_register_rproc_notifiers(struct platform_device *pdev,
+					      struct restart_reason *reason)
+{
+	struct rproc *rproc;
+	u32 rproc_node;
+	int ret;
+
+	if (!is_rproc_device_available())
+		return 0;
+
+	ret = of_property_read_u32(pdev->dev.of_node, "qcom,rproc", &rproc_node);
+	if (ret) {
+		atomic_notifier_chain_unregister(&panic_notifier_list,
+						 &reason->panic_blk);
+		return ret;
+	}
+
+	rproc = rproc_get_by_phandle(rproc_node);
+	if (!rproc) {
+		atomic_notifier_chain_unregister(&panic_notifier_list,
+						 &reason->panic_blk);
+		return -EPROBE_DEFER;
+	}
+
+	reason->atomic_ssr_blk.notifier_call = ipq_debug_atomic_ssr_handler;
+	reason->atomic_cookie = qcom_register_ssr_atomic_notifier(rproc->name,
+								  &reason->atomic_ssr_blk);
+	if (IS_ERR_OR_NULL(reason->atomic_cookie)) {
+		dev_err(&pdev->dev, "failed to register the atomic ssr notifier, ret is %ld\n",
+			PTR_ERR(reason->atomic_cookie));
+		return PTR_ERR(reason->atomic_cookie);
+	}
+
+	reason->ssr_blk.notifier_call = ipq_debug_ssr_handler;
+	reason->cookie = qcom_register_ssr_notifier(rproc->name,
+						    &reason->ssr_blk);
+	if (IS_ERR_OR_NULL(reason->cookie)) {
+		dev_err(&pdev->dev, "failed to register the ssr notifier, ret is %ld\n",
+			PTR_ERR(reason->cookie));
+		return PTR_ERR(reason->cookie);
+	}
+
+	return 0;
+}
+
 static int ipq_debug_probe(struct platform_device *pdev)
 {
 	struct restart_reason *reason;
-	unsigned int reset_reason;
-	void __iomem *imem_base;
+	unsigned int reset_reason, q6_reason;
+	void __iomem *imem_base, *q6_base;
 	struct device_node *np;
 	int ret;
 
@@ -224,22 +330,15 @@ static int ipq_debug_probe(struct platform_device *pdev)
 	memcpy_fromio(&reset_reason, imem_base, 4);
 	iounmap(imem_base);
 
-	/*
-	 * Restart reason codes are different for devsoc compared to previous
-	 * SoCs
-	 */
-	if (of_device_is_compatible(np, "qcom,ipq-debug-devsoc"))
-		restart_reason_logging_devsoc(reset_reason);
-	else
+	if (of_device_is_compatible(np, "qcom,ipq-debug")) {
 		restart_reason_logging(reset_reason);
+		return 0;
+	}
 
 	/*
 	 * For devsoc, kernel needs to write the restart reason in IMEM
-	 * during the kernel panic.
+	 * during the kernel panic and Q6 crash.
 	 */
-
-	if (!of_device_is_compatible(np, "qcom,ipq-debug-devsoc"))
-		return 0;
 
 	reason = devm_kzalloc(&pdev->dev, sizeof(*reason), GFP_KERNEL);
 	if (!reason)
@@ -250,6 +349,14 @@ static int ipq_debug_probe(struct platform_device *pdev)
 	if (IS_ERR_OR_NULL(reason->wr_addr))
 		return PTR_ERR(reason->wr_addr);
 
+	q6_base = ipq_debug_parse_address(&pdev->dev,
+					  "qcom,imem-restart-reason-buf-q6-addr");
+	if (IS_ERR_OR_NULL(q6_base))
+		return PTR_ERR(q6_base);
+
+	memcpy_fromio(&q6_reason, q6_base, 4);
+	iounmap(q6_base);
+
 	reason->panic_blk.notifier_call = debug_panic_handler;
 	ret = atomic_notifier_chain_register(&panic_notifier_list,
 					     &reason->panic_blk);
@@ -258,6 +365,12 @@ static int ipq_debug_probe(struct platform_device *pdev)
 			ret);
 		return ret;
 	}
+
+	ret = ipq_debug_register_rproc_notifiers(pdev, reason);
+	if (ret)
+		return ret;
+
+	restart_reason_logging_devsoc(reset_reason, q6_reason);
 
 	platform_set_drvdata(pdev, reason);
 
@@ -271,6 +384,15 @@ static int ipq_debug_remove(struct platform_device *pdev)
 	if (reason)
 		atomic_notifier_chain_unregister(&panic_notifier_list,
 						 &reason->panic_blk);
+
+	if (reason->atomic_cookie)
+		qcom_unregister_ssr_atomic_notifier(reason->atomic_cookie,
+						    &reason->atomic_ssr_blk);
+
+	if (reason->cookie)
+		qcom_unregister_ssr_notifier(reason->cookie,
+					     &reason->ssr_blk);
+
 	return 0;
 }
 
