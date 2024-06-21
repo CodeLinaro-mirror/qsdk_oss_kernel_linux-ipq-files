@@ -965,7 +965,10 @@
 #else
 	memory-region = <&q6_qcn6432_data_1>;
 #endif
+	qcom,pci_slot_id = <0>;
 	qcom,wsi = <&wsi>;
+	interrupt-names = "umac_reset";
+	interrupts = <0 33 1>;
 	status = "ok";
 };
 
@@ -988,6 +991,9 @@
 #else
 	memory-region = <&q6_qcn6432_data_2>;
 #endif
+	qcom,pci_slot_id = <1>;
 	qcom,wsi = <&wsi>;
+	interrupt-names = "umac_reset";
+	interrupts = <0 410 1>;
 	status = "ok";
 };
