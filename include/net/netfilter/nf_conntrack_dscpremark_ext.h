@@ -1,7 +1,7 @@
 /*
  **************************************************************************
  * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
  * above copyright notice and this permission notice appear in all copies.
@@ -50,6 +50,8 @@ struct nf_ct_dscpremark_ext {
 	__u16 igs_reply_qos_tag;	/* Reply direction ingress packet priority */
 	__u8 flow_dscp;		/* IP DSCP value for original direction */
 	__u8 reply_dscp;	/* IP DSCP value for reply direction */
+	__u8 flow_int_pri;	/* Original direction packet int_pri */
+	__u8 reply_int_pri;	/* Reply direction packet int_pri */
 	__u16 rule_flags;	/* Rule Validity flags */
 	__u16 flow_set_flags;	/* Original direction set flags */
 	__u16 return_set_flags;	/* Reply direction set flags */
