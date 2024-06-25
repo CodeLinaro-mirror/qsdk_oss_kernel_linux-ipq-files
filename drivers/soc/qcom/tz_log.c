@@ -53,6 +53,11 @@ MODULE_PARM_DESC(paniconaccessviolation, "Panic on Access Violation detected: 0,
 
 static char *smmu_state;
 
+enum TZ_LOG_VERSIONS {
+	TZ_LOG_VER_1,
+	TZ_LOG_VER_2,
+};
+
 /**
  * struct tzbsp_log_pos_t - log position structure
  * @wrap: ring buffer wrap-around ctr
@@ -62,6 +67,17 @@ struct tzbsp_log_pos_t {
 	uint16_t wrap;
 	uint16_t offset;
 };
+
+/**
+ * struct tzbsp_log_pos_v2_t - log position structure
+ * @wrap: ring buffer wrap-around ctr
+ * @offset: ring buffer current position
+ */
+struct tzbsp_log_pos_v2_t {
+	uint32_t wrap;
+	uint32_t offset;
+};
+
 
 /**
  * struct tz_hvc_log_struct - TZ / HVC log info structure
@@ -95,6 +111,7 @@ struct tz_hvc_log_struct {
 	bool tz_kpss;
 	bool is_diag_id;
 	bool is_encrypted;
+	bool version;
 };
 
 struct tzbsp_encr_log_t {
@@ -237,8 +254,9 @@ static int tz_hvc_log_open(struct inode *inode, struct file *file)
 	uint32_t *diag_buf;
 	uint16_t ring;
 	struct tzbsp_log_pos_t *log;
-	uint16_t offset;
-	uint16_t wrap;
+	struct tzbsp_log_pos_v2_t *log_v2;
+	uint32_t offset;
+	uint32_t wrap;
 	int ret;
 
 	file->private_data = inode->i_private;
@@ -295,9 +313,16 @@ static int tz_hvc_log_open(struct inode *inode, struct file *file)
 
 	diag_buf = (uint32_t *) ker_buf;
 	ring = diag_buf[ring_off];
-	log = (struct tzbsp_log_pos_t *) &diag_buf[log_pos_info_off];
-	offset = log->offset;
-	wrap = log->wrap;
+
+	if (tz_hvc_log->version) {
+		log_v2 = (struct tzbsp_log_pos_v2_t *) &diag_buf[log_pos_info_off];
+		offset = log_v2->offset;
+		wrap = log_v2->wrap;
+	} else {
+		log = (struct tzbsp_log_pos_t *) &diag_buf[log_pos_info_off];
+		offset = log->offset;
+		wrap = log->wrap;
+	}
 
 	/* To support IPQ806x platform */
 	if (tz_hvc_log->tz_kpss) {
@@ -403,7 +428,11 @@ static int qti_tzlog_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	if(of_device_is_compatible(np, "qti,tzlog-ipq54xx")) {
+		tz_hvc_log->version = TZ_LOG_VER_2;
+	}
 	tz_hvc_log->is_diag_id = !(of_device_is_compatible(np, "qti,tzlog-ipq5332") ||
+				   of_device_is_compatible(np, "qti,tzlog-ipq54xx") ||
 				   of_device_is_compatible(np, "qti,tzlog-ipq9574") ||
 				   qti_scm_is_tz_log_encryption_supported());
 	if (!tz_hvc_log->is_diag_id) {
@@ -591,6 +620,7 @@ static int qti_tzlog_remove(struct platform_device *pdev)
 static const struct of_device_id qti_tzlog_of_match[] = {
 	{ .compatible = "qti,tzlog" },
 	{ .compatible = "qti,tzlog-ipq5332" },
+	{ .compatible = "qti,tzlog-ipq54xx" },
 	{ .compatible = "qti,tzlog-ipq9574" },
 	{}
 };
