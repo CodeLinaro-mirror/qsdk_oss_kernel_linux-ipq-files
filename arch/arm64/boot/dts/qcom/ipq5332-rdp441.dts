@@ -591,6 +591,7 @@
 #endif
 	hremote_node = <&qcn9224_pcie0>;
 	board_id = <0x15>;
+	node_id = <0x0>;
 	status = "okay";
 };
 
@@ -609,6 +610,7 @@
 	/* QCN9224 radio 6G */
 	hremote_node = <&qcn9224_pcie1>;
 	board_id = <0x16>;
+	node_id = <0x1>;
 	status = "okay";
 };
 #endif

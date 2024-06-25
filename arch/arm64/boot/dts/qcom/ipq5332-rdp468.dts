@@ -336,7 +336,19 @@
 	status = "okay";
 };
 
+&mhi_region1 {
+	status = "okay";
+};
+
 &qcn9224_pcie1 {
+	status = "okay";
+};
+
+/* QCN9224 5G+6G */
+&wifi4 {
+	hremote_node = <&qcn9224_pcie1>;
+	board_id = <0x1019>;
+	node_id = <0x1>;
 	status = "okay";
 };
 
