@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 /*
- * DEVSOC RDP487 board device tree source
+ * DEVSOC RDP466 board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
@@ -8,11 +8,11 @@
 
 /dts-v1/;
 
-#include "devsoc-rdp-common.dtsi"
+#include "ipq5424-rdp-common.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. DEVSOC RDP487";
-	compatible = "qcom,devsoc-rdp487", "qcom,devsoc";
+	model = "Qualcomm Technologies, Inc. DEVSOC RDP466";
+	compatible = "qcom,devsoc-rdp466", "qcom,devsoc";
 
 	soc@0 {
 		qupv3: geniqup@1ac0000 {
@@ -58,11 +58,39 @@
 	};
 };
 
+&pcie3_phy {
+	status = "okay";
+};
+
+&pcie3 {
+	status = "okay";
+
+	pcie3_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
 &qusb_phy_1 {
 	status = "okay";
 };
 
 &usb2 {
+	status = "okay";
+};
+
+&qusb_phy_0 {
+	status = "okay";
+};
+
+&ssphy_0 {
+	status = "okay";
+};
+
+&usb3 {
 	status = "okay";
 };
 
