@@ -152,6 +152,10 @@
 						port_id = <1>;
 						forced-speed = <2500>;
 						forced-duplex = <1>;
+						switch_external {
+							switch_handle = <&switch1>;
+							switch_cpu_port = <0>;
+						};
 					};
 					port@1 {
 						port_id = <2>;
@@ -163,7 +167,7 @@
 				};
 			};
 
-			ess-switch1@1 {
+			switch1: ess-switch1@1 {
 				compatible = "qcom,ess-switch-qca8386";
 				device_id = <1>;
 				switch_access_mode = "mdio";
