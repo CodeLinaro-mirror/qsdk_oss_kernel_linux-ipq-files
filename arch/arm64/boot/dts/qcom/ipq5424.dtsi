@@ -2443,3 +2443,7 @@
 		};
 	};
 };
+
+#ifndef __CPU_THERMAL__
+#include "ipq5424-thermald.dtsi"
+#endif
