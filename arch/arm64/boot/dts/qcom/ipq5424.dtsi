@@ -142,6 +142,14 @@
 		method = "smc";
 	};
 
+	qti,tzlog {
+		compatible = "qti,tzlog-ipq54xx";
+		interrupts = <GIC_SPI 56 IRQ_TYPE_EDGE_RISING>;
+		qti,tz-diag-buf-size = <0x3000>;
+		qti,tz-ring-off = <7>;
+		qti,tz-log-pos-info-off = <822>;
+	};
+
 	reserved-memory {
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -2023,6 +2031,11 @@
 
 			#address-cells = <1>;
 			#size-cells = <1>;
+
+			tz-log-buf-addr@720 {
+				compatible = "qcom,msm-imem-tz-log-buf-addr";
+				reg = <0x720 4>;
+			};
 
 			restart-reason-buf-addr@7b0 {
 				compatible = "qcom,msm-imem-restart-reason-buf-addr";
