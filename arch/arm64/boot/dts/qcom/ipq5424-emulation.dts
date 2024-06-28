@@ -15,6 +15,7 @@
 	compatible = "qcom,devsoc-ap-emulation", "qcom,devsoc";
 
 	/delete-node/ firmware;
+	/delete-node/ qti,tzlog;
 
 	/*Timer freq for rumi = timer freq / 150*/
 	clocks {
