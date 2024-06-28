@@ -257,3 +257,7 @@
 &q6_region {
 	status = "okay";
 };
+
+&tsens {
+	status = "disabled";
+};
