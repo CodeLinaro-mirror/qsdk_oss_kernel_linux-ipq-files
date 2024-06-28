@@ -33,6 +33,10 @@ properties:
         * chip_info: Chip index and adjacent related information based
                      on WSI order for all chipsets.
                      <chip_idx num_adj_chips adj_idx[0] adj_idx[1]>
+                     For different chipsets, same adjacent chip id's should not
+                     be in same index. For example, Let's consider three chipsets(0 1 2),
+                     For chip_idx 1,adjacent chip id should be 2 0 as 2 is
+                     immediate adjacent chip not 0 2.
 
 required:
   - compatible
