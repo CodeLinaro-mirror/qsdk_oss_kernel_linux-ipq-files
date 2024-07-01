@@ -116,6 +116,21 @@ struct tmel_licensing_ToBeDel_licenses {
 	struct tmel_msg_param_type_buf_out toBeDelLicenses;
 } __packed;
 
+struct tmel_log_config {
+	u8 component_id;
+	u8 log_level;
+};
+
+struct tmel_log_get_message {
+	u32 status;
+	struct tmel_msg_param_type_buf_out log_buf;
+} __packed;
+
+struct tmel_log_set_config_message {
+	u32 status;
+	struct tmel_msg_param_type_buf_in log;
+} __packed;
+
 #ifdef CONFIG_QCOM_TMELCOM
 int tmelcom_init_attestation(u32 *key_buf, u32 key_buf_len, u32 *key_buf_size);
 int tmelcom_qwes_getattestation_report(u32 *req_buf, u32 req_buf_len,
@@ -135,6 +150,8 @@ int tmelcom_licensing_install(void *license_buf, u32 license_len, void *ident_bu
 			      u32 ident_len, u32 *ident_used_len, u32 *flags);
 int tmelcom_licensing_get_toBeDel_licenses(void *toBeDelLic_buf, u32 toBeDelLic_len,
 					   u32 *used_toBeDelLic_len);
+int tmelcom_set_tmel_log_config(void *buf, u32 size);
+int tmelcom_get_tmel_log(void *buf, u32 max_buf_size, u32 *size);
 
 #else
 static inline int tmelcom_fuse_list_read(struct tmel_fuse_payload *fuse,
@@ -204,6 +221,16 @@ static inline int tmelcom_licensing_install(void *license_buf, u32 license_len,
 static inline int tmelcom_licensing_get_toBeDel_licenses(void *toBeDelLic_buf,
 							 u32 toBeDelLic_len,
 							 u32 *used_toBeDelLic_len)
+{
+	return -ENOTSUPP;
+}
+
+static inline int tmelcom_set_tmel_log_config(void *buf, u32 size)
+{
+	return -ENOTSUPP;
+}
+
+static inline int tmelcom_get_tmel_log(void *buf, u32 max_buf_size,  u32 *size)
 {
 	return -ENOTSUPP;
 }
