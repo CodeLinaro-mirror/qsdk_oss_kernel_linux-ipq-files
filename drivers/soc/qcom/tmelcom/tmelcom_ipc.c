@@ -115,6 +115,77 @@ int tmelcom_secboot_teardown(u32 sw_id, u32 secondary_sw_id)
 	return ret;
 }
 
+int tmelcom_set_tmel_log_config(void *buf, u32 size)
+{
+	int ret;
+	struct tmel_log_set_config_message msg = {0};
+	struct device *dev = tmelcom_get_device();
+	dma_addr_t dma_buf;
+
+	if (!dev)
+		return -ENODEV;
+
+	dma_buf = dma_map_single(dev, buf,
+				     size, DMA_BIDIRECTIONAL);
+	ret = dma_mapping_error(dev, dma_buf);
+	if (ret) {
+		dev_err(dev, "DMA Mapping Error : %d\n", ret);
+		return -EINVAL;
+	}
+
+	msg.status = TMEL_ERROR_GENERIC;
+	msg.log.buf = (u32)dma_buf;
+	msg.log.buf_len = size;
+
+	ret = tmelcom_process_request(TMEL_MSG_UID_LOG_SET_CONFIG, &msg,
+					sizeof(msg));
+	if (ret) {
+		dev_err(dev, "%s : Failed to send IPC: %d\n", __func__, ret);
+	} else if (msg.status) {
+		dev_err(dev, "%s : IPC failed with status: %d\n", __func__, ret);
+		ret = msg.status;
+	}
+	dma_unmap_single(dev, dma_buf, size, DMA_BIDIRECTIONAL);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tmelcom_set_tmel_log_config);
+
+int tmelcom_get_tmel_log(void *buf, uint32_t max_buf_size, uint32_t *size)
+{
+	int ret;
+	struct tmel_log_get_message msg = {0};
+	struct device *dev = tmelcom_get_device();
+	dma_addr_t dma_log_buf;
+
+	if (!dev)
+		return -ENODEV;
+
+	dma_log_buf = dma_map_single(dev, buf,
+				     max_buf_size, DMA_BIDIRECTIONAL);
+	ret = dma_mapping_error(dev, dma_log_buf);
+	if (ret) {
+		dev_err(dev, "DMA Mapping Error : %d\n", ret);
+		return -EINVAL;
+	}
+
+	msg.status = TMEL_ERROR_GENERIC;
+	msg.log_buf.buf = (u32)dma_log_buf;
+	msg.log_buf.buf_len = max_buf_size;
+
+	ret = tmelcom_process_request(TMEL_MSG_UID_LOG_GET, &msg,
+					sizeof(msg));
+	if (ret) {
+		dev_err(dev, "%s : Failed to send IPC: %d\n", __func__, ret);
+	} else if (msg.status) {
+		dev_err(dev, "%s : IPC failed with status: %d\n", __func__, ret);
+		ret = msg.status;
+	}
+	*size = msg.log_buf.out_buf_len;
+	dma_unmap_single(dev, dma_log_buf, max_buf_size, DMA_BIDIRECTIONAL);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tmelcom_get_tmel_log);
+
 int tmelcom_init_attestation(u32 *key_buf, u32 key_buf_len, u32 *key_buf_size)
 {
 	int ret;

@@ -1607,6 +1607,11 @@
 			compatible = "qcom,tmelcom-qmp-client";
 			mboxes = <&qmp_tmel 0>;
 			status = "disabled";
+
+			tmel-log {
+				compatible = "qcom,tmel-log";
+			};
+
 		};
 
 		watchdog: watchdog@f410000 {

@@ -16,6 +16,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/uaccess.h>
+#include <linux/of_platform.h>
 
 #include "tmelcom.h"
 #include "tmelcom_message_uids.h"
@@ -212,7 +213,6 @@ tmelcom_receive_end:
 static int tmelcom_probe(struct platform_device *pdev)
 {
 	struct tmelcom *tdev;
-
 	tdev = devm_kzalloc(&pdev->dev, sizeof(*tdev), GFP_KERNEL);
 	if (!tdev)
 		return -ENOMEM;
@@ -248,6 +248,9 @@ static int tmelcom_probe(struct platform_device *pdev)
 	dev_set_drvdata(&pdev->dev, tdev);
 
 	tmeldev = tdev;
+
+	if (of_platform_populate(pdev->dev.of_node, NULL, NULL, &pdev->dev))
+		dev_err(&pdev->dev, "tmel_log populate failed!!\n");
 
 	pr_info("tmelcom probe success\n");
 	return 0;
