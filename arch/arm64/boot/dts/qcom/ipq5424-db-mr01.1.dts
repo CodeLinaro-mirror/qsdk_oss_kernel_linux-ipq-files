@@ -17,6 +17,18 @@
 	soc@0 {
 		qupv3: geniqup@1ac0000 {
 
+			i2c0: i2c@1a88000 {
+				pinctrl-0 = <&qup_i2c0_default>;
+				pinctrl-names = "default";
+				status = "okay";
+			};
+
+			i2c1: i2c@1a8c000 {
+				pinctrl-0 = <&qup_i2c1_default>;
+				pinctrl-names = "default";
+				status = "okay";
+			};
+
 			spi0: spi@1a90000 {
 				pinctrl-0 = <&qup_spi0_default>;
 				pinctrl-names = "default";
@@ -29,6 +41,35 @@
 					reg = <0>;
 					spi-max-frequency = <50000000>;
 				};
+			};
+
+			/delete-node/ spi@1a94000;
+
+			i2c2: i2c@1a94000 {
+				compatible = "qcom,geni-i2c";
+				reg = <0x1a94000 0x4000>;
+				/* i2c2 shares spi1 clock, so use spi1_clk as per gcc driver */
+				clocks = <&gcc GCC_QUPV3_SPI1_CLK>;
+				clock-names = "se";
+				clock-frequency = <400000>;
+				interrupts = <GIC_SPI 344 IRQ_TYPE_LEVEL_HIGH>;
+				pinctrl-0 = <&qup_i2c2_default>;
+				pinctrl-names = "default";
+				status = "okay";
+			};
+		};
+
+		leds {
+			compatible = "gpio-leds";
+			pinctrl-0 = <&gpio_leds_default>;
+			pinctrl-names = "default";
+
+			led-0 {
+				color = <LED_COLOR_ID_GREEN>;
+				function = LED_FUNCTION_WLAN;
+				gpios = <&tlmm 41 GPIO_ACTIVE_HIGH>;
+				linux,default-trigger = "phy0tx";
+				default-state = "off";
 			};
 		};
 	};
@@ -143,4 +184,46 @@
 
 &q6v5_wcss {
 	status = "okay";
+};
+
+&tlmm {
+	qup_i2c1_default: qup-i2c1-default-state {
+		qup_i2c1_scl {
+			pins = "gpio27";
+			function = "i2c1_scl";
+			drive-strength = <8>;
+			bias-disable;
+		};
+		qup_i2c1_sda {
+			pins = "gpio29";
+			function = "i2c1_sda";
+			drive-strength = <8>;
+			bias-disable;
+		};
+	};
+
+	qup_i2c2_default: qup-i2c2-default-state {
+		qup_i2c2_scl {
+			pins = "gpio47";
+			/* i2c2 shares spi1, so map spi1_miso function as per pinctrl driver */
+			function = "spi1_miso";
+			drive-strength = <8>;
+			bias-disable;
+		};
+
+		qup_i2c2_sda {
+			pins = "gpio48";
+			/* i2c2 shares spi1, so map spi1_mosi function as per pinctrl driver */
+			function = "spi1_mosi";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+	};
+
+	gpio_leds_default: gpio-leds-default-state {
+		pins = "gpio41";
+		function = "gpio";
+		drive-strength = <8>;
+		bias-pull-down;
+	};
 };
