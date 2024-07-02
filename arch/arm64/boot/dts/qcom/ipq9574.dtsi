@@ -226,7 +226,7 @@
 
 	firmware {
 		qfprom {
-			compatible = "qcom,qfprom-sec";
+			compatible = "qcom,qfprom-ipq9574-sec";
 			img-addr = <0x4a100000>;
 			img-size = <0x500000>;
 			scm-cmd-id = <0x1f>;
