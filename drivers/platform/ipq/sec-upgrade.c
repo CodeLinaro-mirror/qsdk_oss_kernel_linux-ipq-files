@@ -34,6 +34,7 @@
 #include <linux/uaccess.h>
 #include <linux/io.h>
 #include <linux/of.h>
+#include <linux/of_device.h>
 #include <linux/elf.h>
 #include <linux/decompress/unlzma.h>
 #include <linux/decompress/generic.h>
@@ -610,23 +611,14 @@ static struct device_attribute rootfs_attr =
 struct kobject *sec_kobj;
 
 static ssize_t
-store_list_ipq5322_fuse(struct device *dev, struct device_attribute *attr,
-		const char *buf, size_t count)
+show_list_ipq5322_fuse(struct device *dev, struct device_attribute *attr,
+		       char *buf)
 {
 	int ret = 0;
 	int index, next = 0;
 	unsigned long value;
 	unsigned long base_addr = 0xA00E8;
 	struct fuse_payload *fuse = NULL;
-
-	ret = kstrtoul(buf, 0, &value);
-	if (ret < 0)
-		return ret;
-
-	if (value != 1) {
-		pr_err("%s : Invalid input\n", __func__);
-		return -EINVAL;
-	}
 
 	fuse = kzalloc((sizeof(struct fuse_payload) * MAX_FUSE_ADDR_SIZE),
 			GFP_KERNEL);
@@ -639,7 +631,7 @@ store_list_ipq5322_fuse(struct device *dev, struct device_attribute *attr,
 		fuse[index].fuse_addr = base_addr + next;
 		next += 0x8;
 	}
-	ret = qcom_scm_get_ipq5332_fuse_list(fuse,
+	ret = qcom_scm_get_ipq_fuse_list(fuse,
 			sizeof(struct fuse_payload ) * MAX_FUSE_ADDR_SIZE);
 	if (ret) {
 		pr_err("SCM Call failed..SCM Call return value = %d\n", ret);
@@ -665,7 +657,57 @@ store_list_ipq5322_fuse(struct device *dev, struct device_attribute *attr,
 
 fuse_alloc_err:
 	kfree(fuse);
-	return count;
+	return ret;
+}
+
+static ssize_t
+show_list_ipq9574_fuse(struct device *dev, struct device_attribute *attr,
+		       char *buf)
+{
+	int ret = 0;
+	int index = 0, next = 0;
+	unsigned long value;
+	unsigned long base_addr = 0xA00D8;
+	struct fuse_payload_ipq9574 *fuse = NULL;
+
+	fuse = kzalloc((sizeof(struct fuse_payload_ipq9574) *
+			IPQ9574_MAX_FUSE_ADDR_SIZE), GFP_KERNEL);
+	if (fuse == NULL)
+		return -ENOMEM;
+
+	fuse[index++].fuse_addr = 0xA00C0;
+	fuse[index].fuse_addr = 0xA00C4;
+
+	for (index = 2; index < IPQ9574_MAX_FUSE_ADDR_SIZE; index++) {
+		fuse[index].fuse_addr = base_addr + next;
+		next += 0x4;
+	}
+	ret = qcom_scm_get_ipq_fuse_list(fuse,
+				sizeof(struct fuse_payload_ipq9574) *
+				IPQ9574_MAX_FUSE_ADDR_SIZE);
+	if (ret) {
+		pr_err("SCM Call failed..SCM Call return value = %d\n", ret);
+		goto fuse_alloc_err;
+	}
+
+	pr_info("Fuse Name\tAddress\t\tValue\n");
+	pr_info("------------------------------------------------\n");
+
+	pr_info("TME_AUTH_EN\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
+			fuse[0].val & 0x80);
+	pr_info("TME_OEM_ID\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
+			fuse[0].val & 0xFFFF0000);
+	pr_info("TME_PRODUCT_ID\t0x%08X\t0x%08X\n", fuse[1].fuse_addr,
+			fuse[1].val & 0xFFFF);
+
+	for (index = 2; index < IPQ9574_MAX_FUSE_ADDR_SIZE; index++) {
+		pr_info("TME_MRC_HASH\t0x%08X\t0x%08X\n",
+				fuse[index].fuse_addr, fuse[index].val);
+	}
+
+fuse_alloc_err:
+	kfree(fuse);
+	return ret;
 }
 
 static ssize_t
@@ -771,7 +813,10 @@ static struct device_attribute sec_dat_attr =
 	__ATTR(sec_dat, 0200, NULL, store_sec_dat);
 
 static struct device_attribute list_ipq5322_fuse_attr =
-	__ATTR(list_ipq5322_fuse, 0200, NULL, store_list_ipq5322_fuse);
+	__ATTR(list_ipq5322_fuse, 0444, show_list_ipq5322_fuse, NULL);
+
+static struct device_attribute list_ipq9574_fuse_attr =
+	__ATTR(list_ipq9574_fuse, 0444, show_list_ipq9574_fuse, NULL);
 
 /*
  * Do not change the order of attributes.
@@ -890,6 +935,8 @@ static int qfprom_probe(struct platform_device *pdev)
 	int err, ret;
 	int16_t sw_bitmap = 0;
 	struct device_node *np = pdev->dev.of_node;
+	struct device *dev = &pdev->dev;
+	const struct of_device_id *match;
 	u32 scm_cmd_id;
 	struct resource *res;
 	void __iomem *secure_boot = NULL;
@@ -990,16 +1037,30 @@ static int qfprom_probe(struct platform_device *pdev)
 			__func__, sec_dat_attr.attr.name, err);
 	}
 
-	err = device_create_file(&device_qfprom, &list_ipq5322_fuse_attr);
+	/* Error values are printed in qfprom_create_files API. Skipping the
+	   return value check to proceed with creating the next sysfs entry */
+	ret = qfprom_create_files(ARRAY_SIZE(qfprom_attrs), sw_bitmap);
+
+	match  = of_match_device(dev->driver->of_match_table, dev);
+	if (!match)
+		return -EINVAL;
+	err = device_create_file(&device_qfprom, match->data);
 	if (err) {
-		pr_err("%s: device_create_file(%s)=%d\n",
-			__func__, list_ipq5322_fuse_attr.attr.name, err);
+		pr_err("%s: device_create_file with error %d\n",
+			__func__, err);
 	}
-	return qfprom_create_files(ARRAY_SIZE(qfprom_attrs), sw_bitmap);
+	return err;
 }
 
 static const struct of_device_id qcom_qfprom_dt_match[] = {
 	{ .compatible = "qcom,qfprom-sec",},
+	{
+		.compatible = "qcom,qfprom-ipq9574-sec",
+		.data = (void *)&list_ipq9574_fuse_attr,
+	}, {
+		.compatible = "qcom,qfprom-ipq5332-sec",
+		.data = (void *)&list_ipq5322_fuse_attr,
+	},
 	{}
 };
 
