@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk.h>
@@ -12,8 +12,8 @@
 #include <linux/of.h>
 #include <linux/regmap.h>
 
-#include <dt-bindings/clock/qcom,devsoc-nsscc.h>
-#include <dt-bindings/reset/qcom,devsoc-nsscc.h>
+#include <dt-bindings/clock/qcom,ipq5424-nsscc.h>
+#include <dt-bindings/reset/qcom,ipq5424-nsscc.h>
 
 #include "clk-alpha-pll.h"
 #include "clk-branch.h"
@@ -1432,5 +1432,5 @@ static void __exit nss_cc_ipq54xx_exit(void)
 }
 module_exit(nss_cc_ipq54xx_exit);
 
-MODULE_DESCRIPTION("QTI NSS_CC MARINA Driver");
+MODULE_DESCRIPTION("Qualcomm Technologies, Inc. NSSCC IPQ5424 Driver");
 MODULE_LICENSE("GPL v2");
