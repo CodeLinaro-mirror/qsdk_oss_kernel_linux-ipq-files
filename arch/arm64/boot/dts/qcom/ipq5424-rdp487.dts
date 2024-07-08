@@ -45,6 +45,12 @@
 				default-state = "off";
 			};
 		};
+
+		ess-instance {
+			ess-switch1@1 {
+				link-intr-gpio = <&tlmm 10 GPIO_ACTIVE_HIGH>;
+			};
+		};
 	};
 };
 
