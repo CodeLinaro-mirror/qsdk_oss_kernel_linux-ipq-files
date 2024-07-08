@@ -313,6 +313,8 @@
 			id = <0>;
 			num_chip = <2>;
 			status = "okay";
+			chip_info = <0 1 1>,
+				    <1 1 0>;
 		};
 	};
 };
@@ -399,6 +401,7 @@
 			memory-region = <&qcn9224_pcie0>;
 			qcom,board_id = <0x1d>;
 			qcom,wsi = <&wsi>;
+			qcom,wsi_index = <0>;
 		};
 	};
 };
@@ -423,6 +426,7 @@
 			memory-region = <&qcn9224_pcie1>;
 			qcom,board_id = <0x15>;
 			qcom,wsi = <&wsi>;
+			qcom,wsi_index = <1>;
 		};
 	};
 };

@@ -3,7 +3,7 @@
  * IPQ5332 RDP477 board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 /dts-v1/;
@@ -618,6 +618,9 @@
 		wsi: wsi {
 			id = <0>;
 			num_chip = <2>;
+			status = "okay";
+			chip_info = <0 1 1>,
+                                    <1 1 0>;
 		};
 
 		q6v5_wcss: remoteproc@d100000 {
@@ -880,6 +883,7 @@
 	qcom,board_id = <0x1b>;
 	memory-region = <&q6_ipq5332_data>;
 	qcom,wsi = <&wsi>;
+	qcom,wsi_index = <0>;
 	status = "ok";
 };
 
@@ -902,6 +906,7 @@
 	qcom,board_id = <0x060>;
 	memory-region = <&q6_qcn6432_data_1>;
 	qcom,wsi = <&wsi>;
+	qcom,wsi_index = <1>;
 	qcom,pci_slot_id = <0>;
 	interrupts = <0 33 1>;
 	status = "ok";

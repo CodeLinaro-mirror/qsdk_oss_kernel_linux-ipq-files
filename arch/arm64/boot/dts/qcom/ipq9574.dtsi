@@ -836,7 +836,7 @@
 		};
 
 		wsi: wsi {
-			status = "okay";
+			status = "disabled";
 		};
 
 		pcie1_x1: pci@10000000 {

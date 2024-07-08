@@ -490,6 +490,7 @@
 		wsi: wsi {
 			id = <0>;
 			num_chip = <3>;
+			status = "okay";
 		};
 
 		q6v5_wcss: remoteproc@d100000 {
