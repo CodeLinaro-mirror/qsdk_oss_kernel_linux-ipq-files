@@ -72,6 +72,34 @@
 				default-state = "off";
 			};
 		};
+
+		ess-instance {
+			ess-switch@3a000000 {
+				pinctrl-0 = <&sfp_pins>;
+				pinctrl-names = "default";
+				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
+				switch_lan_bmp = <0xc>; /* lan port bitmap */
+				switch_wan_bmp = <0x2>; /* wan port bitmap */
+				switch_mac_mode = <0xe>; /* mac mode for uniphy instance0*/
+				switch_mac_mode1 = <0xe>; /* mac mode for uniphy instance1*/
+
+				qcom,port_phyinfo {
+					port@0 {
+						port_id = <1>;
+						media-type = "sfp"; /* fiber mode */
+						i2c-bus = <&i2c2>;
+					};
+					port@1 {
+						port_id = <2>;
+						media-type = "sfp"; /* fiber mode */
+						i2c-bus = <&i2c1>;
+					};
+				};
+			};
+			ess-switch1@1 {
+				link-intr-gpio = <&tlmm 10 GPIO_ACTIVE_HIGH>;
+			};
+		};
 	};
 };
 
@@ -225,5 +253,35 @@
 		function = "gpio";
 		drive-strength = <8>;
 		bias-pull-down;
+	};
+
+	sfp_pins: sfp-state {
+		sfp0_rx {
+			pins = "gpio39";
+			function = "rx0";
+			bias-disable;
+		};
+
+		sfp0_tx {
+			pins = "gpio36";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-down;
+			output-low;
+		};
+
+		sfp1_rx {
+			pins = "gpio38";
+			function = "rx1";
+			bias-disable;
+		};
+
+		sfp1_tx {
+			pins = "gpio37";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-down;
+			output-low;
+		};
 	};
 };
