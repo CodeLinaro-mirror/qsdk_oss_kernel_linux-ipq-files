@@ -16,6 +16,7 @@
 
 	/delete-node/ firmware;
 	/delete-node/ qti,tzlog;
+	/delete-node/ ctx-save;
 
 	/*	  Layout for IPQ5424
 	 * +==========+==============+========================+

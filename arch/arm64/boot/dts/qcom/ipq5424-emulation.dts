@@ -16,6 +16,7 @@
 
 	/delete-node/ firmware;
 	/delete-node/ qti,tzlog;
+	/delete-node/ ctx-save;
 
 	/*Timer freq for rumi = timer freq / 150*/
 	clocks {
