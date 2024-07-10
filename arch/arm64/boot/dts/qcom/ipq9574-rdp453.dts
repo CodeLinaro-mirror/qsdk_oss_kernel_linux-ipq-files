@@ -3,7 +3,7 @@
  * IPQ9574 RDP453 board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 /dts-v1/;
@@ -251,6 +251,10 @@
 &wsi {
 	id = <0>;
 	num_chip = <3>;
+	status = "okay";
+	chip_info = <0 2 1 2>,
+                    <1 2 2 0>,
+                    <2 2 0 1>;
 };
 
 &pcie1_x1 {
@@ -270,6 +274,7 @@
 			memory-region = <&qcn9224_pcie1>, <&mhi_region1>;
 			qcom,board_id = <0x01>;
 			qcom,wsi = <&wsi>;
+			qcom,wsi_index = <2>;
 			qcom,pta-num = <0>;
 			qcom,coex-mode = <0x2>;
 			qcom,bt-active-time = <0x18>;
@@ -301,6 +306,7 @@
 			memory-region = <&qcn9224_pcie2>, <&mhi_region2>;
 			qcom,board_id = <0x04>;
 			qcom,wsi = <&wsi>;
+			qcom,wsi_index = <0>;
 		};
 	};
 };
@@ -326,6 +332,7 @@
 			memory-region = <&qcn9224_pcie3>, <&mhi_region3>;
 			qcom,board_id = <0x02>;
 			qcom,wsi = <&wsi>;
+			qcom,wsi_index = <1>;
 		};
 	};
 };

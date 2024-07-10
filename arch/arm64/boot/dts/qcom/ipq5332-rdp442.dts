@@ -615,6 +615,9 @@
 		wsi: wsi {
 			id = <0>;
 			num_chip = <3>;
+			chip_info = <0 2 1 2>,
+				    <1 2 2 0>,
+				    <2 2 0 1>;
 		};
 
 		q6v5_wcss: remoteproc@d100000 {
@@ -944,6 +947,7 @@
 	memory-region = <&q6_ipq5332_data>;
 #endif
 	qcom,wsi = <&wsi>;
+	qcom,wsi_index = <0>;
 	status = "ok";
 };
 
@@ -968,6 +972,7 @@
 #endif
 	qcom,pci_slot_id = <0>;
 	qcom,wsi = <&wsi>;
+	qcom,wsi_index = <1>;
 	interrupt-names = "umac_reset";
 	interrupts = <0 33 1>;
 	status = "ok";
@@ -994,6 +999,7 @@
 #endif
 	qcom,pci_slot_id = <1>;
 	qcom,wsi = <&wsi>;
+	qcom,wsi_index = <2>;
 	interrupt-names = "umac_reset";
 	interrupts = <0 410 1>;
 	status = "ok";
