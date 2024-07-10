@@ -1319,13 +1319,15 @@
 				      "axi_bridge",
 				      "rchng";
 
-			assigned-clocks = <&gcc GCC_PCIE3_AUX_CLK>,
+			assigned-clocks = <&gcc GCC_PCIE3_AHB_CLK>,
+					<&gcc GCC_PCIE3_AUX_CLK>,
 					<&gcc GCC_PCIE3_AXI_M_CLK>,
 					<&gcc GCC_PCIE3_AXI_S_BRIDGE_CLK>,
 					<&gcc GCC_PCIE3_AXI_S_CLK>,
 					<&gcc GCC_PCIE3_RCHNG_CLK>;
 
-			assigned-clock-rates = <20000000>,
+			assigned-clock-rates = <100000000>,
+						<20000000>,
 						<266666666>,
 						<240000000>,
 						<240000000>,
@@ -1405,13 +1407,15 @@
 				      "axi_bridge",
 				      "rchng";
 
-			assigned-clocks = <&gcc GCC_PCIE2_AUX_CLK>,
+			assigned-clocks = <&gcc GCC_PCIE2_AHB_CLK>,
+					<&gcc GCC_PCIE2_AUX_CLK>,
 					<&gcc GCC_PCIE2_AXI_M_CLK>,
 					<&gcc GCC_PCIE2_AXI_S_BRIDGE_CLK>,
 					<&gcc GCC_PCIE2_AXI_S_CLK>,
 					<&gcc GCC_PCIE2_RCHNG_CLK>;
 
-			assigned-clock-rates = <20000000>,
+			assigned-clock-rates = <100000000>,
+						<20000000>,
 						<266666666>,
 						<240000000>,
 						<240000000>,
@@ -1491,13 +1495,15 @@
 				      "axi_bridge",
 				      "rchng";
 
-			assigned-clocks = <&gcc GCC_PCIE1_AUX_CLK>,
+			assigned-clocks = <&gcc GCC_PCIE1_AHB_CLK>,
+					<&gcc GCC_PCIE1_AUX_CLK>,
 					<&gcc GCC_PCIE1_AXI_M_CLK>,
 					<&gcc GCC_PCIE1_AXI_S_BRIDGE_CLK>,
 					<&gcc GCC_PCIE1_AXI_S_CLK>,
 					<&gcc GCC_PCIE1_RCHNG_CLK>;
 
-			assigned-clock-rates = <20000000>,
+			assigned-clock-rates = <100000000>,
+						<20000000>,
 						<240000000>,
 						<240000000>,
 						<240000000>,
@@ -1577,13 +1583,15 @@
 				      "axi_bridge",
 				      "rchng";
 
-			assigned-clocks = <&gcc GCC_PCIE0_AUX_CLK>,
+			assigned-clocks = <&gcc GCC_PCIE0_AHB_CLK>,
+					<&gcc GCC_PCIE0_AUX_CLK>,
 					<&gcc GCC_PCIE0_AXI_M_CLK>,
 					<&gcc GCC_PCIE0_AXI_S_BRIDGE_CLK>,
 					<&gcc GCC_PCIE0_AXI_S_CLK>,
 					<&gcc GCC_PCIE0_RCHNG_CLK>;
 
-			assigned-clock-rates = <2000000>,
+			assigned-clock-rates = <100000000>,
+						<20000000>,
 						<240000000>,
 						<240000000>,
 						<240000000>,
