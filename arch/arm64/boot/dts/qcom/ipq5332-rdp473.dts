@@ -596,6 +596,7 @@
 				q6_wcss_pd4: remoteproc_pd4 {
 					compatible = "qcom,ipq5332-wcss-pcie-mpd";
 					firmware = "IPQ5332/q6_fw4.mdt";
+					m3_firmware = "qcn9160/m3_fw.mdt";
 					interrupts-extended = <&wcss_smp2p_in 10 0>,
 							<&wcss_smp2p_in 13 0>,
 							<&wcss_smp2p_in 14 0>,
@@ -881,5 +882,6 @@
 	m3-dump-addr = <0x52C00000>;
 	qcom,pci_slot_id = <2>;
 	mem-region = <&q6_qcn9160_data_3>;
+	memory-region = <&q6_qcn9160_data_3>;
 	status = "ok";
 };
