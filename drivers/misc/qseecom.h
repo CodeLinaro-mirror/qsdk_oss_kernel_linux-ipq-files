@@ -43,6 +43,7 @@
 #include <linux/random.h>
 #include <linux/of_reserved_mem.h>
 #include <linux/debugfs.h>
+#include <linux/tmelcom_ipc.h>
 
 #define QTI_CMD_AES_CLEAR_KEY		10
 #define QTI_CMD_AES_DERIVE_KEY		9
@@ -102,6 +103,10 @@
 #define QSEE_LOG_BUF_SIZE		0x1000
 
 #define KEY_HANDLE_OUT_OF_SLOT		0x12C
+
+#define TME_KID_ALLOC			0xAAAAAAAA
+#define TME_KID_INVALID			0xFFFFFFFF
+
 
 static int app_state;
 static int app_libs_state;
@@ -566,6 +571,61 @@ dma_addr_t dma_aes_sealed_buf = 0;
 dma_addr_t dma_aes_unsealed_buf = 0;
 dma_addr_t dma_aes_ivdata = 0;
 
+/* TMEL AES_v2 relevant variables start */
+#define TME_KAL_KDF_NIST		0x80000
+#define TME_KAL_KDF_HKDF		0x84000
+#define TME_KID_CHIP_RAND_BASE		0x9
+#define TME_KID_OEM_PRODUCT_SEED	0xC
+#define TME_KID_L2_SECURESTRGSVC	0x7
+#define TME_KAL_AES256_CBC		0x8
+#define TME_KAL_AES256_ECB		0xC
+#define TME_KSC_SWContext		0x00000020
+#define TME_KAL_SHA512_HMAC		0x58000
+
+#define TME_KDF_SW_CONTEXT_BYTES_MAX	128
+#define TME_KDF_SALT_LABEL_BYTES_MAX	64
+
+#define TME_MAX_AAD_LEN			256
+#define TME_MAX_TAG_LEN			256
+
+static uint8_t *tmel_key_handle;
+dma_addr_t tmel_dma_key_handle;
+
+static uint32_t tmel_aes_v2_encrypted_len;
+static uint32_t tmel_aes_v2_decrypted_len;
+static uint32_t tmel_aes_v2_aad_len;
+static uint32_t tmel_aes_v2_iv_len;
+static uint32_t tmel_aes_v2_tag_len;
+static uint32_t tmel_aes_v2_salt_label_len;
+static uint32_t tmel_aes_v2_sw_context_len;
+static uint32_t tmel_aes_v2_mode;
+static uint32_t tmel_aes_v2_input_key;
+
+void *buf_aad;
+void *buf_plain_txt;
+void *buf_ivd;
+void *buf_tag;
+void *buf_cipher_txt;
+void *buf_salt_label;
+void *buf_sw_context;
+
+static uint8_t *aad;
+static uint8_t *plain_txt;
+static uint8_t *iv;
+static uint8_t *tag;
+static uint8_t *cipher_txt;
+static uint8_t *salt_label;
+static uint8_t *sw_context;
+
+dma_addr_t dma_aad;
+dma_addr_t dma_plain_txt;
+dma_addr_t dma_ivd;
+dma_addr_t dma_tag;
+dma_addr_t dma_cipher_txt;
+dma_addr_t dma_salt_label;
+dma_addr_t dma_sw_context;
+/* TMEL AES_v2 relevant variables end */
+
 void *buf_rsa_unsealed_buf = NULL;
 void *buf_rsa_sealed_buf = NULL;
 void *buf_rsa_label = NULL;
@@ -902,6 +962,50 @@ static ssize_t store_blow_fuse_write_qtiapp(struct device *dev,
 					struct device_attribute *attr,
 					const char *buf, size_t count);
 
+/* TMEL AES v2 */
+static ssize_t tmecomm_show_aes_v2_derive_key(struct device *dev,
+					      struct device_attribute *attr,
+					      char *buf);
+static ssize_t tmecomm_store_aes_v2_derive_key(struct device *dev,
+					       struct device_attribute *attr,
+					       const char *buf, size_t count);
+static ssize_t tmecomm_store_aes_v2_clear_key(struct device *dev,
+					      struct device_attribute *attr,
+					      const char *buf, size_t count);
+static ssize_t tmecomm_store_aes_v2_decrypted_data(struct device *dev,
+						   struct device_attribute *attr,
+						   const char *buf, size_t count);
+static ssize_t tmecomm_show_aes_v2_encrypted_data(struct device *dev,
+						  struct device_attribute *attr,
+						  char *buf);
+static ssize_t tmecomm_store_aes_v2_aad_data(struct device *dev,
+					     struct device_attribute *attr,
+					     const char *buf, size_t count);
+static ssize_t tmecomm_store_aes_v2_iv_data(struct device *dev,
+					    struct device_attribute *attr,
+					    const char *buf, size_t count);
+static ssize_t tmecomm_store_aes_v2_tag_data(struct device *dev,
+					     struct device_attribute *attr,
+					     const char *buf, size_t count);
+static ssize_t tmecomm_store_aes_v2_encrypted_data(struct device *dev,
+						   struct device_attribute *attr,
+						   const char *buf, size_t count);
+static ssize_t tmecomm_show_aes_v2_decrypted_data(struct device *dev,
+						  struct device_attribute *attr,
+						  char *buf);
+static ssize_t tmecomm_aes_v2_store_context_data(struct device *dev,
+						 struct device_attribute *attr,
+						 const char *buf, size_t count);
+static ssize_t tmecomm_aes_v2_store_salt_label_data(struct device *dev,
+						    struct device_attribute *attr,
+						    const char *buf, size_t count);
+static ssize_t tmecomm_store_aes_v2_mode(struct device *dev,
+					 struct device_attribute *attr,
+					 const char *buf, size_t count);
+static ssize_t tmecomm_aes_v2_store_input_key(struct device *dev,
+					      struct device_attribute *attr,
+					      const char *buf, size_t count);
+
 /* Qti app device attrs starts here....*/
 
 static DEVICE_ATTR(load_start, S_IWUSR, NULL, store_load_start);
@@ -970,6 +1074,22 @@ static DEVICE_ATTR(rsa_verify, 0644, verify_rsa_signed_data,
 		   store_rsa_signed_data);
 static DEVICE_ATTR(rsa_pad_scheme, 0644, show_rsa_pad_scheme, store_rsa_pad_scheme);
 static DEVICE_ATTR(rsa_update_keyblob, 0644, show_rsa_update_keyblob, NULL);
+
+/* TMEL AES device attrs */
+static DEVICE_ATTR(tmel_aes_v2_derive_key, 0644, tmecomm_show_aes_v2_derive_key,
+		   tmecomm_store_aes_v2_derive_key);
+static DEVICE_ATTR(tmel_aes_v2_clear_key, 0644, NULL, tmecomm_store_aes_v2_clear_key);
+static DEVICE_ATTR(tmel_aes_v2_aad_data, 0644, NULL, tmecomm_store_aes_v2_aad_data);
+static DEVICE_ATTR(tmel_aes_v2_iv_data, 0644, NULL, tmecomm_store_aes_v2_iv_data);
+static DEVICE_ATTR(tmel_aes_v2_tag_data, 0644, NULL, tmecomm_store_aes_v2_tag_data);
+static DEVICE_ATTR(tmel_aes_v2_encrypt, 0644, tmecomm_show_aes_v2_encrypted_data,
+		   tmecomm_store_aes_v2_decrypted_data);
+static DEVICE_ATTR(tmel_aes_v2_decrypt, 0644, tmecomm_show_aes_v2_decrypted_data,
+		   tmecomm_store_aes_v2_encrypted_data);
+static DEVICE_ATTR(tmel_aes_v2_mode, 0644, NULL, tmecomm_store_aes_v2_mode);
+static DEVICE_ATTR(tmel_aes_v2_context_data, 0644, NULL, tmecomm_aes_v2_store_context_data);
+static DEVICE_ATTR(tmel_aes_v2_salt_label_data, 0644, NULL, tmecomm_aes_v2_store_salt_label_data);
+static DEVICE_ATTR(tmel_aes_v2_input_key, 0644, NULL, tmecomm_aes_v2_store_input_key);
 
 static struct attribute *sec_key_attrs[] = {
 	&dev_attr_generate.attr,
@@ -1057,6 +1177,21 @@ static struct attribute_group sec_key_aesv2_attr_grp = {
 	.attrs = sec_key_aesv2_attrs,
 };
 
+static struct attribute *sec_key_tmel_aes_v2_attrs[] = {
+	&dev_attr_tmel_aes_v2_derive_key.attr,
+	&dev_attr_tmel_aes_v2_clear_key.attr,
+	&dev_attr_tmel_aes_v2_aad_data.attr,
+	&dev_attr_tmel_aes_v2_iv_data.attr,
+	&dev_attr_tmel_aes_v2_tag_data.attr,
+	&dev_attr_tmel_aes_v2_encrypt.attr,
+	&dev_attr_tmel_aes_v2_decrypt.attr,
+	&dev_attr_tmel_aes_v2_context_data.attr,
+	&dev_attr_tmel_aes_v2_salt_label_data.attr,
+	&dev_attr_tmel_aes_v2_mode.attr,
+	&dev_attr_tmel_aes_v2_input_key.attr,
+	NULL,
+};
+
 static struct attribute_group qtiapp_aes_attr_grp = {
 	.attrs = qtiapp_aes_attrs,
 };
@@ -1071,6 +1206,9 @@ static struct attribute_group qtiapp_aesv2_attr_grp = {
 	.attrs = qtiapp_aesv2_attrs,
 };
 
+static struct attribute_group sec_key_tmel_attr_grp = {
+	.attrs = sec_key_tmel_aes_v2_attrs,
+};
 
 struct bin_attribute mdt_attr = {
 	.attr = {.name = "mdt_file", .mode = 0666},
