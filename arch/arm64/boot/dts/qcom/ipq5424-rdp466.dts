@@ -9,6 +9,7 @@
 /dts-v1/;
 
 #include "ipq5424-rdp-common.dtsi"
+#include "ipq5424-default-memory.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ5424 RDP466";
@@ -167,6 +168,15 @@
 					<0 312 4>,		/* MHT port Tx complete ring id #30 IRQ info */
 					<0 313 4>;		/* MHT port Tx complete ring id #31 IRQ info */
 		};
+
+		wsi: wsi {
+			id = <0>;
+			num_chip = <3>;
+			chip_info = <0 2 1 2>,
+				    <1 2 2 0>,
+				    <2 2 0 1>;
+			status = "okay";
+		};
 	};
 };
 
@@ -190,6 +200,10 @@
 
 		qcom,mhi@0 {
 			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9224_pcie2>, <&mhi_region2>;
+			qcom,board_id = <0x15>;
+			qcom,wsi = <&wsi>;
+			qcom,wsi_index = <1>;
 		};
 	};
 };
@@ -206,6 +220,10 @@
 
 		qcom,mhi@0 {
 			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9224_pcie3>, <&mhi_region3>;
+			qcom,board_id = <0x12>;
+			qcom,wsi = <&wsi>;
+			qcom,wsi_index = <2>;
 		};
 	};
 };
@@ -238,6 +256,24 @@
 	status = "okay";
 };
 
+&qcn9224_pcie2 {
+	status = "okay";
+};
+
+&qcn9224_pcie3 {
+	status = "okay";
+};
+
+#if defined(__MHI_BUS_RESERVED_DMA_POOL__)
+&mhi_region2 {
+	status = "okay";
+};
+
+&mhi_region3 {
+	status = "okay";
+};
+#endif
+
 &tlmm {
 	gpio_leds_default: gpio-leds-default-state {
 		pins = "gpio41";
@@ -245,4 +281,40 @@
 		drive-strength = <8>;
 		bias-pull-down;
 	};
+};
+
+&mlo_global_mem0 {
+        size = <0x0 0x1200000>;
+        status = "okay";
+};
+
+&wifi0 {
+	qcom,multipd_arch;
+	qcom,rproc = <&q6_wcss_pd1>;
+	qcom,rproc_rpd = <&q6v5_wcss>;
+	qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
+	qcom,tgt-mem-mode = <0>;
+	qcom,bdf-addr = <0x8B500000 0x8B500000 0x8B500000 0x0 0x0 0x0>;
+	qcom,caldb-addr = <0x8D500000 0x8D500000 0x0 0x0 0x0 0x0>;
+	qcom,caldb-size = <0x600000>;
+	memory-region = <&q6_ipq5424_data>;
+	qcom,wsi = <&wsi>;
+	qcom,wsi_index = <0>;
+	qcom,board_id = <0x10>;
+	hw_link_id = <0 0>;
+	status = "okay";
+};
+
+&wifi3 {
+	hremote_node = <&qcn9224_pcie2>;
+	board_id = <0x15>;
+	hw_link_id = <1 0>;
+	status = "okay";
+};
+
+&wifi4 {
+	hremote_node = <&qcn9224_pcie3>;
+	board_id = <0x012>;
+	hw_link_id = <2 0>;
+	status = "okay";
 };
