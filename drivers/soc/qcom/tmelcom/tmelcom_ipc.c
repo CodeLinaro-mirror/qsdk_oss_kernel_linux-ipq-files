@@ -692,3 +692,99 @@ int tmelcomm_get_ecc_public_key(u32 type, void *buf, u32 size, u32 *rsp_len)
 	return ret;
 }
 EXPORT_SYMBOL_GPL(tmelcomm_get_ecc_public_key);
+
+int tmelcom_aes_v2_derive_key(u32 key_id, dma_addr_t *dma_kdf_spec, u32 kdf_len,
+			      u8 *key_handle)
+{
+	struct tmel_aes_v2_derive_key_msg msg = {0};
+	struct device *dev = tmelcom_get_device();
+	int ret;
+
+	msg.req.key_id = key_id;
+	msg.req.kdf_info.buf = *dma_kdf_spec;
+	msg.req.kdf_info.buf_len = kdf_len;
+	msg.req.cred_slot = 0;
+
+	ret = tmelcom_process_request(TMEL_MSG_UID_KM_DERIVE, &msg, sizeof(msg));
+	if (ret || msg.resp.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d msg->resp.status = %x\n",
+			__func__, ret, msg.resp.status);
+	else
+		*key_handle = msg.resp.key_id;
+
+	return ret ? ret : msg.resp.status;
+}
+EXPORT_SYMBOL_GPL(tmelcom_aes_v2_derive_key);
+
+int tmelcom_aes_v2_clear_key(u32 handle)
+{
+	struct tmel_aes_v2_clear_key_msg msg = {0};
+	struct device *dev = tmelcom_get_device();
+	int ret;
+
+	msg.req.key_id = handle;
+
+	ret = tmelcom_process_request(TMEL_MSG_UID_KM_CLEAR, &msg, sizeof(msg));
+	if (ret || msg.resp.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d msg->resp.status = %x\n",
+			__func__, ret, msg.resp.status);
+
+	return ret ? ret : msg.resp.status;
+}
+EXPORT_SYMBOL_GPL(tmelcom_aes_v2_clear_key);
+
+int tmel_aes_v2_encrypt(struct tmel_aes_v2_encrypt_msg *msg, u32 size)
+{
+	struct device *dev = tmelcom_get_device();
+	int ret;
+
+	ret = tmelcom_process_request(TMEL_MSG_UID_HCS_AES_ENCRYPT, msg, size);
+	if (ret || msg->resp.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d msg->resp.status = %x\n",
+			__func__, ret, msg->resp.status);
+
+	return ret ? ret : msg->resp.status;
+}
+EXPORT_SYMBOL_GPL(tmel_aes_v2_encrypt);
+
+int tmel_aes_v2_decrypt(struct tmel_aes_v2_decrypt_msg *msg, u32 size)
+{
+	struct device *dev = tmelcom_get_device();
+	int ret;
+
+	ret = tmelcom_process_request(TMEL_MSG_UID_HCS_AES_DECRYPT, msg, size);
+	if (ret || msg->resp.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d msg->resp.status = %x\n",
+			__func__, ret, msg->resp.status);
+
+	return ret ? ret : msg->resp.status;
+}
+EXPORT_SYMBOL_GPL(tmel_aes_v2_decrypt);
+
+int tmel_aes_v2_generate_key(struct tmel_aes_v2_generate_key_msg *msg, u32 size)
+{
+	struct device *dev = tmelcom_get_device();
+	int ret;
+
+	ret = tmelcom_process_request(TMEL_MSG_UID_KM_GENERATE, msg, size);
+	if (ret || msg->resp.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d msg->resp.status = %x\n",
+			__func__, ret, msg->resp.status);
+
+	return ret ? ret : msg->resp.status;
+}
+EXPORT_SYMBOL_GPL(tmel_aes_v2_generate_key);
+
+int tmel_aes_v2_import_key(struct tmel_aes_v2_import_key_msg *msg, u32 size)
+{
+	struct device *dev = tmelcom_get_device();
+	int ret;
+
+	ret = tmelcom_process_request(TMEL_MSG_UID_KM_IMPORT, msg, size);
+	if (ret || msg->resp.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d msg->resp.status = %x\n",
+			__func__, ret, msg->resp.status);
+
+	return ret ? ret : msg->resp.status;
+}
+EXPORT_SYMBOL_GPL(tmel_aes_v2_import_key);
