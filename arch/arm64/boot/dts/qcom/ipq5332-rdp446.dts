@@ -754,6 +754,7 @@
 	qcom,tgt-mem-mode = <1>;
 	qcom,bdf-addr = <0x4D800000 0x4D800000 0x4D800000 0x0 0x0 0x0>;
 	qcom,caldb-addr = <0x4EA00000 0x4EA00000 0x4EA00000 0x0 0x0 0x0>;
+	qcom,umac-irq-reset-addr = <0x20000884>;
 	qcom,caldb-size = <0x500000>;
 	qcom,board_id = <0x052>;
 	mem-region = <&q6_qcn6432_data_1>;
@@ -763,6 +764,8 @@
 	qcom,pci_slot_id = <1>;
 	interrupts = <0 410 1>;
 	status = "okay";
+	interrupts = <GIC_SPI 33 IRQ_TYPE_EDGE_RISING>;
+	interrupt-names = "umac_reset";
 };
 
 &wifi2 {
@@ -773,6 +776,7 @@
 	qcom,tgt-mem-mode = <1>;
 	qcom,bdf-addr = <0x4EF00000 0x4EF00000 0x4EF00000 0x0 0x0 0x0>;
 	qcom,caldb-addr = <0x50100000 0x50100000 0x50100000 0x0 0x0 0x0>;
+	qcom,umac-irq-reset-addr = <0x18000884>;
 	qcom,caldb-size = <0x500000>;
 	qcom,board_id = <0x091>;
 	mem-region = <&q6_qcn6432_data_2>;
@@ -782,4 +786,6 @@
 	qcom,pci_slot_id = <2>;
 	interrupts = <0 48 1>;
 	status = "okay";
+	interrupts = <GIC_SPI 410 IRQ_TYPE_EDGE_RISING>;
+	interrupt-names = "umac_reset";
 };
