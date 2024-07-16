@@ -19,8 +19,38 @@
 	interrupt-parent = <&intc>;
 
 	clocks {
+		pcie30_phy0_pipe_clk: pcie30_phy0_pipe_clk {
+			compatible = "fixed-clock";
+			clock-frequency = <250000000>;
+			#clock-cells = <0>;
+		};
+
+		pcie30_phy1_pipe_clk: pcie30_phy1_pipe_clk {
+			compatible = "fixed-clock";
+			clock-frequency = <250000000>;
+			#clock-cells = <0>;
+		};
+
+		pcie30_phy2_pipe_clk: pcie30_phy2_pipe_clk {
+			compatible = "fixed-clock";
+			clock-frequency = <250000000>;
+			#clock-cells = <0>;
+		};
+
+		pcie30_phy3_pipe_clk: pcie30_phy3_pipe_clk {
+			compatible = "fixed-clock";
+			clock-frequency = <250000000>;
+			#clock-cells = <0>;
+		};
+
 		sleep_clk: sleep-clk {
 			compatible = "fixed-clock";
+			#clock-cells = <0>;
+		};
+
+		usb_pcie_wrapper_pipe_clk: usb-pcie-wrapper-pipe-clk {
+			compatible = "fixed-clock";
+			clock-frequency = <125000000>;
 			#clock-cells = <0>;
 		};
 
@@ -724,10 +754,16 @@
 			compatible = "qcom,ipq5424-gcc";
 			reg = <0x01800000 0x40000>;
 			clocks = <&xo>,
-				 <&sleep_clk>;
+				 <&sleep_clk>,
+				 <&pcie30_phy0_pipe_clk>,
+				 <&pcie30_phy1_pipe_clk>,
+				 <&pcie30_phy2_pipe_clk>,
+				 <&pcie30_phy3_pipe_clk>,
+				 <&usb_pcie_wrapper_pipe_clk>;
 			#clock-cells = <1>;
 			#reset-cells = <1>;
 			#power-domain-cells = <1>;
+			gcc-use-dummy;
                 };
 
 		nsscc: nsscc@39b00000{
