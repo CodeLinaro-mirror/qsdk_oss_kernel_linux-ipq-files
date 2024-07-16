@@ -1990,6 +1990,89 @@
 			status = "disabled";
 		};
 
+		/* 1L controller with USB/PCIe combo PHY */
+		pcie0: pcie@20000000 {
+			compatible = "qti,pcie-ipq5332";
+			reg =  <0x20000000 0xf1d>,
+			       <0x20000f20 0xa8>,
+			       <0x20001000 0x1000>,
+			       <0x80000 0x3000>,
+			       <0x20100000 0x1000>,
+			       <0x59C108 0x4>;
+			reg-names = "dbi", "elbi", "atu", "parf", "config", "system_noc";
+			device_type = "pci";
+			linux,pci-domain = <0>;
+			bus-range = <0x00 0xff>;
+			num-lanes = <1>;
+			#address-cells = <3>;
+			#size-cells = <2>;
+			axi-halt-val = <0x1e>; /* increase halt window size to 1GB */
+
+			phys = <&pcie0_phy>;
+			phy-names = "pciephy";
+
+			ranges = <0x81000000 0 0x20200000 0x20200000 0 0x00100000>,   /* downstream I/O */
+				 <0x82000000 0 0x20300000 0x20300000 0 0x0fd00000>; /* non-prefetchable memory */
+
+			#interrupt-cells = <1>;
+			interrupt-map-mask = <0 0 0 0x7>;
+			interrupt-map = <0 0 0 1 &intc 0 35 IRQ_TYPE_LEVEL_HIGH>, /* int_a */
+					<0 0 0 2 &intc 0 36 IRQ_TYPE_LEVEL_HIGH>, /* int_b */
+					<0 0 0 3 &intc 0 37 IRQ_TYPE_LEVEL_HIGH>, /* int_c */
+					<0 0 0 4 &intc 0 38 IRQ_TYPE_LEVEL_HIGH>; /* int_d */
+
+			interrupts = <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "global_irq";
+
+			clocks = <&gcc GCC_PCIE3X1_0_AXI_M_CLK>,
+				 <&gcc GCC_PCIE3X1_0_AXI_S_CLK>,
+				 <&gcc GCC_PCIE3X1_0_AHB_CLK>,
+				 <&gcc GCC_PCIE3X1_0_AUX_CLK>,
+				 <&gcc GCC_PCIE3X1_0_AXI_S_BRIDGE_CLK>,
+				 <&gcc GCC_PCIE3X1_0_RCHG_CLK>;
+
+			clock-names = "axi_m",
+				      "axi_s",
+				      "ahb",
+				      "aux",
+				      "axi_bridge",
+				      "rchng";
+
+			assigned-clocks = <&gcc GCC_PCIE3X1_0_AUX_CLK>,
+					<&gcc GCC_PCIE3X1_0_AXI_M_CLK>,
+					<&gcc GCC_PCIE3X1_0_AXI_S_BRIDGE_CLK>,
+					<&gcc GCC_PCIE3X1_0_AXI_S_CLK>,
+					<&gcc GCC_PCIE3X1_0_RCHG_CLK>;
+
+			assigned-clock-rates = <2000000>,
+						<240000000>,
+						<240000000>,
+						<240000000>,
+						<100000000>;
+
+			resets = <&gcc GCC_PCIE3X1_0_PIPE_ARES>,
+				 <&gcc GCC_PCIE3X1_0_CORE_STICKY_ARES>,
+				 <&gcc GCC_PCIE3X1_0_AXI_M_CLK_ARES>,
+				 <&gcc GCC_PCIE3X1_0_AXI_S_CLK_ARES>,
+				 <&gcc GCC_PCIE3X1_0_AXI_M_STICKY_ARES>,
+				 <&gcc GCC_PCIE3X1_0_AXI_S_STICKY_ARES>,
+				 <&gcc GCC_PCIE3X1_0_AHB_CLK_ARES>,
+				 <&gcc GCC_PCIE3X1_0_AUX_CLK_ARES>;
+
+			reset-names = "pipe",
+				      "sticky",
+				      "axi_m",
+				      "axi_s",
+				      "axi_m_sticky",
+				      "axi_s_sticky",
+				      "ahb",
+				      "aux";
+
+			msi-parent = <&v2m0>;
+			nvmem-cells = <&pcie0_disable>;
+			status = "disabled";
+		};
+
 		/* 2L controller with 2L/2x1L Flexible PHY.
 		 * Connected to the 1st lane of the Flexible PHY in 1L mode
 		 */
@@ -2076,88 +2159,6 @@
 			status = "disabled";
 		};
 
-		/* 1L controller with USB/PCIe combo PHY */
-		pcie0: pcie@20000000 {
-			compatible = "qti,pcie-ipq5332";
-			reg =  <0x20000000 0xf1d>,
-			       <0x20000f20 0xa8>,
-			       <0x20001000 0x1000>,
-			       <0x80000 0x3000>,
-			       <0x20100000 0x1000>,
-			       <0x59C108 0x4>;
-			reg-names = "dbi", "elbi", "atu", "parf", "config", "system_noc";
-			device_type = "pci";
-			linux,pci-domain = <0>;
-			bus-range = <0x00 0xff>;
-			num-lanes = <1>;
-			#address-cells = <3>;
-			#size-cells = <2>;
-			axi-halt-val = <0x1e>; /* increase halt window size to 1GB */
-
-			phys = <&pcie0_phy>;
-			phy-names = "pciephy";
-
-			ranges = <0x81000000 0 0x20200000 0x20200000 0 0x00100000>,   /* downstream I/O */
-				 <0x82000000 0 0x20300000 0x20300000 0 0x0fd00000>; /* non-prefetchable memory */
-
-			#interrupt-cells = <1>;
-			interrupt-map-mask = <0 0 0 0x7>;
-			interrupt-map = <0 0 0 1 &intc 0 35 IRQ_TYPE_LEVEL_HIGH>, /* int_a */
-					<0 0 0 2 &intc 0 36 IRQ_TYPE_LEVEL_HIGH>, /* int_b */
-					<0 0 0 3 &intc 0 37 IRQ_TYPE_LEVEL_HIGH>, /* int_c */
-					<0 0 0 4 &intc 0 38 IRQ_TYPE_LEVEL_HIGH>; /* int_d */
-
-			interrupts = <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "global_irq";
-
-			clocks = <&gcc GCC_PCIE3X1_0_AXI_M_CLK>,
-				 <&gcc GCC_PCIE3X1_0_AXI_S_CLK>,
-				 <&gcc GCC_PCIE3X1_0_AHB_CLK>,
-				 <&gcc GCC_PCIE3X1_0_AUX_CLK>,
-				 <&gcc GCC_PCIE3X1_0_AXI_S_BRIDGE_CLK>,
-				 <&gcc GCC_PCIE3X1_0_RCHG_CLK>;
-
-			clock-names = "axi_m",
-				      "axi_s",
-				      "ahb",
-				      "aux",
-				      "axi_bridge",
-				      "rchng";
-
-			assigned-clocks = <&gcc GCC_PCIE3X1_0_AUX_CLK>,
-					<&gcc GCC_PCIE3X1_0_AXI_M_CLK>,
-					<&gcc GCC_PCIE3X1_0_AXI_S_BRIDGE_CLK>,
-					<&gcc GCC_PCIE3X1_0_AXI_S_CLK>,
-					<&gcc GCC_PCIE3X1_0_RCHG_CLK>;
-
-			assigned-clock-rates = <2000000>,
-						<240000000>,
-						<240000000>,
-						<240000000>,
-						<100000000>;
-
-			resets = <&gcc GCC_PCIE3X1_0_PIPE_ARES>,
-				 <&gcc GCC_PCIE3X1_0_CORE_STICKY_ARES>,
-				 <&gcc GCC_PCIE3X1_0_AXI_M_CLK_ARES>,
-				 <&gcc GCC_PCIE3X1_0_AXI_S_CLK_ARES>,
-				 <&gcc GCC_PCIE3X1_0_AXI_M_STICKY_ARES>,
-				 <&gcc GCC_PCIE3X1_0_AXI_S_STICKY_ARES>,
-				 <&gcc GCC_PCIE3X1_0_AHB_CLK_ARES>,
-				 <&gcc GCC_PCIE3X1_0_AUX_CLK_ARES>;
-
-			reset-names = "pipe",
-				      "sticky",
-				      "axi_m",
-				      "axi_s",
-				      "axi_m_sticky",
-				      "axi_s_sticky",
-				      "ahb",
-				      "aux";
-
-			msi-parent = <&v2m0>;
-			nvmem-cells = <&pcie0_disable>;
-			status = "disabled";
-		};
 
 		ssuniphy_0: ssuniphy@4b0000 {
 			compatible = "qca,ipq5332-uni-ssphy";
