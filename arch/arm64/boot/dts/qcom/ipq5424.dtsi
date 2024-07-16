@@ -10,8 +10,8 @@
 #include <dt-bindings/clock/qcom,ipq5424-gcc.h>
 #include <dt-bindings/reset/qcom,ipq5424-gcc.h>
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/clock/qcom,devsoc-nsscc.h>
-#include <dt-bindings/reset/qcom,devsoc-nsscc.h>
+#include <dt-bindings/clock/qcom,ipq5424-nsscc.h>
+#include <dt-bindings/reset/qcom,ipq5424-nsscc.h>
 
 / {
 	#address-cells = <2>;
