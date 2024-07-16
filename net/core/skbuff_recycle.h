@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2013-2017, The Linux Foundation. All rights reserved.
  *
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -158,6 +158,11 @@ static inline bool consume_skb_can_recycle(const struct sk_buff *skb,
 
 	if (unlikely(skb_pfmemalloc(skb)))
 		return false;
+
+#ifdef CONFIG_SKB_EXTENSIONS
+	if (skb->active_extensions)
+		return false;
+#endif
 
 	return true;
 }
