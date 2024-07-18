@@ -229,6 +229,7 @@ enum ipq5424_functions {
 	msm_mux_resout,
 	msm_mux_rx0,
 	msm_mux_rx1,
+	msm_mux_rx2,
 	msm_mux_sdc_clk,
 	msm_mux_sdc_cmd,
 	msm_mux_sdc_data,
@@ -249,13 +250,8 @@ enum ipq5424_functions {
 	msm_mux_uart0_tx,
 	msm_mux_uart1_rx,
 	msm_mux_uart1_tx,
-	msm_mux_wci0,
-	msm_mux_wci1,
-	msm_mux_wci2,
-	msm_mux_wci3,
-	msm_mux_wci4,
-	msm_mux_wci5,
-	msm_mux_wci6,
+	msm_mux_wci_txd,
+	msm_mux_wci_rxd,
 	msm_mux_wsi_clk,
 	msm_mux_wsi_data,
 	msm_mux__,
@@ -283,12 +279,12 @@ static const char * const pwm2_groups[] = {
 	"gpio0", "gpio1", "gpio2", "gpio3",
 };
 
-static const char * const wci0_groups[] = {
-	"gpio0", "gpio0",
+static const char * const wci_txd_groups[] = {
+	"gpio0", "gpio1", "gpio8", "gpio10", "gpio11", "gpio40", "gpio41",
 };
 
-static const char * const wci1_groups[] = {
-	"gpio1", "gpio1",
+static const char * const wci_rxd_groups[] = {
+	"gpio0", "gpio1", "gpio8", "gpio10", "gpio11", "gpio40", "gpio41",
 };
 
 static const char * const sdc_cmd_groups[] = {
@@ -341,10 +337,6 @@ static const char * const spi0_miso_groups[] = {
 	"gpio8",
 };
 
-static const char * const wci2_groups[] = {
-	"gpio8", "gpio8",
-};
-
 static const char * const cri_trng2_groups[] = {
 	"gpio8",
 };
@@ -365,16 +357,8 @@ static const char * const pwm0_groups[] = {
 	"gpio10", "gpio11", "gpio12", "gpio13",
 };
 
-static const char * const wci3_groups[] = {
-	"gpio10", "gpio10",
-};
-
 static const char * const uart0_cts_groups[] = {
 	"gpio11",
-};
-
-static const char * const wci4_groups[] = {
-	"gpio11", "gpio11",
 };
 
 static const char * const uart0_rx_groups[] = {
@@ -542,7 +526,7 @@ static const char * const spi1_cs2_groups[] = {
 };
 
 static const char * const rx1_groups[] = {
-	"gpio37", "gpio38", "gpio39",
+	"gpio38", "gpio46",
 };
 
 static const char * const spi1_cs3_groups[] = {
@@ -561,20 +545,12 @@ static const char * const PTA0_0_groups[] = {
 	"gpio40",
 };
 
-static const char * const wci5_groups[] = {
-	"gpio40", "gpio40",
-};
-
 static const char * const atest_tic_groups[] = {
 	"gpio40",
 };
 
 static const char * const PTA0_1_groups[] = {
 	"gpio41",
-};
-
-static const char * const wci6_groups[] = {
-	"gpio41", "gpio41",
 };
 
 static const char * const cxc_data_groups[] = {
@@ -614,7 +590,7 @@ static const char * const qdss_cti_trig_out_b1_groups[] = {
 };
 
 static const char * const rx0_groups[] = {
-	"gpio45", "gpio46", "gpio47",
+	"gpio39", "gpio47",
 };
 
 static const char * const qdss_traceclk_a_groups[] = {
@@ -671,6 +647,10 @@ static const char * const wsi_clk_groups[] = {
 
 static const char * const wsi_data_groups[] = {
 	"gpio26", "gpio29",
+};
+
+static const char * const rx2_groups[] = {
+        "gpio37", "gpio45",
 };
 
 static const struct pinfunction ipq5424_functions[] = {
@@ -746,6 +726,7 @@ static const struct pinfunction ipq5424_functions[] = {
 	MSM_PIN_FUNCTION(resout),
 	MSM_PIN_FUNCTION(rx0),
 	MSM_PIN_FUNCTION(rx1),
+	MSM_PIN_FUNCTION(rx2),
 	MSM_PIN_FUNCTION(sdc_clk),
 	MSM_PIN_FUNCTION(sdc_cmd),
 	MSM_PIN_FUNCTION(sdc_data),
@@ -766,30 +747,25 @@ static const struct pinfunction ipq5424_functions[] = {
 	MSM_PIN_FUNCTION(uart0_tx),
 	MSM_PIN_FUNCTION(uart1_rx),
 	MSM_PIN_FUNCTION(uart1_tx),
-	MSM_PIN_FUNCTION(wci0),
-	MSM_PIN_FUNCTION(wci1),
-	MSM_PIN_FUNCTION(wci2),
-	MSM_PIN_FUNCTION(wci3),
-	MSM_PIN_FUNCTION(wci4),
-	MSM_PIN_FUNCTION(wci5),
-	MSM_PIN_FUNCTION(wci6),
+	MSM_PIN_FUNCTION(wci_txd),
+	MSM_PIN_FUNCTION(wci_rxd),
 	MSM_PIN_FUNCTION(wsi_clk),
 	MSM_PIN_FUNCTION(wsi_data),
 };
 
 static const struct msm_pingroup ipq5424_groups[] = {
-	PINGROUP(0, sdc_data, qspi_data, pwm2, wci0, wci0, _, _, _, _),
-	PINGROUP(1, sdc_data, qspi_data, pwm2, wci1, wci1, _, _, _, _),
+	PINGROUP(0, sdc_data, qspi_data, pwm2, wci_txd, wci_rxd, _, _, _, _),
+	PINGROUP(1, sdc_data, qspi_data, pwm2, wci_txd, wci_rxd, _, _, _, _),
 	PINGROUP(2, sdc_data, qspi_data, pwm2, _, _, _, _, _, _),
 	PINGROUP(3, sdc_data, qspi_data, pwm2, _, _, _, _, _, _),
 	PINGROUP(4, sdc_cmd, qspi_cs, _, _, _, _, _, _,_),
 	PINGROUP(5, sdc_clk, qspi_clk, _, _, _, _, _, _, _),
 	PINGROUP(6, spi0_clk, pwm1, _, cri_trng0, qdss_tracedata_a, _, _, _, _),
 	PINGROUP(7, spi0_cs, pwm1, _, cri_trng1, qdss_tracedata_a, _, _, _, _),
-	PINGROUP(8, spi0_miso, pwm1, wci2, wci2, _, cri_trng2, qdss_tracedata_a, _, _),
+	PINGROUP(8, spi0_miso, pwm1, wci_txd, wci_rxd, _, cri_trng2, qdss_tracedata_a, _, _),
 	PINGROUP(9, spi0_mosi, pwm1, _, cri_trng3, qdss_tracedata_a, _, _, _, _),
-	PINGROUP(10, uart0_rfr, pwm0, spi11, _, wci3, wci3, _, qdss_tracedata_a, _),
-	PINGROUP(11, uart0_cts, pwm0, spi1_cs1, _, wci4, wci4, _, qdss_tracedata_a, _),
+	PINGROUP(10, uart0_rfr, pwm0, spi11, _, wci_txd, wci_rxd, _, qdss_tracedata_a, _),
+	PINGROUP(11, uart0_cts, pwm0, spi1_cs1, _, wci_txd, wci_rxd, _, qdss_tracedata_a, _),
 	PINGROUP(12, uart0_rx, pwm0, spi11, _, prng_rosc0, qdss_tracedata_a, _, _, _),
 	PINGROUP(13, uart0_tx, pwm0, spi11, _, prng_rosc1, qdss_tracedata_a, _, _, _),
 	PINGROUP(14, i2c0_scl, tsens_max, _, prng_rosc2, qdss_tracedata_a, _, _, _, _),
@@ -815,16 +791,16 @@ static const struct msm_pingroup ipq5424_groups[] = {
 	PINGROUP(34, _, _, _, _, _, _, _, _, _),
 	PINGROUP(35, pcie3_wake, audio_sec1, audio_sec1, qdss_cti_trig_in_b1, _, _, _, _, _),
 	PINGROUP(36, audio_pri, spi1_cs1, audio_sec0, audio_sec0, qdss_tracedata_a, _, _, _, _),
-	PINGROUP(37, audio_pri, spi1_cs2, rx1, qdss_tracedata_a, _, _, _, _, _),
+	PINGROUP(37, audio_pri, spi1_cs2, rx2, qdss_tracedata_a, _, _, _, _, _),
 	PINGROUP(38, audio_pri, spi1_cs3, pll_test, rx1, qdss_tracedata_a, _, _, _, _),
-	PINGROUP(39, audio_pri, rx1, _, qdss_tracedata_a, _, _, _, _, _),
-	PINGROUP(40, PTA0_0, wci5, wci5, _, atest_tic, _, _, _, _),
-	PINGROUP(41, PTA0_1, wci6, wci6, cxc_data, _, _, _, _, _),
+	PINGROUP(39, audio_pri, rx0, _, qdss_tracedata_a, _, _, _, _, _),
+	PINGROUP(40, PTA0_0, wci_txd, wci_rxd, _, atest_tic, _, _, _, _),
+	PINGROUP(41, PTA0_1, wci_txd, wci_rxd, cxc_data, _, _, _, _, _),
 	PINGROUP(42, PTA0_2, cxc_clk, _, _, _, _, _, _, _),
 	PINGROUP(43, uart1_rx, gcc_plltest, _, _, _, _, _, _, _),
 	PINGROUP(44, uart1_tx, gcc_tlmm, _, _, _, _, _, _, _),
-	PINGROUP(45, spi10, rx0, audio_sec, gcc_plltest, _, qdss_traceclk_a, _, _, _),
-	PINGROUP(46, spi1_cs, rx0, audio_sec, dbg_out, qdss_tracectl_a,_, _, _, _),
+	PINGROUP(45, spi10, rx2, audio_sec, gcc_plltest, _, qdss_traceclk_a, _, _, _),
+	PINGROUP(46, spi1_cs, rx1, audio_sec, dbg_out, qdss_tracectl_a,_, _, _, _),
 	PINGROUP(47, spi10, rx0, audio_sec, _, _, _, _, _, _),
 	PINGROUP(48, spi10, audio_sec, _, _, _, _, _, _, _),
 	PINGROUP(49, resout, _, _, _, _, _, _, _, _),
