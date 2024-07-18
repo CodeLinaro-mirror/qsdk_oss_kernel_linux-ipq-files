@@ -114,6 +114,10 @@
 		};
 	};
 
+	ctx-save {
+		compatible = "qti,ctxt-save-ipq5424";
+	};
+
 	firmware {
 		scm {
 			compatible = "qcom,scm-ipq5424", "qcom,scm";
