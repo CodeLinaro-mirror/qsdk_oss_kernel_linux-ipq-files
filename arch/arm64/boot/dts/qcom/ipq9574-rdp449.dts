@@ -154,7 +154,7 @@
 			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <16>;
-			phy-mode = "sgmii";
+			phy-mode = "psgmii";
 		};
 
 		dp2 {
@@ -166,7 +166,7 @@
 			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <17>;
-			phy-mode = "sgmii";
+			phy-mode = "psgmii";
 		};
 
 		dp3 {
@@ -178,7 +178,7 @@
 			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <18>;
-			phy-mode = "sgmii";
+			phy-mode = "psgmii";
 		};
 
 		dp4 {
@@ -190,7 +190,7 @@
 			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <19>;
-			phy-mode = "sgmii";
+			phy-mode = "psgmii";
 		};
 
 		dp5 {
@@ -202,7 +202,7 @@
 			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <8>;
-			phy-mode = "sgmii";
+			phy-mode = "usxgmii";
 		};
 
 		dp6 {
@@ -214,7 +214,7 @@
 			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <0>;
-			phy-mode = "sgmii";
+			phy-mode = "usxgmii";
 		};
 
 		/* EDMA host driver configuration for the board */
