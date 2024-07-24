@@ -292,6 +292,10 @@
 		qti,tz-log-pos-info-off = <822>;
 	};
 
+	qseecom: qseecom {
+		compatible = "ipq5424-qseecom";
+	};
+
 	reserved-memory {
 		#address-cells = <2>;
 		#size-cells = <2>;
