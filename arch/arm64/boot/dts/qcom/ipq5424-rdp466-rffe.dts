@@ -1,0 +1,126 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * IPQ5424 RDP466-rffe board device tree source
+ *
+ * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ */
+
+/dts-v1/;
+
+#include "ipq5424-rdp-common.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. IPQ5424 RDP466-rffe";
+	compatible = "qcom,ipq5424-rdp466-rffe", "qcom,ipq5424";
+
+	soc@0 {
+		qupv3: geniqup@1ac0000 {
+
+			spi0: spi@1a90000 {
+				pinctrl-0 = <&qup_spi0_default>;
+				pinctrl-names = "default";
+				status = "okay";
+
+				flash@0 {
+					compatible = "spansion,s25fs128s1", "jedec,spi-nor";
+					#address-cells = <1>;
+					#size-cells = <1>;
+					reg = <0>;
+					spi-max-frequency = <50000000>;
+				};
+			};
+		};
+
+		leds {
+			compatible = "gpio-leds";
+			pinctrl-0 = <&gpio_leds_default>;
+			pinctrl-names = "default";
+
+			led-0 {
+				color = <LED_COLOR_ID_GREEN>;
+				function = LED_FUNCTION_WLAN;
+				gpios = <&tlmm 41 GPIO_ACTIVE_HIGH>;
+				linux,default-trigger = "phy0tx";
+				default-state = "off";
+			};
+		};
+	};
+};
+
+&qpic_bam {
+	status = "okay";
+};
+
+&qpic_nand {
+	status = "okay";
+};
+
+&pcie2_phy {
+	status = "okay";
+};
+
+&pcie2 {
+	status = "okay";
+
+	pcie2_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
+&pcie3_phy {
+	status = "okay";
+};
+
+&pcie3 {
+	status = "okay";
+
+	pcie3_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
+&qusb_phy_1 {
+	status = "okay";
+};
+
+&usb2 {
+	status = "okay";
+};
+
+&qusb_phy_0 {
+	status = "okay";
+};
+
+&ssphy_0 {
+	status = "okay";
+};
+
+&usb3 {
+	status = "okay";
+};
+
+&q6_region {
+	status = "okay";
+};
+
+&q6v5_wcss {
+	status = "okay";
+};
+
+&tlmm {
+	gpio_leds_default: gpio-leds-default-state {
+		pins = "gpio41";
+		function = "gpio";
+		drive-strength = <8>;
+		bias-pull-down;
+	};
+};
