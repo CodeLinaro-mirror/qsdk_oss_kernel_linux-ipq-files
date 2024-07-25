@@ -329,15 +329,20 @@ static int q6_powerup(struct rproc *rproc)
 	struct q6_wcss *wcss = rproc->priv;
 	int ret;
 	u32 val;
-	u8 temp = 0;
+	u8 temp = 0, loop;
 
 	/* clear boot trigger */
 	regmap_write(wcss->tcsr_map, wcss->tcsr_boot, 0x0);
 
 	/* assert q6 blk reset */
 	reset_control_assert(wcss->wcss_q6_reset);
+	for (loop = 0; loop < 10; loop++)
+		mdelay(1);
+
 	/* deassert q6 blk reset */
 	reset_control_deassert(wcss->wcss_q6_reset);
+	for (loop = 0; loop < 10; loop++)
+		mdelay(1);
 
 	/* enable clocks */
 	ret = enable_clocks(wcss);
