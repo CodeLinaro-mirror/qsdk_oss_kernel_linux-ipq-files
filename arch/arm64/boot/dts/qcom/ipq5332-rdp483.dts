@@ -551,6 +551,8 @@
 			id = <0>;
 			num_chip = <2>;
 			status = "okay";
+			chip_info = <0 1 1>,
+				    <1 1 0>;
 		};
 
 		q6v5_wcss: remoteproc@d100000 {
@@ -732,4 +734,38 @@
 
 &hs_m31phy_0 {
 	status = "okay";
+};
+&wifi0 {
+    qcom,multipd_arch;
+    qcom,rproc = <&q6_wcss_pd1>;
+    qcom,rproc_rpd = <&q6v5_wcss>;
+    qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
+    qcom,bdf-addr = <0x4BD00000 0x4BD00000 0x0 0x0 0x0 0x0>;
+    qcom,caldb-addr = <0x4D400000 0x4D000000 0x0 0x0 0x0 0x0>;
+    qcom,caldb-size = <0x300000>;
+    qcom,tgt-mem-mode = <1>;
+    qcom,board_id = <0x43>;
+    memory-region = <&q6_ipq5332_data>;
+    qcom,wsi = <&wsi>;
+    qcom,wsi_index  = <0>;
+    status = "okay";
+};
+
+&wifi1 {
+    qcom,multipd_arch;
+    qcom,rproc = <&q6_wcss_pd2>;
+    qcom,rproc_rpd = <&q6v5_wcss>;
+    qcom,userpd-subsys-name = "q6v5_wcss_userpd2";
+    qcom,bdf-addr = <0x4D900000 0x4D300000 0x0 0x0 0x0 0x0>;
+    qcom,caldb-addr = <0x4F000000 0x4E500000 0x0 0x0 0x0 0x0>;
+    qcom,caldb-size = <0x500000>;
+    qcom,tgt-mem-mode = <1>;
+    qcom,umac-irq-reset-addr = <0x20000884>;
+    qcom,board_id = <0x54>;
+    memory-region = <&q6_qcn6432_data_1>;
+    qcom,wsi = <&wsi>;
+    qcom,wsi_index = <1>;
+    interrupts = <GIC_SPI 33 IRQ_TYPE_EDGE_RISING>;
+    interrupt-names = "umac_reset";
+    status = "okay";
 };
