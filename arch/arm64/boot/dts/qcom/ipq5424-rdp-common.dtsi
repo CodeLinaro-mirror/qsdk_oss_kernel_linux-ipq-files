@@ -23,7 +23,15 @@
 
 	chosen {
 		stdout-path = "serial0";
-		bootargs-append = "clk_ignore_unused";
+		bootargs-append = " clk_ignore_unused";
+		linux,initrd-end = <0x97000000>;
+		linux,initrd-start = <0x95000000>;
+		bootargs = "root=/dev/ram0 rw init=/init clk_ignore_unused nosmp";
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x40000000>;
 	};
 
 	soc@0 {

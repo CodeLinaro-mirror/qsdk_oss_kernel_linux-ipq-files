@@ -14,19 +14,57 @@
 	model = "Qualcomm Technologies, Inc. IPQ5424 RDP485-rffe";
 	compatible = "qcom,ipq5424-rdp485-rffe", "qcom,ipq5424";
 
+	/delete-node/ ctx-save;
+	/delete-node/ firmware;
+	/delete-node/ ipq-debug;
+	/delete-node/ license_manager;
+	/delete-node/ pmu;
+	/delete-node/ pmu-v7;
+	/delete-node/ psci;
+	/delete-node/ qcom,test@0;
+	/delete-node/ qti,tzlog;
+	/delete-node/ wcss-smp2p;
+	/delete-node/ thermal-zones;
+	/delete-node/ qcn9224_legacy_irq0;
+	/delete-node/ qcn9224_legacy_irq1;
+	/delete-node/ qcn9224_legacy_irq2;
+	/delete-node/ qcn9224_legacy_irq3;
+
+	cpus: cpus {
+		CPU0: cpu@0 {
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc0>;
+		};
+
+		CPU1: cpu@100 {
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc1>;
+		};
+
+		CPU2: cpu@200 {
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc2>;
+		};
+
+		CPU3: cpu@300 {
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc3>;
+		};
+	};
+
 	soc@0 {
 		qupv3: geniqup@1ac0000 {
 
 			i2c0: i2c@1a88000 {
 				pinctrl-0 = <&qup_i2c0_default>;
 				pinctrl-names = "default";
-				status = "okay";
+				status = "disabled";
 			};
 
 			spi0: spi@1a90000 {
 				pinctrl-0 = <&qup_spi0_default>;
 				pinctrl-names = "default";
-				status = "okay";
+				status = "disabled";
 
 				flash@0 {
 					compatible = "spansion,s25fs128s1", "jedec,spi-nor";
@@ -38,10 +76,62 @@
 			};
 		};
 
+		softsku@a6000 {
+			status = "disabled";
+		};
+
+		/delete-node/ efuse@a4000;
+		/delete-node/ thermal-sensor@4a9000;
+		/delete-node/ dp3;
+		/delete-node/ dcc@60ff000;
+		/delete-node/ ess-instance;
+		/delete-node/ gpio-keys;
+		/delete-node/ mailbox@f400004;
+		/delete-node/ mmc@7804000;
+		/delete-node/ nss-ppe;
+		/delete-node/ tcsr;
+		/delete-node/ tmelcom;
+		/delete-node/ qcom,tmelcom-qmp-client;
+		/delete-node/ qmp_tmel;
+		/delete-node/ etf@6047000;
+		/delete-node/ etm@6480000;
+		/delete-node/ etm@6580000;
+		/delete-node/ etm@6680000;
+		/delete-node/ etm@6780000;
+		/delete-node/ edma@3ab00000;
+		/delete-node/ ess-uniphy@7a00000;
+		/delete-node/ funnel@6041000;
+		/delete-node/ funnel@6042000;
+		/delete-node/ funnel@6045000;
+		/delete-node/ funnel@6781000;
+		/delete-node/ mdio@90000;
+		/delete-node/ nsscc@39b00000;
+		/delete-node/ sram@8600000;
+		/delete-node/ stm@6002000;
+		/delete-node/ syscon@1937000;
+		/delete-node/ system-cache-controller@800000;
+		/delete-node/ qmp-tmel@32090000;
+		/delete-node/ remoteproc@d100000;
+		/delete-node/ rng@4c3000;
+		/delete-node/ replicator@6046000;
+		/delete-node/ tmc@6048000;
+		/delete-node/ pcie@60000000;
+		/delete-node/ pcie@70000000;
+		/delete-node/ phy@84000;
+		/delete-node/ phy@8c000;
+		/delete-node/ watchdog@f410000;
+		/delete-node/ wifi@c0000000;
+		/delete-node/ wifi1@f00000;
+		/delete-node/ wifi2@f00000;
+		/delete-node/ wifi3@f00000;
+		/delete-node/ wifi4@f00000;
+		/delete-node/ userpd1;
+
 		leds {
 			compatible = "gpio-leds";
 			pinctrl-0 = <&gpio_leds_default>;
 			pinctrl-names = "default";
+			status = "disabled";
 
 			led-0 {
 				color = <LED_COLOR_ID_GREEN>;
@@ -51,23 +141,43 @@
 				default-state = "off";
 			};
 		};
+
+		acc0: clock-controller@f800000 {
+			compatible = "qcom,arm-cortex-acc";
+			reg = <0xf800000 0x10000>;
+		};
+
+		acc1: clock-controller@f810000 {
+			compatible = "qcom,arm-cortex-acc";
+			reg = <0xf810000 0x10000>;
+		};
+
+		acc2:clock-controller@f820000 {
+			compatible = "qcom,arm-cortex-acc";
+			reg = <0xf820000 0x10000>;
+		};
+
+		acc3:clock-controller@f830000 {
+			compatible = "qcom,arm-cortex-acc";
+			reg = <0xf830000 0x10000>;
+		};
 	};
 };
 
 &qpic_bam {
-	status = "okay";
+	status = "disabled";
 };
 
 &qpic_nand {
-	status = "okay";
+	status = "disabled";
 };
 
 &pcie2_phy {
-	status = "okay";
+	status = "disabled";
 };
 
 &pcie2 {
-	status = "okay";
+	status = "disabled";
 
 	pcie2_rp {
 		reg = <0 0 0 0 0>;
@@ -79,11 +189,11 @@
 };
 
 &pcie3_phy {
-	status = "okay";
+	status = "disabled";
 };
 
 &pcie3 {
-	status = "okay";
+	status = "disabled";
 
 	pcie3_rp {
 		reg = <0 0 0 0 0>;
@@ -95,31 +205,31 @@
 };
 
 &qusb_phy_1 {
-	status = "okay";
+	status = "disabled";
 };
 
 &usb2 {
-	status = "okay";
+	status = "disabled";
 };
 
 &qusb_phy_0 {
-	status = "okay";
+	status = "disabled";
 };
 
 &ssphy_0 {
-	status = "okay";
+	status = "disabled";
 };
 
 &usb3 {
-	status = "okay";
+	status = "disabled";
 };
 
 &q6_region {
-	status = "okay";
+	status = "disabled";
 };
 
-&q6v5_wcss {
-	status = "okay";
+&tcsr_mutex {
+	status = "disabled";
 };
 
 &tlmm {
