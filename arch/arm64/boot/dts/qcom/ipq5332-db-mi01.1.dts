@@ -105,7 +105,7 @@
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <0>;
 			qcom,link-poll = <1>;
-			phy-mode = "sgmii";
+			phy-mode = "usxgmii";
 		};
 
 		dp2 {
@@ -117,7 +117,7 @@
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <8>;
 			qcom,link-poll = <1>;
-			phy-mode = "sgmii";
+			phy-mode = "usxgmii";
 			qcom,mht-dev = <1>;
 			qcom,ppe-offload-disabled = <1>;
 		};

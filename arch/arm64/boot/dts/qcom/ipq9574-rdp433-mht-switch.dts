@@ -70,7 +70,7 @@
 			qcom,phy-mdio-addr = <8>;
 			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
-			phy-mode = "sgmii";
+			phy-mode = "usxgmii";
 		};
 
 		dp2 {
@@ -82,7 +82,7 @@
 			qcom,phy-mdio-addr = <0>;
 			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
-			phy-mode = "sgmii";
+			phy-mode = "usxgmii";
 		};
 
 		dp3 {
