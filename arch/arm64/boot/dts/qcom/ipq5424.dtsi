@@ -7,6 +7,7 @@
  */
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/clock/qcom,apss-ipq.h>
 #include <dt-bindings/clock/qcom,ipq5424-gcc.h>
 #include <dt-bindings/reset/qcom,ipq5424-gcc.h>
 #include <dt-bindings/gpio/gpio.h>
@@ -58,6 +59,9 @@
 			reg = <0x0>;
 			enable-method = "psci";
 			next-level-cache = <&L2_0>;
+			clocks = <&apss_clk APSS_SILVER_CORE_CLK>,
+				 <&apss_clk L3_CORE_CLK>;
+			clock-names = "cpu", "l3_core";
 			L2_0: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
@@ -77,6 +81,9 @@
 			enable-method = "psci";
 			reg = <0x100>;
 			next-level-cache = <&L2_100>;
+			clocks = <&apss_clk APSS_SILVER_CORE_CLK>,
+				 <&apss_clk L3_CORE_CLK>;
+			clock-names = "cpu", "l3_core";
 			L2_100: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
@@ -91,6 +98,9 @@
 			enable-method = "psci";
 			reg = <0x200>;
 			next-level-cache = <&L2_200>;
+			clocks = <&apss_clk APSS_SILVER_CORE_CLK>,
+				 <&apss_clk L3_CORE_CLK>;
+			clock-names = "cpu", "l3_core";
 			L2_200: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
@@ -105,12 +115,47 @@
 			enable-method = "psci";
 			reg = <0x300>;
 			next-level-cache = <&L2_300>;
+			clocks = <&apss_clk APSS_SILVER_CORE_CLK>,
+				 <&apss_clk L3_CORE_CLK>;
+			clock-names = "cpu", "l3_core";
 			L2_300: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
 				cache-unified;
 				next-level-cache = <&L3_0>;
 			};
+		};
+	};
+
+	cpu_opp_table: opp-table-cpu {
+		compatible = "operating-points-v2-kryo-cpu";
+		opp-shared;
+		nvmem-cells = <&apss_cpu_freq>;
+		nvmem-cell-names = "cpu_freq";
+
+		/* CPU supports two frequencies and the fuse has LValue instead
+		 * of limits. As only two frequencies are supported, considering
+		 * zero Lvalue as no limit and Lvalue as 1.4GHz limit.
+		 * ------------------------------------------------------------
+		 * Frequency     BIT1    BIT0    opp-supported-hw
+		 *              1.4GHz  No Limit
+		 * ------------------------------------------------------------
+		 * 1416000000      1       1            0x3
+		 * 1800000000      0       1            0x1
+		 * -----------------------------------------------------------*/
+
+		opp-1416000000 {
+			opp-hz = /bits/ 64 <1416000000>;
+			opp-microvolt = <1>;
+			opp-supported-hw = <0x3>;
+			clock-latency-ns = <200000>;
+		};
+
+		opp-1800000000 {
+			opp-hz = /bits/ 64 <1800000000>;
+			opp-microvolt = <2>;
+			opp-supported-hw = <0x1>;
+			clock-latency-ns = <200000>;
 		};
 	};
 
@@ -835,6 +880,14 @@
 				status = "disabled";
 			};
 		};
+
+		apss_clk: apss-clock@fa80000 {
+			compatible = "qcom,apss-ipq5424-clk";
+			reg = <0x0fa80000 0x20000>;
+			clocks = <&xo>, <&gcc GPLL0>;
+			clock-name = "xo", "gpll0";
+			#clock-cells = <1>;
+                };
 
 		q6v5_wcss: remoteproc@d100000 {
 			compatible = "qcom,ipq5424-q6-mpd";
