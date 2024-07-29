@@ -205,16 +205,16 @@
 	qup_i2c2_default: qup-i2c2-default-state {
 		qup_i2c2_scl {
 			pins = "gpio47";
-			/* i2c2 shares spi1, so map spi1_miso function as per pinctrl driver */
-			function = "spi1_miso";
+			/* i2c2 shares spi1, so map spi10 function as per pinctrl driver */
+			function = "spi10";
 			drive-strength = <8>;
 			bias-disable;
 		};
 
 		qup_i2c2_sda {
 			pins = "gpio48";
-			/* i2c2 shares spi1, so map spi1_mosi function as per pinctrl driver */
-			function = "spi1_mosi";
+			/* i2c2 shares spi1, so map spi10 function as per pinctrl driver */
+			function = "spi10";
 			drive-strength = <8>;
 			bias-pull-up;
 		};
