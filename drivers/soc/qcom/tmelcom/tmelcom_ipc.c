@@ -61,6 +61,9 @@ int tmelcom_secboot_sec_auth(u32 sw_id, void *metadata, size_t size)
 	void *elf_buf;
 	int ret;
 
+	if (!dev || !metadata)
+		return -EINVAL;
+
 	elf_buf = dma_alloc_coherent(dev, size, &elf_buf_phys, GFP_KERNEL);
 	if (!elf_buf)
 		return -ENOMEM;
@@ -89,8 +92,12 @@ EXPORT_SYMBOL_GPL(tmelcom_secboot_sec_auth);
 
 int tmelcom_secboot_teardown(u32 sw_id, u32 secondary_sw_id)
 {
+	struct device *dev = tmelcom_get_device();
 	struct tmel_secboot_teardown msg = {0};
 	int ret;
+
+	if (!dev)
+		return -EINVAL;
 
 	msg.req.sw_id = sw_id;
 	msg.req.secondary_sw_id = secondary_sw_id;

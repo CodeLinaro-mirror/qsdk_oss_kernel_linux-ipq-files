@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 /*
- * DEVSOC RDP485 board device tree source
+ * IPQ5424 RDP485 board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
@@ -11,11 +11,17 @@
 #include "ipq5424-rdp-common.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. DEVSOC RDP485";
-	compatible = "qcom,devsoc-rdp485", "qcom,devsoc";
+	model = "Qualcomm Technologies, Inc. IPQ5424 RDP485";
+	compatible = "qcom,ipq5424-rdp485", "qcom,ipq5424";
 
 	soc@0 {
 		qupv3: geniqup@1ac0000 {
+
+			i2c0: i2c@1a88000 {
+				pinctrl-0 = <&qup_i2c0_default>;
+				pinctrl-names = "default";
+				status = "okay";
+			};
 
 			spi0: spi@1a90000 {
 				pinctrl-0 = <&qup_spi0_default>;
@@ -29,6 +35,20 @@
 					reg = <0>;
 					spi-max-frequency = <50000000>;
 				};
+			};
+		};
+
+		leds {
+			compatible = "gpio-leds";
+			pinctrl-0 = <&gpio_leds_default>;
+			pinctrl-names = "default";
+
+			led-0 {
+				color = <LED_COLOR_ID_GREEN>;
+				function = LED_FUNCTION_WLAN;
+				gpios = <&tlmm 41 GPIO_ACTIVE_HIGH>;
+				linux,default-trigger = "phy0tx";
+				default-state = "off";
 			};
 		};
 	};
@@ -100,4 +120,13 @@
 
 &q6v5_wcss {
 	status = "okay";
+};
+
+&tlmm {
+	gpio_leds_default: gpio-leds-default-state {
+		pins = "gpio41";
+		function = "gpio";
+		drive-strength = <8>;
+		bias-pull-down;
+	};
 };

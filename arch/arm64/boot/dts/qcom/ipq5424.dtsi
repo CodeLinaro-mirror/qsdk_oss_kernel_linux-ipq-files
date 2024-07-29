@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 /*
- * Dev SoC device tree source
+ * IPQ5424 device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
-#include <dt-bindings/clock/qcom,devsoc-gcc.h>
-#include <dt-bindings/reset/qcom,devsoc-gcc.h>
+#include <dt-bindings/clock/qcom,ipq5424-gcc.h>
+#include <dt-bindings/reset/qcom,ipq5424-gcc.h>
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/clock/qcom,devsoc-nsscc.h>
-#include <dt-bindings/reset/qcom,devsoc-nsscc.h>
+#include <dt-bindings/clock/qcom,ipq5424-nsscc.h>
+#include <dt-bindings/reset/qcom,ipq5424-nsscc.h>
 
 / {
 	#address-cells = <2>;
@@ -114,9 +114,13 @@
 		};
 	};
 
+	ctx-save {
+		compatible = "qti,ctxt-save-ipq5424";
+	};
+
 	firmware {
 		scm {
-			compatible = "qcom,scm-devsoc", "qcom,scm";
+			compatible = "qcom,scm-ipq5424", "qcom,scm";
 			qcom,dload-mode = <&tcsr 0x25100>;
 		};
 	};
@@ -154,6 +158,11 @@
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
+
+		tmc_etr_region: tmc_etr_dump@0 {
+			no-map;
+			status = "disabled";
+		};
 
 		tzapp: tzapp@0x89900000 {
 		#if !defined(__IPQ_MEM_PROFILE_512_MB__) && !defined(__IPQ_MEM_PROFILE_256_MB__)
@@ -228,7 +237,7 @@
 		};
 
 		system-cache-controller@800000 {
-			compatible = "qcom,devsoc-llcc";
+			compatible = "qcom,ipq5424-llcc";
 			reg = <0x00800000 0x200000>, <0x00800000 0x200000>;
 			reg-names = "llcc_base", "llcc_broadcast_base";
 			interrupts = <GIC_SPI 68 IRQ_TYPE_LEVEL_HIGH>;
@@ -240,7 +249,7 @@
 		};
 
 		tlmm: pinctrl@1000000 {
-			compatible = "qcom,devsoc-tlmm";
+			compatible = "qcom,ipq5424-tlmm";
 			reg = <0x01000000 0x300000>;
 			interrupts = <GIC_SPI 84 IRQ_TYPE_LEVEL_HIGH>;
 			gpio-controller;
@@ -413,7 +422,8 @@
 		};
 
 		pcie0_phy: phy@84000 {
-			compatible = "qcom,devsoc-qmp-gen3x1-pcie-phy";
+			compatible = "qcom,ipq5424-qmp-gen3x1-pcie-phy",
+				     "qcom,ipq9574-qmp-gen3x1-pcie-phy";
 			reg = <0x00084000 0x1bc>; /* Serdes PLL */
 			#address-cells = <1>;
 			#size-cells = <1>;
@@ -456,7 +466,8 @@
 		};
 
 		pcie1_phy: phy@8c000 {
-			compatible = "qcom,devsoc-qmp-gen3x1-pcie-phy";
+			compatible = "qcom,ipq5424-qmp-gen3x1-pcie-phy",
+				     "qcom,ipq9574-qmp-gen3x1-pcie-phy";
 			reg = <0x0008c000 0x1bc>; /* Serdes PLL */
 			#address-cells = <1>;
 			#size-cells = <1>;
@@ -499,7 +510,8 @@
 		};
 
 		pcie2_phy: phy@f4000 {
-			compatible = "qcom,devsoc-qmp-gen3x2-pcie-phy";
+			compatible = "qcom,ipq5424-qmp-gen3x2-pcie-phy",
+				     "qcom,ipq9574-qmp-gen3x2-pcie-phy";
 			reg = <0x000f4000 0x1bc>; /* Serdes PLL */
 			#address-cells = <1>;
 			#size-cells = <1>;
@@ -544,7 +556,8 @@
 		};
 
 		pcie3_phy: phy@fc000 {
-			compatible = "qcom,devsoc-qmp-gen3x2-pcie-phy";
+			compatible = "qcom,ipq5424-qmp-gen3x2-pcie-phy",
+				     "qcom,ipq9574-qmp-gen3x2-pcie-phy";
 			reg = <0x000fc000 0x1bc>; /* Serdes PLL */
 			#address-cells = <1>;
 			#size-cells = <1>;
@@ -708,7 +721,7 @@
 		};
 
 		gcc: clock-controller@1800000 {
-			compatible = "qcom,devsoc-gcc";
+			compatible = "qcom,ipq5424-gcc";
 			reg = <0x01800000 0x40000>;
 			clocks = <&xo>,
 				 <&sleep_clk>;
@@ -739,7 +752,7 @@
 		};
 
 		tcsr: syscon@1937000 {
-			compatible = "qcom,tcsr-devsoc", "syscon", "simple-mfd";
+			compatible = "qcom,tcsr-ipq5424", "syscon", "simple-mfd";
 			reg = <0x01937000 0x2a000>;
 			#address-cells = <1>;
 			#size-cells = <1>;
@@ -824,7 +837,7 @@
 		};
 
 		q6v5_wcss: remoteproc@d100000 {
-			compatible = "qcom,devsoc-q6-mpd";
+			compatible = "qcom,ipq5424-q6-mpd";
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges;
@@ -858,7 +871,7 @@
 				      "cnoc_wcss_ahb";
 			qcom,q6-tcsr-regs = <&tcsr 0x6204 0x1B000>;
 #endif
-			firmware = "devsoc/q6_fw0.mdt";
+			firmware = "IPQ5424/q6_fw0.mdt";
 			interrupts-extended = <&intc GIC_SPI 508 IRQ_TYPE_EDGE_RISING>,
 					      <&wcss_smp2p_in 0 0>,
 					      <&wcss_smp2p_in 1 0>,
@@ -888,9 +901,9 @@
 			};
 
 			q6_wcss_pd1: remoteproc_pd1 {
-				compatible = "qcom,devsoc-wcss-ahb-mpd";
-				firmware = "devsoc/q6_fw1.mdt";
-				m3_firmware = "devsoc/iu_fw.mdt";
+				compatible = "qcom,ipq5424-wcss-ahb-mpd";
+				firmware = "IPQ5424/q6_fw1.mdt";
+				m3_firmware = "IPQ5424/iu_fw.mdt";
 				interrupts-extended = <&wcss_smp2p_in 8 0>,
 						      <&wcss_smp2p_in 9 0>,
 						      <&wcss_smp2p_in 12 0>,
@@ -1070,7 +1083,7 @@
 		};
 
 		sdhc: mmc@7804000 {
-			compatible = "qcom,devsoc-sdhci", "qcom,sdhci-msm-v5";
+			compatible = "qcom,ipq5424-sdhci", "qcom,sdhci-msm-v5";
 			reg = <0x07804000 0x1000>, <0x07805000 0x1000>,
 			      <0x07808000 0x2000>;
 			reg-names = "hc", "cqhci", "ice";
@@ -1105,7 +1118,7 @@
 		};
 
 		qpic_nand: nand@79b0000 {
-			compatible = "qcom,devsoc-nand";
+			compatible = "qcom,ipq5424-nand";
 			reg = <0x79b0000 0x10000>;
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -1181,7 +1194,7 @@
 		};
 
 		apcs_glb: mailbox@f400004 {
-			compatible = "qcom,devsoc-apcs-apps-global",
+			compatible = "qcom,ipq5424-apcs-apps-global",
 				     "qcom,ipq6018-apcs-apps-global";
 			reg = <0xf400004 0x6000>;
 			#clock-cells = <1>;
@@ -1210,7 +1223,7 @@
 		};
 
 		watchdog: watchdog@f410000 {
-			compatible = "qcom,apss-wdt-devsoc", "qcom,kpss-wdt";
+			compatible = "qcom,apss-wdt-ipq5424", "qcom,kpss-wdt";
 			reg = <0xf410000 0x1000>;
 			interrupts = <GIC_SPI 0 IRQ_TYPE_EDGE_RISING>;
 			clocks = <&sleep_clk>;
@@ -1278,7 +1291,7 @@
 
 		/* 2L controller */
 		pcie3: pcie@40000000 {
-			compatible = "qcom,pcie-devsoc";
+			compatible = "qcom,pcie-ipq5424";
 			reg =  <0x40000000 0xf1d>,
 			       <0x40000f20 0xa8>,
 			       <0x40001000 0x1000>,
@@ -1319,13 +1332,15 @@
 				      "axi_bridge",
 				      "rchng";
 
-			assigned-clocks = <&gcc GCC_PCIE3_AUX_CLK>,
+			assigned-clocks = <&gcc GCC_PCIE3_AHB_CLK>,
+					<&gcc GCC_PCIE3_AUX_CLK>,
 					<&gcc GCC_PCIE3_AXI_M_CLK>,
 					<&gcc GCC_PCIE3_AXI_S_BRIDGE_CLK>,
 					<&gcc GCC_PCIE3_AXI_S_CLK>,
 					<&gcc GCC_PCIE3_RCHNG_CLK>;
 
-			assigned-clock-rates = <20000000>,
+			assigned-clock-rates = <100000000>,
+						<20000000>,
 						<266666666>,
 						<240000000>,
 						<240000000>,
@@ -1364,7 +1379,7 @@
 
 		/* 2L controller */
 		pcie2: pcie@50000000 {
-			compatible = "qcom,pcie-devsoc";
+			compatible = "qcom,pcie-ipq5424";
 			reg =  <0x50000000 0xf1d>,
 			       <0x50000f20 0xa8>,
 			       <0x50001000 0x1000>,
@@ -1405,13 +1420,15 @@
 				      "axi_bridge",
 				      "rchng";
 
-			assigned-clocks = <&gcc GCC_PCIE2_AUX_CLK>,
+			assigned-clocks = <&gcc GCC_PCIE2_AHB_CLK>,
+					<&gcc GCC_PCIE2_AUX_CLK>,
 					<&gcc GCC_PCIE2_AXI_M_CLK>,
 					<&gcc GCC_PCIE2_AXI_S_BRIDGE_CLK>,
 					<&gcc GCC_PCIE2_AXI_S_CLK>,
 					<&gcc GCC_PCIE2_RCHNG_CLK>;
 
-			assigned-clock-rates = <20000000>,
+			assigned-clock-rates = <100000000>,
+						<20000000>,
 						<266666666>,
 						<240000000>,
 						<240000000>,
@@ -1450,7 +1467,7 @@
 
 		/* 1L controller */
 		pcie1: pcie@60000000 {
-			compatible = "qcom,pcie-devsoc";
+			compatible = "qcom,pcie-ipq5424";
 			reg =  <0x60000000 0xf1d>,
 			       <0x60000f20 0xa8>,
 			       <0x60001000 0x1000>,
@@ -1491,13 +1508,15 @@
 				      "axi_bridge",
 				      "rchng";
 
-			assigned-clocks = <&gcc GCC_PCIE1_AUX_CLK>,
+			assigned-clocks = <&gcc GCC_PCIE1_AHB_CLK>,
+					<&gcc GCC_PCIE1_AUX_CLK>,
 					<&gcc GCC_PCIE1_AXI_M_CLK>,
 					<&gcc GCC_PCIE1_AXI_S_BRIDGE_CLK>,
 					<&gcc GCC_PCIE1_AXI_S_CLK>,
 					<&gcc GCC_PCIE1_RCHNG_CLK>;
 
-			assigned-clock-rates = <20000000>,
+			assigned-clock-rates = <100000000>,
+						<20000000>,
 						<240000000>,
 						<240000000>,
 						<240000000>,
@@ -1536,7 +1555,7 @@
 
 		/* 1L controller */
 		pcie0: pcie@70000000 {
-			compatible = "qcom,pcie-devsoc";
+			compatible = "qcom,pcie-ipq5424";
 			reg =  <0x70000000 0xf1d>,
 			       <0x70000f20 0xa8>,
 			       <0x70001000 0x1000>,
@@ -1577,13 +1596,15 @@
 				      "axi_bridge",
 				      "rchng";
 
-			assigned-clocks = <&gcc GCC_PCIE0_AUX_CLK>,
+			assigned-clocks = <&gcc GCC_PCIE0_AHB_CLK>,
+					<&gcc GCC_PCIE0_AUX_CLK>,
 					<&gcc GCC_PCIE0_AXI_M_CLK>,
 					<&gcc GCC_PCIE0_AXI_S_BRIDGE_CLK>,
 					<&gcc GCC_PCIE0_AXI_S_CLK>,
 					<&gcc GCC_PCIE0_RCHNG_CLK>;
 
-			assigned-clock-rates = <2000000>,
+			assigned-clock-rates = <100000000>,
+						<20000000>,
 						<240000000>,
 						<240000000>,
 						<240000000>,
@@ -1964,6 +1985,7 @@
 			interrupt-names = "byte-cntr-irq";
 			arm,buffer-size = <0x100000>;
 			arm,scatter-gather;
+			memory-region = <&tmc_etr_region>;
 			coresight-name = "coresight-tmc-etr";
 			clocks = <&gcc GCC_QDSS_DAP_CLK>;
 			clock-names = "apb_pclk";
@@ -2097,7 +2119,7 @@
 		};
 
 		sram@8600000 {
-			compatible = "qcom,devsoc-imem", "syscon", "simple-mfd";
+			compatible = "qcom,ipq5424-imem", "syscon", "simple-mfd";
 			reg = <0x08600000 0x1000>;
 			ranges = <0 0x08600000 0x1000>;
 
@@ -2126,7 +2148,7 @@
 		};
 
 		qusb_phy_1: phy@71000 {
-			compatible = "qcom,devsoc-qusb2-phy";
+			compatible = "qcom,ipq5424-qusb2-phy";
 			reg = <0x071000 0x180>;
 			#phy-cells = <0>;
 
@@ -2139,7 +2161,7 @@
 		};
 
 		usb2: usb2@1e00000 {
-			compatible = "qcom,devsoc-dwc3", "qcom,dwc3";
+			compatible = "qcom,ipq5424-dwc3", "qcom,dwc3";
 			reg = <0x1ef8800 0x400>;
 			#address-cells = <1>;
 			#size-cells = <1>;
@@ -2169,6 +2191,8 @@
 			dwc_1: dwc3@1e00000 {
 				compatible = "snps,dwc3";
 				reg = <0x1e00000 0xe000>;
+				clocks = <&gcc GCC_USB1_MOCK_UTMI_CLK>;
+				clock-names = "ref";
 				interrupts = <GIC_SPI 396 IRQ_TYPE_LEVEL_HIGH>;
 				phys = <&qusb_phy_1>;
 				phy-names = "usb2-phy";
@@ -2183,7 +2207,7 @@
 		};
 
 		qusb_phy_0: phy@7b000 {
-			compatible = "qcom,devsoc-qusb2-phy";
+			compatible = "qcom,ipq5424-qusb2-phy";
 			reg = <0x07b000 0x180>;
 			#phy-cells = <0>;
 
@@ -2196,7 +2220,7 @@
 		};
 
 		ssphy_0: phy@7d000 {
-			compatible = "qcom,devsoc-qmp-usb3-phy";
+			compatible = "qcom,ipq5424-qmp-usb3-phy";
 			reg = <0x0007d000 0xa00>;
 			#phy-cells = <0>;
 
@@ -2221,7 +2245,7 @@
 		};
 
 		usb3: usb3@8a00000 {
-			compatible = "qcom,devsoc-dwc3", "qcom,dwc3";
+			compatible = "qcom,ipq5424-dwc3", "qcom,dwc3";
 			reg = <0x8af8800 0x400>;
 			#address-cells = <1>;
 			#size-cells = <1>;
@@ -2252,6 +2276,8 @@
 			dwc_0: dwc3@8a00000 {
 				compatible = "snps,dwc3";
 				reg = <0x8a00000 0xcd00>;
+				clocks = <&gcc GCC_USB0_MOCK_UTMI_CLK>;
+				clock-names = "ref";
 				interrupts = <GIC_SPI 409 IRQ_TYPE_LEVEL_HIGH>;
 				phys = <&qusb_phy_0>, <&ssphy_0>;
 				phy-names = "usb2-phy", "usb3-phy";
@@ -2304,7 +2330,7 @@
 	};
 
 	ipq-debug {
-		compatible = "qcom,ipq-debug-devsoc";
+		compatible = "qcom,ipq-debug-ipq5424";
 		qcom,rproc = <&q6v5_wcss>;
 	};
 

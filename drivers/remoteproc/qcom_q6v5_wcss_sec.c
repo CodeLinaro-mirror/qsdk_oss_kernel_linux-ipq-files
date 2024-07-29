@@ -424,7 +424,7 @@ static int q6v5_wcss_sec_dump_segments(struct rproc *rproc,
 	return 0;
 }
 
-static const struct rproc_ops q6v5_wcss_sec_devsoc_ops = {
+static const struct rproc_ops q6v5_wcss_sec_ipq5424_ops = {
 	.start = q6v5_wcss_sec_start,
 	.stop = q6v5_wcss_sec_stop,
 	.da_to_va = q6v5_wcss_sec_da_to_va,
@@ -533,11 +533,11 @@ static int q6v5_wcss_sec_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static const struct wcss_data q6_devsoc_res_init = {
-	.q6_firmware_name = "devsoc/q6_fw0.mdt",
+static const struct wcss_data q6_ipq5424_res_init = {
+	.q6_firmware_name = "IPQ5424/q6_fw0.mdt",
 	.crash_reason_smem = WCSS_CRASH_REASON,
 	.remote_id = WCSS_SMEM_HOST,
-	.ops = &q6v5_wcss_sec_devsoc_ops,
+	.ops = &q6v5_wcss_sec_ipq5424_ops,
 	.pasid = RPD_SWID,
 	.bootargs_version = VERSION2,
 	.tmelcom_support = true,
@@ -547,7 +547,7 @@ static const struct wcss_data q6_ipq5332_res_init = {
 	.q6_firmware_name = "IPQ5332/q6_fw0.mdt",
 	.crash_reason_smem = WCSS_CRASH_REASON,
 	.remote_id = WCSS_SMEM_HOST,
-	.ops = &q6v5_wcss_sec_devsoc_ops,
+	.ops = &q6v5_wcss_sec_ipq5424_ops,
 	.pasid = RPD_SWID,
 	.bootargs_version = VERSION2,
 	.tmelcom_support = false,
@@ -557,13 +557,13 @@ static const struct wcss_data q6_ipq9574_res_init = {
 	.q6_firmware_name = "IPQ9574/q6_fw.mdt",
 	.crash_reason_smem = WCSS_CRASH_REASON,
 	.remote_id = WCSS_SMEM_HOST,
-	.ops = &q6v5_wcss_sec_devsoc_ops,
+	.ops = &q6v5_wcss_sec_ipq5424_ops,
 	.pasid = WCSS_PASID,
 	.tmelcom_support = false,
 };
 
 static const struct of_device_id q6v5_wcss_sec_of_match[] = {
-	{ .compatible = "qcom,devsoc-q6v5-wcss-sec", .data = &q6_devsoc_res_init },
+	{ .compatible = "qcom,ipq5424-q6v5-wcss-sec", .data = &q6_ipq5424_res_init },
 	{ .compatible = "qcom,ipq5332-q6v5-wcss-sec", .data = &q6_ipq5332_res_init },
 	{ .compatible = "qcom,ipq9574-q6v5-wcss-sec", .data = &q6_ipq9574_res_init },
 	{ },

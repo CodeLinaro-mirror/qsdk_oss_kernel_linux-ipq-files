@@ -541,6 +541,7 @@ store_sec_auth(struct device *dev,
 
 		if (!hash_file_buf) {
 			pr_err("%s: Memory allocation failed for hash file buffer\n", __func__);
+			ret = -ENOMEM;
 			goto free_out_data;
 		}
 
@@ -664,7 +665,6 @@ store_sec_dat(struct device *dev, struct device_attribute *attr,
 	dma_addr_t dma_req_addr = 0;
 	size_t req_order = 0;
 	struct page *req_page = NULL;
-	int rc = 0;
 	u64 dma_size;
 
 	fptr = filp_open(buf, O_RDONLY, 0);
@@ -697,6 +697,7 @@ store_sec_dat(struct device *dev, struct device_attribute *attr,
 	ret = kernel_read(fptr, ptr, size, 0);
 	if (ret != size) {
 		pr_err("File read failed\n");
+		ret = ret < 0 ? ret : -EIO;
 		goto free_page;
 	}
 
@@ -709,8 +710,8 @@ store_sec_dat(struct device *dev, struct device_attribute *attr,
 
 	/* map the memory region */
 	dma_req_addr = dma_map_single(dev, ptr, size, DMA_TO_DEVICE);
-	rc = dma_mapping_error(dev, dma_req_addr);
-	if (rc) {
+	ret = dma_mapping_error(dev, dma_req_addr);
+	if (ret) {
 		pr_err("DMA Mapping Error\n");
 		dma_unmap_single(dev, dma_req_addr, size, DMA_TO_DEVICE);
 		free_pages((unsigned long)page_address(req_page), req_order);
@@ -725,16 +726,17 @@ store_sec_dat(struct device *dev, struct device_attribute *attr,
 				    sizeof(fuse_blow));
 	if (ret) {
 		pr_err("Error in QFPROM write (%d %lu)\n", ret, fuse_status);
+		ret = -EIO;
 		goto free_mem;
 	}
 	if (fuse_status == FUSEPROV_SECDAT_LOCK_BLOWN)
 		pr_info("Fuse already blown\n");
 	else if (fuse_status == FUSEPROV_INVALID_HASH)
 		pr_info("Invalid sec.dat\n");
-	else if (fuse_status  != FUSEPROV_SUCCESS)
-		pr_info("Failed to Blow fuses\n");
-	else
+	else if (fuse_status == FUSEPROV_SUCCESS)
 		pr_info("Fuse Blow Success\n");
+	else
+		pr_info("Fuse blow failed with err code : 0x%lx\n", fuse_status);
 
 	ret = count;
 

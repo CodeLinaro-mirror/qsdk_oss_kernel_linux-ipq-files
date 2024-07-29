@@ -40,18 +40,18 @@
 #define TME_L_FATAL_ERROR               0x49
 #define TME_L_WDT_BITE_FATAL_ERROR      0x69
 
-/* DevSoC specific restart reason codes */
-#define DEVSOC_POWER_ON_RESET		0x1
-#define DEVSOC_SYSTEM_RESET_OR_REBOOT	0x2
-#define DEVSOC_TME_L_SECURE_WATCHDOG	0x3
-#define DEVSOC_SECURE_WATCHDOG		0x4
-#define DEVSOC_NON_SECURE_WATCHDOG	0x5
-#define DEVSOC_HLOS_PANIC		0x6
-#define DEVSOC_EXTERNAL_WDT		0x7
-#define DEVSOC_TME_L_FORCE_RESET	0x8
-#define DEVSOC_TSENS_RESET		0x9
-#define DEVSOC_AHB_TIMEOUT		0xA
-#define DEVSOC_INTERNAL_Q6_CRASH	0xB
+/* IPQ5424 specific restart reason codes */
+#define IPQ5424_POWER_ON_RESET		0x1
+#define IPQ5424_SYSTEM_RESET_OR_REBOOT	0x2
+#define IPQ5424_TME_L_SECURE_WATCHDOG	0x3
+#define IPQ5424_SECURE_WATCHDOG		0x4
+#define IPQ5424_NON_SECURE_WATCHDOG	0x5
+#define IPQ5424_HLOS_PANIC		0x6
+#define IPQ5424_EXTERNAL_WDT		0x7
+#define IPQ5424_TME_L_FORCE_RESET	0x8
+#define IPQ5424_TSENS_RESET		0x9
+#define IPQ5424_AHB_TIMEOUT		0xA
+#define IPQ5424_INTERNAL_Q6_CRASH	0xB
 
 #define RESET_REASON_MSG_MAX_LEN        100
 
@@ -68,16 +68,16 @@ static int debug_panic_handler(struct notifier_block *nb, unsigned long action,
 			       void *data)
 {
 	struct restart_reason *reason;
-	int val = DEVSOC_HLOS_PANIC;
+	int val = IPQ5424_HLOS_PANIC;
 	int tmp;
 
 	reason = container_of(nb, struct restart_reason, panic_blk);
 
-	/* If the reason is DEVSOC_INTERNAL_Q6_CRASH, then the rproc recovery
+	/* If the reason is IPQ5424_INTERNAL_Q6_CRASH, then the rproc recovery
 	 * is not enabled, so treat it as INTERNAL_Q6_CRASH, not as HLOS_PANIC.
 	 */
 	memcpy_fromio(&tmp, reason->wr_addr, sizeof(int));
-	if (tmp != DEVSOC_INTERNAL_Q6_CRASH)
+	if (tmp != IPQ5424_INTERNAL_Q6_CRASH)
 		memcpy_toio(reason->wr_addr, &val, sizeof(int));
 
 	iounmap(reason->wr_addr);
@@ -89,7 +89,7 @@ static int ipq_debug_atomic_ssr_handler(struct notifier_block *nb,
 					unsigned long action, void *data)
 {
 	struct restart_reason *reason;
-	int val = DEVSOC_INTERNAL_Q6_CRASH;
+	int val = IPQ5424_INTERNAL_Q6_CRASH;
 
 	reason = container_of(nb, struct restart_reason, atomic_ssr_blk);
 
@@ -163,52 +163,52 @@ static int restart_reason_logging(unsigned int reason)
 	return 0;
 }
 
-static int restart_reason_logging_devsoc(unsigned int reason, unsigned int q6_reason)
+static int restart_reason_logging_ipq5424(unsigned int reason, unsigned int q6_reason)
 {
 	char reset_reason_msg[RESET_REASON_MSG_MAX_LEN] = {};
 
 	switch(reason) {
-		case DEVSOC_POWER_ON_RESET:
+		case IPQ5424_POWER_ON_RESET:
 			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
 					"%s", "Power on Reset");
 			break;
-		case DEVSOC_SYSTEM_RESET_OR_REBOOT:
+		case IPQ5424_SYSTEM_RESET_OR_REBOOT:
 			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
 					"%s", "System reset or reboot");
 			break;
-		case DEVSOC_TME_L_SECURE_WATCHDOG:
+		case IPQ5424_TME_L_SECURE_WATCHDOG:
 			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
 					"%s", "TME-L Secure Watchdog");
 			break;
-		case DEVSOC_SECURE_WATCHDOG:
+		case IPQ5424_SECURE_WATCHDOG:
 			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
 					"%s", "Secure Watchdog");
 			break;
-		case DEVSOC_NON_SECURE_WATCHDOG:
+		case IPQ5424_NON_SECURE_WATCHDOG:
 			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
 					"%s", "Non-Secure Watchdog");
 			break;
-		case DEVSOC_HLOS_PANIC:
+		case IPQ5424_HLOS_PANIC:
 			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
 					"%s", "HLOS Panic");
 			break;
-		case DEVSOC_EXTERNAL_WDT:
+		case IPQ5424_EXTERNAL_WDT:
 			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
 					"%s", "External Watchdog");
 			break;
-		case DEVSOC_TME_L_FORCE_RESET:
+		case IPQ5424_TME_L_FORCE_RESET:
 			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
 					"%s", "TME-L Force Reset");
 			break;
-		case DEVSOC_TSENS_RESET:
+		case IPQ5424_TSENS_RESET:
 			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
 					"%s", "TSENS Reset");
 			break;
-		case DEVSOC_AHB_TIMEOUT:
+		case IPQ5424_AHB_TIMEOUT:
 			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
 					"%s", "AHB Timeout");
 			break;
-		case DEVSOC_INTERNAL_Q6_CRASH:
+		case IPQ5424_INTERNAL_Q6_CRASH:
 			if (q6_reason != 0)
 				scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
 						"%s[0x%X]", "Internal Q6 Fatal error", q6_reason);
@@ -225,7 +225,7 @@ static int restart_reason_logging_devsoc(unsigned int reason, unsigned int q6_re
 static const struct of_device_id ipq_debug_match_table[] = {
 	{ .compatible = "qcom,ipq-debug",
 	},
-	{ .compatible = "qcom,ipq-debug-devsoc",
+	{ .compatible = "qcom,ipq-debug-ipq5424",
 	},
 	{}
 };
@@ -336,7 +336,7 @@ static int ipq_debug_probe(struct platform_device *pdev)
 	}
 
 	/*
-	 * For devsoc, kernel needs to write the restart reason in IMEM
+	 * For ipq5424, kernel needs to write the restart reason in IMEM
 	 * during the kernel panic and Q6 crash.
 	 */
 
@@ -370,7 +370,7 @@ static int ipq_debug_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	restart_reason_logging_devsoc(reset_reason, q6_reason);
+	restart_reason_logging_ipq5424(reset_reason, q6_reason);
 
 	platform_set_drvdata(pdev, reason);
 

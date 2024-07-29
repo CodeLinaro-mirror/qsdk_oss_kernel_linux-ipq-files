@@ -2,7 +2,7 @@
 /*
  * IPQ5332 device tree source
  *
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <dt-bindings/clock/qcom,apss-ipq.h>
@@ -807,6 +807,10 @@
 			status = "disabled";
 		};
 
+		wsi: wsi {
+			status = "disabled";
+		};
+
 		seccrypt: qcom,seccrypt {
 			compatible = "qcom,seccrypt";
 			status = "okay";
@@ -1082,22 +1086,22 @@
 			 * +=========+==============+=========+
 			 * |  Region | Start Offset |   Size  |
 			 * +---------+--------------+---------+
-			 * | HREMOTE |  0x4EC00000  |   28MB  |
+			 * | HREMOTE |  0x4ED00000  |   28MB  |
 			 * +---------+--------------+---------+
-			 * | M3 Dump |  0x50800000  |   1MB   |
+			 * | M3 Dump |  0x50900000  |   1MB   |
 			 * +---------+--------------+---------+
-			 * |   ETR   |  0x50900000  |   1MB   |
+			 * |   ETR   |  0x50A00000  |   1MB   |
 			 * +---------+--------------+---------+
-			 * |  Caldb  |  0x50A00000  |   8MB   |
+			 * |  Caldb  |  0x50B00000  |   8MB   |
 			 * +---------+--------------+---------+
-			 * |Pageable |  0x51200000  |  12MB   |
+			 * |Pageable |  0x51300000  |  12MB   |
 			 * +==================================+
 			 */
-			base-addr = <0x4EC00000>;
-			m3-dump-addr = <0x50800000>;
-			etr-addr = <0x50900000>;
-			caldb-addr = <0x50A00000>;
-			pageable-addr = <0x51200000>;
+			base-addr = <0x4ED00000>;
+			m3-dump-addr = <0x50900000>;
+			etr-addr = <0x50A00000>;
+			caldb-addr = <0x50B00000>;
+			pageable-addr = <0x51300000>;
 			hremote-size = <0x1C00000>;
 			pageable-size = <0xC00000>;
 			tgt-mem-mode = <0x0>;
@@ -1323,7 +1327,7 @@
 			qcom,wlan-ramdump-dynamic = <0x600000>;
 			qca,auto-restart;
 			interrupt-bmap = <0x100512>;
-			node_id = <2>;
+			node_id = <1>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
 			/* qcn9224 tgt-mem-mode=1 layout - 37MB
 			 * +=========+==============+=========+
@@ -1353,22 +1357,22 @@
 			 * +=========+==============+=========+
 			 * |  Region | Start Offset |   Size  |
 			 * +---------+--------------+---------+
-			 * | HREMOTE |  0x51E00000  |   28MB  |
+			 * | HREMOTE |  0x51F00000  |   28MB  |
 			 * +---------+--------------+---------+
-			 * | M3 Dump |  0x53A00000  |   1MB   |
+			 * | M3 Dump |  0x53B00000  |   1MB   |
 			 * +---------+--------------+---------+
-			 * |   ETR   |  0x53B00000  |   1MB   |
+			 * |   ETR   |  0x53C00000  |   1MB   |
 			 * +---------+--------------+---------+
-			 * |  Caldb  |  0x53C00000  |   8MB   |
+			 * |  Caldb  |  0x53D00000  |   8MB   |
 			 * +---------+--------------+---------+
-			 * |Pageable |  0x54400000  |  12MB   |
+			 * |Pageable |  0x54500000  |  12MB   |
 			 * +==================================+
 			 */
-			base-addr = <0x51E00000>;
-			m3-dump-addr = <0x53A00000>;
-			etr-addr = <0x53B00000>;
-			caldb-addr = <0x53C00000>;
-			pageable-addr = <0x54400000>;
+			base-addr = <0x51F00000>;
+			m3-dump-addr = <0x53B00000>;
+			etr-addr = <0x53C00000>;
+			caldb-addr = <0x53D00000>;
+			pageable-addr = <0x54500000>;
 			hremote-size = <0x1C00000>;
 			pageable-size = <0xC00000>;
 			tgt-mem-mode = <0x0>;
