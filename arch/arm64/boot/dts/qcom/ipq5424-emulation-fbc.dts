@@ -9,6 +9,7 @@
 /dts-v1/;
 
 #include "ipq5424.dtsi"
+#include "ipq5424-default-memory.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ5424-EMULATION-FBC";
@@ -612,10 +613,6 @@
 			bias-disable;
 		};
 	};
-};
-
-&q6_region {
-	status = "okay";
 };
 
 &tsens {

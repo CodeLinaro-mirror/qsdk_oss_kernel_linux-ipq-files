@@ -9,6 +9,7 @@
 /dts-v1/;
 
 #include "ipq5424-rdp-common.dtsi"
+#include "ipq5424-default-memory.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ5424 RDP464";
@@ -208,6 +209,16 @@
 					<0 312 4>,		/* MHT port Tx complete ring id #30 IRQ info */
 					<0 313 4>;		/* MHT port Tx complete ring id #31 IRQ info */
 		};
+
+		wsi: wsi {
+			id = <0>;
+			num_chip = <4>;
+			chip_info = <0 2 1 3>,
+				    <1 2 0 2>,
+				    <2 2 3 1>,
+				    <3 2 2 0>;
+			status = "okay";
+		};
 	};
 };
 
@@ -242,6 +253,10 @@
 
 		qcom,mhi@0 {
 			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9224_pcie1>, <&mhi_region1>;
+			qcom,board_id = <0x22>;
+			qcom,wsi = <&wsi>;
+			qcom,wsi_index = <1>;
 		};
 	};
 };
@@ -258,6 +273,10 @@
 
 		qcom,mhi@0 {
 			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9224_pcie2>, <&mhi_region2>;
+			qcom,board_id = <0x21>;
+			qcom,wsi = <&wsi>;
+			qcom,wsi_index = <2>;
 		};
 	};
 };
@@ -274,6 +293,10 @@
 
 		qcom,mhi@0 {
 			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9224_pcie3>, <&mhi_region3>;
+			qcom,board_id = <0x26>;
+			qcom,wsi = <&wsi>;
+			qcom,wsi_index = <3>;
 		};
 	};
 };
@@ -295,10 +318,6 @@
 };
 
 &usb3 {
-	status = "okay";
-};
-
-&q6_region {
 	status = "okay";
 };
 
@@ -361,4 +380,70 @@
 			output-low;
 		};
 	};
+};
+
+&qcn9224_pcie1 {
+	status = "okay";
+};
+
+&qcn9224_pcie2 {
+	status = "okay";
+};
+
+&qcn9224_pcie3 {
+	status = "okay";
+};
+
+#if defined(__MHI_BUS_RESERVED_DMA_POOL__)
+&mhi_region1 {
+	status = "okay";
+};
+
+&mhi_region2 {
+	status = "okay";
+};
+
+&mhi_region3 {
+	status = "okay";
+};
+#endif
+
+&mlo_global_mem0 {
+	size = <0x0 0x1800000>;
+	status = "okay";
+};
+
+&wifi0 {
+	qcom,multipd_arch;
+	qcom,rproc = <&q6_wcss_pd1>;
+	qcom,rproc_rpd = <&q6v5_wcss>;
+	qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
+	qcom,tgt-mem-mode = <0>;
+	memory-region = <&q6_region>;
+	qcom,wsi = <&wsi>;
+	qcom,wsi_index = <0>;
+	qcom,board_id = <0x10>;
+	hw_link_id = <0 0>;
+	status = "okay";
+};
+
+&wifi2 {
+	hremote_node = <&qcn9224_pcie1>;
+	board_id = <0x22>;
+	hw_link_id = <1 0>;
+	status = "okay";
+};
+
+&wifi3 {
+	hremote_node = <&qcn9224_pcie2>;
+	board_id = <0x21>;
+	hw_link_id = <2 0>;
+	status = "okay";
+};
+
+&wifi4 {
+	hremote_node = <&qcn9224_pcie3>;
+	board_id = <0x26>;
+	hw_link_id = <3 0>;
+	status = "okay";
 };
