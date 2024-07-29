@@ -9,6 +9,7 @@
 /dts-v1/;
 
 #include "ipq5424-rdp-common.dtsi"
+#include "ipq5424-default-memory.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ5424 RDP487";
@@ -251,6 +252,14 @@
 			compatible = "qcom,arm-cortex-acc";
 			reg = <0xf830000 0x10000>;
 		};
+
+		wsi: wsi {
+			id = <0>;
+			num_chip = <2>;
+			chip_info = <0 1 1>,
+				    <1 1 0>;
+			status = "okay";
+		};
 	};
 };
 
@@ -274,6 +283,10 @@
 
 		qcom,mhi@2 {
 			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9224_pcie2>, <&mhi_region2>;
+			qcom,board_id = <0x33>;
+			qcom,wsi = <&wsi>;
+			qcom,wsi_index = <1>;
 		};
 	};
 };
@@ -292,6 +305,10 @@
 
 &tcsr_mutex {
 	status = "disabled";
+};
+
+&q6v5_wcss {
+	status = "okay";
 };
 
 &tlmm {
@@ -411,4 +428,40 @@
 		};
 	};
 
+};
+
+&qcn9224_pcie2 {
+	status = "okay";
+};
+
+#if defined(__MHI_BUS_RESERVED_DMA_POOL__)
+&mhi_region2 {
+	status = "okay";
+};
+#endif
+
+&mlo_global_mem0 {
+        size = <0x0 0x1200000>;
+        status = "okay";
+};
+
+&wifi0 {
+	qcom,multipd_arch;
+	qcom,rproc = <&q6_wcss_pd1>;
+	qcom,rproc_rpd = <&q6v5_wcss>;
+	qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
+	qcom,tgt-mem-mode = <0>;
+	memory-region = <&q6_region>;
+	qcom,wsi = <&wsi>;
+	qcom,wsi_index = <0>;
+	qcom,board_id = <0x12>;
+	hw_link_id = <0 0>;
+	status = "okay";
+};
+
+&wifi3 {
+	hremote_node = <&qcn9224_pcie2>;
+	board_id = <0x33>;
+	hw_link_id = <1 0>;
+	status = "okay";
 };
