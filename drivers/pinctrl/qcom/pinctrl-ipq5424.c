@@ -714,7 +714,7 @@ static const struct pinfunction ipq5424_functions[] = {
 	MSM_PIN_FUNCTION(qdss_cti_trig_in_a1),
 	MSM_PIN_FUNCTION(qdss_cti_trig_out_a1),
 	MSM_PIN_FUNCTION(qdss_cti_trig_in_b0),
-	MSM_PIN_FUNCTION(qdss_cti_trig_out_a0),
+	MSM_PIN_FUNCTION(qdss_cti_trig_out_b0),
 	MSM_PIN_FUNCTION(qdss_cti_trig_in_b1),
 	MSM_PIN_FUNCTION(qdss_cti_trig_out_b1),
 	MSM_PIN_FUNCTION(qdss_traceclk_a),
