@@ -315,8 +315,8 @@
 			id = <0>;
 			num_chip = <2>;
 			status = "okay";
-			chip_info = <0 1 2>,
-				    <2 1 0>;
+			chip_info = <0 1 1>,
+				    <1 1 0>;
 		};
 	};
 };
