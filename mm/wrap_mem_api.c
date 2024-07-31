@@ -62,6 +62,16 @@ void *__wrap___kmalloc(size_t size, gfp_t flags)
 }
 EXPORT_SYMBOL(__wrap___kmalloc);
 
+void __wrap_update_call_stack(void *addr)
+{
+    if (addr && debug_mem_usage_enabled) {
+        void *stack[9] = {0};
+        get_stacktrace(stack);
+        debug_object_trace_update(addr, stack);
+    }
+}
+EXPORT_SYMBOL(__wrap_update_call_stack);
+
 void __wrap_kfree(const void *block)
 {
 	void *addr = (void *)block;
