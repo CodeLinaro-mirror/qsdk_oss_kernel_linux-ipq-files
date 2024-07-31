@@ -284,7 +284,11 @@ static int configure_clocks(struct q6_wcss *wcss, bool value)
 	int loop1 = 0, loop2;
 	int ret = 0;
 	void __iomem *gcc_base;
+	const char *clk[] = {"Q6_TSCTR_1TO2", "Q6SS_TRIG", "Q6_AHB_S",
+			     "Q6_AHB", "Q6SS_ATBM", "Q6_AXIM", "Q6SS_BOOT",
+			     "Q6SS_PCLKDBG", "WCSS_ECAHB", "CNOC_WCSS_AHB" };
 
+	dev_dbg(wcss->dev, "%s:%d value:%d\n", __func__, __LINE__, value);
 	gcc_base = ioremap(GCC_BASE, 0xC0B0);
 	if (IS_ERR_OR_NULL(gcc_base)) {
 		dev_err(wcss->dev, "gcc base remap is failed\n");
@@ -299,6 +303,8 @@ static int configure_clocks(struct q6_wcss *wcss, bool value)
 				break;
 			mdelay(1);
 		}
+		dev_dbg(wcss->dev, "clk (%s) wr value:0x%X rd value:0x%X\n", clk[loop1], value,
+			(readl(gcc_base + wcss->clk_offset[loop1]) & 0x1));
 		loop1++;
 	}
 
@@ -331,50 +337,78 @@ static int q6_powerup(struct rproc *rproc)
 	u32 val;
 	u8 temp = 0, loop;
 
+	dev_dbg(wcss->dev, "%s\n", __func__);
+
+	dev_dbg(wcss->dev, "Bef clear boot trigger\n");
 	/* clear boot trigger */
 	regmap_write(wcss->tcsr_map, wcss->tcsr_boot, 0x0);
+	dev_dbg(wcss->dev, "Aft clear boot trigger\n");
 
+
+	dev_dbg(wcss->dev, "Bef q6 reset assert\n");
 	/* assert q6 blk reset */
 	reset_control_assert(wcss->wcss_q6_reset);
 	for (loop = 0; loop < 10; loop++)
 		mdelay(1);
+	dev_dbg(wcss->dev, "Aft q6 reset assert\n");
 
+
+	dev_dbg(wcss->dev, "Bef q6 reset deassert\n");
 	/* deassert q6 blk reset */
 	reset_control_deassert(wcss->wcss_q6_reset);
 	for (loop = 0; loop < 10; loop++)
 		mdelay(1);
+	dev_dbg(wcss->dev, "Aft q6 reset deassert\n");
 
+	dev_dbg(wcss->dev, "Bef enable clocks\n");
 	/* enable clocks */
 	ret = enable_clocks(wcss);
 	if (ret)
 		return ret;
+	dev_dbg(wcss->dev, "Aft enable clocks\n");
 
-	if (debug_wcss)
+	if (debug_wcss) {
+		dev_dbg(wcss->dev, "Bef configuring debug_wcss\n");
 		writel(0x20000001, wcss->reg_base + Q6SS_DBG_CFG);
+		dev_dbg(wcss->dev, "Aft configuring debug_wcss\n");
+	}
 
+	dev_dbg(wcss->dev, "Bef configuring bootaddr in EVB\n");
 	/* Write bootaddr to EVB so that Q6WCSS will jump there after reset */
 	writel(rproc->bootaddr >> 4, wcss->reg_base + Q6SS_RST_EVB);
+	dev_dbg(wcss->dev, "Aft configuring bootaddr in EVB\n");
 
+	dev_dbg(wcss->dev, "Bef configuring XO_CBCR\n");
 	/* BHS require xo cbcr to be enabled */
 	val = readl(wcss->reg_base + Q6SS_XO_CBCR);
 	val |= 0x1;
 	writel(val, wcss->reg_base + Q6SS_XO_CBCR);
+	dev_dbg(wcss->dev, "Aft configuring XO_CBCR\n");
 
+	dev_dbg(wcss->dev, "Bef configuring CORE_CBCR\n");
 	/* Enable core cbcr*/
 	val = readl(wcss->reg_base + Q6SS_CORE_CBCR);
 	val |= 0x1;
 	writel(val, wcss->reg_base + Q6SS_CORE_CBCR);
+	dev_dbg(wcss->dev, "Aft configuring CORE_CBCR\n");
 
+	dev_dbg(wcss->dev, "Bef configuring SLEEP_CBCR\n");
 	/* Enable sleep cbcr*/
 	val = readl(wcss->reg_base + Q6SS_SLEEP_CBCR);
 	val |= 0x1;
 	writel(val, wcss->reg_base + Q6SS_SLEEP_CBCR);
+	dev_dbg(wcss->dev, "Aft configuring SLEEP_CBCR\n");
 
+	dev_dbg(wcss->dev, "Bef configuring Q6SS_BOOT_CORE_START\n");
 	/* Boot core start */
 	writel(0x1, wcss->reg_base + Q6SS_BOOT_CORE_START);
+	dev_dbg(wcss->dev, "Aft configuring Q6SS_BOOT_CORE_START\n");
 
+	dev_dbg(wcss->dev, "Bef configuring Q6SS_BOOT_CMD\n");
 	writel(0x1, wcss->reg_base + Q6SS_BOOT_CMD);
+	dev_dbg(wcss->dev, "Aft configuring Q6SS_BOOT_CMD\n");
 
+	dev_dbg(wcss->dev, "Bef reading Q6SS_BOOT_STATUS\n");
 	/* wait for reset to complete */
 	while (temp < 20) {
 		val = readl(wcss->reg_base + Q6SS_BOOT_STATUS);
@@ -383,6 +417,7 @@ static int q6_powerup(struct rproc *rproc)
 		mdelay(1);
 		temp++;
 	}
+	dev_dbg(wcss->dev, "Aft reading Q6SS_BOOT_STATUS\n");
 
 	return 0;
 }
@@ -550,25 +585,47 @@ static int q6_powerdown(struct q6_wcss *wcss)
 	int val, loop;
 	int ret;
 
+	dev_dbg(wcss->dev, "%s\n", __func__);
+
+	dev_dbg(wcss->dev, "Bef writing 0x1 to tcsr_halt\n");
 	regmap_write(wcss->tcsr_map, wcss->tcsr_halt, 0x1);
+	dev_dbg(wcss->dev, "Aft writing 0x1 to tcsr_halt\n");
+
+	dev_dbg(wcss->dev, "Bef reading tcsr_halt_ack\n");
 	do {
 		regmap_read(wcss->tcsr_map, wcss->tcsr_halt + TCSR_HALT_ACK,
 			    &val);
 		mdelay(1);
 	} while	(!val);
+	dev_dbg(wcss->dev, "Aft reading tcsr_halt_ack\n");
 
+	dev_dbg(wcss->dev, "Bef configuring q6 bcr assert\n");
 	reset_control_assert(wcss->wcss_q6_reset);
-	reset_control_assert(wcss->wapss_reset);
+	dev_dbg(wcss->dev, "Aft configuring q6 bcr assert\n");
 
+	dev_dbg(wcss->dev, "Bef configuring wapss bcr assert\n");
+	reset_control_assert(wcss->wapss_reset);
+	dev_dbg(wcss->dev, "Aft configuring wapss bcr assert\n");
+
+	dev_dbg(wcss->dev, "Bef disable_clocks()\n");
 	ret = disable_clocks(wcss);
 	if (ret)
 		return ret;
+	dev_dbg(wcss->dev, "Aft disable_clocks()\n");
 
+	dev_dbg(wcss->dev, "Bef writing 0x0 to tcsr_halt\n");
 	regmap_write(wcss->tcsr_map, wcss->tcsr_halt, 0x0);
 	for (loop = 0; loop < 20; loop++)
 		mdelay(1);
+	dev_dbg(wcss->dev, "Aft writing 0x0 to tcsr_halt\n");
+
+	dev_dbg(wcss->dev, "Bef configuring q6 bcr deassert\n");
 	reset_control_deassert(wcss->wcss_q6_reset);
+	dev_dbg(wcss->dev, "Aft configuring q6 bcr deassert\n");
+
+	dev_dbg(wcss->dev, "Bef configuring wapss bcr deassert\n");
 	reset_control_deassert(wcss->wapss_reset);
+	dev_dbg(wcss->dev, "Aft configuring wapss bcr deassert\n");
 
 	return ret;
 }
