@@ -51,6 +51,40 @@
 				default-state = "off";
 			};
 		};
+
+		mdio@90000 {
+			ethernet-phy@4 {
+				reg = <0>;
+				 compatible ="ethernet-phy-ieee802.3-c45";
+			};
+		};
+
+		ess-instance {
+			ess-switch@3a000000 {
+				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
+				switch_lan_bmp = <0xc>; /* lan port bitmap */
+				switch_wan_bmp = <0x2>; /* wan port bitmap */
+				switch_mac_mode = <0xe>; /* mac mode for uniphy instance0*/
+				switch_mac_mode1 = <0xd>; /* mac mode for uniphy instance1*/
+
+				qcom,port_phyinfo {
+					port@0 {
+						port_id = <1>;
+						media-type = "sfp"; /* fiber mode */
+						sfp_rx_los_pin = <&tlmm 0xffff GPIO_ACTIVE_HIGH>;
+					};
+					port@1 {
+						port_id = <2>;
+						phy_address = <0>;
+						ethernet-phy-ieee802.3-c45;
+					};
+				};
+			};
+
+			ess-switch1@1 {
+				link-intr-gpio = <&tlmm 41 GPIO_ACTIVE_HIGH>;
+			};
+		};
 	};
 };
 
