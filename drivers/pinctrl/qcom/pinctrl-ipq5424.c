@@ -169,9 +169,6 @@ enum ipq5424_functions {
 	msm_mux_audio_sec,
 	msm_mux_audio_sec0,
 	msm_mux_audio_sec1,
-	msm_mux_burn_in,
-	msm_mux_burn_in0,
-	msm_mux_burn_in1,
 	msm_mux_core_voltage,
 	msm_mux_cri_trng0,
 	msm_mux_cri_trng1,
@@ -207,9 +204,9 @@ enum ipq5424_functions {
 	msm_mux_prng_rosc1,
 	msm_mux_prng_rosc2,
 	msm_mux_prng_rosc3,
-	msm_mux_PTA_0,
-	msm_mux_PTA_1,
-	msm_mux_PTA_2,
+	msm_mux_PTA0_0,
+	msm_mux_PTA0_1,
+	msm_mux_PTA0_2,
 	msm_mux_PTA10,
 	msm_mux_PTA11,
 	msm_mux_pwm0,
@@ -217,7 +214,11 @@ enum ipq5424_functions {
 	msm_mux_pwm2,
 	msm_mux_qdss_cti_trig_in_a0,
 	msm_mux_qdss_cti_trig_out_a0,
+	msm_mux_qdss_cti_trig_in_a1,
 	msm_mux_qdss_cti_trig_out_a1,
+	msm_mux_qdss_cti_trig_in_b0,
+	msm_mux_qdss_cti_trig_out_b0,
+	msm_mux_qdss_cti_trig_in_b1,
 	msm_mux_qdss_cti_trig_out_b1,
 	msm_mux_qdss_traceclk_a,
 	msm_mux_qdss_tracectl_a,
@@ -235,13 +236,12 @@ enum ipq5424_functions {
 	msm_mux_spi0_cs,
 	msm_mux_spi0_miso,
 	msm_mux_spi0_mosi,
-	msm_mux_spi1_clk,
 	msm_mux_spi1_cs,
 	msm_mux_spi1_cs1,
 	msm_mux_spi1_cs2,
 	msm_mux_spi1_cs3,
-	msm_mux_spi1_miso,
-	msm_mux_spi1_mosi,
+	msm_mux_spi10,
+	msm_mux_spi11,
 	msm_mux_tsens_max,
 	msm_mux_uart0_cts,
 	msm_mux_uart0_rfr,
@@ -256,6 +256,8 @@ enum ipq5424_functions {
 	msm_mux_wci4,
 	msm_mux_wci5,
 	msm_mux_wci6,
+	msm_mux_wsi_clk,
+	msm_mux_wsi_data,
 	msm_mux__,
 };
 
@@ -298,7 +300,7 @@ static const char * const qspi_cs_groups[] = {
 };
 
 static const char * const qdss_cti_trig_out_a1_groups[] = {
-	"gpio4",
+	"gpio27",
 };
 
 static const char * const sdc_clk_groups[] = {
@@ -460,15 +462,15 @@ static const char * const pcie0_clk_groups[] = {
 };
 
 static const char * const PTA10_groups[] = {
-	"gpio24", "gpio25", "gpio27", "gpio30",
+	"gpio24", "gpio26", "gpio27",
 };
 
 static const char * const mac0_groups[] = {
-	"gpio24", "gpio25",
+	"gpio24", "gpio26",
 };
 
 static const char * const atest_char_groups[] = {
-	"gpio24", "gpio43",
+	"gpio24",
 };
 
 static const char * const pcie0_wake_groups[] = {
@@ -500,7 +502,7 @@ static const char * const pcie2_wake_groups[] = {
 };
 
 static const char * const PTA11_groups[] = {
-	"gpio32", "gpio33",
+	"gpio30", "gpio32", "gpio33",
 };
 
 static const char * const audio_pri0_groups[] = {
@@ -528,7 +530,7 @@ static const char * const audio_pri_groups[] = {
 };
 
 static const char * const spi1_cs1_groups[] = {
-	"gpio36",
+	"gpio11", "gpio36",
 };
 
 static const char * const audio_sec0_groups[] = {
@@ -552,10 +554,10 @@ static const char * const pll_test_groups[] = {
 };
 
 static const char * const dbg_out_groups[] = {
-	"gpio38",
+	"gpio46",
 };
 
-static const char * const PTA_0_groups[] = {
+static const char * const PTA0_0_groups[] = {
 	"gpio40",
 };
 
@@ -567,7 +569,7 @@ static const char * const atest_tic_groups[] = {
 	"gpio40",
 };
 
-static const char * const PTA_1_groups[] = {
+static const char * const PTA0_1_groups[] = {
 	"gpio41",
 };
 
@@ -579,7 +581,7 @@ static const char * const cxc_data_groups[] = {
 	"gpio41",
 };
 
-static const char * const PTA_2_groups[] = {
+static const char * const PTA0_2_groups[] = {
 	"gpio42",
 };
 
@@ -592,7 +594,7 @@ static const char * const uart1_rx_groups[] = {
 };
 
 static const char * const audio_sec_groups[] = {
-	"gpio43", "gpio44", "gpio45", "gpio46",
+	"gpio45", "gpio46", "gpio47", "gpio48",
 };
 
 static const char * const gcc_plltest_groups[] = {
@@ -608,11 +610,7 @@ static const char * const gcc_tlmm_groups[] = {
 };
 
 static const char * const qdss_cti_trig_out_b1_groups[] = {
-	"gpio44",
-};
-
-static const char * const spi1_clk_groups[] = {
-	"gpio45",
+	"gpio33",
 };
 
 static const char * const rx0_groups[] = {
@@ -620,10 +618,6 @@ static const char * const rx0_groups[] = {
 };
 
 static const char * const qdss_traceclk_a_groups[] = {
-	"gpio45",
-};
-
-static const char * const burn_in_groups[] = {
 	"gpio45",
 };
 
@@ -635,32 +629,48 @@ static const char * const qdss_tracectl_a_groups[] = {
 	"gpio46",
 };
 
-static const char * const burn_in0_groups[] = {
-	"gpio46",
-};
-
-static const char * const spi1_miso_groups[] = {
-	"gpio47",
-};
-
 static const char * const qdss_cti_trig_out_a0_groups[] = {
-	"gpio47",
-};
-
-static const char * const burn_in1_groups[] = {
-	"gpio47",
-};
-
-static const char * const spi1_mosi_groups[] = {
-	"gpio48",
+	"gpio24",
 };
 
 static const char * const qdss_cti_trig_in_a0_groups[] = {
-	"gpio48",
+	"gpio26",
 };
 
 static const char * const resout_groups[] = {
 	"gpio49",
+};
+
+static const char * const qdss_cti_trig_in_a1_groups[] = {
+	"gpio29",
+};
+
+static const char * const qdss_cti_trig_out_b0_groups[] = {
+	"gpio30",
+};
+
+static const char * const qdss_cti_trig_in_b0_groups[] = {
+	"gpio32",
+};
+
+static const char * const qdss_cti_trig_in_b1_groups[] = {
+	"gpio35",
+};
+
+static const char * const spi10_groups[] = {
+	"gpio45", "gpio47", "gpio48",
+};
+
+static const char * const spi11_groups[] = {
+	"gpio10", "gpio12", "gpio13",
+};
+
+static const char * const wsi_clk_groups[] = {
+	"gpio24", "gpio27",
+};
+
+static const char * const wsi_data_groups[] = {
+	"gpio26", "gpio29",
 };
 
 static const struct pinfunction ipq5424_functions[] = {
@@ -676,9 +686,6 @@ static const struct pinfunction ipq5424_functions[] = {
 	MSM_PIN_FUNCTION(audio_sec),
 	MSM_PIN_FUNCTION(audio_sec0),
 	MSM_PIN_FUNCTION(audio_sec1),
-	MSM_PIN_FUNCTION(burn_in),
-	MSM_PIN_FUNCTION(burn_in0),
-	MSM_PIN_FUNCTION(burn_in1),
 	MSM_PIN_FUNCTION(core_voltage),
 	MSM_PIN_FUNCTION(cri_trng0),
 	MSM_PIN_FUNCTION(cri_trng1),
@@ -714,9 +721,9 @@ static const struct pinfunction ipq5424_functions[] = {
 	MSM_PIN_FUNCTION(prng_rosc1),
 	MSM_PIN_FUNCTION(prng_rosc2),
 	MSM_PIN_FUNCTION(prng_rosc3),
-	MSM_PIN_FUNCTION(PTA_0),
-	MSM_PIN_FUNCTION(PTA_1),
-	MSM_PIN_FUNCTION(PTA_2),
+	MSM_PIN_FUNCTION(PTA0_0),
+	MSM_PIN_FUNCTION(PTA0_1),
+	MSM_PIN_FUNCTION(PTA0_2),
 	MSM_PIN_FUNCTION(PTA10),
 	MSM_PIN_FUNCTION(PTA11),
 	MSM_PIN_FUNCTION(pwm0),
@@ -724,7 +731,11 @@ static const struct pinfunction ipq5424_functions[] = {
 	MSM_PIN_FUNCTION(pwm2),
 	MSM_PIN_FUNCTION(qdss_cti_trig_in_a0),
 	MSM_PIN_FUNCTION(qdss_cti_trig_out_a0),
+	MSM_PIN_FUNCTION(qdss_cti_trig_in_a1),
 	MSM_PIN_FUNCTION(qdss_cti_trig_out_a1),
+	MSM_PIN_FUNCTION(qdss_cti_trig_in_b0),
+	MSM_PIN_FUNCTION(qdss_cti_trig_out_a0),
+	MSM_PIN_FUNCTION(qdss_cti_trig_in_b1),
 	MSM_PIN_FUNCTION(qdss_cti_trig_out_b1),
 	MSM_PIN_FUNCTION(qdss_traceclk_a),
 	MSM_PIN_FUNCTION(qdss_tracectl_a),
@@ -742,13 +753,12 @@ static const struct pinfunction ipq5424_functions[] = {
 	MSM_PIN_FUNCTION(spi0_cs),
 	MSM_PIN_FUNCTION(spi0_miso),
 	MSM_PIN_FUNCTION(spi0_mosi),
-	MSM_PIN_FUNCTION(spi1_clk),
 	MSM_PIN_FUNCTION(spi1_cs),
 	MSM_PIN_FUNCTION(spi1_cs1),
 	MSM_PIN_FUNCTION(spi1_cs2),
 	MSM_PIN_FUNCTION(spi1_cs3),
-	MSM_PIN_FUNCTION(spi1_miso),
-	MSM_PIN_FUNCTION(spi1_mosi),
+	MSM_PIN_FUNCTION(spi10),
+	MSM_PIN_FUNCTION(spi11),
 	MSM_PIN_FUNCTION(tsens_max),
 	MSM_PIN_FUNCTION(uart0_cts),
 	MSM_PIN_FUNCTION(uart0_rfr),
@@ -763,6 +773,8 @@ static const struct pinfunction ipq5424_functions[] = {
 	MSM_PIN_FUNCTION(wci4),
 	MSM_PIN_FUNCTION(wci5),
 	MSM_PIN_FUNCTION(wci6),
+	MSM_PIN_FUNCTION(wsi_clk),
+	MSM_PIN_FUNCTION(wsi_data),
 };
 
 static const struct msm_pingroup ipq5424_groups[] = {
@@ -770,76 +782,51 @@ static const struct msm_pingroup ipq5424_groups[] = {
 	PINGROUP(1, sdc_data, qspi_data, pwm2, wci1, wci1, _, _, _, _),
 	PINGROUP(2, sdc_data, qspi_data, pwm2, _, _, _, _, _, _),
 	PINGROUP(3, sdc_data, qspi_data, pwm2, _, _, _, _, _, _),
-	PINGROUP(4, sdc_cmd, qspi_cs, _, qdss_cti_trig_out_a1, _, _, _, _,
-		 _),
+	PINGROUP(4, sdc_cmd, qspi_cs, _, _, _, _, _, _,_),
 	PINGROUP(5, sdc_clk, qspi_clk, _, _, _, _, _, _, _),
-	PINGROUP(6, spi0_clk, pwm1, _, cri_trng0, qdss_tracedata_a, _, _,
-		 _, _),
-	PINGROUP(7, spi0_cs, pwm1, _, cri_trng1, qdss_tracedata_a, _, _, _,
-		 _),
-	PINGROUP(8, spi0_miso, pwm1, wci2, wci2, _, cri_trng2,
-		 qdss_tracedata_a, _, _),
-	PINGROUP(9, spi0_mosi, pwm1, _, cri_trng3, qdss_tracedata_a, _, _,
-		 _, _),
-	PINGROUP(10, uart0_rfr, pwm0, _, wci3, wci3, _, qdss_tracedata_a, _,
-		 _),
-	PINGROUP(11, uart0_cts, pwm0, _, wci4, wci4, _, qdss_tracedata_a, _,
-		 _),
-	PINGROUP(12, uart0_rx, pwm0, _, prng_rosc0, qdss_tracedata_a, _, _,
-		 _, _),
-	PINGROUP(13, uart0_tx, pwm0, _, prng_rosc1, qdss_tracedata_a, _, _,
-		 _, _),
-	PINGROUP(14, i2c0_scl, tsens_max, _, prng_rosc2, qdss_tracedata_a, _,
-		 _, _, _),
-	PINGROUP(15, i2c0_sda, _, prng_rosc3, qdss_tracedata_a, _, _, _,
-		 _, _),
+	PINGROUP(6, spi0_clk, pwm1, _, cri_trng0, qdss_tracedata_a, _, _, _, _),
+	PINGROUP(7, spi0_cs, pwm1, _, cri_trng1, qdss_tracedata_a, _, _, _, _),
+	PINGROUP(8, spi0_miso, pwm1, wci2, wci2, _, cri_trng2, qdss_tracedata_a, _, _),
+	PINGROUP(9, spi0_mosi, pwm1, _, cri_trng3, qdss_tracedata_a, _, _, _, _),
+	PINGROUP(10, uart0_rfr, pwm0, spi11, _, wci3, wci3, _, qdss_tracedata_a, _),
+	PINGROUP(11, uart0_cts, pwm0, spi1_cs1, _, wci4, wci4, _, qdss_tracedata_a, _),
+	PINGROUP(12, uart0_rx, pwm0, spi11, _, prng_rosc0, qdss_tracedata_a, _, _, _),
+	PINGROUP(13, uart0_tx, pwm0, spi11, _, prng_rosc1, qdss_tracedata_a, _, _, _),
+	PINGROUP(14, i2c0_scl, tsens_max, _, prng_rosc2, qdss_tracedata_a, _, _, _, _),
+	PINGROUP(15, i2c0_sda, _, prng_rosc3, qdss_tracedata_a, _, _, _, _, _),
 	PINGROUP(16, core_voltage, i2c1_scl, _, _, _, _, _, _, _),
 	PINGROUP(17, core_voltage, i2c1_sda, _, _, _, _, _, _, _),
 	PINGROUP(18, _, _, _, _, _, _, _, _, _),
 	PINGROUP(19, _, _, _, _, _, _, _, _, _),
-	PINGROUP(20, mdc_slv, atest_char0, _, qdss_tracedata_a, _, _, _,
-		 _, _),
-	PINGROUP(21, mdio_slv, atest_char1, _, qdss_tracedata_a, _, _, _,
-		 _, _),
+	PINGROUP(20, mdc_slv, atest_char0, _, qdss_tracedata_a, _, _, _, _, _),
+	PINGROUP(21, mdio_slv, atest_char1, _, qdss_tracedata_a, _, _, _, _, _),
 	PINGROUP(22, mdc_mst, atest_char2, _, _, _, _, _, _, _),
 	PINGROUP(23, mdio_mst, atest_char3, _, _, _, _, _, _, _),
-	PINGROUP(24, pcie0_clk, PTA10, mac0, _, _, atest_char, _, _, _),
-	PINGROUP(25, _, PTA10, mac0, _, _, _, _, _, _),
-	PINGROUP(26, pcie0_wake, _, _, _, _, _, _, _, _),
-	PINGROUP(27, pcie1_clk, i2c11, PTA10, _, _, _, _, _, _),
+	PINGROUP(24, pcie0_clk, PTA10, mac0, _, wsi_clk, _, atest_char, qdss_cti_trig_out_a0, _),
+	PINGROUP(25, _, _, _, _, _, _, _, _, _),
+	PINGROUP(26, pcie0_wake, PTA10, mac0, _, wsi_data, _, qdss_cti_trig_in_a0, _, _),
+	PINGROUP(27, pcie1_clk, i2c11, PTA10, wsi_clk, qdss_cti_trig_out_a1, _, _, _, _),
 	PINGROUP(28, _, _, _, _, _, _, _, _, _),
-	PINGROUP(29, pcie1_wake, i2c11, _, _, _, _, _, _, _),
-	PINGROUP(30, pcie2_clk, PTA10, mac1, _, _, _, _, _, _),
+	PINGROUP(29, pcie1_wake, i2c11, wsi_data, qdss_cti_trig_in_a1, _, _, _, _, _),
+	PINGROUP(30, pcie2_clk, PTA11, mac1, qdss_cti_trig_out_b0, _, _, _, _, _),
 	PINGROUP(31, _, _, _, _, _, _, _, _, _),
-	PINGROUP(32, pcie2_wake, PTA11, mac1, audio_pri0, audio_pri0, _, _,
-		 _, _),
-	PINGROUP(33, pcie3_clk, PTA11, audio_pri1, audio_pri1, _, _, _, _,
-		 _),
+	PINGROUP(32, pcie2_wake, PTA11, mac1, audio_pri0, audio_pri0, qdss_cti_trig_in_b0, _, _, _),
+	PINGROUP(33, pcie3_clk, PTA11, audio_pri1, audio_pri1, qdss_cti_trig_out_b1, _, _, _, _),
 	PINGROUP(34, _, _, _, _, _, _, _, _, _),
-	PINGROUP(35, pcie3_wake, audio_sec1, audio_sec1, _, _, _, _, _,
-		 _),
-	PINGROUP(36, audio_pri, spi1_cs1, audio_sec0, audio_sec0,
-		 qdss_tracedata_a, _, _, _, _),
-	PINGROUP(37, audio_pri, spi1_cs2, rx1, qdss_tracedata_a, _, _, _,
-		 _, _),
-	PINGROUP(38, audio_pri, spi1_cs3, pll_test, rx1, qdss_tracedata_a,
-		 dbg_out, _, _, _),
+	PINGROUP(35, pcie3_wake, audio_sec1, audio_sec1, qdss_cti_trig_in_b1, _, _, _, _, _),
+	PINGROUP(36, audio_pri, spi1_cs1, audio_sec0, audio_sec0, qdss_tracedata_a, _, _, _, _),
+	PINGROUP(37, audio_pri, spi1_cs2, rx1, qdss_tracedata_a, _, _, _, _, _),
+	PINGROUP(38, audio_pri, spi1_cs3, pll_test, rx1, qdss_tracedata_a, _, _, _, _),
 	PINGROUP(39, audio_pri, rx1, _, qdss_tracedata_a, _, _, _, _, _),
-	PINGROUP(40, PTA_0, wci5, wci5, _, atest_tic, _, _, _, _),
-	PINGROUP(41, PTA_1, wci6, wci6, cxc_data, _, _, _, _, _),
-	PINGROUP(42, PTA_2, cxc_clk, _, _, _, _, _, _, _),
-	PINGROUP(43, uart1_rx, audio_sec, gcc_plltest, _, atest_char, _, _,
-		 _, _),
-	PINGROUP(44, uart1_tx, audio_sec, gcc_tlmm, _, qdss_cti_trig_out_b1,
-		 _, _, _, _),
-	PINGROUP(45, spi1_clk, rx0, audio_sec, gcc_plltest, _,
-		 qdss_traceclk_a, burn_in, _, _),
-	PINGROUP(46, spi1_cs, rx0, audio_sec, _, qdss_tracectl_a, burn_in0,
-		 _, _, _),
-	PINGROUP(47, spi1_miso, rx0, qdss_cti_trig_out_a0, burn_in1, _, _,
-		 _, _, _),
-	PINGROUP(48, spi1_mosi, qdss_cti_trig_in_a0, _, _, _, _, _, _,
-		 _),
+	PINGROUP(40, PTA0_0, wci5, wci5, _, atest_tic, _, _, _, _),
+	PINGROUP(41, PTA0_1, wci6, wci6, cxc_data, _, _, _, _, _),
+	PINGROUP(42, PTA0_2, cxc_clk, _, _, _, _, _, _, _),
+	PINGROUP(43, uart1_rx, gcc_plltest, _, _, _, _, _, _, _),
+	PINGROUP(44, uart1_tx, gcc_tlmm, _, _, _, _, _, _, _),
+	PINGROUP(45, spi10, rx0, audio_sec, gcc_plltest, _, qdss_traceclk_a, _, _, _),
+	PINGROUP(46, spi1_cs, rx0, audio_sec, dbg_out, qdss_tracectl_a,_, _, _, _),
+	PINGROUP(47, spi10, rx0, audio_sec, _, _, _, _, _, _),
+	PINGROUP(48, spi10, audio_sec, _, _, _, _, _, _, _),
 	PINGROUP(49, resout, _, _, _, _, _, _, _, _),
 };
 
