@@ -144,7 +144,9 @@
 		qupv3: geniqup@1ac0000 {
 			status = "okay";
 
+			/* On emulation platform, uart0 is the debug uart */
 			uart0: serial@1a80000 {
+				compatible = "qcom,geni-debug-uart";
 				pinctrl-0 = <&qup_uart0_default>;
 				pinctrl-names = "default";
 				status = "okay";
@@ -556,12 +558,10 @@
 &tlmm {
 	qup_uart0_default: qup-uart0-default-state {
 		qup_uart0_tx: tx-pins {
-			pins = "gpio13";
 			bias-disable;
 		};
 
 		qup_uart0_rx: rx-pins {
-			pins = "gpio12";
 			bias-disable;
 		};
 	};
