@@ -935,7 +935,7 @@
 				      "q6ss_pclkdbg",
 				      "wcss_ecahb",
 				      "cnoc_wcss_ahb";
-			qcom,q6-tcsr-regs = <&tcsr 0x6204 0x1B000>;
+			qcom,q6-tcsr-regs = <&tcsr 0x26000 0x1B000>;
 #endif
 			firmware = "IPQ5424/q6_fw0.mdt";
 			interrupts-extended = <&intc GIC_SPI 508 IRQ_TYPE_EDGE_RISING>,
