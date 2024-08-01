@@ -945,6 +945,7 @@
 				<GIC_SPI 500 IRQ_TYPE_EDGE_RISING>, /* host2tcl-input-ring3 */
 				<GIC_SPI 499 IRQ_TYPE_EDGE_RISING>, /* host2tcl-input-ring2 */
 				<GIC_SPI 498 IRQ_TYPE_EDGE_RISING>, /* host2tcl-input-ring1 */
+				<GIC_SPI 458 IRQ_TYPE_EDGE_RISING>, /* wbm2host-tx-completions-ath-ring4 */
 				<GIC_SPI 450 IRQ_TYPE_EDGE_RISING>, /* wbm2host-tx-completions-ring4 */
 				<GIC_SPI 449 IRQ_TYPE_EDGE_RISING>, /* wbm2host-tx-completions-ring3 */
 				<GIC_SPI 448 IRQ_TYPE_EDGE_RISING>, /* wbm2host-tx-completions-ring2 */
@@ -1004,6 +1005,7 @@
 				"host2tcl-input-ring3",
 				"host2tcl-input-ring2",
 				"host2tcl-input-ring1",
+				"wbm2host-tx-completions-ath-ring4",
 				"wbm2host-tx-completions-ring4",
 				"wbm2host-tx-completions-ring3",
 				"wbm2host-tx-completions-ring2",
