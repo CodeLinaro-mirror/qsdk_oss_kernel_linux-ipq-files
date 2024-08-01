@@ -2,17 +2,9 @@
 /*
  * Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
-
-#define pr_fmt(fmt)	"q6v5_upd: %s: %d: " fmt, __func__, __LINE__
-
-#include <linux/clk.h>
-#include <linux/delay.h>
-#include <linux/elf.h>
 #include <linux/firmware.h>
 #include <linux/firmware/qcom/qcom_scm.h>
 #include <linux/interrupt.h>
-#include <linux/io.h>
-#include <linux/iopoll.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/of_address.h>
@@ -21,7 +13,6 @@
 #include <linux/platform_device.h>
 #include <linux/remoteproc.h>
 #include <linux/remoteproc/qcom_rproc.h>
-#include <linux/reset.h>
 #include <linux/soc/qcom/mdt_loader.h>
 #include <linux/soc/qcom/smem.h>
 #include <linux/soc/qcom/smem_state.h>
@@ -37,6 +28,15 @@
 
 #define Q6_BOOT_ARGS_SMEM_SIZE		4096
 #define UPD_BOOTARGS_HEADER_TYPE	0x2
+
+struct upd_ops {
+	int (*mdt_load)(struct device *dev, const struct firmware *fw,
+			const char *fw_name, int pas_id, void *mem_region,
+			phys_addr_t mem_phys, size_t mem_size,
+			phys_addr_t *reloc_base);
+	int (*powerup_scm)(u32 peripheral);
+	int (*powerdown_scm)(u32 peripheral);
+};
 
 struct user_pd {
 	struct device *dev;
@@ -65,6 +65,7 @@ struct user_pd {
 	int crash_reason_smem;
 	s8 pd_asid;
 	bool running;
+	const struct upd_ops *ops;
 };
 
 static struct user_pd *g_upd;
@@ -86,6 +87,71 @@ struct q6_userpd_bootargs {
 	u32 bootaddr;
 	u32 data_size;
 } __packed;
+
+static int q6v5_userpd_load_m3_firmware(struct user_pd *upd)
+{
+	int ret;
+	const struct firmware *m3_fw;
+	const char *m3_fw_name;
+
+	ret = of_property_read_string(upd->dev->of_node, "m3_firmware",
+				      &m3_fw_name);
+	if (ret) {
+		dev_err(upd->dev, "No m3_firmware entry, skipping m3 firmware load\n");
+		return 0;
+	}
+
+	ret = request_firmware(&m3_fw, m3_fw_name, upd->dev);
+	if (ret) {
+		dev_err(upd->dev, "Failed to get m3_firmware %d\n", ret);
+		return ret;
+	}
+
+	ret = qcom_mdt_load_no_init(upd->dev, m3_fw,
+				    m3_fw_name, 0,
+				    upd->mem_region, upd->mem_phys,
+				    upd->mem_size, &upd->mem_reloc);
+	release_firmware(m3_fw);
+
+	if (ret) {
+		dev_err(upd->dev, "can't load %s ret:%d\n", m3_fw_name, ret);
+		return ret;
+	}
+
+	dev_info(upd->dev, "m3 firmware %s loaded to DDR\n", m3_fw_name);
+	return ret;
+}
+
+static int q6v5_user_pd_load(struct user_pd *upd)
+{
+	const char *fw_name = NULL;
+	const struct firmware *fw;
+	u32 pasid;
+	int ret;
+
+	ret = of_property_read_string(upd->dev->of_node, "firmware", &fw_name);
+	if (ret) {
+		dev_err(upd->dev, "Failed to get firmware name\n");
+		return -ENOENT;
+	}
+
+	ret = request_firmware(&fw, fw_name, upd->dev);
+	if (ret) {
+		dev_err(upd->dev, "Failed to get firmware %d", ret);
+		return ret;
+	}
+
+	pasid = (upd->pd_asid << 8) | UPD_SWID;
+
+	if (upd->ops->mdt_load)
+		ret = upd->ops->mdt_load(upd->dev, fw, fw_name, pasid,
+					  upd->mem_region, upd->mem_phys,
+					  upd->mem_size, &upd->mem_reloc);
+	else
+		ret = -EINVAL;
+
+	return ret;
+}
 
 static int qcom_q6v5_userpd_spawn(struct user_pd *upd)
 {
@@ -118,17 +184,32 @@ static int qcom_q6v5_userpd_start(struct user_pd *upd, int timeout)
 		return upd->start_ack ? 0 : -ERESTARTSYS;
 }
 
-int q6v5_spawn_user_pd(struct user_pd *upd)
+static int q6v5_start_user_pd(struct user_pd *upd)
 {
 	int ret;
 	u32 pasid = (upd->pd_asid << 8) | UPD_SWID;
 
-	dev_info(upd->dev, "spawning userpd\n");
-	ret = qcom_scm_pas_auth_and_reset(pasid);
+	dev_info(upd->dev, "starting userpd\n");
+
+	ret = q6v5_user_pd_load(upd);
 	if (ret) {
-		dev_err(upd->dev, "Power up SCM failed for %d, ret %d",
-			pasid, ret);
+		dev_err(upd->dev, "Failed to load userpd firmware %d\n", ret);
 		return ret;
+	}
+
+	ret = q6v5_userpd_load_m3_firmware(upd);
+	if (ret) {
+		dev_err(upd->dev, "Failed to load m3 firmware %d\n", ret);
+		return ret;
+	}
+
+	if (upd->ops->powerup_scm) {
+		ret = upd->ops->powerup_scm(pasid);
+		if (ret) {
+			dev_err(upd->dev, "Power up SCM failed for %d, ret %d",
+				pasid, ret);
+			return ret;
+		}
 	}
 
 	reinit_completion(&upd->start_done);
@@ -149,6 +230,7 @@ int q6v5_spawn_user_pd(struct user_pd *upd)
 	}
 
 	upd->running = true;
+	dev_info(upd->dev, "userpd is now up!\n");
 	return ret;
 }
 
@@ -163,7 +245,6 @@ static int qcom_q6v5_userpd_stop(struct user_pd *upd)
 	if (upd->rproc->state != RPROC_RUNNING)
 		return 0;
 
-	dev_info(upd->dev, "Stopping userpd\n");
 	qcom_smem_state_update_bits(upd->state,
 				    BIT(upd->stop_bit), BIT(upd->stop_bit));
 
@@ -175,6 +256,32 @@ static int qcom_q6v5_userpd_stop(struct user_pd *upd)
 		return -ETIMEDOUT;
 	else
 		return upd->stop_ack ? 0 : -ERESTARTSYS;
+}
+
+static int q6v5_stop_user_pd(struct user_pd *upd)
+{
+	int ret;
+	u32 pasid = (upd->pd_asid << 8) | UPD_SWID;
+
+	dev_info(upd->dev, "Stopping userpd\n");
+	ret = qcom_q6v5_userpd_stop(upd);
+	if (ret) {
+		dev_err(upd->dev, "Stop failed, ret = %d\n", ret);
+		return ret;
+	}
+
+	if (upd->ops->powerdown_scm) {
+		ret = upd->ops->powerdown_scm(pasid);
+		if (ret) {
+			dev_err(upd->dev, "Failed to shutdown userpd, ret = %d\n",
+				ret);
+			return ret;
+		}
+	}
+
+	dev_info(upd->dev, "stopped userpd!\n");
+
+	return ret;
 }
 
 int q6v5_userpd_copy_bootargs(struct rproc *rproc, void *data)
@@ -227,65 +334,6 @@ int q6v5_userpd_copy_bootargs(struct rproc *rproc, void *data)
 		    &upd_bootargs, sizeof(struct q6_userpd_bootargs));
 	boot_args->smem_bootargs_ptr += sizeof(struct q6_userpd_bootargs);
 	return ret;
-}
-
-int q6v5_userpd_load_m3_firmware(struct user_pd *upd)
-{
-	int ret;
-	const struct firmware *m3_fw;
-	const char *m3_fw_name;
-
-	ret = of_property_read_string(upd->dev->of_node, "m3_firmware",
-				      &m3_fw_name);
-	if (ret) {
-		dev_err(upd->dev, "Failed to get m3_firmware name\n");
-		return -ENOENT;
-	}
-
-	ret = request_firmware(&m3_fw, m3_fw_name, upd->dev);
-	if (ret) {
-		dev_err(upd->dev, "Failed to get m3_firmware %d", ret);
-		return ret;
-	}
-
-	ret = qcom_mdt_load_no_init(upd->dev, m3_fw,
-				    m3_fw_name, 0,
-				    upd->mem_region, upd->mem_phys,
-				    upd->mem_size, &upd->mem_reloc);
-	release_firmware(m3_fw);
-
-	if (ret) {
-		dev_err(upd->dev, "can't load %s ret:%d\n", m3_fw_name, ret);
-		return ret;
-	}
-
-	dev_info(upd->dev, "m3 firmware %s loaded to DDR\n", m3_fw_name);
-	return ret;
-}
-
-int q6v5_user_pd_load(struct user_pd *upd)
-{
-	const char *fw_name = NULL;
-	const struct firmware *fw;
-	u32 pasid;
-	int ret;
-
-	ret = of_property_read_string(upd->dev->of_node, "firmware", &fw_name);
-	if (ret) {
-		dev_err(upd->dev, "Failed to get firmware name\n");
-		return -ENOENT;
-	}
-
-	ret = request_firmware(&fw, fw_name, upd->dev);
-	if (ret) {
-		dev_err(upd->dev, "Failed to get firmware %d", ret);
-		return ret;
-	}
-
-	pasid = (upd->pd_asid << 8) | UPD_SWID;
-
-	return qcom_mdt_load(upd->dev, fw, fw_name, pasid, upd->mem_region,
-			     upd->mem_phys, upd->mem_size, &upd->mem_reloc);
 }
 
 irqreturn_t q6v5_upd_fatal_handler(int irq, void *data)
@@ -495,32 +543,18 @@ int q6v5_upd_rproc_notifier_cb(struct notifier_block *nb, unsigned long action,
 	case QCOM_SSR_BEFORE_POWERUP:
 		break;
 	case QCOM_SSR_AFTER_POWERUP:
-		ret = q6v5_user_pd_load(upd);
+		ret = q6v5_start_user_pd(upd);
 		if (ret) {
-			dev_err(upd->dev, "Failed to load userpd firmware %d\n",
-				ret);
+			dev_err(upd->dev, "Failed to start userpd %d\n", ret);
 			break;
 		}
-		ret = q6v5_spawn_user_pd(upd);
-		if (ret) {
-			dev_err(upd->dev, "Failed to spawn userpd %d\n", ret);
-			break;
-		}
-		ret = q6v5_userpd_load_m3_firmware(upd);
-		if (ret) {
-			dev_err(upd->dev, "Failed to load m3 firmware %d\n",
-				ret);
-			break;
-		}
-		dev_info(upd->dev, "userpd is now up!\n");
 		break;
 	case QCOM_SSR_BEFORE_SHUTDOWN:
-		ret = qcom_q6v5_userpd_stop(upd);
+		ret = q6v5_stop_user_pd(upd);
 		if (ret) {
 			dev_err(upd->dev, "Failed to stop userpd %d\n", ret);
 			break;
 		}
-		dev_info(upd->dev, "stopped userpd!\n");
 		break;
 	case QCOM_SSR_AFTER_SHUTDOWN:
 		break;
@@ -540,7 +574,8 @@ static int q6v5_upd_probe(struct platform_device *pdev)
 
 	upd->dev = &pdev->dev;
 
-	if (of_property_read_u32(upd->dev->of_node, "rproc", &rproc_phandle)) {
+	if (of_property_read_u32(upd->dev->of_node, "qcom,rproc",
+				 &rproc_phandle)) {
 		dev_err(upd->dev, "Failed to get rproc phandle\n");
 		return -ENODEV;
 	}
@@ -550,6 +585,10 @@ static int q6v5_upd_probe(struct platform_device *pdev)
 		dev_err(upd->dev, "Failed to get rproc\n");
 		return -EPROBE_DEFER;
 	}
+
+	upd->ops = of_device_get_match_data(&pdev->dev);
+	if (!upd->ops)
+		return -EINVAL;
 
 	upd->rproc_nb.notifier_call = q6v5_upd_rproc_notifier_cb;
 	upd->rproc_nb.priority = 1;
@@ -594,13 +633,19 @@ static int q6v5_upd_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static const struct platform_device_id upd_platform_id_table[] = {
-	{ .name = "devsoc", .driver_data = 0, },
+static const struct upd_ops ipq5424_upd_ops = {
+	.mdt_load = qcom_mdt_load_no_init,
+};
+
+static const struct upd_ops ipq5332_upd_ops = {
+	.mdt_load = qcom_mdt_load_no_init,
+	.powerup_scm = qcom_scm_pas_auth_and_reset,
+	.powerup_scm = qcom_scm_pas_shutdown,
 };
 
 static const struct of_device_id q6v5_upd_of_match[] = {
-	{ .compatible = "qcom,devsoc-q6v5-upd",
-	  .data = (void *)&upd_platform_id_table[0] },
+	{ .compatible = "qcom,ipq5424-q6v5-upd", .data = &ipq5424_upd_ops },
+	{ .compatible = "qcom,ipq5332-q6v5-upd", .data = &ipq5332_upd_ops },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, q6_wcss_of_match);

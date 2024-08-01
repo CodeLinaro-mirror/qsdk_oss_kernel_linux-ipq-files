@@ -988,6 +988,30 @@
 			};
 		};
 
+		userpd_1: userpd1 {
+			compatible = "qcom,ipq5424-q6v5-upd";
+			memory-region = <&q6_region>;
+			qcom,rproc = <&q6v5_wcss>;
+			firmware = "IPQ5424/q6_fw1.mdt";
+			m3_firmware = "IPQ5424/iu_fw.mdt";
+			interrupts-extended = <&wcss_smp2p_in 8 0>,
+					      <&wcss_smp2p_in 9 0>,
+					      <&wcss_smp2p_in 12 0>,
+					      <&wcss_smp2p_in 11 0>;
+			interrupt-names = "fatal",
+					  "ready",
+					  "spawn-ack",
+					  "stop-ack";
+
+			qcom,smem-states = <&wcss_smp2p_out 8>,
+					   <&wcss_smp2p_out 9>,
+					   <&wcss_smp2p_out 10>;
+			qcom,smem-state-names = "shutdown",
+						"stop",
+						"spawn";
+			status = "disabled";
+		};
+
 		intc: interrupt-controller@f200000 {
 			compatible = "arm,gic-v3";
 			reg = <0xf200000 0x10000>, /* GICD */
