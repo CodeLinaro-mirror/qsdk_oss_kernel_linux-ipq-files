@@ -367,7 +367,7 @@
 					pins = "gpio13";
 					function = "uart0_tx";
 					drive-strength = <8>;
-					bias-pull-up;
+					bias-pull-down;
 				};
 
 				qup_uart0_rx: rx-pins {
@@ -381,7 +381,7 @@
 					pins = "gpio10";
 					function = "uart0_rfr";
 					drive-strength = <8>;
-					bias-pull-up;
+					bias-pull-down;
 				};
 
 				qup_uart0_cts: cts-pins {

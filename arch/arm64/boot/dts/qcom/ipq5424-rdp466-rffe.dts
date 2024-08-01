@@ -40,7 +40,7 @@
 			led-0 {
 				color = <LED_COLOR_ID_GREEN>;
 				function = LED_FUNCTION_WLAN;
-				gpios = <&tlmm 41 GPIO_ACTIVE_HIGH>;
+				gpios = <&tlmm 42 GPIO_ACTIVE_HIGH>;
 				linux,default-trigger = "phy0tx";
 				default-state = "off";
 			};
@@ -118,9 +118,121 @@
 
 &tlmm {
 	gpio_leds_default: gpio-leds-default-state {
-		pins = "gpio41";
+		pins = "gpio42";
 		function = "gpio";
 		drive-strength = <8>;
 		bias-pull-down;
+	};
+
+	pcie2_default_state: pcie2-default-state {
+		perst-n-pins {
+			pins = "gpio31";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-up;
+			output-low;
+		};
+	};
+
+	pcie3_default_state: pcie3-default-state {
+		perst-n-pins {
+			pins = "gpio34";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-up;
+			output-low;
+		};
+	};
+
+	qspi_default_state: qspi-default-state {
+		qspi_clock {
+			pins = "gpio5";
+			function = "qspi_clk";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+
+		qspi_cs {
+			pins = "gpio4";
+			function = "qspi_cs";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+
+		qspi_data {
+			pins = "gpio0", "gpio1", "gpio2", "gpio3";
+			function = "qspi_data";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+	};
+
+	qup_spi0_default: qup-spi0-default-state {
+		qup_spi0_clk {
+			pins = "gpio6";
+			function = "spi0_clk";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+
+		qup_spi0_cs {
+			pins = "gpio7";
+			function = "spi0_cs";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+
+		qup_spi0_miso {
+			pins = "gpio8";
+			function = "spi0_miso";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+
+		qup_spi0_mosi {
+			pins = "gpio9";
+			function = "spi0_mosi";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+	};
+
+	qup_uart1_default: qup-uart1-default-state {
+		qup_uart1_tx: tx-pins {
+			pins = "gpio44";
+			function = "uart1_tx";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+
+		qup_uart1_rx: rx-pins {
+			pins = "gpio43";
+			function = "uart1_rx";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+	};
+
+	sdc_default_state: sdc-default-state {
+		clk-pins {
+			pins = "gpio5";
+			function = "sdc_clk";
+			drive-strength = <8>;
+			bias-disable;
+		};
+
+		cmd-pins {
+			pins = "gpio4";
+			function = "sdc_cmd";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+
+		data-pins {
+			pins = "gpio0", "gpio1", "gpio2", "gpio3";
+			function = "sdc_data";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
 	};
 };
