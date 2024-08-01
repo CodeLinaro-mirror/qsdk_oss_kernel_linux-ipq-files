@@ -222,7 +222,7 @@ void load_license_params_to_bootargs(struct device *dev,
 	dev_info(dev, "License file copied in bootargs\n");
 }
 
-static int share_bootargs_to_q6(struct device *dev)
+static int share_bootargs_to_q6(struct rproc *rproc, struct device *dev)
 {
 	int ret;
 	u32 smem_id, rd_val;
@@ -305,6 +305,12 @@ static int share_bootargs_to_q6(struct device *dev)
 	of_node_put(np);
 	kfree(bootargs_arr);
 
+	ret = q6v5_userpd_copy_bootargs(rproc, (void *)&boot_args);
+	if (ret < 0) {
+		pr_err("failed to read userpd boot args ret:%d\n", ret);
+		return ret;
+	}
+
 	load_license_params_to_bootargs(dev, &boot_args);
 
 	return 0;
@@ -321,7 +327,7 @@ static int q6v5_wcss_sec_load(struct rproc *rproc, const struct firmware *fw)
 		return -EINVAL;
 
 	/* Share boot args to Q6 remote processor */
-	ret = share_bootargs_to_q6(wcss->dev);
+	ret = share_bootargs_to_q6(rproc, wcss->dev);
 	if (ret && ret != -EINVAL) {
 		dev_err(wcss->dev,
 			"boot args sharing with q6 failed %d\n",
