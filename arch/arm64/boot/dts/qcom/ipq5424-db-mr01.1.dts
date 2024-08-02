@@ -260,7 +260,7 @@
 	pcie1_rp {
 		reg = <0 0 0 0 0>;
 
-		qcom,mhi@0 {
+		qcom,mhi@1 {
 			reg = <0 0 0 0 0>;
 		};
 	};
@@ -276,7 +276,7 @@
 	pcie2_rp {
 		reg = <0 0 0 0 0>;
 
-		qcom,mhi@0 {
+		qcom,mhi@2 {
 			reg = <0 0 0 0 0>;
 		};
 	};
@@ -292,7 +292,7 @@
 	pcie3_rp {
 		reg = <0 0 0 0 0>;
 
-		qcom,mhi@0 {
+		qcom,mhi@3 {
 			reg = <0 0 0 0 0>;
 		};
 	};

@@ -224,7 +224,7 @@
 	pcie2_rp {
 		reg = <0 0 0 0 0>;
 
-		qcom,mhi@0 {
+		qcom,mhi@2 {
 			reg = <0 0 0 0 0>;
 			memory-region = <&qcn9224_pcie2>, <&mhi_region2>;
 			qcom,board_id = <0x29>;
@@ -244,7 +244,7 @@
 	pcie3_rp {
 		reg = <0 0 0 0 0>;
 
-		qcom,mhi@0 {
+		qcom,mhi@3 {
 			reg = <0 0 0 0 0>;
 			memory-region = <&qcn9224_pcie3>, <&mhi_region3>;
 			qcom,board_id = <0x28>;
