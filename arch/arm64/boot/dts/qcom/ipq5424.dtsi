@@ -1587,8 +1587,7 @@
 		};
 
 		apcs_glb: mailbox@f400004 {
-			compatible = "qcom,ipq5424-apcs-apps-global",
-				     "qcom,ipq6018-apcs-apps-global";
+			compatible = "qcom,ipq5424-apcs-global";
 			reg = <0xf400004 0x6000>;
 			#clock-cells = <1>;
 			#mbox-cells = <1>;
