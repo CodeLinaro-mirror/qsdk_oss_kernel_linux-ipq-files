@@ -1632,6 +1632,7 @@
 			reg = <0xf420000 0x1000>;
 			#address-cells = <1>;
 			#size-cells = <1>;
+			clock-frequency = <24000000>;
 			ranges;
 
 			frame@f421000 {
@@ -3670,6 +3671,7 @@
 
 	timer {
 		compatible = "arm,armv8-timer";
+		clock-frequency = <24000000>;
 		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
 			     <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
 			     <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,

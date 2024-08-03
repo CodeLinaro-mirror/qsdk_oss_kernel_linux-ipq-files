@@ -32,24 +32,33 @@
 		CPU0: cpu@0 {
 			enable-method = "qcom,arm-cortex-acc";
 			qcom,acc = <&acc0>;
+			/delete-property/ clocks;
+			/delete-property/ clock-names;
 		};
 
 		CPU1: cpu@100 {
 			enable-method = "qcom,arm-cortex-acc";
 			qcom,acc = <&acc1>;
+			/delete-property/ clocks;
+			/delete-property/ clock-names;
 		};
 
 		CPU2: cpu@200 {
 			enable-method = "qcom,arm-cortex-acc";
 			qcom,acc = <&acc2>;
+			/delete-property/ clocks;
+			/delete-property/ clock-names;
 		};
 
 		CPU3: cpu@300 {
 			enable-method = "qcom,arm-cortex-acc";
 			qcom,acc = <&acc3>;
+			/delete-property/ clocks;
+			/delete-property/ clock-names;
 		};
 	};
 
+	/delete-node/ opp-table-cpu;
 
 	soc@0 {
 		qupv3: geniqup@1ac0000 {
@@ -73,6 +82,7 @@
 			status = "disabled";
 		};
 
+		/delete-node/ apss-clock@fa80000;
 		/delete-node/ efuse@a4000;
 		/delete-node/ thermal-sensor@4a9000;
 		/delete-node/ dp1;
