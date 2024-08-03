@@ -24,12 +24,9 @@
 	/delete-node/ psci;
 	/delete-node/ qcom,test@0;
 	/delete-node/ qti,tzlog;
-	/delete-node/ wcss-smp2p;
 	/delete-node/ thermal-zones;
 	/delete-node/ qcn9224_legacy_irq0;
 	/delete-node/ qcn9224_legacy_irq1;
-	/delete-node/ qcn9224_legacy_irq2;
-	/delete-node/ qcn9224_legacy_irq3;
 
 	cpus: cpus {
 		CPU0: cpu@0 {
@@ -87,7 +84,6 @@
 		/delete-node/ dcc@60ff000;
 		/delete-node/ ess-instance;
 		/delete-node/ gpio-keys;
-		/delete-node/ mailbox@f400004;
 		/delete-node/ mmc@7804000;
 		/delete-node/ nss-ppe;
 		/delete-node/ tcsr;
@@ -109,10 +105,8 @@
 		/delete-node/ nsscc@39b00000;
 		/delete-node/ sram@8600000;
 		/delete-node/ stm@6002000;
-		/delete-node/ syscon@1937000;
 		/delete-node/ system-cache-controller@800000;
 		/delete-node/ qmp-tmel@32090000;
-		/delete-node/ remoteproc@d100000;
 		/delete-node/ rng@4c3000;
 		/delete-node/ replicator@6046000;
 		/delete-node/ tmc@6048000;
@@ -121,11 +115,8 @@
 		/delete-node/ phy@84000;
 		/delete-node/ phy@8c000;
 		/delete-node/ watchdog@f410000;
-		/delete-node/ wifi@c0000000;
 		/delete-node/ wifi1@f00000;
 		/delete-node/ wifi2@f00000;
-		/delete-node/ wifi3@f00000;
-		/delete-node/ wifi4@f00000;
 		/delete-node/ userpd1;
 
 		leds {
@@ -205,7 +196,7 @@
 			chip_info = <0 2 1 2>,
 				    <1 2 2 0>,
 				    <2 2 0 1>;
-			status = "okay";
+			status = "disabled";
 		};
 	};
 };
@@ -284,10 +275,6 @@
 
 &tcsr_mutex {
 	status = "disabled";
-};
-
-&q6v5_wcss {
-	status = "okay";
 };
 
 &tlmm {
@@ -427,26 +414,38 @@
 };
 
 &qcn9224_pcie2 {
-	status = "okay";
+	status = "disabled";
 };
 
 &qcn9224_pcie3 {
-	status = "okay";
+	status = "disabled";
 };
 
 #if defined(__MHI_BUS_RESERVED_DMA_POOL__)
 &mhi_region2 {
-	status = "okay";
+	status = "disabled";
 };
 
 &mhi_region3 {
-	status = "okay";
+	status = "disabled";
 };
 #endif
 
 &mlo_global_mem0 {
         size = <0x0 0x1200000>;
-        status = "okay";
+        status = "disabled";
+};
+
+&apcs_glb {
+        status = "disabled";
+};
+
+&tcsr {
+        status = "disabled";
+};
+
+&wcss {
+	status = "disabled";
 };
 
 &wifi0 {
@@ -460,19 +459,19 @@
 	qcom,wsi_index = <0>;
 	qcom,board_id = <0x11>;
 	hw_link_id = <0 0>;
-	status = "okay";
+	status = "disabled";
 };
 
 &wifi3 {
 	hremote_node = <&qcn9224_pcie2>;
 	board_id = <0x32>;
 	hw_link_id = <1 0>;
-	status = "okay";
+	status = "disabled";
 };
 
 &wifi4 {
 	hremote_node = <&qcn9224_pcie3>;
 	board_id = <0x31>;
 	hw_link_id = <2 0>;
-	status = "okay";
+	status = "disabled";
 };
