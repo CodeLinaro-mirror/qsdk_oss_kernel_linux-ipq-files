@@ -2088,22 +2088,22 @@
 				<0 569 1>, /* txmon2host-monitor-destination-mac2 */
 				<0 565 1>, /* txmon2host-monitor-destination-mac1 */
 				<0 502 1>, /* umac_reset */
-				/* Unused Interrupts */
-				<0 558 1>, /* host2rxdma-monitor-ring3 */
-				<0 558 1>, /* host2rxdma-monitor-ring2 */
-				<0 558 1>, /* ppdu-end-interrupts-mac3 */
-				<0 558 1>, /* ppdu-end-interrupts-mac2 */
-				<0 558 1>, /* ppdu-end-interrupts-mac1 */
-				<0 558 1>, /* rxdma2host-monitor-status-ring-mac3 */
-				<0 558 1>, /* rxdma2host-monitor-status-ring-mac2 */
-				<0 558 1>, /* rxdma2host-monitor-status-ring-mac1 */
-				<0 558 1>, /* rxdma2host-destination-ring-mac3 */
-				<0 558 1>, /* rxdma2host-destination-ring-mac2 */
-				<0 558 1>, /* rxdma2host-destination-ring-mac1 */
-				<0 608 1>, /* reo2ppe1 */
+				<0 558 1>, /* reo2ppe1 */
 				<0 586 1>, /* reo2ppe */
 				<0 573 1>, /* ppe_wbm_rel */
-				<0 562 1>; /* ppe2tcl */
+				<0 562 1>, /* ppe2tcl */
+				/* Unused Interrupts */
+				<0 640 1>, /* host2rxdma-monitor-ring3 */
+				<0 640 1>, /* host2rxdma-monitor-ring2 */
+				<0 640 1>, /* ppdu-end-interrupts-mac3 */
+				<0 640 1>, /* ppdu-end-interrupts-mac2 */
+				<0 640 1>, /* ppdu-end-interrupts-mac1 */
+				<0 640 1>, /* rxdma2host-monitor-status-ring-mac3 */
+				<0 640 1>, /* rxdma2host-monitor-status-ring-mac2 */
+				<0 640 1>, /* rxdma2host-monitor-status-ring-mac1 */
+				<0 640 1>, /* rxdma2host-destination-ring-mac3 */
+				<0 640 1>, /* rxdma2host-destination-ring-mac2 */
+				<0 640 1>; /* rxdma2host-destination-ring-mac1 */
 
 			interrupt-names = "misc-pulse1",
 				"misc-latch",
@@ -2150,6 +2150,10 @@
 				"txmon2host-monitor-destination-mac2",
 				"txmon2host-monitor-destination-mac1",
 				"umac_reset",
+				"reo2ppe1",
+				"reo2ppe",
+				"ppe_wbm_rel",
+				"ppe2tcl",
 				/* Unused Interrupts */
 				"host2rxdma-monitor-ring3",
 				"host2rxdma-monitor-ring2",
@@ -2161,11 +2165,7 @@
 				"rxdma2host-monitor-status-ring-mac1",
 				"rxdma2host-destination-ring-mac3",
 				"rxdma2host-destination-ring-mac2",
-				"rxdma2host-destination-ring-mac1",
-				"reo2ppe1",
-				"reo2ppe",
-				"ppe_wbm_rel",
-				"ppe2tcl";
+				"rxdma2host-destination-ring-mac1";
 			/* 36 indicates GPIO number for LED_2G.
 			 * 0 indicates that the GPIO is active high.
 			 */
