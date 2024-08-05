@@ -312,12 +312,6 @@
 
 			hwlocks = <&tcsr_mutex 3>;
 		};
-
-		q6_region: wcnss@8a900000 {
-			reg = <0x0 0x8a900000 0x0 0x02300000>;
-			no-map;
-			status = "disabled";
-		};
 	};
 
 	license_manager: license_manager {
@@ -1050,7 +1044,10 @@
 			qcom,smem-state-names = "shutdown",
 						"stop";
 
-			memory-region = <&q6_region>;
+			memory-region = <&q6_region>,
+					<&m3_dump>,
+					<&q6_etr_region>,
+					<&q6_ipq5424_caldb>;
 			qcom,bootargs_smem = <507>;
 			qcom,bootargs_version = <2>;
 			qcom,userpd-bootargs;
@@ -2044,9 +2041,9 @@
 			reg = <0xc000000 0x1000000>;
 			qcom,tgt-mem-mode = <0>;
 			qcom,rproc = <&q6v5_wcss>;
-			qcom,bdf-addr = <0x8B500000 0x8B500000 0x8B500000
+			qcom,bdf-addr = <0x8b240000 0x8b240000 0x8b240000
 					 0x0 0x0 0x0>;
-			qcom,caldb-addr = <0x8D500000 0x8D500000 0x0
+			qcom,caldb-addr = <0x8d300000 0x8d300000 0x0
 					   0x0 0x0 0x0>;
 			qcom,caldb-size = <0x600000>;
 			interrupts = <0 559 1>, /* misc-pulse1 */

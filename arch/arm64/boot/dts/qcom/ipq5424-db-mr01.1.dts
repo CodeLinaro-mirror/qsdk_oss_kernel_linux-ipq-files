@@ -9,6 +9,7 @@
 /dts-v1/;
 
 #include "ipq5424-rdp-common.dtsi"
+#include "ipq5424-default-memory.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ5424 DB-MR01.1";
