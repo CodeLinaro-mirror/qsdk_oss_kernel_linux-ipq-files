@@ -295,11 +295,11 @@
 };
 
 &qpic_bam {
-	status = "disabled";
+	status = "okay";
 };
 
 &qpic_nand {
-	status = "disabled";
+	status = "okay";
 };
 
 &pcie2_phy {

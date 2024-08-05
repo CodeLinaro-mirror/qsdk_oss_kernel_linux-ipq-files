@@ -304,11 +304,11 @@
 };
 
 &qpic_bam {
-	status = "disabled";
+	status = "okay";
 };
 
 &qpic_nand {
-	status = "disabled";
+	status = "okay";
 };
 
 &sdhc {
