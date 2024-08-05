@@ -60,7 +60,16 @@
 			};
 		};
 
+		nsscc@39b00000 {
+			status = "okay";
+		};
+
+		ess-uniphy@7a00000 {
+			status = "okay";
+		};
+
 		mdio: mdio@90000 {
+			status = "okay";
 			pinctrl-0 = <&mdio_mst_pins &mdio_slv_pins>;
 			pinctrl-names = "default";
 			/*gpio18 for manhattan reset*/
@@ -88,6 +97,7 @@
 		};
 
 		ess-instance {
+			status = "okay";
 			num_devices = <0x2>;
 
 			ess-switch@3a000000 {
