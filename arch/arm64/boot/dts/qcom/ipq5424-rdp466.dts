@@ -373,25 +373,21 @@
 	status = "disabled";
 };
 
-&q6v5_wcss {
-	status = "okay";
-};
-
 &qcn9224_pcie2 {
-	status = "okay";
+	status = "disabled";
 };
 
 &qcn9224_pcie3 {
-	status = "okay";
+	status = "disabled";
 };
 
 #if defined(__MHI_BUS_RESERVED_DMA_POOL__)
 &mhi_region2 {
-	status = "okay";
+	status = "disabled";
 };
 
 &mhi_region3 {
-	status = "okay";
+	status = "disabled";
 };
 #endif
 
@@ -518,7 +514,7 @@
 
 &mlo_global_mem0 {
         size = <0x0 0x1200000>;
-        status = "okay";
+        status = "disabled";
 };
 
 &apcs_glb {
