@@ -68,7 +68,6 @@
 			phyaddr_fixup = <0xC90F018>;
 			uniphyaddr_fixup = <0xC90F014>;
 			mdio_clk_fixup; /* MDIO clock sequence fix up flag */
-			status = "okay";
 
 			ethernet-phy@0 {
 				reg = <1>;
@@ -202,6 +201,7 @@
 			local-mac-address = [000000000000];
 			qcom,mht-dev = <1>;
 			qcom,is_switch_connected = <1>;
+			status = "disabled";
 		};
 	};
 };
@@ -215,15 +215,15 @@
 };
 
 &license_manager {
-	status = "okay";
+	status = "disabled";
 };
 
 &qmp_tmel {
-	status = "okay";
+	status = "disabled";
 };
 
 &tmelcom {
-	status = "okay";
+	status = "disabled";
 };
 
 &tlmm {
