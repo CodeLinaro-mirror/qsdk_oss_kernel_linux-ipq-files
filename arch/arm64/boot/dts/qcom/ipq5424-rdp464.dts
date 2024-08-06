@@ -254,9 +254,9 @@
 		qcom,mhi@1 {
 			reg = <0 0 0 0 0>;
 			memory-region = <&qcn9224_pcie1>, <&mhi_region1>;
-			qcom,board_id = <0x22>;
+			qcom,board_id = <0x21>;
 			qcom,wsi = <&wsi>;
-			qcom,wsi_index = <1>;
+			qcom,wsi_index = <2>;
 		};
 	};
 };
@@ -274,9 +274,9 @@
 		qcom,mhi@2 {
 			reg = <0 0 0 0 0>;
 			memory-region = <&qcn9224_pcie2>, <&mhi_region2>;
-			qcom,board_id = <0x21>;
+			qcom,board_id = <0x26>;
 			qcom,wsi = <&wsi>;
-			qcom,wsi_index = <2>;
+			qcom,wsi_index = <1>;
 		};
 	};
 };
@@ -294,7 +294,7 @@
 		qcom,mhi@3 {
 			reg = <0 0 0 0 0>;
 			memory-region = <&qcn9224_pcie3>, <&mhi_region3>;
-			qcom,board_id = <0x26>;
+			qcom,board_id = <0x22>;
 			qcom,wsi = <&wsi>;
 			qcom,wsi_index = <3>;
 		};
@@ -598,21 +598,21 @@
 
 &wifi2 {
 	hremote_node = <&qcn9224_pcie1>;
-	board_id = <0x22>;
-	hw_link_id = <1 0>;
-	status = "okay";
-};
-
-&wifi3 {
-	hremote_node = <&qcn9224_pcie2>;
 	board_id = <0x21>;
 	hw_link_id = <2 0>;
 	status = "okay";
 };
 
+&wifi3 {
+	hremote_node = <&qcn9224_pcie2>;
+	board_id = <0x26>;
+	hw_link_id = <1 0>;
+	status = "okay";
+};
+
 &wifi4 {
 	hremote_node = <&qcn9224_pcie3>;
-	board_id = <0x26>;
+	board_id = <0x22>;
 	hw_link_id = <3 0>;
 	status = "okay";
 };
