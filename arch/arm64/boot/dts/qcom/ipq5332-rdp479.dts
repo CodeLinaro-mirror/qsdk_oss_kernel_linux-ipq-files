@@ -774,6 +774,7 @@
 	qcom,bdf-addr = <0x4D900000 0x4D900000 0x4D900000 0x0 0x0 0x0>;
 	qcom,caldb-addr = <0x4F000000 0x4F000000 0x4F000000 0x0 0x0 0x0>;
 	qcom,caldb-size = <0x500000>;
+	qcom,umac-irq-reset-addr = <0x20000884>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
 	qcom,tgt-mem-mode = <1>;
 #else
@@ -786,6 +787,8 @@
 	qcom,pci_slot_id = <0>;
 	interrupts = <0 33 1>;
 	status = "okay";
+	interrupts = <GIC_SPI 33 IRQ_TYPE_EDGE_RISING>;
+	interrupt-names = "umac_reset";
 };
 
 &qcn9224_pcie1 {
