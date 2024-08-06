@@ -191,12 +191,14 @@
 
 	ctx-save {
 		compatible = "qti,ctxt-save-ipq5424";
+		status = "disabled";
 	};
 
 	firmware {
 		scm {
 			compatible = "qcom,scm-ipq5424", "qcom,scm";
 			qcom,dload-mode = <&tcsr 0x25100>;
+			status = "disabled";
 		};
 	};
 
@@ -263,6 +265,7 @@
 	psci {
 		compatible = "arm,psci-1.0";
 		method = "smc";
+		status = "disabled";
 	};
 
 	qti,tzlog {
@@ -879,7 +882,7 @@
 			gcc-use-dummy;
                 };
 
-		nsscc: nsscc@39b00000{
+		nsscc: nsscc@39b00000 {
 			compatible = "qcom,ipq54xx-nsscc";
 			reg = <0x39b00000 0x80000>;
 			clocks = <&xo>,
@@ -892,6 +895,7 @@
 					"gcc_gpll0_out_aux";
 			#clock-cells = <0x1>;
 			#reset-cells = <0x1>;
+			nsscc-use-dummy;
 		};
 
 		tcsr_mutex: hwlock@1905000 {
@@ -1144,6 +1148,7 @@
 
 		ess-instance {
 			compatible = "qcom,ess-instance";
+			status = "disabled";
 			ess-switch@3a000000 {
 				compatible = "qcom,ess-switch-ipq54xx";
 				switch_access_mode = "local bus";
@@ -1546,6 +1551,7 @@
 			compatible = "qcom,ess-uniphy";
 			reg = <0x7a00000 0x30000>;
 			uniphy_access_mode = "local bus";
+			status = "disabled";
 		};
 
 		edma@3ab00000 {
@@ -1577,10 +1583,12 @@
 				"nss-nssnoc-nsscc-clk", "nss-nssnoc-pcnoc-1-clk", "nss-nssnoc-qosgen-ref-clk",
 				"nss-nssnoc-snoc-1-clk", "nss-nssnoc-snoc-clk", "nss-nssnoc-timeout-ref-clk",
 				"nss-nssnoc-xo-dcd-clk";
+			status = "disabled";
                 };
 
 		nss-ppe {
 			compatible = "qcom,nss-ppe";
+			status = "disabled";
 		};
 
 		apcs_glb: mailbox@f400004 {
@@ -1622,6 +1630,7 @@
 			interrupts = <GIC_SPI 0 IRQ_TYPE_EDGE_RISING>;
 			clocks = <&sleep_clk>;
 			timeout-sec = <30>;
+			status = "disabled";
 		};
 
 		timer@f420000 {
@@ -3679,6 +3688,7 @@
 	qcom,test@0 {
 		compatible = "qcom,testmhi";
 		qcom,wlan-ramdump-dynamic = <0x600000>;
+		status = "disabled";
 	};
 
 	wcss: wcss-smp2p {

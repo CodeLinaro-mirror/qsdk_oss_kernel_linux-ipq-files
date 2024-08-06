@@ -15,18 +15,11 @@
 	model = "Qualcomm Technologies, Inc. IPQ5424 RDP466-rffe";
 	compatible = "qcom,ipq5424-rdp466-rffe", "qcom,ipq5424";
 
-	/delete-node/ ctx-save;
-	/delete-node/ firmware;
 	/delete-node/ ipq-debug;
-	/delete-node/ license_manager;
 	/delete-node/ pmu;
 	/delete-node/ pmu-v7;
-	/delete-node/ psci;
-	/delete-node/ qcom,test@0;
 	/delete-node/ qti,tzlog;
 	/delete-node/ thermal-zones;
-	/delete-node/ qcn9224_legacy_irq0;
-	/delete-node/ qcn9224_legacy_irq1;
 
 	cpus: cpus {
 		CPU0: cpu@0 {
@@ -85,45 +78,23 @@
 		/delete-node/ apss-clock@fa80000;
 		/delete-node/ efuse@a4000;
 		/delete-node/ thermal-sensor@4a9000;
-		/delete-node/ dp1;
-		/delete-node/ dp3;
 		/delete-node/ dcc@60ff000;
-		/delete-node/ ess-instance;
 		/delete-node/ gpio-keys;
 		/delete-node/ mmc@7804000;
-		/delete-node/ nss-ppe;
-		/delete-node/ tcsr;
-		/delete-node/ tmelcom;
-		/delete-node/ qcom,tmelcom-qmp-client;
-		/delete-node/ qmp_tmel;
 		/delete-node/ etf@6047000;
 		/delete-node/ etm@6480000;
 		/delete-node/ etm@6580000;
 		/delete-node/ etm@6680000;
 		/delete-node/ etm@6780000;
-		/delete-node/ edma@3ab00000;
-		/delete-node/ ess-uniphy@7a00000;
 		/delete-node/ funnel@6041000;
 		/delete-node/ funnel@6042000;
 		/delete-node/ funnel@6045000;
 		/delete-node/ funnel@6781000;
-		/delete-node/ mdio@90000;
-		/delete-node/ nsscc@39b00000;
 		/delete-node/ sram@8600000;
 		/delete-node/ stm@6002000;
-		/delete-node/ system-cache-controller@800000;
-		/delete-node/ qmp-tmel@32090000;
 		/delete-node/ rng@4c3000;
 		/delete-node/ replicator@6046000;
 		/delete-node/ tmc@6048000;
-		/delete-node/ pcie@60000000;
-		/delete-node/ pcie@70000000;
-		/delete-node/ phy@84000;
-		/delete-node/ phy@8c000;
-		/delete-node/ watchdog@f410000;
-		/delete-node/ wifi1@f00000;
-		/delete-node/ wifi2@f00000;
-		/delete-node/ userpd1;
 
 		leds {
 			compatible = "gpio-leds";
