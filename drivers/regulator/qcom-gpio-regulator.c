@@ -59,28 +59,6 @@ static struct of_device_id gpio_regulator_match_table[] = {
 	{}
 };
 
-static int fuse_read(struct device_node *np, const char *cell_id, u8 *val)
-{
-	struct nvmem_cell *cell;
-	size_t len;
-	void *buf;
-
-	cell = of_nvmem_cell_get(np, cell_id);
-	if (IS_ERR(cell))
-		return PTR_ERR(cell);
-
-	buf = nvmem_cell_read(cell, &len);
-	nvmem_cell_put(cell);
-	if (IS_ERR(buf))
-		return PTR_ERR(buf);
-
-	memcpy(val, buf, len);
-	/* Free the buffer created by nvmem_cell_read() */
-	kfree(buf);
-
-	return 0;
-}
-
 int gpio_convert_open_loop_voltage_fuse(int ref_volt, int step_volt, u8 fuse,
                                         int fuse_len)
 {
@@ -98,7 +76,7 @@ static int gpio_regulator_probe(struct platform_device *pdev)
 	const struct of_device_id *match;
 	struct gpio_regulator_data *reg_data;
 	struct regulator *gpio_regulator;
-	u8 volt_ticks;
+	u16 volt_ticks;
 	u8 cpr_fuse;
 	int fused_volt;
 	int volt_select;
@@ -114,7 +92,7 @@ static int gpio_regulator_probe(struct platform_device *pdev)
 			fix_volt_max = true;
 	}
 
-	ret = fuse_read(dev->of_node, "cpr", &cpr_fuse);
+	ret = nvmem_cell_read_u8(dev, "cpr", &cpr_fuse);
 	if (ret < 0) {
 		if(ret != -EPROBE_DEFER)
 			dev_err(dev, "%s CPR fuse revision read failed, ret %d\n", "cpr", ret);
@@ -124,7 +102,7 @@ static int gpio_regulator_probe(struct platform_device *pdev)
 	for(reg_data = (struct gpio_regulator_data *)match->data;
 					reg_data->regulator_name; reg_data++)
 	{
-		ret = fuse_read(dev->of_node, reg_data->regulator_name, &volt_ticks);
+		ret = nvmem_cell_read_u16(dev, reg_data->regulator_name, &volt_ticks);
 		if (ret < 0) {
 			dev_err(dev, "%s fuse read failed, ret %d\n", reg_data->regulator_name, ret);
 			continue;
