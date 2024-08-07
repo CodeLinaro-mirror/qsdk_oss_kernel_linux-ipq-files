@@ -26,7 +26,7 @@
 		bootargs-append = " clk_ignore_unused";
 		linux,initrd-end = <0x97000000>;
 		linux,initrd-start = <0x95000000>;
-		bootargs = "root=/dev/ram0 rw init=/init clk_ignore_unused nosmp";
+		bootargs = "root=/dev/ram0 rw init=/init clk_ignore_unused";
 	};
 
 	memory@80000000 {
