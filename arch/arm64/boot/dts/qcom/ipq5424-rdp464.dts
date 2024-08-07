@@ -107,21 +107,9 @@
 		/delete-node/ thermal-sensor@4a9000;
 		/delete-node/ dcc@60ff000;
 		/delete-node/ gpio-keys;
-		/delete-node/ etf@6047000;
-		/delete-node/ etm@6480000;
-		/delete-node/ etm@6580000;
-		/delete-node/ etm@6680000;
-		/delete-node/ etm@6780000;
-		/delete-node/ funnel@6041000;
-		/delete-node/ funnel@6042000;
-		/delete-node/ funnel@6045000;
-		/delete-node/ funnel@6781000;
 		/delete-node/ sram@8600000;
-		/delete-node/ stm@6002000;
 		/delete-node/ system-cache-controller@800000;
 		/delete-node/ rng@4c3000;
-		/delete-node/ replicator@6046000;
-		/delete-node/ tmc@6048000;
 
 		leds {
 			compatible = "gpio-leds";
