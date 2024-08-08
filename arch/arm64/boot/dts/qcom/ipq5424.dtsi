@@ -1700,6 +1700,55 @@
 			timeout-sec = <30>;
 		};
 
+		noc_lat_bw {
+			compatible = "qcom,noc-tprobe-driver";
+		};
+
+		apss_comp {
+			compatible = "qcom,apss-comp-driver";
+			reg = <0xAC0A00 0x1000>,<0xAC2000 0x1000>, <0xAC9000 0x1000>;
+			reg-names = "tenureprobe-base", "traceprobe-base", "eventcounter-base";
+			hist_bin_width = <0x8>;
+			ddr_addr_min_low = <0x80000000>;
+			ddr_addr_min_high = <0x00000000>;
+			ddr_addr_max_low = <0x80000000>;
+			ddr_addr_max_high = <0x00000009>;
+			trace_probe_extid_base = <0x4000>; /* BID=2: PID=0: MID=0 of APSS */
+			trace_probe_extid_mask = <0xff00>;
+			ec_ctl1_base_val = <0x472>;
+			status = "ok";
+		};
+
+		ppe_comp {
+			compatible = "qcom,ppe-comp-driver";
+			reg = <0x1D8C000 0x1000>,<0x1D8A800 0x1000>, <0x1D8B000 0x1000>;
+			reg-names = "tenureprobe-base", "traceprobe-base", "eventcounter-base";
+			hist_bin_width = <0x8>;
+			ddr_addr_min_low = <0x80000000>;
+			ddr_addr_min_high = <0x00000000>;
+			ddr_addr_max_low = <0x80000000>;
+			ddr_addr_max_high = <0x00000009>;
+			trace_probe_extid_base = <0x300>; /* BID=0: PID=3: MID=0 of PPE */
+			trace_probe_extid_mask = <0x1f00>;
+			ec_ctl1_base_val = <0x411>;
+			status = "ok";
+		};
+
+		q6_comp {
+			compatible = "qcom,q6-comp-driver";
+			reg = <0xAC0800 0x1000>,<0xAC2000 0x1000>, <0xAC9000 0x1000>;
+			reg-names = "tenureprobe-base", "traceprobe-base", "eventcounter-base";
+			hist_bin_width = <0x8>;
+			ddr_addr_min_low = <0x80000000>;
+			ddr_addr_min_high = <0x00000000>;
+			ddr_addr_max_low = <0x80000000>;
+			ddr_addr_max_high = <0x00000009>;
+			trace_probe_extid_base = <0x4100>; /* BID=2: PID=0: MID=0 of APSS */
+			trace_probe_extid_mask = <0xff00>;
+			ec_ctl1_base_val = <0x472>;
+			status = "ok";
+		};
+
 		timer@f420000 {
 			compatible = "arm,armv7-timer-mem";
 			reg = <0xf420000 0x1000>;
