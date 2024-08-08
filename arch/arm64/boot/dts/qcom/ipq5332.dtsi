@@ -223,10 +223,11 @@
 		qti,tz-ring-off = <7>;
 		qti,tz-log-pos-info-off = <810>;
 	};
-
 	qseecom: qseecom {
 		compatible = "ipq9574-qseecom";
+#if !defined(__IPQ_MEM_PROFILE_256_MB__)
 		memory-region = <&tzapp>;
+#endif
 		status = "okay";
 	};
 
@@ -235,8 +236,21 @@
 		#size-cells = <2>;
 		ranges;
 
+#if defined(__IPQ_MEM_PROFILE_256_MB__)
+		smem@4a800000 {
+			compatible = "qcom,smem";
+			reg = <0x0 0x4a800000 0x0 0x30000>;
+			no-map;
+			hwlocks = <&tcsr_mutex 3>;
+		};
+
+		atf@4a830000 {
+			reg = <0x0 0x4a830000 0x0 0x66000>;
+			no-map;
+		};
+#else
 		tzapp:tzapp@49600000 {  /* TZAPPS */
-		#if !defined(__IPQ_MEM_PROFILE_512_MB__) && !defined(__IPQ_MEM_PROFILE_256_MB__)
+		#if !defined(__IPQ_MEM_PROFILE_512_MB__)
 			reg = <0x0 0x49600000 0x0 0x00600000>;
 		#endif
 			no-map;
@@ -264,6 +278,7 @@
 
 			hwlocks = <&tcsr_mutex 3>;
 		};
+#endif
 	};
 
 	soc@0 {
