@@ -1031,6 +1031,8 @@
 				      "wcss_ecahb",
 				      "cnoc_wcss_ahb";
 			qcom,q6-tcsr-regs = <&tcsr 0x26000 0x1B000>;
+			qcom,emulation;
+			qcom,nosecure;
 #endif
 			firmware = "IPQ5424/q6_fw0.mdt";
 			interrupts-extended = <&intc GIC_SPI 508 IRQ_TYPE_EDGE_RISING>,
@@ -1055,7 +1057,7 @@
 			qcom,bootargs_smem = <507>;
 			qcom,bootargs_version = <2>;
 			qcom,userpd-bootargs;
-			status = "disabled";
+			status = "okay";
 
 			glink-edge {
 				interrupts = <GIC_SPI 500 IRQ_TYPE_EDGE_RISING>;
@@ -1064,6 +1066,7 @@
 				mboxes = <&apcs_glb 8>;
 			};
 
+#ifdef __QCOM_NON_SECURE_PIL__
 			q6_wcss_pd1: remoteproc_pd1 {
 				compatible = "qcom,ipq5424-wcss-ahb-mpd";
 				firmware = "IPQ5424/q6_fw1.mdt";
@@ -1083,7 +1086,11 @@
 				qcom,smem-state-names = "shutdown",
 							"stop",
 							"spawn";
+				qcom,emulation;
+				qcom,nosecure;
+				status = "okay";
 			};
+#endif
 		};
 
 		userpd_1: userpd1 {

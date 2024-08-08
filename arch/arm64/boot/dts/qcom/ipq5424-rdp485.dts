@@ -364,14 +364,6 @@
 	status = "disabled";
 };
 
-&q6_region {
-	status = "disabled";
-};
-
-&tcsr_mutex {
-	status = "disabled";
-};
-
 &tlmm {
 	gpio_leds_default: gpio-leds-default-state {
 		pins = "gpio42";
@@ -529,18 +521,6 @@
 &mlo_global_mem0 {
         size = <0x0 0x1200000>;
         status = "disabled";
-};
-
-&apcs_glb {
-	status = "disabled";
-};
-
-&tcsr {
-	status = "disabled";
-};
-
-&wcss {
-	status = "disabled";
 };
 
 &wifi0 {
