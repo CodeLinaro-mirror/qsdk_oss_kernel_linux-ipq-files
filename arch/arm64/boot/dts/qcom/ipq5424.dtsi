@@ -3332,6 +3332,43 @@
 			};
 		};
 
+		funnel_qatb: funnel@640f000 {
+			compatible = "arm,coresight-dynamic-funnel", "arm,primecell";
+			reg = <0x0640f000 0x1000>;
+			reg-names = "funnel-base";
+			coresight-name = "coresight-qatb-in";
+			clocks = <&gcc GCC_QDSS_DAP_CLK>,
+				 <&gcc GCC_QDSS_AT_CLK>;
+			clock-names = "apb_pclk", "atclk";
+
+			in-ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				/*
+				 * Port 0 - TPDA
+				 */
+
+				port@0 {
+					reg = <0>;
+					llcc_qatb_in0: endpoint {
+						remote-endpoint = <&tpda_qdss_out>;
+					};
+				};
+			};
+
+			out-ports {
+				port {
+					qatb_out: endpoint {
+						remote-endpoint = <&funnel1_in3>;
+					};
+				};
+			};
+
+		};
+
+
+
 		funnel_in1: funnel@6042000 {
 			compatible = "arm,coresight-dynamic-funnel", "arm,primecell";
 			reg = <0x06042000 0x1000>;
@@ -3356,6 +3393,12 @@
 					reg = <4>;
 					funnel1_in2: endpoint {
 						remote-endpoint = <&apss_funnel_out>;
+					};
+				};
+				port@3 {
+					reg = <3>;
+					funnel1_in3: endpoint {
+						remote-endpoint = <&qatb_out>;
 					};
 				};
 			};
@@ -3604,6 +3647,51 @@
 				};
 			};
 		};
+
+		tpdm@6408000 {
+			compatible = "qcom,coresight-tpdm", "arm,primecell";
+			reg = <0x6408000 0x1000>;
+			coresight-name = "coresight-tpdm";
+			clocks = <&gcc GCC_QDSS_DAP_CLK>,
+				<&gcc GCC_QDSS_AT_CLK>;
+			clock-names = "apb_pclk", "atclk";
+			out-ports {
+				port {
+					llcc_tpdm_out: endpoint {
+						remote-endpoint = <&tpda_in11>;
+					};
+				};
+			};
+		};
+
+	       tpda@640e000 {
+		       compatible = "qcom,coresight-tpda", "arm,primecell";
+		       reg = <0x640e000 0x1000>;
+		       coresight-name = "coresight-tpda";
+		       clocks = <&gcc GCC_QDSS_DAP_CLK>,
+			      <&gcc GCC_QDSS_AT_CLK>;
+
+		       clock-names = "apb_pclk", "atclk";
+
+		       in-ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+			       port@11 {
+				       reg = <11>;
+					tpda_in11: endpoint {
+						remote-endpoint = <&llcc_tpdm_out>;
+					};
+			      };
+		       };
+		       out-ports {
+			       port {
+					tpda_qdss_out: endpoint {
+						remote-endpoint = <&llcc_qatb_in0>;
+					};
+			       };
+		       };
+	       };
 
 		sram@8600000 {
 			compatible = "qcom,ipq5424-imem", "syscon", "simple-mfd";
