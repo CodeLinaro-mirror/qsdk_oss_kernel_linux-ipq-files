@@ -132,7 +132,6 @@
 			reg = <0x3A500000 0x4000>;
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
-			status = "disabled";
 		};
 
 		dp2 {
@@ -145,7 +144,6 @@
 			qcom,phy-mdio-addr = <0>;
 			qcom,link-poll = <1>;
 			phy-mode = "usxgmii";
-			status = "disabled";
 		};
 
 		/* EDMA host driver configuration for the board */

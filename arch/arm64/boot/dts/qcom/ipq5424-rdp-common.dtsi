@@ -208,7 +208,7 @@
 			local-mac-address = [000000000000];
 			qcom,mht-dev = <1>;
 			qcom,is_switch_connected = <1>;
-			status = "disabled";
+			phy-mode = "sgmii";
 		};
 	};
 };

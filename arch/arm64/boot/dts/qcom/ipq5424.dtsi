@@ -1587,12 +1587,10 @@
 				"nss-nssnoc-nsscc-clk", "nss-nssnoc-pcnoc-1-clk", "nss-nssnoc-qosgen-ref-clk",
 				"nss-nssnoc-snoc-1-clk", "nss-nssnoc-snoc-clk", "nss-nssnoc-timeout-ref-clk",
 				"nss-nssnoc-xo-dcd-clk";
-			status = "disabled";
                 };
 
 		nss-ppe {
 			compatible = "qcom,nss-ppe";
-			status = "disabled";
 		};
 
 		apcs_glb: mailbox@f400004 {
