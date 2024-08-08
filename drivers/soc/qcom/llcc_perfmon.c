@@ -16,6 +16,10 @@
 #include <linux/soc/qcom/llcc-qcom.h>
 #include <linux/module.h>
 #include <linux/clk.h>
+#include <linux/fs.h>
+#include <linux/of.h>
+#include <linux/file.h>
+
 #include "llcc_events.h"
 #include "llcc_perfmon.h"
 
@@ -51,6 +55,8 @@
  * @filter_sel:		Filter applied for configured counter
  * @counter_dump:	Cumulative counter dump
  */
+static int mode = TIMED_MODE;
+
 struct llcc_perfmon_counter_map {
 	unsigned int port_sel;
 	unsigned int event_sel;
@@ -161,11 +167,24 @@ static void perfmon_counter_dump(struct llcc_perfmon_private *llcc_priv)
 	uint32_t val;
 	unsigned int i, j, offset;
 
-	if (!llcc_priv->configured_cntrs)
+	if (!llcc_priv->configured_cntrs) {
+		pr_info("No configured counters\n");
 		return;
+	}
 
-	offset = PERFMON_DUMP(llcc_priv->drv_ver);
-	llcc_bcast_write(llcc_priv, offset, MONITOR_DUMP);
+	if (mode == MANUAL_MODE) {
+		offset = PERFMON_DUMP(llcc_priv->drv_ver);
+		llcc_bcast_write(llcc_priv, offset, MONITOR_DUMP);
+	} else if (mode == TIMED_MODE) {
+		offset = PERFMON_STATUS(llcc_priv->drv_ver);
+		llcc_bcast_read(llcc_priv, offset, &val);
+		pr_info("PERFMON_STATUS = 0x%08x\n", val);
+
+		if (val & 1) {
+			pr_info("PERFMON_STATUS is says monitoring still active\n");
+			return;
+		}
+	}
 	for (i = 0; i < llcc_priv->configured_cntrs; i++) {
 		counter_map = &llcc_priv->configured[i];
 		offset = LLCC_COUNTER_n_VALUE(llcc_priv->drv_ver, i);
@@ -173,8 +192,38 @@ static void perfmon_counter_dump(struct llcc_perfmon_private *llcc_priv)
 			regmap_read(llcc_priv->llcc_map[j], offset, &val);
 			counter_map->counter_dump[j] += val;
 		}
+		for (j = 0; j < llcc_priv->num_banks; j++) {
+			offset = LLCC_COUNTER_n_OVERFLOW(llcc_priv->drv_ver, i);
+			regmap_read(llcc_priv->llcc_map[j], offset, &val);
+			if (val & (1 << 31))
+				pr_info("counter %d has overflown\n", i);
+			else
+				pr_info("counter %d has NOT overflown\n", i);
+		}
+	}
+	/* As the end of monitoring is determined by the interval and iteration timers
+	 * disabling monitoring is only required as a preparation for a subsequent use
+	 * of performance monitors.
+	 */
+	if (mode == TIMED_MODE) {
+		offset = PERFMON_DUMP(llcc_priv->drv_ver);
+		llcc_bcast_write(llcc_priv, offset, MONITOR_DUMP);
 	}
 }
+
+static ssize_t select_mode_store(struct device *dev, struct device_attribute *attr,
+				const char *buf, size_t size)
+{
+	unsigned long val;
+
+	if (kstrtoul(buf, 10, &val))
+		return -EINVAL;
+	mode = (int)val;
+	mode = (mode != TIMED_MODE) ? MANUAL_MODE : mode;
+	return size;
+}
+
+static DEVICE_ATTR_WO(select_mode);
 
 static ssize_t perfmon_counter_dump_show(struct device *dev, struct device_attribute *attr,
 		char *buf)
@@ -226,9 +275,10 @@ static ssize_t perfmon_counter_dump_show(struct device *dev, struct device_attri
 				counter_map->port_sel, counter_map->event_sel);
 		cnt += scnprintf(buf + cnt, PAGE_SIZE - cnt, "0x%016llx\n", total);
 	}
-
-	if (llcc_priv->expires)
-		hrtimer_forward_now(&llcc_priv->hrtimer, llcc_priv->expires);
+	if (mode == MANUAL_MODE) {
+		if (llcc_priv->expires)
+			hrtimer_forward_now(&llcc_priv->hrtimer, llcc_priv->expires);
+	}
 
 	return cnt;
 }
@@ -935,11 +985,45 @@ filter_remove_free:
 	return count;
 }
 
+static int iter_val = 1;
+static int inter_val = 300000000;
+
+static ssize_t timed_mode_iterations_store(struct device *dev, struct device_attribute *attr,
+					   const char *buf, size_t size)
+{
+	unsigned long val;
+
+	if (kstrtoul(buf, 10, &val))
+		return -EINVAL;
+	if (!val)
+		return -EIO;
+	iter_val = (int)val;
+	return size;
+}
+
+static DEVICE_ATTR_WO(timed_mode_iterations);
+
+static ssize_t time_mode_interval_store(struct device *dev, struct device_attribute *attr,
+					const char *buf, size_t size)
+{
+	unsigned long val;
+
+	if (kstrtoul(buf, 10, &val))
+		return -EINVAL;
+	if (!val)
+		return -EIO;
+	inter_val = (int)val;
+	return size;
+}
+
+static DEVICE_ATTR_WO(time_mode_interval);
+
 static ssize_t perfmon_start_store(struct device *dev, struct device_attribute *attr,
 		const char *buf, size_t count)
 {
 	struct llcc_perfmon_private *llcc_priv = dev_get_drvdata(dev);
-	uint32_t val = 0, mask_val, offset, cntr_num = DUMP_NUM_COUNTERS_MASK;
+	u32 val = 0, mask_val, offset, cntr_num = DUMP_NUM_COUNTERS_MASK;
+	u32 status_val = 0, status_offset;
 	unsigned long start;
 	int ret = 0;
 
@@ -953,36 +1037,54 @@ static ssize_t perfmon_start_store(struct device *dev, struct device_attribute *
 
 	mutex_lock(&llcc_priv->mutex);
 	if (start) {
-		if (llcc_priv->clock) {
-			ret = clk_prepare_enable(llcc_priv->clock);
-			if (ret) {
-				mutex_unlock(&llcc_priv->mutex);
-				pr_err("clock not enabled\n");
-				return -EINVAL;
+		if (mode == TIMED_MODE) {
+			/* Timed mode interval and iterations setting */
+			offset = PERFMON_TIMED_MODE_INTERVAL(llcc_priv->drv_ver);
+			llcc_bcast_write(llcc_priv, offset, inter_val);
+			offset = PERFMON_TIMED_MODE_ITERATIONS(llcc_priv->drv_ver);
+			llcc_bcast_write(llcc_priv, offset, iter_val);
+			val = TIMED_MODE | MONITOR_EN;
+			pr_info("Enabled TIMED_MODE %d intrvl %d itr\n",
+				 inter_val, iter_val);
+		} else {
+			if (llcc_priv->clock) {
+				ret = clk_prepare_enable(llcc_priv->clock);
+				if (ret) {
+					mutex_unlock(&llcc_priv->mutex);
+					pr_err("clock not enabled\n");
+					return -EINVAL;
+				}
+				llcc_priv->clock_enabled = true;
 			}
-			llcc_priv->clock_enabled = true;
-		}
-		val = MANUAL_MODE | MONITOR_EN;
-		val &= ~DUMP_SEL;
-		if (llcc_priv->expires) {
-			if (hrtimer_is_queued(&llcc_priv->hrtimer))
-				hrtimer_forward_now(&llcc_priv->hrtimer, llcc_priv->expires);
-			else
-				hrtimer_start(&llcc_priv->hrtimer, llcc_priv->expires,
-						HRTIMER_MODE_REL_PINNED);
+
+			val = MANUAL_MODE | MONITOR_EN;
+			val &= ~DUMP_SEL;
+			if (llcc_priv->expires) {
+				if (hrtimer_is_queued(&llcc_priv->hrtimer))
+					hrtimer_forward_now(&llcc_priv->hrtimer,
+							    llcc_priv->expires);
+				else
+					hrtimer_start(&llcc_priv->hrtimer,
+							llcc_priv->expires,
+							HRTIMER_MODE_REL_PINNED);
+			}
 		}
 
 		cntr_num = (((llcc_priv->configured_cntrs - 1) & DUMP_NUM_COUNTERS_MASK) <<
 				DUMP_NUM_COUNTERS_SHIFT);
 	} else {
-		if (llcc_priv->expires)
-			hrtimer_cancel(&llcc_priv->hrtimer);
+		if (mode == MANUAL_MODE) {
+			if (llcc_priv->expires)
+				hrtimer_cancel(&llcc_priv->hrtimer);
+		}
 	}
 
-	mask_val = PERFMON_MODE_MONITOR_MODE_MASK | PERFMON_MODE_MONITOR_EN_MASK |
-		PERFMON_MODE_DUMP_SEL_MASK;
+	mask_val = PERFMON_MODE_MONITOR_MODE_MASK | PERFMON_MODE_MONITOR_EN_MASK;
 	offset = PERFMON_MODE(llcc_priv->drv_ver);
 
+	status_offset = PERFMON_STATUS(llcc_priv->drv_ver);
+	llcc_bcast_read(llcc_priv, status_offset, &status_val);
+	pr_info("PERFMON_STATUS = 0x%08x\n", status_val);
 	/* Check to ensure that register write for stopping perfmon should only happen
 	 * if clock is already prepared.
 	 */
@@ -998,6 +1100,12 @@ static ssize_t perfmon_start_store(struct device *dev, struct device_attribute *
 		/* For RUMI environment where clock node is not available */
 		llcc_bcast_modify(llcc_priv, offset, val, mask_val);
 	}
+
+	status_offset = PERFMON_STATUS(llcc_priv->drv_ver);
+	llcc_bcast_read(llcc_priv, status_offset, &status_val);
+	pr_info("PERFMON_STATUS = 0x%08x\n", status_val);
+	pr_info("wrote val = 0x%08x and mask_val = 0x%08x(PERFMON_MODE)\n",
+		val, mask_val, offset);
 
 	/* Updating total counters to dump info, based on configured counters */
 	offset = PERFMON_NUM_CNTRS_DUMP_CFG(llcc_priv->drv_ver);
@@ -1022,10 +1130,13 @@ static ssize_t perfmon_ns_periodic_dump_store(struct device *dev, struct device_
 		return count;
 	}
 
-	if (hrtimer_is_queued(&llcc_priv->hrtimer))
-		hrtimer_forward_now(&llcc_priv->hrtimer, llcc_priv->expires);
-	else
-		hrtimer_start(&llcc_priv->hrtimer, llcc_priv->expires, HRTIMER_MODE_REL_PINNED);
+	if (mode == MANUAL_MODE) {
+		if (hrtimer_is_queued(&llcc_priv->hrtimer))
+			hrtimer_forward_now(&llcc_priv->hrtimer, llcc_priv->expires);
+		else
+			hrtimer_start(&llcc_priv->hrtimer, llcc_priv->expires,
+				      HRTIMER_MODE_REL_PINNED);
+	}
 
 	mutex_unlock(&llcc_priv->mutex);
 	return count;
@@ -2028,6 +2139,7 @@ static enum hrtimer_restart llcc_perfmon_timer_handler(struct hrtimer *hrtimer)
 	struct llcc_perfmon_private *llcc_priv = container_of(hrtimer, struct llcc_perfmon_private,
 			hrtimer);
 
+/* will be dumped only in perfmon_counter_dump_store() */
 	perfmon_counter_dump(llcc_priv);
 	hrtimer_forward_now(&llcc_priv->hrtimer, llcc_priv->expires);
 	return HRTIMER_RESTART;
@@ -2039,6 +2151,27 @@ static int llcc_perfmon_probe(struct platform_device *pdev)
 	struct llcc_perfmon_private *llcc_priv;
 	struct llcc_drv_data *llcc_driv_data;
 	uint32_t val, offset;
+	struct device *dev = &pdev->dev;
+	int ret = 0;
+
+	ret = device_create_file(dev, &dev_attr_select_mode);
+	if (ret) {
+		dev_err(dev, "Couldn't create sysfs for %s\n", pdev->name);
+		return -EIO;
+	}
+
+	ret = device_create_file(dev, &dev_attr_timed_mode_iterations);
+	if (ret) {
+		dev_err(dev, "Couldn't create sysfs for %s\n", pdev->name);
+		return -EIO;
+	}
+
+	ret = device_create_file(dev, &dev_attr_time_mode_interval);
+	if (ret) {
+		dev_err(dev, "Couldn't create sysfs for %s\n", pdev->name);
+		return -EIO;
+	}
+
 
 	llcc_driv_data = dev_get_drvdata(pdev->dev.parent);
 
@@ -2102,7 +2235,7 @@ static int llcc_perfmon_probe(struct platform_device *pdev)
 		llcc_priv->version = REV_5;
 	pr_info("Revision <%x.%x.%x>, %d MEMORY CNTRLRS connected with LLCC\n",
 			MAJOR_REV_NO(val), BRANCH_NO(val), MINOR_NO(val), llcc_priv->num_mc);
-
+	pr_info("this is with TIMED_MODE changes\n");
 	return 0;
 }
 
