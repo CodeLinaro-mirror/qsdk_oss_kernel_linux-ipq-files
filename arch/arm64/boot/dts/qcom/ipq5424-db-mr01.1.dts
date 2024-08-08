@@ -406,22 +406,6 @@
 	status = "disabled";
 };
 
-&q6_region {
-	status = "disabled";
-};
-
-&tcsr_mutex {
-	status = "disabled";
-};
-
-&apcs_glb {
-	status = "disabled";
-};
-
-&tcsr {
-	status = "disabled";
-};
-
 &tlmm {
 	gpio_keys_default: gpio-keys-default-state {
 		pins = "gpio19";

@@ -335,14 +335,6 @@
 	status = "disabled";
 };
 
-&q6_region {
-	status = "disabled";
-};
-
-&tcsr_mutex {
-	status = "disabled";
-};
-
 &qcn9224_pcie2 {
 	status = "disabled";
 };
@@ -485,18 +477,6 @@
 &mlo_global_mem0 {
         size = <0x0 0x1200000>;
         status = "disabled";
-};
-
-&apcs_glb {
-        status = "disabled";
-};
-
-&tcsr {
-        status = "disabled";
-};
-
-&wcss {
-	status = "disabled";
 };
 
 &wifi0 {
