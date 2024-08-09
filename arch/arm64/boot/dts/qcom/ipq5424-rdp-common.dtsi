@@ -219,11 +219,11 @@
 };
 
 &qmp_tmel {
-	status = "disabled";
+	status = "okay";
 };
 
 &tmelcom {
-	status = "disabled";
+	status = "okay";
 };
 
 &tlmm {
