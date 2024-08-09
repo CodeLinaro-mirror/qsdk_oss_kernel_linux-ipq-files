@@ -1566,7 +1566,7 @@ static struct clk_regmap_phy_mux gcc_pcie0_pipe_clk_src = {
 	.reg = 0x28064,
 	.clkr = {
 		.hw.init = &(const struct clk_init_data) {
-			.name = "gcc_pcie0_pipe_clk_src",
+			.name = "pcie0_pipe_clk_src",
 			.parent_data = &(const struct clk_parent_data) {
 				.index = DT_PCIE30_PHY0_PIPE_CLK,
 			},
@@ -1706,7 +1706,7 @@ static struct clk_regmap_phy_mux gcc_pcie1_pipe_clk_src = {
 	.reg = 0x29064,
 	.clkr = {
 		.hw.init = &(const struct clk_init_data) {
-			.name = "gcc_pcie1_pipe_clk_src",
+			.name = "pcie1_pipe_clk_src",
 			.parent_data = &(const struct clk_parent_data) {
 				.index = DT_PCIE30_PHY1_PIPE_CLK,
 			},
@@ -1847,7 +1847,7 @@ static struct clk_regmap_phy_mux gcc_pcie2_pipe_clk_src = {
 	.reg = 0x2a064,
 	.clkr = {
 		.hw.init = &(const struct clk_init_data) {
-			.name = "gcc_pcie2_pipe_clk_src",
+			.name = "pcie2_pipe_clk_src",
 			.parent_data = &(const struct clk_parent_data) {
 				.index = DT_PCIE30_PHY2_PIPE_CLK,
 			},
@@ -1987,7 +1987,7 @@ static struct clk_regmap_phy_mux gcc_pcie3_pipe_clk_src = {
 	.reg = 0x2b064,
 	.clkr = {
 		.hw.init = &(const struct clk_init_data) {
-			.name = "gcc_pcie3_pipe_clk_src",
+			.name = "pcie3_pipe_clk_src",
 			.parent_data = &(const struct clk_parent_data) {
 				.index = DT_PCIE30_PHY3_PIPE_CLK,
 			},
