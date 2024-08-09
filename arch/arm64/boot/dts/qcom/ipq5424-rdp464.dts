@@ -71,7 +71,7 @@
 			spi0: spi@1a90000 {
 				pinctrl-0 = <&qup_spi0_default>;
 				pinctrl-names = "default";
-				status = "disabled";
+				status = "okay";
 
 				flash@0 {
 					compatible = "spansion,s25fs128s1", "jedec,spi-nor";
