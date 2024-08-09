@@ -189,6 +189,11 @@ static int q6v5_start_user_pd(struct user_pd *upd)
 	int ret;
 	u32 pasid = (upd->pd_asid << 8) | UPD_SWID;
 
+	if (upd->running) {
+		dev_info(upd->dev, "userpd already started, skipping start\n");
+		return 0;
+	}
+
 	dev_info(upd->dev, "starting userpd\n");
 
 	ret = q6v5_user_pd_load(upd);
@@ -198,10 +203,8 @@ static int q6v5_start_user_pd(struct user_pd *upd)
 	}
 
 	ret = q6v5_userpd_load_m3_firmware(upd);
-	if (ret) {
-		dev_err(upd->dev, "Failed to load m3 firmware %d\n", ret);
-		return ret;
-	}
+	if (ret)
+		dev_info(upd->dev, "Skipping m3_firmware load\n");
 
 	if (upd->ops->powerup_scm) {
 		ret = upd->ops->powerup_scm(pasid);
@@ -237,6 +240,11 @@ static int q6v5_start_user_pd(struct user_pd *upd)
 static int qcom_q6v5_userpd_stop(struct user_pd *upd)
 {
 	int ret;
+
+	if (!upd->running) {
+		dev_info(upd->dev, "userpd not started, skipping stop\n");
+		return 0;
+	}
 
 	upd->running = false;
 	upd->stop_ack = false;
