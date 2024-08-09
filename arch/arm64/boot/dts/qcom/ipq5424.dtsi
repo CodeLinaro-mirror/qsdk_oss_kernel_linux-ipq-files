@@ -895,7 +895,7 @@
 					"gcc_gpll0_out_aux";
 			#clock-cells = <0x1>;
 			#reset-cells = <0x1>;
-			nsscc-use-dummy;
+			status = "disabled";
 		};
 
 		tcsr_mutex: hwlock@1905000 {

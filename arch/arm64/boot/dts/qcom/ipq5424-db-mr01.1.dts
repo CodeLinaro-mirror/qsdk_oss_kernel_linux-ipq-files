@@ -130,7 +130,6 @@
 				switch_wan_bmp = <0x2>; /* wan port bitmap */
 				switch_mac_mode = <0xe>; /* mac mode for uniphy instance0*/
 				switch_mac_mode1 = <0xe>; /* mac mode for uniphy instance1*/
-				status = "disabled";
 
 				qcom,port_phyinfo {
 					port@0 {

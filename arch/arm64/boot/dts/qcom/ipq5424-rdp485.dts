@@ -109,7 +109,6 @@
 			ethernet-phy@4 {
 				reg = <0>;
 				compatible ="ethernet-phy-ieee802.3-c45";
-				status = "disabled";
 			};
 		};
 
@@ -120,7 +119,6 @@
 				switch_wan_bmp = <0x2>; /* wan port bitmap */
 				switch_mac_mode = <0xe>; /* mac mode for uniphy instance0*/
 				switch_mac_mode1 = <0xd>; /* mac mode for uniphy instance1*/
-				status = "disabled";
 
 				qcom,port_phyinfo {
 					port@0 {
@@ -138,7 +136,6 @@
 
 			ess-switch1@1 {
 				link-intr-gpio = <&tlmm 41 GPIO_ACTIVE_HIGH>;
-				status = "disabled";
 			};
 		};
 
