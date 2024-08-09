@@ -99,12 +99,6 @@
 			};
 		};
 
-		ess-instance {
-			ess-switch1@1 {
-				link-intr-gpio = <&tlmm 10 GPIO_ACTIVE_HIGH>;
-			};
-		};
-
 		/* EDMA host driver configuration for the board */
 		edma@3ab00000 {
 			qcom,txdesc-ring-start = <8>;		/* Tx desc ring start ID */

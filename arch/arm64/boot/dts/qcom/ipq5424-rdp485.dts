@@ -133,10 +133,6 @@
 					};
 				};
 			};
-
-			ess-switch1@1 {
-				link-intr-gpio = <&tlmm 41 GPIO_ACTIVE_HIGH>;
-			};
 		};
 
 		dp1 {
