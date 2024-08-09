@@ -3695,7 +3695,6 @@
 	qcom,test@0 {
 		compatible = "qcom,testmhi";
 		qcom,wlan-ramdump-dynamic = <0x600000>;
-		status = "disabled";
 	};
 
 	wcss: wcss-smp2p {
