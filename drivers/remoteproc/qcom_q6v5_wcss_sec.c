@@ -36,6 +36,9 @@
 
 #define RESET_CMD_ID			0x18
 
+#define TCSR_SPARE_APU_REG0		0x1946000
+#define TCSR_SPARE_APU_REG0_SIZE	4
+
 static int debug_wcss;
 
 enum q6_bootargs_version {
@@ -55,6 +58,7 @@ struct q6v5_wcss_sec {
 	int crash_reason_smem;
 	void *metadata;
 	size_t metadata_len;
+	void *debug_wcss_reg;
 };
 
 struct wcss_data {
@@ -107,11 +111,8 @@ static int q6v5_wcss_sec_start(struct rproc *rproc)
 	qcom_q6v5_prepare(&wcss->q6);
 
 	if (debug_wcss) {
-		ret = qcom_scm_break_q6_start(RESET_CMD_ID);
-		if (ret) {
-			dev_err(wcss->dev, "breaking q6 failed\n");
-			return ret;
-		}
+		writel(0x1, wcss->debug_wcss_reg);
+		dev_info(wcss->dev, "Writing 1 to TCSR_SPARE_APU_REG0\n");
 	}
 
 	if (desc->tmelcom_support)
@@ -497,6 +498,13 @@ static int q6v5_wcss_sec_probe(struct platform_device *pdev)
 	ret = q6_alloc_memory_region(wcss);
 	if (ret)
 		goto free_rproc;
+
+	wcss->debug_wcss_reg = devm_ioremap(&pdev->dev, TCSR_SPARE_APU_REG0,
+					    TCSR_SPARE_APU_REG0_SIZE);
+	if (!wcss->debug_wcss_reg) {
+		dev_err(&pdev->dev, "Failed to ioremap debug_wcss register\n");
+		return PTR_ERR(wcss->debug_wcss_reg);
+	}
 
 	ret = qcom_q6v5_init(&wcss->q6, pdev, rproc, desc->remote_id,
 			     desc->crash_reason_smem, NULL, NULL);
