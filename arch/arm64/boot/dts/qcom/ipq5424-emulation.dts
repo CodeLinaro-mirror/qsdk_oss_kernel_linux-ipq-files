@@ -596,6 +596,7 @@
 	max-link-speed = <1>;
 	phys = <>;
 	phy-names = "";
+	perst-gpio = <&tlmm 39 GPIO_ACTIVE_LOW>;
 	status = "disabled";
 
 	pcie0_rp {
@@ -611,6 +612,7 @@
 	max-link-speed = <1>;
 	phys = <>;
 	phy-names = "";
+	perst-gpio = <&tlmm 40 GPIO_ACTIVE_LOW>;
 	status = "disabled";
 
 	pcie1_rp {
@@ -626,6 +628,7 @@
 	max-link-speed = <1>;
 	phys = <>;
 	phy-names = "";
+	perst-gpio = <&tlmm 41 GPIO_ACTIVE_LOW>;
 	status = "disabled";
 
 	pcie2_rp {
@@ -641,6 +644,7 @@
 	max-link-speed = <1>;
 	phys = <>;
 	phy-names = "";
+	perst-gpio = <&tlmm 42 GPIO_ACTIVE_LOW>;
 	status = "disabled";
 
 	pcie3_rp {
