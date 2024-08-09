@@ -23,8 +23,8 @@
 
 #define CPU_NOM_CLK_RATE	1416000000
 #define CPU_TURBO_CLK_RATE	1800000000
-#define L3_NOM_CLK_RATE		960000000
-#define L3_TURBO_CLK_RATE	1248000000
+#define L3_NOM_CLK_RATE		984000000
+#define L3_TURBO_CLK_RATE	1272000000
 
 enum {
 	P_XO,
@@ -64,6 +64,7 @@ static struct clk_alpha_pll ipq5424_apss_pll = {
 			.parent_data = &(const struct clk_parent_data) {
 				.fw_name = "xo",
 			},
+			.parent_names = (const char *[]){ "xo"},
 			.num_parents = 1,
 			.ops = &clk_alpha_pll_huayra_ops,
 		},
@@ -223,7 +224,7 @@ static const struct alpha_pll_config apss_pll_config = {
 };
 
 static const struct alpha_pll_config l3_pll_config = {
-	.l = 0x28,
+	.l = 0x29,
 	.config_ctl_val = 0x08200920,
 	.config_ctl_hi_val = 0x05008001,
 	.config_ctl_hi1_val = 0x04000000,
@@ -293,7 +294,7 @@ static int apss_ipq5424_probe(struct platform_device *pdev)
 		return PTR_ERR(clk);
 	}
 
-	ret = clk_set_rate(clk, L3_NOM_CLK_RATE);
+	ret = clk_set_rate(clk, L3_TURBO_CLK_RATE);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to set the L3 clk rate, %d\n", ret);
 		return ret;
@@ -305,7 +306,7 @@ static int apss_ipq5424_probe(struct platform_device *pdev)
 		return PTR_ERR(clk);
 	}
 
-	ret = clk_set_rate(clk, CPU_NOM_CLK_RATE);
+	ret = clk_set_rate(clk, CPU_TURBO_CLK_RATE);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to set the CPU clk rate, %d\n", ret);
 		return ret;
