@@ -191,14 +191,12 @@
 
 	ctx-save {
 		compatible = "qti,ctxt-save-ipq5424";
-		status = "disabled";
 	};
 
 	firmware {
 		scm {
 			compatible = "qcom,scm-ipq5424", "qcom,scm";
 			qcom,dload-mode = <&tcsr 0x25100>;
-			status = "disabled";
 		};
 	};
 
@@ -265,7 +263,6 @@
 	psci {
 		compatible = "arm,psci-1.0";
 		method = "smc";
-		status = "disabled";
 	};
 
 	qti,tzlog {
