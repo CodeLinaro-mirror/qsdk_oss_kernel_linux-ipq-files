@@ -88,6 +88,8 @@
 			num_devices = <0x2>;
 
 			ess-switch@3a000000 {
+				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
+				switch_lan_bmp = <0x8>; /* lan port bitmap */
 				switch_mac_mode = <0xff>; /* mac mode for uniphy instance0*/
 				switch_mac_mode1 = <0xff>; /* mac mode for uniphy instance1*/
 				switch_mac_mode2 = <0xc>; /* mac mode for uniphy instance2*/
