@@ -97,6 +97,18 @@
 			phy-mode = "usxgmii";
 		};
 
+		dp3 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <3>;
+			reg = <0x3a001400 0x200>;
+			qcom,mactype = <0>;
+			local-mac-address = [000000000000];
+			qcom,mht-dev = <1>;
+			qcom,is_switch_connected = <1>;
+			phy-mode = "sgmii";
+		};
+
 		/* EDMA host driver configuration for the board */
 		edma@3ab00000 {
 			qcom,txdesc-ring-start = <4>;		/* Tx desc ring start ID */
