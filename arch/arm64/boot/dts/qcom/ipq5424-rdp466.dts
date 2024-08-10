@@ -191,7 +191,7 @@
 			chip_info = <0 2 1 2>,
 				    <1 2 2 0>,
 				    <2 2 0 1>;
-			status = "disabled";
+			status = "okay";
 		};
 	};
 };
@@ -265,20 +265,20 @@
 };
 
 &qcn9224_pcie2 {
-	status = "disabled";
+	status = "okay";
 };
 
 &qcn9224_pcie3 {
-	status = "disabled";
+	status = "okay";
 };
 
 #if defined(__MHI_BUS_RESERVED_DMA_POOL__)
 &mhi_region2 {
-	status = "disabled";
+	status = "okay";
 };
 
 &mhi_region3 {
-	status = "disabled";
+	status = "okay";
 };
 #endif
 
@@ -404,8 +404,8 @@
 };
 
 &mlo_global_mem0 {
-        size = <0x0 0x1200000>;
-        status = "disabled";
+	size = <0x0 0x1200000>;
+	status = "okay";
 };
 
 &wifi0 {
@@ -419,19 +419,19 @@
 	qcom,wsi_index = <0>;
 	qcom,board_id = <0x11>;
 	hw_link_id = <0 0>;
-	status = "disabled";
+	status = "okay";
 };
 
 &wifi3 {
 	hremote_node = <&qcn9224_pcie2>;
 	board_id = <0x29>;
 	hw_link_id = <1 0>;
-	status = "disabled";
+	status = "okay";
 };
 
 &wifi4 {
 	hremote_node = <&qcn9224_pcie3>;
 	board_id = <0x28>;
 	hw_link_id = <2 0>;
-	status = "disabled";
+	status = "okay";
 };
