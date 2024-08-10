@@ -3212,7 +3212,7 @@ static const struct clk_ops clk_dummy_ops = {
 	 })
 
 static struct clk_regmap *gcc_ipq5424_dummy_clks[] = {
-	[GPLL0] = DEFINE_DUMMY_CLK(gpll0),
+	[GPLL0] = &gpll0.clkr,
 	[GPLL4] = DEFINE_DUMMY_CLK(gpll4),
 	[GPLL2] = DEFINE_DUMMY_CLK(gpll2),
 	[GCC_SLEEP_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_sleep_clk_src),
@@ -3304,7 +3304,7 @@ static struct clk_regmap *gcc_ipq5424_dummy_clks[] = {
 	[GCC_LPASS_SWAY_CLK] = DEFINE_DUMMY_CLK(gcc_lpass_sway_clk),
 	[GCC_ADSS_PWM_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_adss_pwm_clk_src),
 	[GCC_ADSS_PWM_CLK] = DEFINE_DUMMY_CLK(gcc_adss_pwm_clk),
-	[GCC_XO_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_xo_clk_src),
+	[GCC_XO_CLK_SRC] = &gcc_xo_clk_src.clkr,
 	[GCC_NSSNOC_XO_DCD_CLK] = DEFINE_DUMMY_CLK(gcc_nssnoc_xo_dcd_clk),
 	[GCC_NSSNOC_QOSGEN_REF_CLK] = DEFINE_DUMMY_CLK(gcc_nssnoc_qosgen_ref_clk),
 	[GCC_NSSNOC_TIMEOUT_REF_CLK] = DEFINE_DUMMY_CLK(gcc_nssnoc_timeout_ref_clk),
