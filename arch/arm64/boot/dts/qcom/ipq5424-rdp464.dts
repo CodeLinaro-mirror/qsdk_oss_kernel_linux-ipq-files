@@ -18,34 +18,25 @@
 	/delete-node/ ipq-debug;
 	/delete-node/ pmu;
 	/delete-node/ pmu-v7;
-	/delete-node/ qti,tzlog;
 	/delete-node/ thermal-zones;
 
 	cpus: cpus {
 		CPU0: cpu@0 {
-			enable-method = "qcom,arm-cortex-acc";
-			qcom,acc = <&acc0>;
 			/delete-property/ clocks;
 			/delete-property/ clock-names;
 		};
 
 		CPU1: cpu@100 {
-			enable-method = "qcom,arm-cortex-acc";
-			qcom,acc = <&acc1>;
 			/delete-property/ clocks;
 			/delete-property/ clock-names;
 		};
 
 		CPU2: cpu@200 {
-			enable-method = "qcom,arm-cortex-acc";
-			qcom,acc = <&acc2>;
 			/delete-property/ clocks;
 			/delete-property/ clock-names;
 		};
 
 		CPU3: cpu@300 {
-			enable-method = "qcom,arm-cortex-acc";
-			qcom,acc = <&acc3>;
 			/delete-property/ clocks;
 			/delete-property/ clock-names;
 		};
@@ -107,7 +98,6 @@
 		/delete-node/ thermal-sensor@4a9000;
 		/delete-node/ dcc@60ff000;
 		/delete-node/ gpio-keys;
-		/delete-node/ sram@8600000;
 		/delete-node/ system-cache-controller@800000;
 		/delete-node/ rng@4c3000;
 
@@ -263,26 +253,6 @@
 					<0 312 4>,		/* MHT port Tx complete ring id #30 IRQ info */
 					<0 313 4>;		/* MHT port Tx complete ring id #31 IRQ info */
 			status = "disabled";
-		};
-
-		acc0: clock-controller@f800000 {
-			compatible = "qcom,arm-cortex-acc";
-			reg = <0xf800000 0x10000>;
-		};
-
-		acc1: clock-controller@f810000 {
-			compatible = "qcom,arm-cortex-acc";
-			reg = <0xf810000 0x10000>;
-		};
-
-		acc2:clock-controller@f820000 {
-			compatible = "qcom,arm-cortex-acc";
-			reg = <0xf820000 0x10000>;
-		};
-
-		acc3:clock-controller@f830000 {
-			compatible = "qcom,arm-cortex-acc";
-			reg = <0xf830000 0x10000>;
 		};
 
 		wsi: wsi {
