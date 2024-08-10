@@ -20,29 +20,6 @@
 	/delete-node/ pmu;
 	/delete-node/ pmu-v7;
 	/delete-node/ thermal-zones;
-
-	cpus: cpus {
-		CPU0: cpu@0 {
-			/delete-property/ clocks;
-			/delete-property/ clock-names;
-		};
-
-		CPU1: cpu@100 {
-			/delete-property/ clocks;
-			/delete-property/ clock-names;
-		};
-
-		CPU2: cpu@200 {
-			/delete-property/ clocks;
-			/delete-property/ clock-names;
-		};
-
-		CPU3: cpu@300 {
-			/delete-property/ clocks;
-			/delete-property/ clock-names;
-		};
-	};
-
 	/delete-node/ opp-table-cpu;
 
 	soc@0 {
@@ -63,7 +40,6 @@
 			};
 		};
 
-		/delete-node/ apss-clock@fa80000;
 		/delete-node/ efuse@a4000;
 		/delete-node/ thermal-sensor@4a9000;
 		/delete-node/ dcc@60ff000;
