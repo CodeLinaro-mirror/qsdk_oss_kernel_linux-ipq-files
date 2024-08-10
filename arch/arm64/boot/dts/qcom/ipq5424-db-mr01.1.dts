@@ -56,7 +56,7 @@
 			i2c1: i2c@1a8c000 {
 				pinctrl-0 = <&qup_i2c1_default>;
 				pinctrl-names = "default";
-				status = "disabled";
+				status = "okay";
 			};
 
 			spi0: spi@1a90000 {
@@ -82,10 +82,12 @@
 				clocks = <&gcc GCC_QUPV3_SPI1_CLK>;
 				clock-names = "se";
 				clock-frequency = <400000>;
+				assigned-clocks = <&gcc GCC_QUPV3_SPI1_CLK>;
+				assigned-clock-rates = <32000000>;
 				interrupts = <GIC_SPI 344 IRQ_TYPE_LEVEL_HIGH>;
 				pinctrl-0 = <&qup_i2c2_default>;
 				pinctrl-names = "default";
-				status = "disabled";
+				status = "okay";
 			};
 		};
 
