@@ -45,10 +45,6 @@
 			};
 		};
 
-		softsku@a6000 {
-			status = "disabled";
-		};
-
 		/delete-node/ efuse@a4000;
 		/delete-node/ thermal-sensor@4a9000;
 		/delete-node/ dcc@60ff000;
@@ -229,11 +225,11 @@
 };
 
 &pcie2_phy {
-	status = "disabled";
+	status = "okay";
 };
 
 &pcie2 {
-	status = "disabled";
+	status = "okay";
 
 	pcie2_rp {
 		reg = <0 0 0 0 0>;
@@ -249,11 +245,11 @@
 };
 
 &pcie3_phy {
-	status = "disabled";
+	status = "okay";
 };
 
 &pcie3 {
-	status = "disabled";
+	status = "okay";
 
 	pcie3_rp {
 		reg = <0 0 0 0 0>;
