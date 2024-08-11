@@ -61,6 +61,10 @@
 			status = "okay";
 		};
 
+		system-cache-controller@800000 {
+			status = "okay";
+		};
+
 		ess-uniphy@7a00000 {
 			status = "okay";
 		};

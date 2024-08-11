@@ -72,7 +72,6 @@
 		/delete-node/ thermal-sensor@4a9000;
 		/delete-node/ dcc@60ff000;
 		/delete-node/ gpio-keys;
-		/delete-node/ system-cache-controller@800000;
 		/delete-node/ rng@4c3000;
 
 		leds {
