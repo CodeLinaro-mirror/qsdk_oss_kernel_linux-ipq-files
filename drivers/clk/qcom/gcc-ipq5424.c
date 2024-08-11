@@ -624,11 +624,11 @@ static struct clk_rcg2 gcc_qupv3_uart1_clk_src = {
 static const struct freq_tbl ftbl_gcc_sdcc1_apps_clk_src[] = {
 	F(144000, P_XO, 16, 12, 125),
 	F(400000, P_XO, 12, 1, 5),
-	F(24000000, P_GPLL2_OUT_MAIN, 12, 1, 2),
-	F(48000000, P_GPLL2_OUT_MAIN, 12, 0, 0),
-	F(96000000, P_GPLL2_OUT_MAIN, 6, 0, 0),
+	F(24000000, P_XO, 1, 0, 0),
+	F(48000000, P_GPLL2_OUT_MAIN, 12, 1, 2),
+	F(96000000, P_GPLL2_OUT_MAIN, 6, 1, 2),
 	F(177777778, P_GPLL0_OUT_MAIN, 4.5, 0, 0),
-	F(192000000, P_GPLL2_OUT_MAIN, 3, 0, 0),
+	F(192000000, P_GPLL2_OUT_MAIN, 6, 0, 0),
 	F(200000000, P_GPLL0_OUT_MAIN, 4, 0, 0),
 	{ }
 };
@@ -643,7 +643,7 @@ static struct clk_rcg2 gcc_sdcc1_apps_clk_src = {
 		.name = "gcc_sdcc1_apps_clk_src",
 		.parent_data = gcc_parent_data_8,
 		.num_parents = ARRAY_SIZE(gcc_parent_data_8),
-		.ops = &clk_rcg2_ops,
+		.ops = &clk_rcg2_floor_ops,
 	},
 };
 
@@ -867,6 +867,7 @@ static struct clk_rcg2 gcc_pcnoc_bfdcd_clk_src = {
 		.name = "gcc_pcnoc_bfdcd_clk_src",
 		.parent_data = gcc_parent_data_0,
 		.num_parents = ARRAY_SIZE(gcc_parent_data_0),
+		.flags = CLK_IS_CRITICAL,
 		.ops = &clk_rcg2_ops,
 	},
 };
@@ -3216,7 +3217,7 @@ static const struct clk_ops clk_dummy_ops = {
 static struct clk_regmap *gcc_ipq5424_dummy_clks[] = {
 	[GPLL0] = &gpll0.clkr,
 	[GPLL4] = &gpll4.clkr,
-	[GPLL2] = DEFINE_DUMMY_CLK(gpll2),
+	[GPLL2] = &gpll2.clkr,
 	[GCC_SLEEP_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_sleep_clk_src),
 	[GCC_USB0_EUD_AT_CLK] = DEFINE_DUMMY_CLK(gcc_usb0_eud_at_clk),
 	[GCC_PCIE0_AXI_M_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_pcie0_axi_m_clk_src),
@@ -3275,12 +3276,12 @@ static struct clk_regmap *gcc_ipq5424_dummy_clks[] = {
 	[GCC_USB0_PIPE_CLK] = &gcc_usb0_pipe_clk.clkr,
 	[GCC_USB0_PHY_CFG_AHB_CLK] = &gcc_usb0_phy_cfg_ahb_clk.clkr,
 	[GCC_USB0_SLEEP_CLK] = &gcc_usb0_sleep_clk.clkr,
-	[GCC_SDCC1_APPS_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_sdcc1_apps_clk_src),
-	[GCC_SDCC1_APPS_CLK] = DEFINE_DUMMY_CLK(gcc_sdcc1_apps_clk),
+	[GCC_SDCC1_APPS_CLK_SRC] = &gcc_sdcc1_apps_clk_src.clkr,
+	[GCC_SDCC1_APPS_CLK] = &gcc_sdcc1_apps_clk.clkr,
 	[GCC_SDCC1_ICE_CORE_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_sdcc1_ice_core_clk_src),
 	[GCC_SDCC1_ICE_CORE_CLK] = DEFINE_DUMMY_CLK(gcc_sdcc1_ice_core_clk),
-	[GCC_SDCC1_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_sdcc1_ahb_clk),
-	[GCC_PCNOC_BFDCD_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_pcnoc_bfdcd_clk_src),
+	[GCC_SDCC1_AHB_CLK] = &gcc_sdcc1_ahb_clk.clkr,
+	[GCC_PCNOC_BFDCD_CLK_SRC] = &gcc_pcnoc_bfdcd_clk_src.clkr,
 	[GCC_NSSCFG_CLK] = DEFINE_DUMMY_CLK(gcc_nsscfg_clk),
 	[GCC_NSSNOC_NSSCC_CLK] = DEFINE_DUMMY_CLK(gcc_nssnoc_nsscc_clk),
 	[GCC_NSSCC_CLK] = DEFINE_DUMMY_CLK(gcc_nsscc_clk),
@@ -3358,7 +3359,7 @@ static struct clk_regmap *gcc_ipq5424_dummy_clks[] = {
 	[GCC_QUPV3_I2C1_DIV_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_qupv3_i2c1_div_clk_src),
 	[GCC_CNOC_LPASS_CFG_CLK] = DEFINE_DUMMY_CLK(gcc_cnoc_lpass_cfg_clk),
 	[GCC_SNOC_LPASS_CLK] = DEFINE_DUMMY_CLK(gcc_snoc_lpass_clk),
-	[GPLL2_OUT_MAIN] = DEFINE_DUMMY_CLK(gpll2_out_main),
+	[GPLL2_OUT_MAIN] = &gpll2_out_main.clkr,
 	[GCC_QDSS_DAP_CLK] = DEFINE_DUMMY_CLK(gcc_qdss_dap_clk),
 	[GCC_IM_SLEEP_CLK] = DEFINE_DUMMY_CLK(gcc_im_sleep_clk),
 
