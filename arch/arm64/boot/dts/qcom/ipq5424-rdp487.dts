@@ -195,11 +195,11 @@
 };
 
 &qusb_phy_1 {
-	status = "disabled";
+	status = "okay";
 };
 
 &usb2 {
-	status = "disabled";
+	status = "okay";
 };
 
 &tlmm {
