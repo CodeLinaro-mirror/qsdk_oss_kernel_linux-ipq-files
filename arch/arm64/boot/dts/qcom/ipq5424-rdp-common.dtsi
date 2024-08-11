@@ -52,6 +52,10 @@
 			};
 		};
 
+		system-cache-controller@800000 {
+			status = "okay";
+		};
+
 		mdio: mdio@90000 {
 			pinctrl-0 = <&mdio_mst_pins &mdio_slv_pins>;
 			pinctrl-names = "default";
