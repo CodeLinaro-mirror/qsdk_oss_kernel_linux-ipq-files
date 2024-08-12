@@ -194,6 +194,7 @@
 
 &pcie2 {
 	status = "okay";
+	perst-gpio = <&tlmm 31 GPIO_ACTIVE_LOW>;
 
 	pcie2_rp {
 		reg = <0 0 0 0 0>;
@@ -214,6 +215,7 @@
 
 &pcie3 {
 	status = "okay";
+	perst-gpio = <&tlmm 34 GPIO_ACTIVE_LOW>;
 
 	pcie3_rp {
 		reg = <0 0 0 0 0>;

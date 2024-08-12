@@ -1765,7 +1765,6 @@
 			phys = <&pcie3_lanes>;
 			phy-names = "pciephy";
 
-			perst-gpio = <&tlmm 42 GPIO_ACTIVE_LOW>;
 			status = "disabled";
 		};
 
@@ -1853,7 +1852,6 @@
 			phys = <&pcie2_lanes>;
 			phy-names = "pciephy";
 
-			perst-gpio = <&tlmm 41 GPIO_ACTIVE_LOW>;
 			status = "disabled";
 		};
 
@@ -1941,7 +1939,6 @@
 			phys = <&pcie1_lanes>;
 			phy-names = "pciephy";
 
-			perst-gpio = <&tlmm 40 GPIO_ACTIVE_LOW>;
 			status = "disabled";
 		};
 
@@ -2029,7 +2026,6 @@
 			phys = <&pcie0_lanes>;
 			phy-names = "pciephy";
 
-			perst-gpio = <&tlmm 39 GPIO_ACTIVE_LOW>;
 			status = "disabled";
 		};
 
