@@ -307,10 +307,16 @@
 
 		smem@8a800000 {
 			compatible = "qcom,smem";
-			reg = <0x0 0x8a800000 0x0 0x100000>;
+			reg = <0x0 0x8a800000 0x0 0x32000>;
 			no-map;
 
 			hwlocks = <&tcsr_mutex 3>;
+		};
+
+		atf@8a832000 {
+			reg = <0x0 0x8a832000 0x0 0x7d000>;
+			no-map;
+			status = "disabled";
 		};
 	};
 
