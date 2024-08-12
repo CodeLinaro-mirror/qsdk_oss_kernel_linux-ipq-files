@@ -16,7 +16,6 @@
 	compatible = "qcom,ipq5424-rdp466", "qcom,ipq5424";
 
 	/delete-node/ ipq-debug;
-	/delete-node/ license_manager;
 	/delete-node/ pmu;
 	/delete-node/ pmu-v7;
 	/delete-node/ thermal-zones;
