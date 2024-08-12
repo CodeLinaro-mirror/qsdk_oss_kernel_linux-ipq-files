@@ -225,7 +225,7 @@
 };
 
 &license_manager {
-	status = "disabled";
+	status = "okay";
 };
 
 &qmp_tmel {
