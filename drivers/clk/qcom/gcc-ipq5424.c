@@ -60,6 +60,7 @@ static struct clk_alpha_pll gpll0 = {
 			.parent_data = &gcc_parent_data_xo,
 			.num_parents = 1,
 			.ops = &clk_alpha_pll_ops,
+			.flags = CLK_IS_CRITICAL,
 		},
 	},
 };
@@ -546,9 +547,9 @@ static const struct freq_tbl ftbl_gcc_qupv3_spi0_clk_src[] = {
 	F(4800000, P_XO, 5, 0, 0),
 	F(9600000, P_XO, 2, 4, 5),
 	F(16000000, P_GPLL0_OUT_MAIN, 10, 1, 5),
-	F(32000000, P_GPLL0_OUT_MAIN, 10, 2, 5),
 	F(24000000, P_XO, 1, 0, 0),
 	F(25000000, P_GPLL0_OUT_MAIN, 16, 1, 2),
+	F(32000000, P_GPLL0_OUT_MAIN, 10, 2, 5),
 	F(50000000, P_GPLL0_OUT_MAIN, 16, 0, 0),
 	{ }
 };
@@ -3346,7 +3347,7 @@ static struct clk_regmap *gcc_ipq5424_dummy_clks[] = {
 	[GCC_QUPV3_I2C0_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_qupv3_i2c0_clk_src),
 	[GCC_QUPV3_I2C1_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_qupv3_i2c1_clk_src),
 	[GCC_QUPV3_SPI0_CLK_SRC] = &gcc_qupv3_spi0_clk_src.clkr,
-	[GCC_QUPV3_SPI1_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_qupv3_spi1_clk_src),
+	[GCC_QUPV3_SPI1_CLK_SRC] = &gcc_qupv3_spi1_clk_src.clkr,
 	[GCC_QUPV3_UART0_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_qupv3_uart0_clk_src),
 	[GCC_QUPV3_UART1_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_qupv3_uart1_clk_src),
 	[GCC_USB1_MASTER_CLK] = &gcc_usb1_master_clk.clkr,
