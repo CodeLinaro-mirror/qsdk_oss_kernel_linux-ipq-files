@@ -65,6 +65,7 @@ struct user_pd {
 	int crash_reason_smem;
 	s8 pd_asid;
 	bool running;
+	bool autostart;
 	const struct upd_ops *ops;
 };
 
@@ -301,6 +302,9 @@ int q6v5_userpd_copy_bootargs(struct rproc *rproc, void *data)
 	const char *fw_name = NULL;
 	int ret;
 	u16 cnt;
+
+	if (!upd)
+		return 0;
 
 	boot_args = (struct bootargs_smem_info *)data;
 	ret = of_property_read_string(upd->dev->of_node, "firmware", &fw_name);
@@ -551,6 +555,11 @@ int q6v5_upd_rproc_notifier_cb(struct notifier_block *nb, unsigned long action,
 	case QCOM_SSR_BEFORE_POWERUP:
 		break;
 	case QCOM_SSR_AFTER_POWERUP:
+		if (!upd->autostart) {
+			dev_info(upd->dev, "Ignoring event %lu for rproc: %s",
+				 action, upd->rproc->name);
+			break;
+		}
 		ret = q6v5_start_user_pd(upd);
 		if (ret) {
 			dev_err(upd->dev, "Failed to start userpd %d\n", ret);
@@ -570,6 +579,75 @@ int q6v5_upd_rproc_notifier_cb(struct notifier_block *nb, unsigned long action,
 	return NOTIFY_DONE;
 }
 
+static ssize_t state_show(struct device *dev,
+			  struct device_attribute *attr, char *buf)
+{
+	struct user_pd *upd = dev_get_drvdata(dev);
+
+	return sysfs_emit(buf, "%s\n", upd->running ? "started" : "stopped");
+}
+
+static ssize_t state_store(struct device *dev,
+			   struct device_attribute *attr,
+			   const char *buf, size_t count)
+{
+	struct user_pd *upd = dev_get_drvdata(dev);
+	int ret = 0;
+
+	if (sysfs_streq(buf, "start")) {
+		ret = q6v5_start_user_pd(upd);
+		if (ret)
+			dev_err(upd->dev, "Failed to start userpd %d\n", ret);
+	} else if (sysfs_streq(buf, "stop")) {
+		ret = q6v5_stop_user_pd(upd);
+		if (ret)
+			dev_err(upd->dev, "Failed to stop userpd %d\n", ret);
+	} else {
+		dev_err(upd->dev, "Unrecognised option: %s\n", buf);
+		ret = -EINVAL;
+	}
+
+	return ret ? ret : count;
+}
+
+static ssize_t autostart_show(struct device *dev,
+			      struct device_attribute *attr, char *buf)
+{
+	struct user_pd *upd = dev_get_drvdata(dev);
+
+	return sysfs_emit(buf, "%s\n", upd->autostart ? "enabled" : "disabled");
+}
+
+static ssize_t autostart_store(struct device *dev,
+			       struct device_attribute *attr,
+			       const char *buf, size_t count)
+{
+	struct user_pd *upd = dev_get_drvdata(dev);
+
+	if (sysfs_streq(buf, "disabled")) {
+		upd->autostart = false;
+	} else if (sysfs_streq(buf, "enabled")) {
+		upd->autostart = true;
+	} else {
+		dev_err(upd->dev, "Unrecognised option: %s\n", buf);
+		return -EINVAL;
+	}
+	return count;
+}
+
+static DEVICE_ATTR_RW(state);
+static DEVICE_ATTR_RW(autostart);
+
+static struct attribute *userpd_attrs[] = {
+	&dev_attr_state.attr,
+	&dev_attr_autostart.attr,
+	NULL,
+};
+
+static struct attribute_group userpd_group = {
+	.attrs = userpd_attrs,
+};
+
 static int q6v5_upd_probe(struct platform_device *pdev)
 {
 	phandle rproc_phandle;
@@ -581,6 +659,7 @@ static int q6v5_upd_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	upd->dev = &pdev->dev;
+	upd->autostart = true;
 
 	if (of_property_read_u32(upd->dev->of_node, "qcom,rproc",
 				 &rproc_phandle)) {
@@ -626,6 +705,12 @@ static int q6v5_upd_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, upd);
+
+	ret = sysfs_create_group(&pdev->dev.kobj, &userpd_group);
+	if (ret) {
+		dev_err(upd->dev, "Unable to create sysfs group\n");
+		return ret;
+	}
 
 	g_upd = upd;
 	dev_info(upd->dev, "userpd probed successfully\n");
