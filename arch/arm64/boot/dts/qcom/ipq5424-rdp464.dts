@@ -15,9 +15,6 @@
 	model = "Qualcomm Technologies, Inc. IPQ5424 RDP464";
 	compatible = "qcom,ipq5424-rdp464", "qcom,ipq5424";
 
-	/delete-node/ ipq-debug;
-	/delete-node/ pmu;
-	/delete-node/ pmu-v7;
 	/delete-node/ thermal-zones;
 	/delete-node/ opp-table-cpu;
 
@@ -70,9 +67,6 @@
 
 		/delete-node/ efuse@a4000;
 		/delete-node/ thermal-sensor@4a9000;
-		/delete-node/ dcc@60ff000;
-		/delete-node/ gpio-keys;
-		/delete-node/ rng@4c3000;
 
 		leds {
 			compatible = "gpio-leds";
