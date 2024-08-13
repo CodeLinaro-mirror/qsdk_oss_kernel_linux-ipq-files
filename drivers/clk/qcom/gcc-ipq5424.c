@@ -942,6 +942,7 @@ static const struct freq_tbl ftbl_gcc_qpic_io_macro_clk_src[] = {
 	F(100000000, P_GPLL0_OUT_MAIN, 8, 0, 0),
 	F(200000000, P_GPLL0_OUT_MAIN, 4, 0, 0),
 	F(320000000, P_GPLL0_OUT_MAIN, 2.5, 0, 0),
+	F(400000000, P_GPLL0_OUT_MAIN, 2, 0, 0),
 	{ }
 };
 
@@ -3286,8 +3287,8 @@ static struct clk_regmap *gcc_ipq5424_dummy_clks[] = {
 	[GCC_NSSNOC_NSSCC_CLK] = DEFINE_DUMMY_CLK(gcc_nssnoc_nsscc_clk),
 	[GCC_NSSCC_CLK] = DEFINE_DUMMY_CLK(gcc_nsscc_clk),
 	[GCC_NSSNOC_PCNOC_1_CLK] = DEFINE_DUMMY_CLK(gcc_nssnoc_pcnoc_1_clk),
-	[GCC_QPIC_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_qpic_ahb_clk),
-	[GCC_QPIC_CLK] = DEFINE_DUMMY_CLK(gcc_qpic_clk),
+	[GCC_QPIC_AHB_CLK] = &gcc_qpic_ahb_clk.clkr,
+	[GCC_QPIC_CLK] = &gcc_qpic_clk.clkr,
 	[GCC_MDIO_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_mdio_ahb_clk),
 	[GCC_PRNG_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_prng_ahb_clk),
 	[GCC_UNIPHY0_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_uniphy0_ahb_clk),
@@ -3303,8 +3304,8 @@ static struct clk_regmap *gcc_ipq5424_dummy_clks[] = {
 	[GCC_QDSS_AT_CLK] = DEFINE_DUMMY_CLK(gcc_qdss_at_clk),
 	[GCC_QDSS_TSCTR_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_qdss_tsctr_clk_src),
 	[GCC_NSS_TS_CLK] = DEFINE_DUMMY_CLK(gcc_nss_ts_clk),
-	[GCC_QPIC_IO_MACRO_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_qpic_io_macro_clk_src),
-	[GCC_QPIC_IO_MACRO_CLK] = DEFINE_DUMMY_CLK(gcc_qpic_io_macro_clk),
+	[GCC_QPIC_IO_MACRO_CLK_SRC] = &gcc_qpic_io_macro_clk_src.clkr,
+	[GCC_QPIC_IO_MACRO_CLK] = &gcc_qpic_io_macro_clk.clkr,
 	[GCC_LPASS_AXIM_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_lpass_axim_clk_src),
 	[GCC_LPASS_CORE_AXIM_CLK] = DEFINE_DUMMY_CLK(gcc_lpass_core_axim_clk),
 	[GCC_LPASS_SWAY_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_lpass_sway_clk_src),
@@ -3341,7 +3342,7 @@ static struct clk_regmap *gcc_ipq5424_dummy_clks[] = {
 	[GCC_QUPV3_SPI1_CLK] = &gcc_qupv3_spi1_clk.clkr,
 	[GCC_QUPV3_UART0_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_uart0_clk),
 	[GCC_QUPV3_UART1_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_uart1_clk),
-	[GCC_QPIC_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_qpic_clk_src),
+	[GCC_QPIC_CLK_SRC] = &gcc_qpic_clk_src.clkr,
 	[GCC_QUPV3_I2C0_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_qupv3_i2c0_clk_src),
 	[GCC_QUPV3_I2C1_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_qupv3_i2c1_clk_src),
 	[GCC_QUPV3_SPI0_CLK_SRC] = &gcc_qupv3_spi0_clk_src.clkr,
