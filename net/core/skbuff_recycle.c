@@ -19,6 +19,7 @@
 #include <linux/proc_fs.h>
 #include <linux/string.h>
 #include <linux/debug_mem_usage.h>
+#include <linux/kmemleak.h>
 #include "skbuff_debug.h"
 
 static struct proc_dir_entry *proc_net_skbrecycler;
@@ -33,6 +34,29 @@ static int skb_recycle_spare_max_skbs = SKB_RECYCLE_SPARE_MAX_SKBS;
 #endif
 
 static int skb_recycling_enable = 1;
+
+#ifdef CONFIG_DEBUG_KMEMLEAK
+#define mem_leak_free_skb(skb) \
+do { \
+	kmemleak_update_trace(skb);\
+	kmemleak_ignore(skb);\
+	kmemleak_update_trace(skb->head);\
+	kmemleak_ignore(skb->head);\
+} while (0)
+
+#define mem_leak_free_skb_list(skb_list) \
+do { \
+	struct sk_buff *skb = NULL, *next = NULL; \
+	skb_queue_walk_safe(skb_list, skb, next) { \
+		if (skb)\
+			mem_leak_free_skb(skb);\
+	} \
+} while (0)
+#else
+#define mem_leak_free_skb(skb)
+#define mem_leak_free_skb_list(skb_list)
+#endif
+
 /**
  * skb_recycler_clear_flags - Clear skb flags
  * @skb: skb pointer
@@ -202,6 +226,7 @@ inline bool skb_recycler_consume(struct sk_buff *skb)
 		local_irq_restore(flags);
 		preempt_enable();
 		mem_debug_update_skb(skb);
+		mem_leak_free_skb(skb);
 		return true;
 	}
 #ifdef CONFIG_SKB_RECYCLER_MULTI_CPU
@@ -248,6 +273,7 @@ inline bool skb_recycler_consume(struct sk_buff *skb)
 			local_irq_restore(flags);
 			preempt_enable();
 			mem_debug_update_skb(skb);
+			mem_leak_free_skb(skb);
 			return true;
 		}
 		/* We still have a full spare because the global is also full */
@@ -265,6 +291,7 @@ inline bool skb_recycler_consume(struct sk_buff *skb)
 		local_irq_restore(flags);
 		preempt_enable();
 		mem_debug_update_skb(skb);
+		mem_leak_free_skb(skb);
 		return true;
 	}
 #endif
@@ -316,6 +343,7 @@ inline bool skb_recycler_consume_list_fast(struct sk_buff_head *skb_list)
 	/* Attempt to enqueue the CPU hot recycle list first */
 	if (likely(skb_queue_len(h) < skb_recycle_max_skbs)) {
 		mem_debug_update_skb_list(skb_list);
+		mem_leak_free_skb_list(skb_list);
 		skb_queue_splice(skb_list,h);
 		local_irq_restore(flags);
 		preempt_enable();
