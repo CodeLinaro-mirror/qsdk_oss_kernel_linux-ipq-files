@@ -3,13 +3,17 @@
  * IPQ5424 Emulation board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 /dts-v1/;
 
 #include "ipq5424.dtsi"
+#ifdef __IPQ_MEM_PROFILE_512_MB__
+#include "ipq5424-512MB-default-memory.dtsi"
+#else
 #include "ipq5424-default-memory.dtsi"
+#endif
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ5424-EMULATION-FBC";
