@@ -1068,6 +1068,7 @@ static const struct freq_tbl ftbl_gcc_q6_axi_clk_src[] = {
 	{ }
 };
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 static struct clk_rcg2 gcc_q6_axi_clk_src = {
 	.cmd_rcgr = 0x25004,
 	.mnd_width = 0,
@@ -1081,6 +1082,7 @@ static struct clk_rcg2 gcc_q6_axi_clk_src = {
 		.ops = &clk_rcg2_ops,
 	},
 };
+#endif
 
 static struct clk_regmap_div gcc_usb0_mock_utmi_div_clk_src = {
 	.reg = 0x2c040,
@@ -3108,8 +3110,8 @@ static struct clk_regmap *gcc_ipq5424_clocks[] = {
 	[GCC_USB1_SLEEP_CLK] = &gcc_usb1_sleep_clk.clkr,
 	[GCC_USB1_MASTER_CLK] = &gcc_usb1_master_clk.clkr,
 	[GCC_WCSS_AHB_CLK_SRC] = &gcc_wcss_ahb_clk_src.clkr,
-	[GCC_WCSS_ECAHB_CLK] = &gcc_wcss_ecahb_clk.clkr,
 #ifdef CONFIG_QCOM_NON_SECURE_PIL
+	[GCC_WCSS_ECAHB_CLK] = &gcc_wcss_ecahb_clk.clkr,
 	[GCC_CNOC_WCSS_AHB_CLK] = &gcc_cnoc_wcss_ahb_clk.clkr,
 	[GCC_Q6SS_ATBM_CLK] = &gcc_q6ss_atbm_clk.clkr,
 	[GCC_Q6_TSCTR_1TO2_CLK] = &gcc_q6_tsctr_1to2_clk.clkr,
