@@ -9,7 +9,11 @@
 /dts-v1/;
 
 #include "ipq5424-rdp-common.dtsi"
+#ifdef __IPQ_MEM_PROFILE_512_MB__
+#include "ipq5424-512MB-default-memory.dtsi"
+#else
 #include "ipq5424-default-memory.dtsi"
+#endif
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ5424 RDP487";
@@ -344,6 +348,7 @@
 #endif
 
 &mlo_global_mem0 {
+	reg = <0x0 0x9b300000 0x0 0xc00000>;
 	status = "okay";
 };
 
@@ -352,7 +357,6 @@
 	qcom,rproc = <&q6_wcss_pd1>;
 	qcom,rproc_rpd = <&q6v5_wcss>;
 	qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
-	qcom,tgt-mem-mode = <0>;
 	memory-region = <&q6_region>;
 	qcom,wsi = <&wsi>;
 	qcom,wsi_index = <0>;
