@@ -123,7 +123,8 @@ static struct clk_alpha_pll gpll4 = {
 			.name = "gpll4",
 			.parent_data = &gcc_parent_data_xo,
 			.num_parents = 1,
-			.ops = &clk_alpha_pll_ops
+			.flags = CLK_IS_CRITICAL,
+			.ops = &clk_alpha_pll_ops,
 		},
 	},
 };
@@ -834,7 +835,7 @@ static const struct freq_tbl ftbl_gcc_system_noc_bfdcd_clk_src[] = {
 	F(24000000, P_XO, 1, 0, 0),
 	F(133333333, P_GPLL0_OUT_MAIN, 6, 0, 0),
 	F(200000000, P_GPLL0_OUT_MAIN, 4, 0, 0),
-	F(342850000, P_GPLL4_OUT_MAIN, 3.5, 0, 0),
+	F(266666667, P_GPLL4_OUT_MAIN, 4.5, 0, 0),
 	{ }
 };
 
@@ -2902,7 +2903,7 @@ static struct clk_branch gcc_qdss_dap_clk = {
 				&gcc_qdss_dap_sync_clk_src.hw
 			},
 			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT,
+			.flags = CLK_SET_RATE_PARENT | CLK_IS_CRITICAL,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -2919,7 +2920,7 @@ static struct clk_branch gcc_qdss_at_clk = {
 				&gcc_qdss_at_clk_src.clkr.hw
 			},
 			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT,
+			.flags = CLK_SET_RATE_PARENT | CLK_IS_CRITICAL,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -3694,7 +3695,7 @@ static const struct regmap_config gcc_ipq5424_regmap_config = {
 	.reg_bits       = 32,
 	.reg_stride     = 4,
 	.val_bits       = 32,
-	.max_register   = 0x841f0,
+	.max_register   = 0x3f024,
 	.fast_io        = true,
 };
 
