@@ -50,6 +50,7 @@
 #define SW_TYPE_RPM				0xA
 #define SW_TYPE_DEVCFG				0x5
 #define SW_TYPE_APDP				0x200
+#define SW_TYPE_SEC_DATA			0x2B
 
 static int gl_version_enable;
 static int version_commit_enable;
@@ -899,7 +900,7 @@ store_sec_dat(struct device *dev, struct device_attribute *attr,
 {
 	int ret = count;
 	loff_t size;
-	unsigned long fuse_status = 0;
+	u64 fuse_status = 0;
 	struct file *fptr = NULL;
 	struct kstat st;
 	void *ptr = NULL;
@@ -908,11 +909,21 @@ store_sec_dat(struct device *dev, struct device_attribute *attr,
 	size_t req_order = 0;
 	struct page *req_page = NULL;
 	u64 dma_size;
+	struct device_node *np;
+	u8 ld_seg_cnt = 0;
+	u32 scm_cmd_id;
+	u32 md_size = 0; /* ELF Metadata size */
 
 	fptr = filp_open(buf, O_RDONLY, 0);
 	if (IS_ERR(fptr)) {
 		pr_err("%s File open failed\n", buf);
 		ret = -EBADF;
+		goto out;
+	}
+
+	np = of_find_node_by_name(NULL, "qfprom");
+	if (!np) {
+		pr_err("Unable to find qfprom node\n");
 		goto out;
 	}
 
@@ -960,14 +971,31 @@ store_sec_dat(struct device *dev, struct device_attribute *attr,
 		goto file_close;
 	}
 	fuse_blow.address = dma_req_addr;
-	fuse_blow.status = &fuse_status;
-	fuse_blow.size = fuse_blow_size_req ? size : 0;
 
-	ret = qcom_fuseipq_scm_call( QCOM_SCM_SVC_FUSE,
-				    TZ_BLOW_FUSE_SECDAT, &fuse_blow,
-				    sizeof(fuse_blow));
+	ret = of_property_read_u32(np, "scm-cmd-id", &scm_cmd_id);
 	if (ret) {
-		pr_err("Error in QFPROM write (%d %lu)\n", ret, fuse_status);
+		pr_err("Error in reading scm id\n");
+		goto free_mem;
+	}
+
+	if (qcom_sec_dat_fuse_available()) {
+		fuse_blow.status = &fuse_status;
+		fuse_blow.size = fuse_blow_size_req ? size : 0;
+		ret = qcom_fuseipq_scm_call(QCOM_SCM_SVC_FUSE,
+					    TZ_BLOW_FUSE_SECDAT, &fuse_blow,
+					    sizeof(fuse_blow));
+	} else {
+		/* Pass the ptr containing the elf for loadable segment extraction */
+		ld_seg_cnt = parse_n_extract_ld_segment(ptr, &md_size,
+							dma_req_addr);
+		ret = qcom_sec_upgrade_auth_ld_segments(scm_cmd_id,
+							SW_TYPE_SEC_DATA,
+							dma_req_addr, md_size,
+							ld_seg_buff, ld_seg_cnt,
+							&fuse_status);
+	}
+	if (ret) {
+		pr_err("Error in QFPROM write (%d)\n", ret);
 		ret = -EIO;
 		goto free_mem;
 	}
