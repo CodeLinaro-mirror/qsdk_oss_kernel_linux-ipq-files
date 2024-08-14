@@ -581,7 +581,7 @@
 #endif
 
 &mlo_global_mem0 {
-	size = <0x0 0x1800000>;
+	reg = <0x0 0x9b300000 0x0 0x1800000>;
 	status = "okay";
 };
 

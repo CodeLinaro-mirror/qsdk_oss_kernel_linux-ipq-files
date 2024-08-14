@@ -1053,7 +1053,8 @@
 			memory-region = <&q6_region>,
 					<&m3_dump>,
 					<&q6_etr_region>,
-					<&q6_ipq5424_caldb>;
+					<&q6_ipq5424_caldb>,
+					<&mlo_global_mem0>;
 			qcom,bootargs_smem = <507>;
 			qcom,bootargs_version = <2>;
 			qcom,userpd-bootargs;
@@ -2191,24 +2192,24 @@
 			 * +=========+==============+=========+
 			 * |  Region | Start Offset |   Size  |
 			 * +---------+--------------+---------+
-			 * | HREMOTE |  0x8DB00000  |   28MB  |
+			 * | HREMOTE |  0x8d900000  |   28MB  |
 			 * +---------+--------------+---------+
-			 * | M3 Dump |  0x8F700000  |   1MB   |
+			 * | M3 Dump |  0x8f500000  |   1MB   |
 			 * +---------+--------------+---------+
-			 * |   ETR   |  0x8F800000  |   1MB   |
+			 * |   ETR   |  0x8f600000  |   1MB   |
 			 * +---------+--------------+---------+
-			 * |  Caldb  |  0x8F900000  |   8MB   |
+			 * |  Caldb  |  0x8f700000  |   8MB   |
 			 * +---------+--------------+---------+
-			 * |Pageable |  0x90100000  |  12MB   |
+			 * |Pageable |  0x8ff00000  |  12MB   |
 			 * +==================================+
 			 */
-			base-addr = <0x8DB00000>;
-			m3-dump-addr = <0x8F700000>;
-			etr-addr = <0x8F800000>;
-			caldb-addr = <0x8F900000>;
-			pageable-addr = <0x90100000>;
-			hremote-size = <0x1C00000>;
-			pageable-size = <0xC00000>;
+			base-addr = <0x8d900000>;
+			m3-dump-addr = <0x8f500000>;
+			etr-addr = <0x8f600000>;
+			caldb-addr = <0x8f700000>;
+			pageable-addr = <0x8ff00000>;
+			hremote-size = <0x1c00000>;
+			pageable-size = <0xc00000>;
 			tgt-mem-mode = <0x0>;
 			caldb-size = <0x800000>;
 			qca,extended-intc;
@@ -2436,24 +2437,24 @@
 			 * +=========+==============+=========+
 			 * |  Region | Start Offset |   Size  |
 			 * +---------+--------------+---------+
-			 * | HREMOTE |  0x90D00000  |   28MB  |
+			 * | HREMOTE |  0x90b00000  |   28MB  |
 			 * +---------+--------------+---------+
-			 * | M3 Dump |  0x92900000  |   1MB   |
+			 * | M3 Dump |  0x92700000  |   1MB   |
 			 * +---------+--------------+---------+
-			 * |   ETR   |  0x92A00000  |   1MB   |
+			 * |   ETR   |  0x92800000  |   1MB   |
 			 * +---------+--------------+---------+
-			 * |  Caldb  |  0x92B00000  |   8MB   |
+			 * |  Caldb  |  0x92900000  |   8MB   |
 			 * +---------+--------------+---------+
-			 * |Pageable |  0x93300000  |  12MB   |
+			 * |Pageable |  0x93100000  |  12MB   |
 			 * +==================================+
 			 */
-			base-addr = <0x90D00000>;
-			m3-dump-addr = <0x92900000>;
-			etr-addr = <0x92A00000>;
-			caldb-addr = <0x92B00000>;
-			pageable-addr = <0x93300000>;
-			hremote-size = <0x1C00000>;
-			pageable-size = <0xC00000>;
+			base-addr = <0x90b00000>;
+			m3-dump-addr = <0x92700000>;
+			etr-addr = <0x92800000>;
+			caldb-addr = <0x92900000>;
+			pageable-addr = <0x93100000>;
+			hremote-size = <0x1c00000>;
+			pageable-size = <0xc00000>;
 			tgt-mem-mode = <0x0>;
 			caldb-size = <0x800000>;
 			qca,extended-intc;
@@ -2681,24 +2682,24 @@
 			 * +=========+==============+=========+
 			 * |  Region | Start Offset |   Size  |
 			 * +---------+--------------+---------+
-			 * | HREMOTE |  0x93F00000  |   28MB  |
+			 * | HREMOTE |  0x93d00000  |   28MB  |
 			 * +---------+--------------+---------+
-			 * | M3 Dump |  0x95B00000  |   1MB   |
+			 * | M3 Dump |  0x95900000  |   1MB   |
 			 * +---------+--------------+---------+
-			 * |   ETR   |  0x95C00000  |   1MB   |
+			 * |   ETR   |  0x95a00000  |   1MB   |
 			 * +---------+--------------+---------+
-			 * |  Caldb  |  0x95D00000  |   8MB   |
+			 * |  Caldb  |  0x95b00000  |   8MB   |
 			 * +---------+--------------+---------+
-			 * |Pageable |  0x96500000  |  12MB   |
+			 * |Pageable |  0x96300000  |  12MB   |
 			 * +==================================+
 			 */
-			base-addr = <0x93F00000>;
-			m3-dump-addr = <0x95B00000>;
-			etr-addr = <0x95C00000>;
-			caldb-addr = <0x95D00000>;
-			pageable-addr = <0x96500000>;
-			hremote-size = <0x1C00000>;
-			pageable-size = <0xC00000>;
+			base-addr = <0x93d00000>;
+			m3-dump-addr = <0x95900000>;
+			etr-addr = <0x95a00000>;
+			caldb-addr = <0x95b00000>;
+			pageable-addr = <0x96300000>;
+			hremote-size = <0x1c00000>;
+			pageable-size = <0xc00000>;
 			tgt-mem-mode = <0x0>;
 			caldb-size = <0x800000>;
 			qca,extended-intc;
@@ -2926,24 +2927,24 @@
 			 * +=========+==============+=========+
 			 * |  Region | Start Offset |   Size  |
 			 * +---------+--------------+---------+
-			 * | HREMOTE |  0x97100000  |   28MB  |
+			 * | HREMOTE |  0x96f00000  |   28MB  |
 			 * +---------+--------------+---------+
-			 * | M3 Dump |  0x98D00000  |   1MB   |
+			 * | M3 Dump |  0x98b00000  |   1MB   |
 			 * +---------+--------------+---------+
-			 * |   ETR   |  0x98E00000  |   1MB   |
+			 * |   ETR   |  0x98c00000  |   1MB   |
 			 * +---------+--------------+---------+
-			 * |  Caldb  |  0x98F00000  |   8MB   |
+			 * |  Caldb  |  0x98d00000  |   8MB   |
 			 * +---------+--------------+---------+
-			 * |Pageable |  0x99700000  |  12MB   |
+			 * |Pageable |  0x99500000  |  12MB   |
 			 * +==================================+
 			 */
-			base-addr = <0x97100000>;
-			m3-dump-addr = <0x98D00000>;
-			etr-addr = <0x98E00000>;
-			caldb-addr = <0x98F00000>;
-			pageable-addr = <0x99700000>;
-			hremote-size = <0x1C00000>;
-			pageable-size = <0xC00000>;
+			base-addr = <0x96f00000>;
+			m3-dump-addr = <0x98b00000>;
+			etr-addr = <0x98c00000>;
+			caldb-addr = <0x98d00000>;
+			pageable-addr = <0x99500000>;
+			hremote-size = <0x1c00000>;
+			pageable-size = <0xc00000>;
 			tgt-mem-mode = <0x0>;
 			caldb-size = <0x800000>;
 			qca,extended-intc;

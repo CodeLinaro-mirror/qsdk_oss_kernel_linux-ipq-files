@@ -315,8 +315,7 @@
 #endif
 
 &mlo_global_mem0 {
-        size = <0x0 0x1200000>;
-        status = "okay";
+	status = "okay";
 };
 
 &wifi0 {
