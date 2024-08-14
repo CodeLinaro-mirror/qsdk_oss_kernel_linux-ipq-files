@@ -373,7 +373,7 @@
 			interrupts = <GIC_SPI 84 IRQ_TYPE_LEVEL_HIGH>;
 			gpio-controller;
 			#gpio-cells = <2>;
-			gpio-ranges = <&tlmm 0 0 49>;
+			gpio-ranges = <&tlmm 0 0 50>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
 
