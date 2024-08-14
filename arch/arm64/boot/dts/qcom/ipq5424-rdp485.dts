@@ -49,7 +49,6 @@
 		/delete-node/ thermal-sensor@4a9000;
 		/delete-node/ dcc@60ff000;
 		/delete-node/ gpio-keys;
-		/delete-node/ mmc@7804000;
 		/delete-node/ rng@4c3000;
 
 		leds {
@@ -234,6 +233,17 @@
 
 &qpic_nand {
 	status = "okay";
+};
+
+&sdhc {
+	max-frequency = <192000000>;
+	bus-width = <4>;
+	mmc-ddr-1_8v;
+	mmc-hs200-1_8v;
+	non-removable;
+	pinctrl-0 = <&sdc_default_state>;
+	pinctrl-names = "default";
+	status = "disabled";
 };
 
 &pcie2_phy {
