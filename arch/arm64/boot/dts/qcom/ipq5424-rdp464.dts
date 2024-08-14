@@ -27,7 +27,7 @@
 			i2c0: i2c@1a88000 {
 				pinctrl-0 = <&qup_i2c0_default>;
 				pinctrl-names = "default";
-				status = "disabled";
+				status = "okay";
 			};
 
 			i2c1: i2c@1a8c000 {
