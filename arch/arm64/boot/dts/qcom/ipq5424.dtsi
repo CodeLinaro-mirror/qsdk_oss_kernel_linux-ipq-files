@@ -1000,7 +1000,7 @@
                 };
 
 		q6v5_wcss: remoteproc@d100000 {
-			compatible = "qcom,ipq5424-q6-mpd";
+			compatible = "qcom,ipq5424-q6v5-wcss-sec";
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges;
@@ -1091,7 +1091,7 @@
 							"spawn";
 				qcom,emulation;
 				qcom,nosecure;
-				status = "okay";
+				status = "disabled";
 			};
 #endif
 		};
@@ -1117,7 +1117,7 @@
 			qcom,smem-state-names = "shutdown",
 						"stop",
 						"spawn";
-			status = "disabled";
+			status = "okay";
 		};
 
 		intc: interrupt-controller@f200000 {

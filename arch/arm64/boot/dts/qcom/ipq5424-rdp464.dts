@@ -610,10 +610,7 @@
 };
 
 &wifi0 {
-	qcom,multipd_arch;
-	qcom,rproc = <&q6_wcss_pd1>;
-	qcom,rproc_rpd = <&q6v5_wcss>;
-	qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
+	qcom,rproc = <&q6v5_wcss>;
 	qcom,tgt-mem-mode = <0>;
 	memory-region = <&q6_region>;
 	qcom,wsi = <&wsi>;
