@@ -457,8 +457,12 @@ static int qti_tzlog_probe(struct platform_device *pdev)
 		iounmap(imem_base);
 
 		if (qti_scm_is_tz_log_encryption_supported()) {
-			tz_hvc_log->is_encrypted = (qcom_qfprom_show_authenticate() &&
-						    qti_scm_is_tz_log_encrypted());
+			if (qcom_qfprom_show_auth_available())
+				ret = qcom_qfprom_show_authenticate();
+			else
+				ret = ipq54xx_qcom_qfprom_show_authenticate();
+			if (ret == 1)
+				tz_hvc_log->is_encrypted = qti_scm_is_tz_log_encrypted();
 		}
 	}
 
