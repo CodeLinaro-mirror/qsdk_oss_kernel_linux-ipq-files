@@ -60,14 +60,16 @@ static int tmel_log_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "unable to create tmel_log debugfs\n");
 		return -EIO;
 	}
+	if (!argc)
+		return ret;
 
 	/* argc will have component id and loglevel, 2 for each entry, so
 	   checks argc % 2 != 0
 	 */
-	if (!argc || argc % 2 != 0 || argc > MAX_ARG_SIZE) {
+	if (argc % 2 != 0 || argc > MAX_ARG_SIZE) {
 		dev_err(&pdev->dev,
 			"Invalid arguments to parse component and log level\n");
-		return -EINVAL;
+		return ret;
 	}
 
 	log_config = kzalloc((argc / 2) * sizeof(*log_config), GFP_KERNEL);
@@ -88,7 +90,6 @@ static int tmel_log_probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err(&pdev->dev,
 			"failed to set the config, ret = %d\n", ret);
-		return -EINVAL;
 	}
 
 	return ret;
