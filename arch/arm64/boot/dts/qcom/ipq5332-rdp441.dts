@@ -42,13 +42,13 @@
 	 * |        |              |                         |
 	 * +--------+--------------+-------------------------+
 	 * | WLAN   |              |                         |
-	 * |   Q6   |  0x4A900000  |          19MB           |
+	 * |   Q6   |  0x4A900000  |          20MB           |
 	 * +--------+--------------+-------------------------+
-	 * |  QDSS  |  0x4BC00000  |           1MB           |
+	 * |  QDSS  |  0x4BD00000  |           1MB           |
 	 * +--------+--------------+-------------------------+
-	 * |  WKK0  |  0x4BD00000  |          11MB           |
+	 * |  WKK0  |  0x4BE00000  |          12MB           |
 	 * +--------+--------------+-------------------------+
-	 * |       19 MB not-reserved, used by linux         |
+	 * |       17 MB not-reserved, used by linux         |
 	 * +--------+--------------+-------------------------+
 	 * |  MLO   |  0x4DB00000  |           5MB           |
 	 * +--------+--------------+-------------------------+
@@ -65,7 +65,7 @@
 	reserved-memory {
 		q6_region: wcnss@4a900000 {
 			no-map;
-			reg = <0x0 0x4A900000 0x0 0x1300000>;
+			reg = <0x0 0x4A900000 0x0 0x1400000>;
 		};
 
 		m3_dump: m3_dump@0x4be00000 {
@@ -76,7 +76,7 @@
 
 		q6_etr_region: q6_etr_dump@1 {
 			no-map;
-			reg = <0x0 0x4bc000000 0x0 0x100000>;
+			reg = <0x0 0x4bd00000 0x0 0x100000>;
 		};
 
 		q6_caldb_region:q6_caldb_region@1 {
@@ -84,9 +84,9 @@
 			status = "disabled";
                 };
 
-		qcn9224_pcie0: qcn9224_pcie0@4bd00000 {
+		qcn9224_pcie0: qcn9224_pcie0@4be00000 {
 			no-map;
-			reg = <0x0 0x4bd00000 0x0 0xb00000>;
+			reg = <0x0 0x4be00000 0x0 0xc00000>;
 		};
 
 		mlo_global_mem0: mlo_global_mem_0@0x4db00000 {
@@ -497,6 +497,7 @@
 	};
 };
 
+#if !defined(__IPQ_MEM_PROFILE_256_MB__)
 &pcie1_phy_x2 {
 	status = "okay";
 };
@@ -515,16 +516,14 @@
 			boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
 					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
-#if !defined(__IPQ_MEM_PROFILE_256_MB__)
 			memory-region = <&qcn9224_pcie1>, <&mhi_region1>;
-#endif
 			qcom,board_id = <0x16>;
 			qcom,wsi = <&wsi>;
 			qcom,wsi_index = <2>;
 		};
 	};
 };
-
+#endif
 
 &wifi0 {
 	led-gpio = <&tlmm 36 GPIO_ACTIVE_HIGH>;
@@ -553,23 +552,23 @@
 &wifi3 {
 	/* QCN9224 radio 5G */
 #if defined(__IPQ_MEM_PROFILE_256_MB__)
-	/* qcn9224 tgt-mem-mode=1 layout - 29MB
+	/* qcn9224 tgt-mem-mode=2 layout - 12MB
 	 * +=========+==============+=========+
 	 * |  Region | Start Offset |   Size  |
 	 * +---------+--------------+---------+
-	 * | HREMOTE |  0x4bd00000  | 6.75MB  |
+	 * | HREMOTE |  0x4be00000  |   8MB   |
 	 * +---------+--------------+---------+
-	 * |   ETR   |  0x4c3c0000  |   1MB   |
+	 * |   ETR   |  0x4c600000  |   1MB   |
 	 * +---------+--------------+---------+
-	 * |Pageable |  0x4c4c0000  | 3.25MB  |
+	 * |Pageable |  0x4c700000  |   3MB   |
 	 * +==================================+
 	 */
-	base-addr = <0x4bd00000>;
+	base-addr = <0x4be00000>;
 	m3-dump-addr = <0>;
-	etr-addr = <0x4c3c0000>;
-	pageable-addr = <0x4c4c0000>;
-	hremote-size = <0x6c0000>;
-	pageable-size = <0x340000>;
+	etr-addr = <0x4c600000>;
+	pageable-addr = <0x4c700000>;
+	hremote-size = <0x800000>;
+	pageable-size = <0x300000>;
 	caldb-size = <0>;
 	tgt-mem-mode = <0x2>;
 #endif
