@@ -2162,18 +2162,18 @@
 				<0 586 1>, /* reo2ppe */
 				<0 573 1>, /* ppe_wbm_rel */
 				<0 562 1>, /* ppe2tcl */
-				/* Unused Interrupts */
-				<0 640 1>, /* host2rxdma-monitor-ring3 */
-				<0 640 1>, /* host2rxdma-monitor-ring2 */
-				<0 640 1>, /* ppdu-end-interrupts-mac3 */
-				<0 640 1>, /* ppdu-end-interrupts-mac2 */
-				<0 640 1>, /* ppdu-end-interrupts-mac1 */
-				<0 640 1>, /* rxdma2host-monitor-status-ring-mac3 */
-				<0 640 1>, /* rxdma2host-monitor-status-ring-mac2 */
-				<0 640 1>, /* rxdma2host-monitor-status-ring-mac1 */
-				<0 640 1>, /* rxdma2host-destination-ring-mac3 */
-				<0 640 1>, /* rxdma2host-destination-ring-mac2 */
-				<0 640 1>; /* rxdma2host-destination-ring-mac1 */
+				/* Unused Interrupts - Mapping these interrupts to ce11 interrupt number since ce11 is unused */
+				<0 529 1>, /* host2rxdma-monitor-ring3 */
+				<0 529 1>, /* host2rxdma-monitor-ring2 */
+				<0 529 1>, /* ppdu-end-interrupts-mac3 */
+				<0 529 1>, /* ppdu-end-interrupts-mac2 */
+				<0 529 1>, /* ppdu-end-interrupts-mac1 */
+				<0 529 1>, /* rxdma2host-monitor-status-ring-mac3 */
+				<0 529 1>, /* rxdma2host-monitor-status-ring-mac2 */
+				<0 529 1>, /* rxdma2host-monitor-status-ring-mac1 */
+				<0 529 1>, /* rxdma2host-destination-ring-mac3 */
+				<0 529 1>, /* rxdma2host-destination-ring-mac2 */
+				<0 529 1>; /* rxdma2host-destination-ring-mac1 */
 
 			interrupt-names = "misc-pulse1",
 				"misc-latch",
