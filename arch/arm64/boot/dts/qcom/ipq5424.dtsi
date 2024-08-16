@@ -1122,7 +1122,7 @@
 			#redistributor-regions = <1>;
 			redistributor-stride = <0x0 0x20000>;
 			interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH>;
-			mbi-ranges = <704 128>;
+			mbi-ranges = <672 128>;
 			msi-controller;
 		};
 
