@@ -19,9 +19,6 @@
 	model = "Qualcomm Technologies, Inc. IPQ5424 RDP466-rffe";
 	compatible = "qcom,ipq5424-rdp466-rffe", "qcom,ipq5424";
 
-	/delete-node/ thermal-zones;
-	/delete-node/ opp-table-cpu;
-
 	soc@0 {
 		qupv3: geniqup@1ac0000 {
 
@@ -39,9 +36,6 @@
 				};
 			};
 		};
-
-		/delete-node/ efuse@a4000;
-		/delete-node/ thermal-sensor@4a9000;
 
 		leds {
 			compatible = "gpio-leds";

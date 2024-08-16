@@ -19,10 +19,6 @@
 	model = "Qualcomm Technologies, Inc. IPQ5424 DB-MR01.1";
 	compatible = "qcom,ipq5424-db-mr01.1", "qcom,ipq5424";
 
-	/delete-node/ thermal-zones;
-
-	/delete-node/ opp-table-cpu;
-
 	soc@0 {
 		qupv3: geniqup@1ac0000 {
 
@@ -69,9 +65,6 @@
 				status = "okay";
 			};
 		};
-
-		/delete-node/ efuse@a4000;
-		/delete-node/ thermal-sensor@4a9000;
 
 		leds {
 			compatible = "gpio-leds";
