@@ -617,6 +617,7 @@
 	qcom,wsi_index = <0>;
 	qcom,board_id = <0x10>;
 	hw_link_id = <0 0>;
+	led-gpio = <&tlmm 41 GPIO_ACTIVE_HIGH>;
 	status = "okay";
 };
 
