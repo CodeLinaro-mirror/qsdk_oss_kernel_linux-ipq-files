@@ -959,6 +959,8 @@
 				clock-names = "se";
 				clock-frequency = <400000>;
 				interrupts = <GIC_SPI 341 IRQ_TYPE_LEVEL_HIGH>;
+				assigned-clocks = <&gcc GCC_QUPV3_I2C0_CLK>;
+				assigned-clock-rates = <64000000>;
 				status = "disabled";
 			};
 
@@ -969,6 +971,8 @@
 				clock-names = "se";
 				clock-frequency = <400000>;
 				interrupts = <GIC_SPI 342 IRQ_TYPE_LEVEL_HIGH>;
+				assigned-clocks = <&gcc GCC_QUPV3_I2C1_CLK>;
+				assigned-clock-rates = <64000000>;
 				status = "disabled";
 			};
 
