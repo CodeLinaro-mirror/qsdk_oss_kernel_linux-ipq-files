@@ -42,7 +42,7 @@ static const struct gpio_regulator_data ipq9574_gpio_regulator_data[] = {
 };
 
 static const struct gpio_regulator_data ipq9574_4state_gpio_regulator_data[] = {
-	{"apc", 6, 1062500, 10000, 1004000, 1068000, 1000000},
+	{"apc", 6, 1062500, 10000, 1004000, 1068000, 1002500},
 	{"cx", 5, 850000, 10000, 850000, 910000, 850000},
 	{ }
 };
