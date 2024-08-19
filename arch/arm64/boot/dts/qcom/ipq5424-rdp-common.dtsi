@@ -187,17 +187,6 @@
 				};
 			};
 		};
-
-		dp3 {
-			device_type = "network";
-			compatible = "qcom,nss-dp";
-			qcom,id = <3>;
-			reg = <0x3a001400 0x200>;
-			qcom,mactype = <0>;
-			local-mac-address = [000000000000];
-			qcom,mht-dev = <1>;
-			qcom,is_switch_connected = <1>;
-		};
 	};
 };
 
