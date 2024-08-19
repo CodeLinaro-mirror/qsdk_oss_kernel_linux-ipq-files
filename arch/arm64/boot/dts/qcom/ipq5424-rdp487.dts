@@ -177,12 +177,19 @@
 	};
 };
 
-&qusb_phy_1 {
+&qusb_phy_0 {
 	status = "okay";
 };
 
-&usb2 {
+&usb3 {
 	status = "okay";
+	qcom,select-utmi-as-pipe-clk;
+	maximum-speed = "high-speed";
+
+	dwc_0: dwc3@8a00000 {
+		phys = <&qusb_phy_0>;
+		phy-names = "usb2-phy";
+	};
 };
 
 &q6v5_wcss {
