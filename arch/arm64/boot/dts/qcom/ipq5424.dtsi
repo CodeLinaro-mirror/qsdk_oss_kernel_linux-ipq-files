@@ -198,6 +198,13 @@
 			compatible = "qcom,scm-ipq5424", "qcom,scm";
 			qcom,dload-mode = <&tcsr 0x25100>;
 		};
+
+		qfprom {
+			compatible = "qcom,qfprom-ipq5424-sec";
+			img-addr = <0x89f00000>;
+			img-size = <0x00500000>;
+			scm-cmd-id = <0x1f>;
+		};
 	};
 
 	memory@80000000 {

@@ -70,8 +70,12 @@ qfprom_show_authenticate(struct device *dev,
 {
 	int ret;
 
-	ret = qcom_qfprom_show_authenticate();
-	if (ret == -1)
+	if (qcom_qfprom_show_auth_available())
+		ret = qcom_qfprom_show_authenticate();
+	else
+		ret = ipq54xx_qcom_qfprom_show_authenticate();
+
+	if (ret < 0)
 		return ret;
 
 	/* show needs a string response */
@@ -1002,8 +1006,12 @@ static int qfprom_probe(struct platform_device *pdev)
 	 * Registering sec_auth under "/sys/sec_authenticate"
 	   only if board is secured
 	 */
-	ret = qcom_qfprom_show_authenticate();
-	if (ret == -1)
+	if (qcom_qfprom_show_auth_available())
+		ret = qcom_qfprom_show_authenticate();
+	else
+		ret = ipq54xx_qcom_qfprom_show_authenticate();
+
+	if (ret < 0)
 		return ret;
 
 	if (ret == 1) {
