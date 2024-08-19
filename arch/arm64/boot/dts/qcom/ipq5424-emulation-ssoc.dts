@@ -473,10 +473,14 @@
 };
 
 &wifi0 {
+#ifdef __QCOM_NON_SECURE_PIL__
 	qcom,multipd_arch;
 	qcom,rproc = <&q6_wcss_pd1>;
 	qcom,rproc_rpd = <&q6v5_wcss>;
 	qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
+#else
+	qcom,rproc = <&q6v5_wcss>;
+#endif
 	qcom,tgt-mem-mode = <0>;
 	memory-region = <&q6_region>;
 	qcom,board_id = <0x10>;

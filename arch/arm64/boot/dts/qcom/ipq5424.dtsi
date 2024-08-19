@@ -1000,7 +1000,7 @@
                 };
 
 		q6v5_wcss: remoteproc@d100000 {
-			compatible = "qcom,ipq5424-q6-mpd";
+			compatible = "qcom,ipq5424-q6v5-wcss-sec";
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges;
@@ -1067,6 +1067,7 @@
 				mboxes = <&apcs_glb 8>;
 			};
 
+#ifdef __QCOM_NON_SECURE_PIL__
 			q6_wcss_pd1: remoteproc_pd1 {
 				compatible = "qcom,ipq5424-wcss-ahb-mpd";
 				firmware = "IPQ5424/q6_fw1.mdt";
@@ -1086,7 +1087,9 @@
 				qcom,smem-state-names = "shutdown",
 							"stop",
 							"spawn";
+				status = "disabled";
 			};
+#endif
 		};
 
 		userpd_1: userpd1 {

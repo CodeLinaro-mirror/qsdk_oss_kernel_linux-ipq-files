@@ -352,6 +352,10 @@
 	status = "okay";
 };
 
+&userpd_1 {
+	status = "okay";
+};
+
 &tlmm {
 	gpio_keys_default: gpio-keys-default-state {
 		pins = "gpio19";
