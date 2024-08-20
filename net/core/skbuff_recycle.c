@@ -843,7 +843,7 @@ static inline bool consume_skb_can_fast_recycle_debug(const struct sk_buff *skb,
 		WARN(1, "skb_debug: irqs_disabled for skb = 0x%p \n", skb);
 		return false;
 	}
-	if (unlikely(skb_shinfo(skb)->tx_flags & SKBTX_DEV_ZEROCOPY)) {
+	if (unlikely(skb_zcopy(skb))) {
 		WARN(1, "skb_debug: ZEROCOPY flag set for skb = 0x%p \n", skb);
 		return false;
 	}
