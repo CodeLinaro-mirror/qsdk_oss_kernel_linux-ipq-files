@@ -116,9 +116,6 @@
 				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
 				switch_lan_bmp = <0x1e>; /* lan port bitmap */
 				switch_wan_bmp = <0x0>;  /* wan port bitmap */
-				link-polling-required = <0>;
-				fdb_sync = "interrupt";
-				link-intr-gpio = <&tlmm 40 GPIO_ACTIVE_HIGH>;
 
 				qcom,port_phyinfo {
 					port@0 {
