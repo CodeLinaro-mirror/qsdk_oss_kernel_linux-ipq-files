@@ -1555,6 +1555,8 @@
 			compatible = "qcom,ess-uniphy";
 			reg = <0x7a00000 0x30000>;
 			uniphy_access_mode = "local bus";
+			nvmem-cells = <&uniphy0_disable>, <&uniphy1_disable>, <&uniphy2_disable>;
+			nvmem-cell-names = "uniphy0_disable", "uniphy1_disable", "uniphy2_disable";
 		};
 
 		edma@3ab00000 {
