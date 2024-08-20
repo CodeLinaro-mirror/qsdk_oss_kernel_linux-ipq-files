@@ -2247,10 +2247,10 @@
 				"rxdma2host-destination-ring-mac3",
 				"rxdma2host-destination-ring-mac2",
 				"rxdma2host-destination-ring-mac1";
-			/* 36 indicates GPIO number for LED_2G.
+			/* 42 indicates GPIO number for LED_2G.
 			 * 0 indicates that the GPIO is active high.
 			 */
-			led-gpio = <&tlmm 36 0>;
+			led-gpio = <&tlmm 42 GPIO_ACTIVE_HIGH>;
 			qcom,pta-num = <0>;
 			qcom,coex-mode = <0x2>;
 			qcom,bt-active-time = <0x18>;
