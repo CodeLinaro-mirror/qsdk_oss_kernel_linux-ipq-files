@@ -56,7 +56,7 @@
 				/* i2c2 shares spi1 clock, so use spi1_clk as per gcc driver */
 				clocks = <&gcc GCC_QUPV3_SPI1_CLK>;
 				clock-names = "se";
-				clock-frequency = <400000>;
+				clock-frequency = <100000>;
 				interrupts = <GIC_SPI 344 IRQ_TYPE_LEVEL_HIGH>;
 				pinctrl-0 = <&qup_i2c2_default>;
 				pinctrl-names = "default";
