@@ -58,7 +58,7 @@
 				clock-names = "se";
 				assigned-clocks = <&gcc GCC_QUPV3_SPI1_CLK>;
 				assigned-clock-rates = <32000000>;
-				clock-frequency = <400000>;
+				clock-frequency = <100000>;
 				interrupts = <GIC_SPI 344 IRQ_TYPE_LEVEL_HIGH>;
 				pinctrl-0 = <&qup_i2c2_default>;
 				pinctrl-names = "default";
