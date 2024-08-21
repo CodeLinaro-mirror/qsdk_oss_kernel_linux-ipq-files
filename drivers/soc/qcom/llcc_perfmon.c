@@ -56,6 +56,9 @@
  * @counter_dump:	Cumulative counter dump
  */
 static int mode = TIMED_MODE;
+static int atb_en;
+static int atb_mask_val;
+static int atb_val;
 
 struct llcc_perfmon_counter_map {
 	unsigned int port_sel;
@@ -66,6 +69,7 @@ struct llcc_perfmon_counter_map {
 };
 
 struct llcc_perfmon_private;
+
 /**
  * struct event_port_ops		- event port operation
  * @event_config:		Counter config support for port &  event
@@ -201,10 +205,12 @@ static void perfmon_counter_dump(struct llcc_perfmon_private *llcc_priv)
 				pr_info("counter %d has NOT overflown\n", i);
 		}
 	}
+
 	/* As the end of monitoring is determined by the interval and iteration timers
 	 * disabling monitoring is only required as a preparation for a subsequent use
 	 * of performance monitors.
 	 */
+	atb_en = 0;
 	if (mode == TIMED_MODE) {
 		offset = PERFMON_DUMP(llcc_priv->drv_ver);
 		llcc_bcast_write(llcc_priv, offset, MONITOR_DUMP);
@@ -1018,6 +1024,28 @@ static ssize_t time_mode_interval_store(struct device *dev, struct device_attrib
 
 static DEVICE_ATTR_WO(time_mode_interval);
 
+static ssize_t streaming_mode_store(struct device *dev, struct device_attribute *attr,
+					const char *buf, size_t size)
+{
+	unsigned long val;
+
+	if (kstrtoul(buf, 10, &val))
+		return -EINVAL;
+	if (!val)
+		return -EIO;
+	pr_emerg("In %s, setting ATB enabling and setting ATID\n", __func__);
+
+	atb_mask_val = PERFMON_MODE_ATB_ATID_MASK | PERFMON_MODE_ATB_EN_MASK;
+	atb_val = ATB_EN | (0x20 << ATB_ATID_SHIFT);
+	atb_en = (int)val;
+	pr_emerg("%s, Done setting ATB enabling and setting ATID\n", __func__);
+	pr_emerg("LLCC QDSS Streaming %s\n", (val?"enabled":"disabled"));
+	return size;
+}
+
+static DEVICE_ATTR_WO(streaming_mode);
+
+
 static ssize_t perfmon_start_store(struct device *dev, struct device_attribute *attr,
 		const char *buf, size_t count)
 {
@@ -1080,6 +1108,12 @@ static ssize_t perfmon_start_store(struct device *dev, struct device_attribute *
 	}
 
 	mask_val = PERFMON_MODE_MONITOR_MODE_MASK | PERFMON_MODE_MONITOR_EN_MASK;
+	if ((mode == TIMED_MODE) && (atb_en)) {
+		pr_emerg("In TIMED_MODE, atb is ENABLED, enabling ATB\n");
+		mask_val |= atb_mask_val;
+		val |= atb_val;
+	}
+
 	offset = PERFMON_MODE(llcc_priv->drv_ver);
 
 	status_offset = PERFMON_STATUS(llcc_priv->drv_ver);
@@ -2172,6 +2206,12 @@ static int llcc_perfmon_probe(struct platform_device *pdev)
 		return -EIO;
 	}
 
+	ret = device_create_file(dev, &dev_attr_streaming_mode);
+	if (ret) {
+		dev_err(dev, "Couldn't create sysfs for %s\n", pdev->name);
+		return -EIO;
+	}
+
 
 	llcc_driv_data = dev_get_drvdata(pdev->dev.parent);
 
@@ -2233,10 +2273,11 @@ static int llcc_perfmon_probe(struct platform_device *pdev)
 
 	if ((val & MAJOR_VER_MASK) == LLCC_VERSION_5)
 		llcc_priv->version = REV_5;
+
 	pr_info("Revision <%x.%x.%x>, %d MEMORY CNTRLRS connected with LLCC\n",
 			MAJOR_REV_NO(val), BRANCH_NO(val), MINOR_NO(val), llcc_priv->num_mc);
 	pr_info("this is with TIMED_MODE changes\n");
-	return 0;
+	return ret;
 }
 
 static int llcc_perfmon_remove(struct platform_device *pdev)
