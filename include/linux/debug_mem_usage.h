@@ -90,6 +90,25 @@
 
 #define alloc_large_system_hash		__wrap_alloc_large_system_hash
 
+#define mem_tracer_update_caller    __wrap_update_call_stack
+#define mem_debug_update_skb(skb) \
+do { \
+        mem_tracer_update_caller(skb->head); \
+        mem_tracer_update_caller(skb); \
+} while (0)
+
+#define mem_debug_update_skb_list(skb_list) \
+do { \
+        struct sk_buff *skb = NULL, *next = NULL; \
+        skb_queue_walk_safe(skb_list, skb, next) { \
+            if (skb) \
+                    mem_debug_update_skb(skb); \
+        } \
+} while (0)
+#else
+#define mem_tracer_update_caller
+#define  mem_debug_update_skb(skb)
+#define  mem_debug_update_skb_list(skb_list)
 #endif
 
 #endif /* __DEBUG_MEM_USAGE_H__ */
