@@ -11,7 +11,9 @@
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/leds/common.h>
 #include "ipq5332.dtsi"
-#if !defined(__IPQ_MEM_PROFILE_256_MB__)
+#ifdef __IPQ_MEM_PROFILE_512_MB__
+#include "ipq5332-512MB-memory.dtsi"
+#elif !defined(__IPQ_MEM_PROFILE_256_MB__)
 #include "ipq5332-default-memory.dtsi"
 #endif
 
