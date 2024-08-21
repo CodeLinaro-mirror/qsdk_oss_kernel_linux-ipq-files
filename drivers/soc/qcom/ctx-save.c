@@ -1471,7 +1471,7 @@ static int ctx_save_probe(struct platform_device *pdev)
 	if (!prop)
 		return -ENODEV;
 
-	scm_regsave = (void *) __get_free_pages(GFP_KERNEL,
+	scm_regsave = (void *) __get_dma_pages(GFP_KERNEL,
 				get_order(prop->crashdump_page_size));
 
 	if (!scm_regsave)
