@@ -280,7 +280,7 @@ inline bool skb_recycler_consume_list_fast(struct sk_buff_head *skb_list)
 	skb_queue_walk_safe(skb_list, skb, next) {
 		if (skb) {
 			__skb_unlink(skb, skb_list);
-			skb_recycler_consume(skb);
+			consume_skb(skb);
 		}
 	}
 
