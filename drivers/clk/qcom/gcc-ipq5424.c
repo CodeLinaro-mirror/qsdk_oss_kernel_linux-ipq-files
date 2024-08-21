@@ -60,6 +60,7 @@ static struct clk_alpha_pll gpll0 = {
 			.parent_data = &gcc_parent_data_xo,
 			.num_parents = 1,
 			.ops = &clk_alpha_pll_ops,
+			.flags = CLK_IS_CRITICAL,
 		},
 	},
 };
@@ -122,7 +123,8 @@ static struct clk_alpha_pll gpll4 = {
 			.name = "gpll4",
 			.parent_data = &gcc_parent_data_xo,
 			.num_parents = 1,
-			.ops = &clk_alpha_pll_ops
+			.flags = CLK_IS_CRITICAL,
+			.ops = &clk_alpha_pll_ops,
 		},
 	},
 };
@@ -548,6 +550,7 @@ static const struct freq_tbl ftbl_gcc_qupv3_spi0_clk_src[] = {
 	F(16000000, P_GPLL0_OUT_MAIN, 10, 1, 5),
 	F(24000000, P_XO, 1, 0, 0),
 	F(25000000, P_GPLL0_OUT_MAIN, 16, 1, 2),
+	F(32000000, P_GPLL0_OUT_MAIN, 10, 2, 5),
 	F(50000000, P_GPLL0_OUT_MAIN, 16, 0, 0),
 	{ }
 };
@@ -623,11 +626,11 @@ static struct clk_rcg2 gcc_qupv3_uart1_clk_src = {
 static const struct freq_tbl ftbl_gcc_sdcc1_apps_clk_src[] = {
 	F(144000, P_XO, 16, 12, 125),
 	F(400000, P_XO, 12, 1, 5),
-	F(24000000, P_GPLL2_OUT_MAIN, 12, 1, 2),
-	F(48000000, P_GPLL2_OUT_MAIN, 12, 0, 0),
-	F(96000000, P_GPLL2_OUT_MAIN, 6, 0, 0),
+	F(24000000, P_XO, 1, 0, 0),
+	F(48000000, P_GPLL2_OUT_MAIN, 12, 1, 2),
+	F(96000000, P_GPLL2_OUT_MAIN, 6, 1, 2),
 	F(177777778, P_GPLL0_OUT_MAIN, 4.5, 0, 0),
-	F(192000000, P_GPLL2_OUT_MAIN, 3, 0, 0),
+	F(192000000, P_GPLL2_OUT_MAIN, 6, 0, 0),
 	F(200000000, P_GPLL0_OUT_MAIN, 4, 0, 0),
 	{ }
 };
@@ -642,7 +645,7 @@ static struct clk_rcg2 gcc_sdcc1_apps_clk_src = {
 		.name = "gcc_sdcc1_apps_clk_src",
 		.parent_data = gcc_parent_data_8,
 		.num_parents = ARRAY_SIZE(gcc_parent_data_8),
-		.ops = &clk_rcg2_ops,
+		.ops = &clk_rcg2_floor_ops,
 	},
 };
 
@@ -713,6 +716,7 @@ static struct clk_rcg2 gcc_usb0_master_clk_src = {
 };
 
 static const struct freq_tbl ftbl_gcc_usb0_mock_utmi_clk_src[] = {
+	F(24000000, P_XO, 1, 0, 0),
 	F(60000000, P_GPLL4_OUT_AUX, 10, 1, 2),
 	{ }
 };
@@ -831,7 +835,7 @@ static const struct freq_tbl ftbl_gcc_system_noc_bfdcd_clk_src[] = {
 	F(24000000, P_XO, 1, 0, 0),
 	F(133333333, P_GPLL0_OUT_MAIN, 6, 0, 0),
 	F(200000000, P_GPLL0_OUT_MAIN, 4, 0, 0),
-	F(342850000, P_GPLL4_OUT_MAIN, 3.5, 0, 0),
+	F(266666667, P_GPLL4_OUT_MAIN, 4.5, 0, 0),
 	{ }
 };
 
@@ -865,6 +869,7 @@ static struct clk_rcg2 gcc_pcnoc_bfdcd_clk_src = {
 		.name = "gcc_pcnoc_bfdcd_clk_src",
 		.parent_data = gcc_parent_data_0,
 		.num_parents = ARRAY_SIZE(gcc_parent_data_0),
+		.flags = CLK_IS_CRITICAL,
 		.ops = &clk_rcg2_ops,
 	},
 };
@@ -939,6 +944,7 @@ static const struct freq_tbl ftbl_gcc_qpic_io_macro_clk_src[] = {
 	F(100000000, P_GPLL0_OUT_MAIN, 8, 0, 0),
 	F(200000000, P_GPLL0_OUT_MAIN, 4, 0, 0),
 	F(320000000, P_GPLL0_OUT_MAIN, 2.5, 0, 0),
+	F(400000000, P_GPLL0_OUT_MAIN, 2, 0, 0),
 	{ }
 };
 
@@ -2899,7 +2905,7 @@ static struct clk_branch gcc_qdss_dap_clk = {
 				&gcc_qdss_dap_sync_clk_src.hw
 			},
 			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT,
+			.flags = CLK_SET_RATE_PARENT | CLK_IS_CRITICAL,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -2916,7 +2922,7 @@ static struct clk_branch gcc_qdss_at_clk = {
 				&gcc_qdss_at_clk_src.clkr.hw
 			},
 			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT,
+			.flags = CLK_SET_RATE_PARENT | CLK_IS_CRITICAL,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -3683,7 +3689,7 @@ static const struct regmap_config gcc_ipq5424_regmap_config = {
 	.reg_bits       = 32,
 	.reg_stride     = 4,
 	.val_bits       = 32,
-	.max_register   = 0x841f0,
+	.max_register   = 0x3f024,
 	.fast_io        = true,
 };
 
