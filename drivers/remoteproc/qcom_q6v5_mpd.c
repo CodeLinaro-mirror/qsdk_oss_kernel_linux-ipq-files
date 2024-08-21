@@ -7,6 +7,7 @@
  */
 #include <linux/clk.h>
 #include <linux/delay.h>
+#include <linux/elf.h>
 #include <linux/io.h>
 #include <linux/iopoll.h>
 #include <linux/kernel.h>
@@ -199,6 +200,12 @@ struct license_bootargs {
 	u32 addr;
 	u32 size;
 } __packed;
+
+struct qcom_pd_fw_info {
+	phys_addr_t paddr;
+	void *vaddr;
+	size_t size;
+};
 
 static int handle_upd_in_rpd_crash(void *data)
 {
@@ -1137,10 +1144,85 @@ static void q6_wcss_copy_segment(struct rproc *rproc,
 	devm_iounmap(dev, ptr);
 }
 
+static int get_pd_fw_info(struct device *dev, const struct firmware *fw,
+		   phys_addr_t mem_phys, size_t mem_size, u8 pd_asid,
+		   struct qcom_pd_fw_info *fw_info)
+{
+	const struct elf32_phdr *phdrs;
+	const struct elf32_phdr *phdr;
+	const struct elf32_hdr *ehdr;
+	phys_addr_t mem_reloc;
+	phys_addr_t min_addr = PHYS_ADDR_MAX;
+	phys_addr_t max_addr = 0;
+	ssize_t offset;
+	bool relocate = false;
+	int ret = 0, i;
+
+	if (!fw || !mem_phys || !mem_size)
+		return -EINVAL;
+
+	ehdr = (struct elf32_hdr *)fw->data;
+	phdrs = (struct elf32_phdr *)(ehdr + 1);
+
+	for (i = 0; i < ehdr->e_phnum; i++) {
+		phdr = &phdrs[i];
+
+		if (!mdt_phdr_valid(phdr))
+			continue;
+
+		if (phdr->p_flags & QCOM_MDT_RELOCATABLE)
+			relocate = true;
+
+		if (phdr->p_paddr < min_addr)
+			min_addr = phdr->p_paddr;
+
+		if (phdr->p_paddr + phdr->p_memsz > max_addr)
+			max_addr = ALIGN(phdr->p_paddr + phdr->p_memsz, SZ_4K);
+	}
+
+	if (relocate) {
+		/*
+		 * The image is relocatable, so offset each segment based on
+		 * the lowest segment address.
+		 */
+		mem_reloc = min_addr;
+	} else {
+		/*
+		 * Image is not relocatable, so offset each segment based on
+		 * the allocated physical chunk of memory.
+		 */
+		mem_reloc = mem_phys;
+	}
+
+	for (i = 0; i < ehdr->e_phnum; i++) {
+		phdr = &phdrs[i];
+
+		if (!mdt_phdr_valid(phdr))
+			continue;
+
+		offset = phdr->p_paddr - mem_reloc;
+		if (offset < 0 || offset + phdr->p_memsz > mem_size) {
+			dev_err(dev, "segment outside memory range\n");
+			ret = -EINVAL;
+			break;
+		}
+
+		if (!fw_info->paddr) {
+			fw_info->paddr = mem_phys + offset;
+			fw_info->vaddr = (void *)(uintptr_t)phdr->p_vaddr;
+		}
+
+		fw_info->size += phdr->p_memsz;
+	}
+	return ret;
+}
+
 static int q6_wcss_dump_segments(struct rproc *rproc,
 				 const struct firmware *fw)
 {
 	struct device *dev = rproc->dev.parent;
+	struct qcom_pd_fw_info fw_info = {0};
+	struct q6_wcss *wcss = rproc->priv;
 	struct reserved_mem *rmem = NULL;
 	struct device_node *node;
 	int num_segs, index = 0;
@@ -1177,6 +1259,29 @@ static int q6_wcss_dump_segments(struct rproc *rproc,
 			return ret;
 
 		index++;
+	}
+
+	if (wcss->pd_asid) {
+		ret = get_pd_fw_info(wcss->dev, fw, wcss->mem_phys,
+				     wcss->mem_size, wcss->pd_asid, &fw_info);
+
+		if (ret) {
+			dev_err(wcss->dev, "couldn't get PD firmware info : %d\n",
+				ret);
+			return ret;
+		}
+
+		dev_dbg(dev, "Adding PD FW info segment pa: 0x%pax va: 0x%px size 0x%zx",
+			&fw_info.paddr, &fw_info.vaddr, fw_info.size);
+
+		ret = rproc_coredump_add_custom_segment_with_va(rproc,
+							fw_info.paddr,
+							(uintptr_t)fw_info.vaddr,
+							fw_info.size,
+							q6_wcss_copy_segment,
+							NULL);
+		if (ret)
+			return ret;
 	}
 
 	return 0;
