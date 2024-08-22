@@ -1012,6 +1012,8 @@
 		apss_clk: apss-clock@fa80000 {
 			compatible = "qcom,apss-ipq5424-clk";
 			reg = <0x0fa80000 0x20000>;
+			nvmem-cells = <&apss_cpu_freq>;
+			nvmem-cell-names = "apss_cpu_freq";
 			clocks = <&xo>, <&gcc GPLL0>;
 			clock-name = "xo", "gpll0";
 			#clock-cells = <1>;
