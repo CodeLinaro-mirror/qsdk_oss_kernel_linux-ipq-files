@@ -350,6 +350,54 @@ inline bool skb_recycler_consume_list_fast(struct sk_buff_head *skb_list)
 		return true;
 	}
 
+#ifdef CONFIG_SKB_RECYCLER_MULTI_CPU
+	h = this_cpu_ptr(&recycle_spare_list);
+
+	/* The CPU hot recycle list was full; if the spare list is also full,
+	 * attempt to move the spare list to the global list for other CPUs to
+	 * use.
+	 */
+	if (unlikely(skb_queue_len(h) >= skb_recycle_spare_max_skbs)) {
+		u8 cur_tail, next_tail;
+
+		spin_lock(&glob_recycler.lock);
+		cur_tail = glob_recycler.tail;
+		next_tail = (cur_tail + 1) & SKB_RECYCLE_MAX_SHARED_POOLS_MASK;
+		if (next_tail != glob_recycler.head) {
+			struct sk_buff_head *p = &glob_recycler.pool[cur_tail];
+
+			/* Move SKBs from CPU pool to Global pool*/
+			skb_queue_splice_init(h, p);
+
+			/* Done with global list init */
+			glob_recycler.tail = next_tail;
+			spin_unlock(&glob_recycler.lock);
+
+			/* We have now cleared room in the spare;
+			 * Initialize and enqueue skb into spare
+			 */
+			mem_debug_update_skb_list(skb_list); /* FIX all mem debug */
+			mem_leak_free_skb_list(skb_list);
+			skb_queue_splice_init(skb_list, h);
+
+			local_irq_restore(flags);
+			preempt_enable();
+			return true;
+		}
+		/* We still have a full spare because the global is also full */
+		spin_unlock(&glob_recycler.lock);
+	} else {
+		/* We have room in the spare list; enqueue to spare list */
+		mem_debug_update_skb_list(skb_list);
+		mem_leak_free_skb_list(skb_list);
+		skb_queue_splice_init(skb_list, h);
+
+		local_irq_restore(flags);
+		preempt_enable();
+		return true;
+	}
+#endif
+
 	local_irq_restore(flags);
 	preempt_enable();
 
