@@ -43,6 +43,8 @@ struct user_pd {
 	struct rproc *rproc;
 	struct notifier_block rproc_nb;
 	struct notifier_block rproc_atomic_nb;
+	void *ssr_notifier;
+	void *ssr_atomic_notifier;
 	phys_addr_t mem_phys;
 	phys_addr_t mem_reloc;
 	void *mem_region;
@@ -151,6 +153,7 @@ static int q6v5_user_pd_load(struct user_pd *upd)
 	else
 		ret = -EINVAL;
 
+	release_firmware(fw);
 	return ret;
 }
 
@@ -575,6 +578,12 @@ int q6v5_upd_rproc_notifier_cb(struct notifier_block *nb, unsigned long action,
 		break;
 	case QCOM_SSR_AFTER_SHUTDOWN:
 		break;
+	case QCOM_SSR_NOTIFY_CRASH:
+		/* Complete any pending waits for the userpd if rproc crashed */
+		complete(&upd->spawn_done);
+		complete(&upd->start_done);
+		complete(&upd->stop_done);
+		break;
 	}
 	return NOTIFY_DONE;
 }
@@ -680,7 +689,22 @@ static int q6v5_upd_probe(struct platform_device *pdev)
 	upd->rproc_nb.notifier_call = q6v5_upd_rproc_notifier_cb;
 	upd->rproc_nb.priority = 1;
 
-	qcom_register_ssr_notifier(upd->rproc->name, &upd->rproc_nb);
+	upd->ssr_notifier = qcom_register_ssr_notifier(upd->rproc->name,
+						       &upd->rproc_nb);
+
+	if (IS_ERR(upd->ssr_notifier)) {
+		dev_err(upd->dev, "Failed to register SSR notifier\n");
+		return PTR_ERR(upd->ssr_notifier);
+	}
+
+	upd->ssr_atomic_notifier =
+			qcom_register_ssr_atomic_notifier(upd->rproc->name,
+							  &upd->rproc_nb);
+
+	if (IS_ERR(upd->ssr_atomic_notifier)) {
+		dev_err(upd->dev, "Failed to register SSR atomic notifier\n");
+		return PTR_ERR(upd->ssr_atomic_notifier);
+	}
 
 	ret = upd_alloc_memory_region(upd);
 	if (ret) {
@@ -723,6 +747,11 @@ static int q6v5_upd_remove(struct platform_device *pdev)
 	struct user_pd *upd = platform_get_drvdata(pdev);
 
 	dev_info(upd->dev, "%s\n", __func__);
+
+	qcom_unregister_ssr_atomic_notifier(upd->ssr_atomic_notifier,
+					    &upd->rproc_nb);
+	qcom_unregister_ssr_notifier(upd->ssr_notifier, &upd->rproc_nb);
+
 	return 0;
 }
 
