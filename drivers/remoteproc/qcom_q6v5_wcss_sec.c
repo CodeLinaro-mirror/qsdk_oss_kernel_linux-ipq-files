@@ -123,6 +123,9 @@ static int q6v5_wcss_sec_start(struct rproc *rproc)
 
 	if (ret) {
 		dev_err(wcss->dev, "wcss_reset failed\n");
+		if (desc->tmelcom_support)
+			tmelcom_secboot_teardown(desc->pasid, 0);
+
 		return ret;
 	}
 
