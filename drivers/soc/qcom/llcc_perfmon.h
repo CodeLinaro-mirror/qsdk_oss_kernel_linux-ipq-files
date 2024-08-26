@@ -84,9 +84,14 @@
 #define PERFMON_COUNTER_n_CONFIG(v, n)	((VER_CHK(v) ? 0x36020 : 0x031020) + 4 * (n))
 #define PERFMON_NUM_CNTRS_DUMP_CFG(v)	(VER_CHK(v) ? 0x360EC : 0x0310EC)
 #define PERFMON_MODE(v)			(VER_CHK(v) ? 0x3600C : 0x03100C)
+#define PERFMON_TIMED_MODE_INTERVAL(v)	(VER_CHK(v) ? 0x36014 : 0x031014)
+#define PERFMON_TIMED_MODE_ITERATIONS(v) (VER_CHK(v) ? 0x36018 : 0x031018)
 #define PERFMON_DUMP(v)			(VER_CHK4(v) ? 0x37000 : VER_CHK(v) ? 0x36010 : 0x031010)
+#define PERFMON_STATUS(v)		(VER_CHK4(v) ? 0x37004 : VER_CHK(v) ? 0x36014 : 0x031014)
 
 #define LLCC_COUNTER_n_VALUE(v, n)	((VER_CHK4(v) ? 0x37008 : VER_CHK(v) ? 0x36060 : 0x31060)\
+					+ 4 * (n))
+#define LLCC_COUNTER_n_OVERFLOW(v, n)	((VER_CHK4(v) ? 0x37048 : VER_CHK(v) ? 0x360A0 : 0x310A0)\
 					+ 4 * (n))
 
 #define EVENT_NUM_MAX			(128)
@@ -123,7 +128,7 @@
 
 /* COMMON */
 #define BYTE_SCALING			(1024)
-#define BEAT_SCALING			(32)
+#define BEAT_SCALING			(64)
 #define LB_CNT_SHIFT			(28)
 #define LB_CNT_MASK			GENMASK(LB_CNT_SHIFT + 3, LB_CNT_SHIFT)
 #define NUM_MC_SHIFT			(10)
