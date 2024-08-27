@@ -12,7 +12,11 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/leds/common.h>
+#ifdef __IPQ_MEM_PROFILE_512_MB__
+#include "ipq5332-512MB-memory.dtsi"
+#else
 #include "ipq5332-default-memory.dtsi"
+#endif
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ5332/DB-MI01.1";
