@@ -21,6 +21,7 @@
 #include "clk-regmap.h"
 #include "common.h"
 
+#define GPLL0_CLK_RATE		800000000
 #define CPU_NOM_CLK_RATE	1416000000
 #define CPU_TURBO_CLK_RATE	1800000000
 #define L3_NOM_CLK_RATE		984000000
@@ -31,6 +32,13 @@ enum {
 	P_GPLL0,
 	P_APSS_PLL_EARLY,
 	P_L3_PLL,
+};
+
+struct apss_clk {
+	struct notifier_block cpu_clk_notifier;
+	struct clk_hw *hw;
+	struct device *dev;
+	struct clk *l3_clk;
 };
 
 /*
@@ -84,7 +92,9 @@ static const struct parent_map parents_apss_silver_clk_src_map[] = {
 };
 
 static const struct freq_tbl ftbl_apss_clk_src[] = {
-	{ .src = P_APSS_PLL_EARLY, .pre_div = 1 },
+	F(GPLL0_CLK_RATE, P_GPLL0, 1, 0, 0),
+	F(CPU_NOM_CLK_RATE, P_APSS_PLL_EARLY, 1, 0, 0),
+	F(CPU_TURBO_CLK_RATE, P_APSS_PLL_EARLY, 1, 0, 0),
 	{ }
 };
 
@@ -97,7 +107,7 @@ static struct clk_rcg2 apss_silver_clk_src = {
 		.name = "apss_silver_clk_src",
 		.parent_data = parents_apss_silver_clk_src,
 		.num_parents = ARRAY_SIZE(parents_apss_silver_clk_src),
-		.ops = &clk_rcg2_mux_closest_ops,
+		.ops = &clk_rcg2_ops,
 		.flags = CLK_SET_RATE_PARENT,
 	},
 };
@@ -150,7 +160,9 @@ static const struct parent_map parents_l3_clk_src_map[] = {
 };
 
 static const struct freq_tbl ftbl_l3_clk_src[] = {
-	{ .src = P_L3_PLL, .pre_div = 1 },
+	F(GPLL0_CLK_RATE, P_GPLL0, 1, 0, 0),
+	F(L3_NOM_CLK_RATE, P_L3_PLL, 1, 0, 0),
+	F(L3_TURBO_CLK_RATE, P_L3_PLL, 1, 0, 0),
 	{ }
 };
 
@@ -163,7 +175,7 @@ static struct clk_rcg2 l3_clk_src = {
 		.name = "l3_clk_src",
 		.parent_data = parents_l3_clk_src,
 		.num_parents = ARRAY_SIZE(parents_l3_clk_src),
-		.ops = &clk_rcg2_mux_closest_ops,
+		.ops = &clk_rcg2_ops,
 		.flags = CLK_SET_RATE_PARENT,
 	},
 };
@@ -238,23 +250,71 @@ static const struct alpha_pll_config l3_pll_config = {
 	.main_output_mask = BIT(0),
 };
 
-/* ToDo: Dummy function and implementation is pending
-static int cpu_clk_notifier_fn(struct notifier_block *nb, unsigned long action,
-				void *data)
-{	return NOTIFY_OK;
+static unsigned long get_l3_clk_from_tbl(unsigned long rate)
+{
+	struct clk_rcg2 *l3_rcg2 = container_of(&l3_clk_src.clkr, struct clk_rcg2, clkr);
+	u8 max_clk = sizeof(ftbl_apss_clk_src) / sizeof(struct freq_tbl);
+	u8 loop;
+
+	for (loop = 0; loop < max_clk; loop++)
+		if (ftbl_apss_clk_src[loop].freq == rate)
+			return l3_rcg2->freq_tbl[loop].freq;
+	return 0;
 }
-*/
+
+static int cpu_clk_notifier_fn(struct notifier_block *nb, unsigned long action,
+			       void *data)
+{
+	struct apss_clk *apss_ipq5424_cfg = container_of(nb, struct apss_clk, cpu_clk_notifier);
+	struct clk_notifier_data *cnd = (struct clk_notifier_data *)data;
+	struct device *dev = apss_ipq5424_cfg->dev;
+	unsigned long rate = 0, l3_rate;
+	int err = 0;
+
+	dev_dbg(dev, "action:%ld old_rate:%ld new_rate:%ld\n", action,
+		cnd->old_rate, cnd->new_rate);
+
+	switch (action) {
+	case PRE_RATE_CHANGE:
+		if (cnd->old_rate < cnd->new_rate)
+			rate = cnd->new_rate;
+	break;
+	case POST_RATE_CHANGE:
+		if (cnd->old_rate > cnd->new_rate)
+			rate = cnd->new_rate;
+	break;
+	};
+
+	if (!rate)
+		goto notif_ret;
+
+	l3_rate = get_l3_clk_from_tbl(rate);
+	if (!l3_rate) {
+		dev_err(dev, "Failed to get l3 clock rate from l3_tbl\n");
+		return NOTIFY_BAD;
+	}
+
+	err = clk_set_rate(apss_ipq5424_cfg->l3_clk, l3_rate);
+	if (err) {
+		dev_err(dev, "Failed to set l3 clock rate(%ld) err(%d)\n", l3_rate, err);
+		return NOTIFY_BAD;
+	}
+
+notif_ret:
+	return NOTIFY_OK;
+}
 
 static int apss_ipq5424_probe(struct platform_device *pdev)
 {
-	struct device_node *np = of_cpu_device_node_get(0);
-//	struct clk_hw *hw = &apss_silver_clk_src.clkr.hw;
-//	struct notifier_block *cpu_clk_notifier;
 	struct device *dev = &pdev->dev;
+	struct apss_clk *apss_ipq5424_cfg;
 	struct regmap *regmap;
 	void __iomem *base;
-	struct clk* clk;
 	int ret;
+
+	apss_ipq5424_cfg = devm_kzalloc(&pdev->dev, sizeof(struct apss_clk), GFP_KERNEL);
+	if (IS_ERR_OR_NULL(apss_ipq5424_cfg))
+		return PTR_ERR(apss_ipq5424_cfg);
 
 	base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(base))
@@ -274,43 +334,21 @@ static int apss_ipq5424_probe(struct platform_device *pdev)
 
 	dev_dbg(&pdev->dev, "Registered APSS & L3 clock provider\n");
 
-	/* ToDo: Commenting out the clk notifier functionality for SoD */
-/*	cpu_clk_notifier = devm_kzalloc(&pdev->dev,
-					sizeof(*cpu_clk_notifier),
-					GFP_KERNEL);
-	if (!cpu_clk_notifier)
-		return -ENOMEM;
+	apss_ipq5424_cfg->dev = dev;
+	apss_ipq5424_cfg->hw = &apss_silver_clk_src.clkr.hw;
+	apss_ipq5424_cfg->cpu_clk_notifier.notifier_call = cpu_clk_notifier_fn;
 
-	cpu_clk_notifier->notifier_call = cpu_clk_notifier_fn;
+	apss_ipq5424_cfg->l3_clk = clk_hw_get_clk(&l3_core_clk.clkr.hw, "l3_clk");
+	if (IS_ERR(apss_ipq5424_cfg->l3_clk)) {
+		dev_err(&pdev->dev, "Failed to get L3 clk, %ld\n",
+			PTR_ERR(apss_ipq5424_cfg->l3_clk));
+		return PTR_ERR(apss_ipq5424_cfg->l3_clk);
+	}
 
-	ret = devm_clk_notifier_register(&pdev->dev, hw->clk, cpu_clk_notifier);
+	ret = devm_clk_notifier_register(&pdev->dev, apss_ipq5424_cfg->hw->clk,
+					 &apss_ipq5424_cfg->cpu_clk_notifier);
 	if (ret)
-		return ret;*/
-
-	/* Configure the L3 and APSS to Nominal frequency */
-	clk = of_clk_get_by_name(np, "l3_core");
-	if (IS_ERR(clk)) {
-		dev_err(&pdev->dev, "Failed to get L3 clk, %ld\n", PTR_ERR(clk));
-		return PTR_ERR(clk);
-	}
-
-	ret = clk_set_rate(clk, L3_TURBO_CLK_RATE);
-	if (ret) {
-		dev_err(&pdev->dev, "Failed to set the L3 clk rate, %d\n", ret);
 		return ret;
-	}
-
-	clk = of_clk_get_by_name(np, "cpu");
-	if (IS_ERR(clk)) {
-		dev_err(&pdev->dev, "Failed to get CPU clk, %ld\n", PTR_ERR(clk));
-		return PTR_ERR(clk);
-	}
-
-	ret = clk_set_rate(clk, CPU_TURBO_CLK_RATE);
-	if (ret) {
-		dev_err(&pdev->dev, "Failed to set the CPU clk rate, %d\n", ret);
-		return ret;
-	}
 
 	return 0;
 }
