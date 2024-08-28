@@ -292,13 +292,9 @@
 		#size-cells = <2>;
 		ranges;
 
-		tmc_etr_region: tmc_etr_dump@0 {
-			no-map;
-			status = "disabled";
-		};
-
+#if !defined(__IPQ_MEM_PROFILE_256_MB__)
 		tzapp: tzapp@0x89900000 {
-		#if !defined(__IPQ_MEM_PROFILE_512_MB__) && !defined(__IPQ_MEM_PROFILE_256_MB__)
+		#if !defined(__IPQ_MEM_PROFILE_512_MB__)
 			reg = <0x0 0x89900000 0x0 0x600000>;
 		#endif
 			no-map;
@@ -318,7 +314,7 @@
 			reg = <0x0 0x8a600000 0x0 0x200000>;
 			no-map;
 		};
-
+#endif
 		smem@8a800000 {
 			compatible = "qcom,smem";
 			reg = <0x0 0x8a800000 0x0 0x32000>;
@@ -329,6 +325,11 @@
 
 		atf@8a832000 {
 			reg = <0x0 0x8a832000 0x0 0x7d000>;
+			no-map;
+			status = "disabled";
+		};
+
+		tmc_etr_region: tmc_etr_dump@0 {
 			no-map;
 			status = "disabled";
 		};
