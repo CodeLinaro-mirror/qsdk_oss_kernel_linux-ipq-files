@@ -85,6 +85,12 @@
 					};
 				};
 			};
+
+			ess-switch1@1 {
+				link-polling-required = <0>;
+				fdb_sync = "interrupt";
+				link-intr-gpio = <&tlmm 41 GPIO_ACTIVE_HIGH>;
+			};
 		};
 
 		dp1 {
