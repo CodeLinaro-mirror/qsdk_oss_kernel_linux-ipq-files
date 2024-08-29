@@ -400,36 +400,6 @@
 			interrupt-controller;
 			#interrupt-cells = <2>;
 
-			qup_i2c0_default: qup-i2c0-default-state {
-				qup_i2c0_scl {
-					pins = "gpio14";
-					function = "i2c0_scl";
-					drive-strength = <8>;
-					bias-disable;
-				};
-				qup_i2c0_sda {
-					pins = "gpio15";
-					function = "i2c0_sda";
-					drive-strength = <8>;
-					bias-disable;
-				};
-			};
-
-			qup_i2c1_default: qup-i2c1-default-state {
-				qup_i2c1_scl {
-					pins = "gpio16";
-					function = "i2c1_scl";
-					drive-strength = <8>;
-					bias-disable;
-				};
-				qup_i2c1_sda {
-					pins = "gpio17";
-					function = "i2c1_sda";
-					drive-strength = <8>;
-					bias-disable;
-				};
-			};
-
 			qup_uart0_default: qup-uart0-default-state {
 				qup_uart0_tx: tx-pins {
 					pins = "gpio13";
@@ -460,104 +430,11 @@
 				};
 			};
 
-			qup_uart1_default: qup-uart1-default-state {
-				qup_uart1_tx: tx-pins {
-					pins = "gpio44";
-					function = "uart1_tx";
-					drive-strength = <8>;
-					bias-pull-up;
-				};
-
-				qup_uart1_rx: rx-pins {
-					pins = "gpio43";
-					function = "uart1_rx";
-					drive-strength = <8>;
-					bias-pull-up;
-				};
-			};
-
-			qspi_default_state: qspi-default-state {
-				qspi_clock {
-					pins = "gpio5";
-					function = "qspi_clk";
-					drive-strength = <8>;
-					bias-pull-down;
-				};
-
-				qspi_cs {
-					pins = "gpio4";
-					function = "qspi_cs";
-					drive-strength = <8>;
-					bias-pull-up;
-				};
-
-				qspi_data {
-					pins = "gpio0", "gpio1", "gpio2", "gpio3";
-					function = "qspi_data";
-					drive-strength = <8>;
-					bias-pull-down;
-				};
-			};
-
-			sdc_default_state: sdc-default-state {
-				clk-pins {
-					pins = "gpio5";
-					function = "sdc_clk";
-					drive-strength = <8>;
-					bias-disable;
-				};
-
-				cmd-pins {
-					pins = "gpio4";
-					function = "sdc_cmd";
-					drive-strength = <8>;
-					bias-pull-up;
-				};
-
-				data-pins {
-					pins = "gpio0", "gpio1", "gpio2", "gpio3";
-					function = "sdc_data";
-					drive-strength = <8>;
-					bias-pull-up;
-				};
-			};
-
-			qup_spi0_default: qup-spi0-default-state {
-				qup_spi0_clk {
-					pins = "gpio6";
-					function = "spi0_clk";
-					drive-strength = <8>;
-					bias-disable;
-				};
-
-				qup_spi0_cs {
-					pins = "gpio7";
-					function = "spi0_cs";
-					drive-strength = <8>;
-					bias-disable;
-				};
-
-				qup_spi0_miso {
-					pins = "gpio8";
-					function = "spi0_miso";
-					drive-strength = <8>;
-					bias-disable;
-				};
-
-				qup_spi0_mosi {
-					pins = "gpio9";
-					function = "spi0_mosi";
-					drive-strength = <8>;
-					bias-disable;
-				};
-			};
-
 			pcie0_default_state: pcie0-default-state {
 				perst-n-pins {
 					pins = "gpio25";
 					function = "gpio";
 					drive-strength = <2>;
-					bias-pull-down;
 					output-low;
 				};
 			};
@@ -567,7 +444,6 @@
 					pins = "gpio28";
 					function = "gpio";
 					drive-strength = <2>;
-					bias-pull-down;
 					output-low;
 				};
 			};
@@ -577,7 +453,6 @@
 					pins = "gpio31";
 					function = "gpio";
 					drive-strength = <2>;
-					bias-pull-down;
 					output-low;
 				};
 			};
@@ -587,7 +462,6 @@
 					pins = "gpio34";
 					function = "gpio";
 					drive-strength = <2>;
-					bias-pull-down;
 					output-low;
 				};
 			};
