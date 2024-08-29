@@ -55,6 +55,7 @@ static int gl_version_enable;
 static int version_commit_enable;
 static int fuse_blow_size_req;
 static int decompress_error;
+struct load_segs_info *ld_seg_buff;
 
 enum qti_sec_img_auth_args {
 	QTI_SEC_IMG_SW_TYPE,
@@ -415,6 +416,114 @@ exit:
 	return ret;
 }
 
+static int elf64_parse_ld_segments(void *va_addr, u32 *md_size, unsigned int pa_addr)
+{
+	Elf64_Ehdr *ehdr = (Elf64_Ehdr *)(uintptr_t)va_addr;
+	Elf64_Phdr *phdr = (Elf64_Phdr *)(uintptr_t)(va_addr + ehdr->e_phoff);
+	u8 lds_cnt = 0; /* Loadable segment count */
+	u32 ld_start_addr;
+
+	if ((!IS_ELF(*ehdr)) || ehdr->e_phnum < 3)
+		return -EINVAL;
+	/*
+	 * Considering that first two segments of program header are not loadable segments,
+	 * ignoring it for memory allocation
+	 */
+	ld_seg_buff = kzalloc(sizeof(*ld_seg_buff) * (ehdr->e_phnum - 2), GFP_KERNEL);
+	if (!ld_seg_buff)
+		return -ENOMEM;
+
+	for (int i = 0; i < ehdr->e_phnum; i++, phdr++) {
+		/* Sum of the offset and filesize of the last NULL segment */
+		if (phdr->p_type == PT_NULL) {
+			*md_size = phdr->p_offset + phdr->p_filesz;
+			continue;
+		}
+
+		if (phdr->p_type != PT_LOAD)
+			continue;
+
+		if (!phdr->p_filesz && !phdr->p_memsz)
+			continue;
+		if (!phdr->p_filesz && phdr->p_memsz) {
+			ld_seg_buff[lds_cnt].start_addr = 0;
+			ld_seg_buff[lds_cnt++].end_addr = 0;
+			continue;
+		}
+		/* Populating the start and end address of valid loadable
+		 * segments by adding the offset with the physical elf address
+		 */
+		ld_start_addr = phdr->p_offset + pa_addr;
+		ld_seg_buff[lds_cnt].start_addr = ld_start_addr;
+		ld_seg_buff[lds_cnt++].end_addr = ld_start_addr + phdr->p_filesz;
+
+		pr_debug("lds_cnt: %d, start_addr: %x, end_addr: %x\n", lds_cnt,
+			 ld_seg_buff[lds_cnt - 1].start_addr,
+			 ld_seg_buff[lds_cnt - 1].end_addr);
+	}
+	return lds_cnt;
+}
+
+static int elf32_parse_ld_segments(void *va_addr, u32 *md_size, unsigned int pa_addr)
+{
+	Elf32_Ehdr *ehdr = (Elf32_Ehdr *)(uintptr_t)va_addr;
+	Elf32_Phdr *phdr = (Elf32_Phdr *)(uintptr_t)(va_addr + ehdr->e_phoff);
+	u8 lds_cnt = 0;
+	u32 ld_start_addr;
+
+	if ((!IS_ELF(*ehdr)) || ehdr->e_phnum < 3)
+		return -EINVAL;
+	/*
+	 * Considering that first two segments of program header are not loadable segments,
+	 * ignoring it for memory allocation
+	 */
+	ld_seg_buff = kzalloc(sizeof(*ld_seg_buff) * (ehdr->e_phnum - 2), GFP_KERNEL);
+	if (!ld_seg_buff)
+		return -ENOMEM;
+
+	for (int i = 0; i < ehdr->e_phnum; i++, phdr++) {
+		/* Sum of the offset and filesize of the last NULL segment */
+		if (phdr->p_type == PT_NULL) {
+			*md_size = phdr->p_offset + phdr->p_filesz;
+			continue;
+		}
+
+		if (phdr->p_type != PT_LOAD)
+			continue;
+
+		if (!phdr->p_filesz && !phdr->p_memsz)
+			continue;
+		if (!phdr->p_filesz && phdr->p_memsz) {
+			ld_seg_buff[lds_cnt].start_addr = 0;
+			ld_seg_buff[lds_cnt++].end_addr = 0;
+			continue;
+		}
+		/* Populating the start and end address of valid loadable
+		 * segments by adding the offset with the physical elf address
+		 */
+		ld_start_addr = phdr->p_offset + pa_addr;
+		ld_seg_buff[lds_cnt].start_addr = ld_start_addr;
+		ld_seg_buff[lds_cnt++].end_addr = ld_start_addr + phdr->p_filesz;
+
+		pr_debug("lds_cnt: %d, start_addr: %x, end_addr: %x\n", lds_cnt,
+			 ld_seg_buff[lds_cnt - 1].start_addr,
+			 ld_seg_buff[lds_cnt - 1].end_addr);
+	}
+	return lds_cnt;
+}
+
+static int parse_n_extract_ld_segment(void *va_addr, u32 *md_size, unsigned int pa_addr)
+{
+	Elf32_Ehdr *ehdr = (Elf32_Ehdr *)va_addr;
+
+	if (ehdr->e_ident[EI_CLASS] == ELFCLASS64)
+		return elf64_parse_ld_segments(va_addr, md_size, pa_addr);
+	else if (ehdr->e_ident[EI_CLASS] == ELFCLASS32)
+		return elf32_parse_ld_segments(va_addr, md_size, pa_addr);
+	else
+		return -EINVAL;
+}
+
 static ssize_t
 store_sec_auth(struct device *dev,
 			struct device_attribute *sec_attr,
@@ -434,6 +543,9 @@ store_sec_auth(struct device *dev,
 	void *data = NULL;
 	void *out_data = NULL;
 	struct elf_info info = {0};
+	int ld_seg_cnt = 0;
+	u32 md_size = 0; /* ELF Metadata size */
+	u64 status = 0;
 
 	file_name = kzalloc(count+1, GFP_KERNEL);
 	if (file_name == NULL)
@@ -559,19 +671,56 @@ store_sec_auth(struct device *dev,
 			goto hash_buf_alloc_err;
 		}
 
-		scm_cmd_id = QCOM_KERNEL_META_AUTH_CMD;
-
-		ret = qcom_sec_upgrade_auth_meta_data(scm_cmd_id, sw_type, size, img_addr,
-								hash_file_buf, hash_size);
+		/*
+		 * Metadata and hash contents are passed to TZ for rootfs auth
+		 * for all the targets. Both signature and Hash verification is done
+		 * by TZ for other targets whereas only Hash verification of rootfs
+		 * is performed by TZ incase of IPQ54xx and signature verification is
+		 * done by TME.
+		 */
+		ret = qcom_sec_upgrade_auth_meta_data(QCOM_KERNEL_META_AUTH_CMD,
+						      sw_type, size, img_addr,
+						      hash_file_buf, hash_size);
 		if (ret) {
 			pr_err("sec_upgrade_auth_meta_data failed with return=%d\n", ret);
 			goto hash_buf_alloc_err;
 		}
+
+		/*
+		 * Metadata is passed for signature verification of rootfs in IPQ54xx.
+		 * Passing the loadable_seg_info as NULL and loadable segment count
+		 * as zero for rootfs image as only the elf header is being passed.
+		 */
+		if (of_device_is_compatible(np, "qcom,qfprom-ipq5424-sec")) {
+			ret = qcom_sec_upgrade_auth_ld_segments(scm_cmd_id, sw_type,
+								img_addr, size,
+								NULL, 0, &status);
+			if (ret) {
+				pr_err("sec_upgrade_auth_ld_segments failed with return=%d\n", ret);
+				goto hash_buf_alloc_err;
+			}
+		}
 	}
 	else {
-		ret = qcom_sec_upgrade_auth(scm_cmd_id, sw_type, size, img_addr);
-		if (ret) {
-			pr_err("sec_upgrade_auth failed with return=%d\n", ret);
+		/* Pass the file_buf containing the elf for loadable segment extraction */
+		if (of_device_is_compatible(np, "qcom,qfprom-ipq5424-sec")) {
+			ld_seg_cnt = parse_n_extract_ld_segment(file_buf, &md_size, img_addr);
+			if (ld_seg_cnt > 0) {
+				ret = qcom_sec_upgrade_auth_ld_segments(scm_cmd_id, sw_type,
+									img_addr, md_size,
+									ld_seg_buff, ld_seg_cnt,
+									&status);
+			} else {
+				pr_err("Unable to parse the loadable segments: ret: %d\n",
+				       ld_seg_cnt);
+				goto free_out_data;
+			}
+		} else {
+			ret = qcom_sec_upgrade_auth(scm_cmd_id, sw_type, size, img_addr);
+		}
+		if (ret || status) {
+			pr_err("sec_upgrade_authentication failed return=%d status: %d\n",
+			       ret, status);
 			goto free_out_data;
 		}
 	}
