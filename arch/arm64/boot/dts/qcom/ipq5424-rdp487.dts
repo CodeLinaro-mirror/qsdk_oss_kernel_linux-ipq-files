@@ -232,7 +232,7 @@
 		pins = "gpio19";
 		function = "gpio";
 		drive-strength = <4>;
-		bias-pull-down;
+		bias-pull-up;
 	};
 
 	pcie2_default_state: pcie2-default-state {
