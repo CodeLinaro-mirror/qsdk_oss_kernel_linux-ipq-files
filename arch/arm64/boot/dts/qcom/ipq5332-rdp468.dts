@@ -396,6 +396,12 @@
 	pinctrl-names = "default";
 	cs-select = <0>;
 	status = "disabled";
+
+	spidev1: spi@0 {
+		compatible = "qti,spidev";
+		reg = <0>;
+		spi-max-frequency = <9600000>;
+	};
 };
 
 &pcm {
