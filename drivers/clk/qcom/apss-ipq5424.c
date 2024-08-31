@@ -11,8 +11,6 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
-#include <linux/nvmem-consumer.h>
-#include <linux/nvmem-provider.h>
 
 #include <dt-bindings/clock/qcom,apss-ipq.h>
 #include <dt-bindings/arm/qcom,ids.h>
@@ -257,18 +255,6 @@ static int apss_ipq5424_probe(struct platform_device *pdev)
 	void __iomem *base;
 	struct clk* clk;
 	int ret;
-	u8 speed_bin;
-	unsigned long l3_clk_rate;
-	unsigned long cpu_clk_rate;
-
-	ret = nvmem_cell_read_u8(dev, "apss_cpu_freq", &speed_bin);
-	if (ret) {
-		if (ret ==  -EPROBE_DEFER)
-			return -EPROBE_DEFER;
-
-		dev_err(&pdev->dev, "Failed to read nvmem_cell_read_u8, %d\n", ret);
-		return ret;
-	}
 
 	base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(base))
@@ -301,14 +287,6 @@ static int apss_ipq5424_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;*/
 
-	if (speed_bin == 0x3B) {
-		l3_clk_rate = L3_NOM_CLK_RATE;
-		cpu_clk_rate = CPU_NOM_CLK_RATE;
-	} else if (speed_bin == 0x4B || speed_bin == 0xFF) {
-		l3_clk_rate = L3_TURBO_CLK_RATE;
-		cpu_clk_rate = CPU_TURBO_CLK_RATE;
-	}
-
 	/* Configure the L3 and APSS to Nominal frequency */
 	clk = of_clk_get_by_name(np, "l3_core");
 	if (IS_ERR(clk)) {
@@ -316,7 +294,7 @@ static int apss_ipq5424_probe(struct platform_device *pdev)
 		return PTR_ERR(clk);
 	}
 
-	ret = clk_set_rate(clk, l3_clk_rate);
+	ret = clk_set_rate(clk, L3_TURBO_CLK_RATE);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to set the L3 clk rate, %d\n", ret);
 		return ret;
@@ -328,7 +306,7 @@ static int apss_ipq5424_probe(struct platform_device *pdev)
 		return PTR_ERR(clk);
 	}
 
-	ret = clk_set_rate(clk, cpu_clk_rate);
+	ret = clk_set_rate(clk, CPU_TURBO_CLK_RATE);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to set the CPU clk rate, %d\n", ret);
 		return ret;
