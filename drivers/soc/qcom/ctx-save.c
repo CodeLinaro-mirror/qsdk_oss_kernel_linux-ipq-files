@@ -203,8 +203,15 @@ static int mini_dump_open(struct inode *inode, struct file *file) {
 		cur_node = list_entry(pos, struct minidump_metadata_list, list);
 
 		if (cur_node->va != INVALID) {
-			segment = (struct dump_segment *)
-				kmalloc(sizeof(struct dump_segment), GFP_KERNEL);
+
+			if (in_interrupt() || !preemptible() || rcu_preempt_depth()) {
+				segment = (struct dump_segment *)
+					kmalloc(sizeof(struct dump_segment), GFP_ATOMIC);
+			} else {
+				segment = (struct dump_segment *)
+					kmalloc(sizeof(struct dump_segment), GFP_KERNEL);
+			}
+
 			if (!segment) {
 				pr_err("\nMinidump: Unable to allocate memory for dump segment");
 				return -ENOMEM;
@@ -822,8 +829,13 @@ int minidump_traverse_metadata_list(const char *name, const unsigned long
 		return -ENOMEM;
 	}
 
-	cur_node = (struct minidump_metadata_list *)
+	if (in_interrupt() || !preemptible() || rcu_preempt_depth()) {
+		cur_node = (struct minidump_metadata_list *)
+					 kmalloc(sizeof(struct minidump_metadata_list), GFP_ATOMIC);
+	} else {
+		cur_node = (struct minidump_metadata_list *)
 					kmalloc(sizeof(struct minidump_metadata_list), GFP_KERNEL);
+	}
 
 	if (!cur_node) {
 		return -ENOMEM;
@@ -1122,7 +1134,12 @@ int minidump_store_module_info(const char *name ,const unsigned long va,
 	if (!name)
 		return 0;
 
-	mod_name = kstrndup(name, strlen(name), GFP_KERNEL);
+	if (in_interrupt() || !preemptible() || rcu_preempt_depth()) {
+		mod_name = kstrndup(name, strlen(name), GFP_ATOMIC);
+	} else {
+		mod_name = kstrndup(name, strlen(name), GFP_KERNEL);
+	}
+
 	if (!mod_name)
 		return 0;
 
