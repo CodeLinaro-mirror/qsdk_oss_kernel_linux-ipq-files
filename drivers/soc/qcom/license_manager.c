@@ -22,6 +22,8 @@
 #include <linux/firmware.h>
 #include <linux/firmware/qcom/qcom_scm.h>
 #include <linux/tmelcom_ipc.h>
+#include <linux/soc/qcom/smem.h>
+
 #include "soc/qcom/license_manager.h"
 
 #define LICENSE_BUF_MAX 	(512 * 1024) //512KB
@@ -1307,11 +1309,57 @@ free_resp_buf:
 
 }
 
+static int populate_soc_hw_features(struct lm_svc_ctx *svc)
+{
+	u32 entries = 0;
+	int i = 0;
+	size_t size;
+	struct lm_soc_hw_feat *feat;
+
+	struct softsku_info_smem *smem = qcom_smem_get(QCOM_SMEM_HOST_ANY,
+			SMEM_SOFTSKU_INFO, &size);
+	if (IS_ERR(smem))
+		return PTR_ERR(smem);
+
+	entries = size / sizeof(struct softsku_info_smem);
+
+	for (i = 0; i < entries; i++) {
+		feat = kzalloc(sizeof(*feat), GFP_KERNEL);
+		feat->feature_id = smem[i].feature_id;
+		feat->feature_status = smem[i].feature_status;
+		list_add_tail(&feat->node, &svc->soc_hw_feature_list);
+	}
+
+	return 0;
+}
+
 static ssize_t show_licensed_features(struct kobject *k,
 				struct kobj_attribute *attr, char *buf)
 {
 	uint32_t i, len = 0, max_buf_len = PAGE_SIZE;
 	struct feature_info *itr, *tmp;
+	struct lm_soc_hw_feat *feat;
+
+	if (lm_svc->tmel_bounded) {
+		int count = 0;
+
+		len += scnprintf(buf + len, max_buf_len - len,
+			"\nSoC HW FEATURES:\n");
+
+		if (!list_empty(&lm_svc->soc_hw_feature_list)) {
+			list_for_each_entry(feat, &lm_svc->soc_hw_feature_list, node) {
+				if (feat->feature_status == 0) {
+					len += scnprintf(buf + len, max_buf_len - len,
+						"%u\n", feat->feature_id);
+					count++;
+				}
+			}
+		}
+
+		if (count == 0)
+			len += scnprintf(buf + len, max_buf_len - len,
+					"SoC HW feature list empty\n");
+	}
 
 	if (!list_empty(&lm_svc->clients_feature_list)) {
 		list_for_each_entry_safe(itr, tmp,
@@ -1472,6 +1520,10 @@ static int license_manager_probe(struct platform_device *pdev)
 			 svc->soc_bounded ? "SoC Bounded" : "Endpoint Bounded");
 	} else if (svc->tmel_bounded) {
 		dev_info(dev, "License Manager is TME-L Bounded\n");
+		INIT_LIST_HEAD(&svc->soc_hw_feature_list);
+		ret = populate_soc_hw_features(svc);
+		if (ret)
+			return ret;
 	}
 
 	/* Create IOCTL for userspace */
