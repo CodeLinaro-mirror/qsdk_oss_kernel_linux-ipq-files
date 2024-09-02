@@ -616,7 +616,6 @@ show_list_ipq5322_fuse(struct device *dev, struct device_attribute *attr,
 {
 	int ret = 0;
 	int index, next = 0;
-	unsigned long value;
 	unsigned long base_addr = 0xA00E8;
 	struct fuse_payload *fuse = NULL;
 
@@ -666,7 +665,6 @@ show_list_ipq9574_fuse(struct device *dev, struct device_attribute *attr,
 {
 	int ret = 0;
 	int index = 0, next = 0;
-	unsigned long value;
 	unsigned long base_addr = 0xA00D8;
 	struct fuse_payload_ipq9574 *fuse = NULL;
 
