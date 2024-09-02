@@ -328,6 +328,7 @@
 			qcom,wsi = <&wsi>;
 			qcom,wsi_index = <0>;
 			qcom,board_id = <0x01>;
+			qcom,msi = <0x10>;
 		};
 	};
 };
@@ -716,7 +717,7 @@
         status = "ok";
 };
 
-/* MLO GLOBAL MEM REGION size is 22MB for RDP with 4 QCN9224 radios */
+/* MLO GLOBAL MEM REGION size is 24MB for RDP with 4 QCN9224 radios */
 &mlo_global_mem0 {
         size = <0x0 0x1800000>;
         status = "ok";
