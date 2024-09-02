@@ -67,6 +67,10 @@ static void ipq9574_pcm_fill_data(uint32_t *tx_buff, uint32_t size,
 #define PCM_LBTEST_16BIT_16KHZ_4CH_RX_TO_TX	601
 #define PCM_LBTEST_16BIT_8KHZ_16CH_TX_TO_RX	7
 #define PCM_LBTEST_16BIT_8KHZ_16CH_RX_TO_TX	701
+#define PCM_LBTEST_8BIT_8KHZ_8CH_TX_TO_RX	8
+#define PCM_LBTEST_8BIT_8KHZ_8CH_RX_TO_TX	801
+#define PCM_LBTEST_16BIT_8KHZ_8CH_TX_TO_RX	9
+#define PCM_LBTEST_16BIT_8KHZ_8CH_RX_TO_TX	901
 /* The max value for loopback test config is 601(3 digits + 1 null byte)
  * This macro needs to be updated when more configs are added.
  */
@@ -79,7 +83,9 @@ static void ipq9574_pcm_fill_data(uint32_t *tx_buff, uint32_t size,
 		(config == PCM_LBTEST_8BIT_16KHZ_4CH_RX_TO_TX) ||	\
 		(config == PCM_LBTEST_16BIT_16KHZ_2CH_RX_TO_TX) ||	\
 		(config == PCM_LBTEST_16BIT_16KHZ_4CH_RX_TO_TX) ||	\
-		(config == PCM_LBTEST_16BIT_8KHZ_16CH_RX_TO_TX))
+		(config == PCM_LBTEST_16BIT_8KHZ_16CH_RX_TO_TX) ||	\
+		(config == PCM_LBTEST_8BIT_8KHZ_8CH_RX_TO_TX) ||	\
+		(config == PCM_LBTEST_16BIT_8KHZ_8CH_RX_TO_TX))
 
 #define LOOPBACK_FAIL_THRESHOLD		200
 
@@ -345,6 +351,58 @@ uint32_t pcm_init(int index)
 		ret = ipq_pcm_init(&cfg_params[index]);
 		break;
 
+	case PCM_LBTEST_8BIT_8KHZ_8CH_TX_TO_RX:
+	case PCM_LBTEST_8BIT_8KHZ_8CH_RX_TO_TX:
+		cfg_params[index].bit_width = 8;
+		cfg_params[index].rate = 8000;
+		cfg_params[index].slot_count = 8;
+		cfg_params[index].active_slot_count = 8;
+		cfg_params[index].tx_slots[0] = 4;
+		cfg_params[index].tx_slots[1] = 5;
+		cfg_params[index].tx_slots[2] = 0;
+		cfg_params[index].tx_slots[3] = 7;
+		cfg_params[index].tx_slots[4] = 2;
+		cfg_params[index].tx_slots[5] = 3;
+		cfg_params[index].tx_slots[6] = 1;
+		cfg_params[index].tx_slots[7] = 6;
+		cfg_params[index].rx_slots[0] = 4;
+		cfg_params[index].rx_slots[1] = 5;
+		cfg_params[index].rx_slots[2] = 0;
+		cfg_params[index].rx_slots[3] = 7;
+		cfg_params[index].rx_slots[4] = 2;
+		cfg_params[index].rx_slots[5] = 3;
+		cfg_params[index].rx_slots[6] = 1;
+		cfg_params[index].rx_slots[7] = 6;
+		cfg_params[index].pcm_index = index;
+		ret = ipq_pcm_init(&cfg_params[index]);
+		break;
+
+	case PCM_LBTEST_16BIT_8KHZ_8CH_TX_TO_RX:
+	case PCM_LBTEST_16BIT_8KHZ_8CH_RX_TO_TX:
+		cfg_params[index].bit_width = 16;
+		cfg_params[index].rate = 8000;
+		cfg_params[index].slot_count = 8;
+		cfg_params[index].active_slot_count = 8;
+		cfg_params[index].tx_slots[0] = 4;
+		cfg_params[index].tx_slots[1] = 5;
+		cfg_params[index].tx_slots[2] = 0;
+		cfg_params[index].tx_slots[3] = 7;
+		cfg_params[index].tx_slots[4] = 2;
+		cfg_params[index].tx_slots[5] = 3;
+		cfg_params[index].tx_slots[6] = 1;
+		cfg_params[index].tx_slots[7] = 6;
+		cfg_params[index].rx_slots[0] = 4;
+		cfg_params[index].rx_slots[1] = 5;
+		cfg_params[index].rx_slots[2] = 0;
+		cfg_params[index].rx_slots[3] = 7;
+		cfg_params[index].rx_slots[4] = 2;
+		cfg_params[index].rx_slots[5] = 3;
+		cfg_params[index].rx_slots[6] = 1;
+		cfg_params[index].rx_slots[7] = 6;
+		cfg_params[index].pcm_index = index;
+		ret = ipq_pcm_init(&cfg_params[index]);
+		break;
+
 	default:
 		ret = -EINVAL;
 		pr_err("Unknown configuration\n");
@@ -486,7 +544,7 @@ int pcm_test_rw(void *data)
 
 static void pcm_start_test(int pcm_index)
 {
-	if (!(ctx[pcm_index].start >= 0 && ctx[pcm_index].start <= 7) &&
+	if (!(ctx[pcm_index].start >= 0 && ctx[pcm_index].start <= 9) &&
 		!IS_PCM_LBTEST_RX_TO_TX(ctx[pcm_index].start))
 	{
 		pr_notice("%ld is not supported configuration\n",
