@@ -3,8 +3,6 @@
  * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
-#define pr_fmt(fmt)	"tmelcom_ipc: %s: %d:" fmt, __func__, __LINE__
-
 #include <linux/delay.h>
 #include <linux/dma-direction.h>
 #include <linux/dma-mapping.h>
@@ -40,11 +38,11 @@ int tmelcom_fuse_list_read(struct tmel_fuse_payload *fuse, size_t size)
 	dma_fuse = dma_map_single(dev, fuse, size, DMA_BIDIRECTIONAL);
 	ret = dma_mapping_error(dev, dma_fuse);
 	if (ret != 0) {
-		pr_err("DMA Mapping Error : %d\n", ret);
-		return -EINVAL;
+		dev_err(dev, "DMA Mapping Error : %d\n", ret);
+		return ret;
 	}
 
-	pr_debug("dma_fuse: %pad size: %zu\n", &dma_fuse, size);
+	dev_dbg(dev, "dma_fuse: %pad size: %zu\n", &dma_fuse, size);
 
 	msg.status = TMEL_ERROR_GENERIC;
 	msg.fuse_read_data.buf = (u32)dma_fuse;
@@ -53,13 +51,13 @@ int tmelcom_fuse_list_read(struct tmel_fuse_payload *fuse, size_t size)
 	/*Send Fuse read row IPC call to TME*/
 	ret = tmelcom_process_request(TMEL_MSG_UID_FUSE_READ_MULTIPLE_ROW,
 				      &msg, sizeof(msg));
+	if (ret || msg.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = 0x%x\n",
+			__func__, ret, msg.status);
 
 	dma_unmap_single(dev, dma_fuse, size, DMA_BIDIRECTIONAL);
 
-	if (!ret)
-		ret = msg.status;
-
-	return ret;
+	return ret ? ret : msg.status;
 }
 EXPORT_SYMBOL_GPL(tmelcom_fuse_list_read);
 
@@ -86,17 +84,13 @@ int tmelcom_secboot_sec_auth(u32 sw_id, void *metadata, size_t size)
 
 	ret = tmelcom_process_request(TMEL_MSG_UID_SECBOOT_SEC_AUTH, &msg,
 				      sizeof(msg));
-	if (ret) {
-		pr_err("Failed to send IPC: %d\n", ret);
-	} else if (msg.resp.status || msg.resp.extended_error) {
-		pr_err("Failed with status: %d error: %d\n",
-		       msg.resp.status, msg.resp.extended_error);
-		ret = msg.resp.status;
-	}
+	if (ret || msg.resp.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = 0x%x\n",
+			__func__, ret, msg.resp.status);
 
 	dma_free_coherent(dev, size, elf_buf, elf_buf_phys);
 
-	return ret;
+	return ret ? ret : msg.resp.status;
 }
 EXPORT_SYMBOL_GPL(tmelcom_secboot_sec_auth);
 
@@ -115,14 +109,11 @@ int tmelcom_secboot_teardown(u32 sw_id, u32 secondary_sw_id)
 
 	ret = tmelcom_process_request(TMEL_MSG_UID_SECBOOT_SS_TEAR_DOWN, &msg,
 				      sizeof(msg));
-	if (ret) {
-		pr_err("Failed to send IPC: %d\n", ret);
-	} else if (msg.resp.status) {
-		pr_err("Failed with status: %d\n", msg.resp.status);
-		ret = msg.resp.status;
-	}
+	if (ret || msg.resp.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = 0x%x\n",
+			__func__, ret, msg.resp.status);
 
-	return ret;
+	return ret ? ret : msg.resp.status;
 }
 
 int tmelcom_set_tmel_log_config(void *buf, u32 size)
@@ -140,7 +131,7 @@ int tmelcom_set_tmel_log_config(void *buf, u32 size)
 	ret = dma_mapping_error(dev, dma_buf);
 	if (ret) {
 		dev_err(dev, "DMA Mapping Error : %d\n", ret);
-		return -EINVAL;
+		return ret;
 	}
 
 	msg.status = TMEL_ERROR_GENERIC;
@@ -149,14 +140,12 @@ int tmelcom_set_tmel_log_config(void *buf, u32 size)
 
 	ret = tmelcom_process_request(TMEL_MSG_UID_LOG_SET_CONFIG, &msg,
 					sizeof(msg));
-	if (ret) {
-		dev_err(dev, "%s : Failed to send IPC: %d\n", __func__, ret);
-	} else if (msg.status) {
-		dev_err(dev, "%s : IPC failed with status: %d\n", __func__, ret);
-		ret = msg.status;
-	}
+	if (ret || msg.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = 0x%x\n",
+			__func__, ret, msg.status);
+
 	dma_unmap_single(dev, dma_buf, size, DMA_BIDIRECTIONAL);
-	return ret;
+	return ret ? ret : msg.status;
 }
 EXPORT_SYMBOL_GPL(tmelcom_set_tmel_log_config);
 
@@ -175,7 +164,7 @@ int tmelcom_get_tmel_log(void *buf, uint32_t max_buf_size, uint32_t *size)
 	ret = dma_mapping_error(dev, dma_log_buf);
 	if (ret) {
 		dev_err(dev, "DMA Mapping Error : %d\n", ret);
-		return -EINVAL;
+		return ret;
 	}
 
 	msg.status = TMEL_ERROR_GENERIC;
@@ -184,15 +173,14 @@ int tmelcom_get_tmel_log(void *buf, uint32_t max_buf_size, uint32_t *size)
 
 	ret = tmelcom_process_request(TMEL_MSG_UID_LOG_GET, &msg,
 					sizeof(msg));
-	if (ret) {
-		dev_err(dev, "%s : Failed to send IPC: %d\n", __func__, ret);
-	} else if (msg.status) {
-		dev_err(dev, "%s : IPC failed with status: %d\n", __func__, ret);
-		ret = msg.status;
-	}
-	*size = msg.log_buf.out_buf_len;
+	if (ret || msg.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = 0x%x\n",
+			__func__, ret, msg.status);
+	else
+		*size = msg.log_buf.out_buf_len;
+
 	dma_unmap_single(dev, dma_log_buf, max_buf_size, DMA_BIDIRECTIONAL);
-	return ret;
+	return ret ? ret : msg.status;
 }
 EXPORT_SYMBOL_GPL(tmelcom_get_tmel_log);
 
@@ -210,8 +198,8 @@ int tmelcom_init_attestation(u32 *key_buf, u32 key_buf_len, u32 *key_buf_size)
 				     key_buf_len, DMA_BIDIRECTIONAL);
 	ret = dma_mapping_error(dev, dma_key_buf);
 	if (ret != 0) {
-		pr_err("DMA Mapping Error : %d\n", ret);
-		return -EINVAL;
+		dev_err(dev, "DMA Mapping Error : %d\n", ret);
+		return ret;
 	}
 
 	msg.status = TMEL_ERROR_GENERIC;
@@ -220,16 +208,14 @@ int tmelcom_init_attestation(u32 *key_buf, u32 key_buf_len, u32 *key_buf_size)
 
 	ret = tmelcom_process_request(TMEL_MSG_UID_QWES_INIT_ATTESTATION,
 				      &msg, sizeof(msg));
-	if (ret) {
-		pr_err("%s : Failed to send IPC: %d\n", __func__, ret);
-	} else if (msg.status) {
-		pr_err("%s : IPC failed with status: %d\n", __func__,  ret);
-		ret = msg.status;
-	} else {
+	if (ret || msg.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = 0x%x\n",
+			__func__, ret, msg.status);
+	else
 		*key_buf_size = msg.rsp.out_buf_len;
-	}
+
 	dma_unmap_single(dev, dma_key_buf, key_buf_len, DMA_BIDIRECTIONAL);
-	return ret;
+	return ret ? ret : msg.status;
 }
 EXPORT_SYMBOL_GPL(tmelcom_init_attestation);
 
@@ -251,15 +237,15 @@ int tmelcom_qwes_getattestation_report(u32 *req_buf, u32 req_buf_len,
 					 req_buf_len, DMA_FROM_DEVICE);
 	ret = dma_mapping_error(dev, dma_att_req_buf);
 	if (ret != 0) {
-		pr_err("DMA Mapping Error : %d\n", ret);
-		return -EINVAL;
+		dev_err(dev, "DMA Mapping Error : %d\n", ret);
+		return ret;
 	}
 	if (extclaim_buf) {
 		dma_ext_claim_buf = dma_map_single(dev, extclaim_buf,
 					extclaim_buf_len, DMA_FROM_DEVICE);
 		ret = dma_mapping_error(dev, dma_ext_claim_buf);
 		if (ret != 0) {
-			pr_err("DMA Mapping Error : %d\n", ret);
+			dev_err(dev, "DMA Mapping Error : %d\n", ret);
 			goto dma_unmap_req_buf;
 		}
 	}
@@ -267,7 +253,7 @@ int tmelcom_qwes_getattestation_report(u32 *req_buf, u32 req_buf_len,
 					 DMA_BIDIRECTIONAL);
 	ret = dma_mapping_error(dev, dma_att_rsp_buf);
 	if (ret != 0) {
-		pr_err("DMA Mapping Error : %d\n", ret);
+		dev_err(dev, "DMA Mapping Error : %d\n", ret);
 		goto dma_unmap_extclaim_buf;
 	}
 
@@ -281,14 +267,12 @@ int tmelcom_qwes_getattestation_report(u32 *req_buf, u32 req_buf_len,
 
 	ret = tmelcom_process_request(TMEL_MSG_UID_QWES_DEVICE_ATTESTATION,
 				      &msg, sizeof(msg));
-	if (ret) {
-		pr_err("%s : Failed to send IPC: %d\n", __func__, ret);
-	} else if (msg.status) {
-		pr_err("%s : IPC failed with status: %d\n", __func__,  ret);
-		ret = msg.status;
-	} else {
+	if (ret || msg.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = 0x%x\n",
+			__func__, ret, msg.status);
+	else
 		*resp_buf_size = msg.rsp.out_buf_len;
-	}
+
 	dma_unmap_single(dev, dma_att_rsp_buf,
 			 resp_buf_len, DMA_BIDIRECTIONAL);
 dma_unmap_extclaim_buf:
@@ -299,7 +283,7 @@ dma_unmap_extclaim_buf:
 dma_unmap_req_buf:
 	dma_unmap_single(dev, dma_att_req_buf, req_buf_len, DMA_FROM_DEVICE);
 
-	return ret;
+	return ret ? ret : msg.status;
 }
 EXPORT_SYMBOL_GPL(tmelcom_qwes_getattestation_report);
 
@@ -320,15 +304,15 @@ int tmelcom_qwes_device_provision(u32 *req_buf, u32 req_buf_len, u32 *resp_buf,
 					  DMA_FROM_DEVICE);
 	ret = dma_mapping_error(dev, dma_prov_req_buf);
 	if (ret != 0) {
-		pr_err("DMA Mapping Error : %d\n", ret);
-		return -EINVAL;
+		dev_err(dev, "DMA Mapping Error : %d\n", ret);
+		return ret;
 	}
 
 	dma_prov_rsp_buf = dma_map_single(dev, resp_buf, resp_buf_len,
 					  DMA_BIDIRECTIONAL);
 	ret = dma_mapping_error(dev, dma_prov_rsp_buf);
 	if (ret != 0) {
-		pr_err("DMA Mapping Error : %d\n", ret);
+		dev_err(dev, "DMA Mapping Error : %d\n", ret);
 		goto dma_unmap_prov_req_buf;
 	}
 
@@ -340,21 +324,19 @@ int tmelcom_qwes_device_provision(u32 *req_buf, u32 req_buf_len, u32 *resp_buf,
 
 	ret = tmelcom_process_request(TMEL_MSG_UID_QWES_DEVICE_PROVISIONING,
 				      &msg, sizeof(msg));
-	if (ret) {
-		pr_err("%s : Failed to send IPC: %d\n", __func__, ret);
-	} else if (msg.status) {
-		pr_err("%s : IPC failed with status: %d\n", __func__,  ret);
-		ret = msg.status;
-	} else {
+	if (ret || msg.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = 0x%x\n",
+			__func__, ret, msg.status);
+	else
 		*resp_buf_size = msg.rsp.out_buf_len;
-	}
+
 	dma_unmap_single(dev, dma_prov_rsp_buf,
 			 resp_buf_len, DMA_BIDIRECTIONAL);
 
 dma_unmap_prov_req_buf:
 	dma_unmap_single(dev, dma_prov_req_buf, req_buf_len, DMA_FROM_DEVICE);
 
-	return ret;
+	return ret ? ret : msg.status;
 }
 EXPORT_SYMBOL_GPL(tmelcom_qwes_device_provision);
 
@@ -372,16 +354,16 @@ int tmelcom_licensing_check(void *cbor_req, u32 req_len, void *cbor_resp,
 	dma_cbor_req = dma_map_single(dev, cbor_req, req_len, DMA_BIDIRECTIONAL);
 	ret = dma_mapping_error(dev, dma_cbor_req);
 	if (ret != 0) {
-		pr_err("DMA Mapping Error, cbor_req : %d\n", ret);
-		return -EINVAL;
+		dev_err(dev, "DMA Mapping Error, cbor_req : %d\n", ret);
+		return ret;
 	}
 
 	dma_cbor_resp = dma_map_single(dev, cbor_resp, resp_len, DMA_BIDIRECTIONAL);
 	ret = dma_mapping_error(dev, dma_cbor_resp);
 	if (ret != 0) {
-		pr_err("DMA Mapping Error, cbor_resp : %d\n", ret);
+		dev_err(dev, "DMA Mapping Error, cbor_resp : %d\n", ret);
 		dma_unmap_single(dev, dma_cbor_req, req_len, DMA_BIDIRECTIONAL);
-		return -EINVAL;
+		return ret;
 	}
 
 	msg.request.buf = dma_cbor_req;
@@ -394,14 +376,13 @@ int tmelcom_licensing_check(void *cbor_req, u32 req_len, void *cbor_resp,
 	dma_unmap_single(dev, dma_cbor_req, req_len, DMA_BIDIRECTIONAL);
 	dma_unmap_single(dev, dma_cbor_resp, resp_len, DMA_BIDIRECTIONAL);
 
-	if (ret) {
-		pr_err("Failed to send SecureFIDcheck IPC: %d\n", ret);
-	} else {
-		ret = msg.status;
+	if (ret || msg.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = 0x%x\n",
+			__func__, ret, msg.status);
+	else
 		*used_resp_len = msg.response.out_buf_len;
-	}
 
-	return ret;
+	return ret ? ret : msg.status;
 }
 EXPORT_SYMBOL_GPL(tmelcom_licensing_check);
 
@@ -416,9 +397,10 @@ int tmelcom_ttime_get_req_params(void *params_buf, u32 buf_len, u32 *used_buf_le
 		return -EINVAL;
 
 	dma_params_buf = dma_map_single(dev, params_buf, buf_len, DMA_BIDIRECTIONAL);
+	ret = dma_mapping_error(dev, dma_params_buf);
 	if (ret) {
-		pr_err("DMA Mapping Error, ttime_get_req : %d\n", ret);
-		return -EINVAL;
+		dev_err(dev, "DMA Mapping Error, ttime_get_req : %d\n", ret);
+		return ret;
 	}
 
 	msg.status = TMEL_ERROR_GENERIC;
@@ -430,14 +412,13 @@ int tmelcom_ttime_get_req_params(void *params_buf, u32 buf_len, u32 *used_buf_le
 
 	dma_unmap_single(dev, dma_params_buf, buf_len, DMA_BIDIRECTIONAL);
 
-	if (ret) {
-		pr_err("Failed to send TTIME get req params IPC: %d\n", ret);
-	} else {
-		ret = msg.status;
+	if (ret || msg.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = 0x%x\n",
+			__func__, ret, msg.status);
+	else
 		*used_buf_len = msg.params.out_buf_len;
-	}
 
-	return ret;
+	return ret ? ret : msg.status;
 }
 EXPORT_SYMBOL_GPL(tmelcom_ttime_get_req_params);
 
@@ -452,9 +433,10 @@ int tmelcom_ttime_set(void *ttime_buf, u32 buf_len)
 		return -EINVAL;
 
 	dma_ttime_buf = dma_map_single(dev, ttime_buf, buf_len, DMA_BIDIRECTIONAL);
+	ret = dma_mapping_error(dev, dma_ttime_buf);
 	if (ret) {
-		pr_err("DMA Mapping Error, ttime_set: %d\n", ret);
-		return -EINVAL;
+		dev_err(dev, "DMA Mapping Error, ttime_set: %d\n", ret);
+		return ret;
 	}
 
 	msg.status = TMEL_ERROR_GENERIC;
@@ -465,12 +447,11 @@ int tmelcom_ttime_set(void *ttime_buf, u32 buf_len)
 
 	dma_unmap_single(dev, dma_ttime_buf, buf_len, DMA_BIDIRECTIONAL);
 
-	if (ret)
-		pr_err("Failed to send TTIME set IPC: %d\n", ret);
-	else
-		ret = msg.status;
+	if (ret || msg.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = 0x%x\n",
+			__func__, ret, msg.status);
 
-	return ret;
+	return ret ? ret : msg.status;
 }
 EXPORT_SYMBOL_GPL(tmelcom_ttime_set);
 
@@ -490,18 +471,18 @@ int tmelcom_licensing_install(void *license_buf, u32 license_len, void *ident_bu
 					 DMA_BIDIRECTIONAL);
 	ret = dma_mapping_error(dev, dma_license_buf);
 	if (ret != 0) {
-		pr_err("DMA Mapping Error, license_buf: %d\n", ret);
-		return -EINVAL;
+		dev_err(dev, "DMA Mapping Error, license_buf: %d\n", ret);
+		return ret;
 	}
 
 	dma_ident_buf = dma_map_single(dev, ident_buf, ident_len,
 				       DMA_BIDIRECTIONAL);
 	ret = dma_mapping_error(dev, dma_ident_buf);
 	if (ret != 0) {
-		pr_err("DMA Mapping Error, identifier_buf: %d\n", ret);
+		dev_err(dev, "DMA Mapping Error, identifier_buf: %d\n", ret);
 		dma_unmap_single(dev, dma_license_buf, license_len,
 				 DMA_BIDIRECTIONAL);
-		return -EINVAL;
+		return ret;
 	}
 
 	msg.status = TMEL_ERROR_GENERIC;
@@ -516,15 +497,15 @@ int tmelcom_licensing_install(void *license_buf, u32 license_len, void *ident_bu
 	dma_unmap_single(dev, dma_license_buf, license_len, DMA_BIDIRECTIONAL);
 	dma_unmap_single(dev, dma_ident_buf, ident_len, DMA_BIDIRECTIONAL);
 
-	if (ret) {
-		pr_err("%s : Failed to send IPC: %d\n", __func__, ret);
+	if (ret || msg.status) {
+		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = 0x%x\n",
+			__func__, ret, msg.status);
 	} else {
-		ret = msg.status;
 		*ident_used_len = msg.identifier.out_buf_len;
 		*flags = msg.flags;
 	}
 
-	return ret;
+	return ret ? ret : msg.status;
 
 }
 EXPORT_SYMBOL_GPL(tmelcom_licensing_install);
@@ -543,9 +524,10 @@ int tmelcom_licensing_get_toBeDel_licenses(void *toBeDelLic_buf, u32 toBeDelLic_
 
 	dma_toBeDelLic_buf = dma_map_single(dev, toBeDelLic_buf, toBeDelLic_len,
 					    DMA_BIDIRECTIONAL);
+	ret = dma_mapping_error(dev, dma_toBeDelLic_buf);
 	if (ret) {
-		pr_err("DMA Mapping Error, toBeDeletedLicense buffer : %d\n", ret);
-		return -EINVAL;
+		dev_err(dev, "DMA Mapping Error, toBeDeletedLicense buffer : %d\n", ret);
+		return ret;
 	}
 
 	msg.status = TMEL_ERROR_GENERIC;
@@ -557,14 +539,13 @@ int tmelcom_licensing_get_toBeDel_licenses(void *toBeDelLic_buf, u32 toBeDelLic_
 
 	dma_unmap_single(dev, dma_toBeDelLic_buf, toBeDelLic_len, DMA_BIDIRECTIONAL);
 
-	if (ret) {
-		pr_err("Failed to send GetToBeDeletedLicenses IPC: %d\n", ret);
-	} else {
-		ret = msg.status;
+	if (ret || msg.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = 0x%x\n",
+			__func__, ret, msg.status);
+	else
 		*used_toBeDelLic_len = msg.toBeDelLicenses.out_buf_len;
-	}
 
-	return ret;
+	return ret ? ret : msg.status;
 }
 EXPORT_SYMBOL_GPL(tmelcom_licensing_get_toBeDel_licenses);
 
@@ -596,12 +577,11 @@ int tmelcom_secure_io_read(struct tmel_secure_io *buf, size_t size)
 
 	dma_unmap_single(dev, dma_secure_io, size, DMA_BIDIRECTIONAL);
 
-	if (ret)
-		dev_err(dev, "Failed to send IPC: %d\n", ret);
-	else
-		ret = msg.status;
+	if (ret || msg.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = 0x%x\n",
+			__func__, ret, msg.status);
 
-	return ret;
+	return ret ? ret : msg.status;
 }
 EXPORT_SYMBOL_GPL(tmelcom_secure_io_read);
 
@@ -632,12 +612,11 @@ int tmelcom_secure_io_write(struct tmel_secure_io *buf, size_t size)
 
 	dma_unmap_single(dev, dma_secure_io, size, DMA_BIDIRECTIONAL);
 
-	if (ret)
-		dev_err(dev, "Failed to send IPC: %d\n", ret);
-	else
-		ret = msg.status;
+	if (ret || msg.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = 0x%x\n",
+			__func__, ret, msg.status);
 
-	return ret;
+	return ret ? ret : msg.status;
 }
 EXPORT_SYMBOL_GPL(tmelcom_secure_io_write);
 
@@ -650,12 +629,12 @@ int tmelcomm_secboot_get_arb_version(u32 type, u32 *version)
 	msg.req.sw_id = type;
 	ret = tmelcom_process_request(TMEL_MSG_UID_SECBOOT_GET_ARB_VERSION,
 				      &msg, sizeof(msg));
-	if (ret || msg.rsp.status) {
-		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = %d\n",
+	if (ret || msg.rsp.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = %lx\n",
 			__func__, ret, msg.rsp.status);
-	}
+	else
+		*version = msg.rsp.oem_version;
 
-	*version = msg.rsp.oem_version;
 	return ret ? ret : msg.rsp.status;
 }
 EXPORT_SYMBOL_GPL(tmelcomm_secboot_get_arb_version);
