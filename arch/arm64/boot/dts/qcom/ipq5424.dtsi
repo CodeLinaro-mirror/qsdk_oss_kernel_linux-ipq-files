@@ -3992,6 +3992,16 @@
 				dr_mode = "host";
 			};
 		};
+
+		reg_update: reg-update@0 {
+			compatible = "ipq,54xx-reg-update";
+			reg = <0>;
+			aggr-noc-config = <0x00610808 0x80>, /* aggr_noc_pcie0 */
+					  <0x00610908 0x80>, /* aggr_noc_pcie1 */
+					  <0x00610a08 0x80>, /* aggr_noc_pcie2 */
+					  <0x00610b08 0x80>; /* aggr_noc_pcie3 */
+			status = "okay";
+		};
 	};
 
 	timer {
