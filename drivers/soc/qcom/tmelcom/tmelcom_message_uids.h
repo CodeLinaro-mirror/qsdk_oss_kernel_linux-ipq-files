@@ -198,6 +198,8 @@ ________________________________________________________________________________
 #define TMEL_ACTION_ACCESS_CONTROL_PROTECT_TMEL_RESOURCES 0x04
 #define TMEL_ACTION_ACCESS_CONTROL_SET_XPU_DBGAR          0x05
 #define TMEL_ACTION_ACCESS_CONTROL_ENABLE_SILENT_LOGGING  0x06
+#define TMEL_ACTION_ACCESS_CONTROL_SECURE_IO_READ         0x07
+#define TMEL_ACTION_ACCESS_CONTROL_SECURE_IO_WRITE        0x08
 
 /*----------------------------------------------------------------------------
   Action ID's for TMEL_MSG_FWUP
@@ -751,6 +753,18 @@ ________________________________________________________________________________
  */
 #define TMEL_MSG_UID_ACCESS_CONTROL_ENABLE_SILENT_LOGGING            TMEL_MSG_UID_CREATE(TMEL_MSG_ACCESS_CONTROL,\
                                                                          TMEL_ACTION_ACCESS_CONTROL_ENABLE_SILENT_LOGGING)
+
+/*
+ * Enable TME-L Secure IO Read IPC
+ */
+#define TMEL_MSG_UID_ACCESS_CONTROL_SECURE_IO_READ                   TMEL_MSG_UID_CREATE(TMEL_MSG_ACCESS_CONTROL, \
+									TMEL_ACTION_ACCESS_CONTROL_SECURE_IO_READ)
+
+/*
+ * Enable TME-L Secure IO Write IPC
+ */
+#define TMEL_MSG_UID_ACCESS_CONTROL_SECURE_IO_WRITE                   TMEL_MSG_UID_CREATE(TMEL_MSG_ACCESS_CONTROL, \
+									TMEL_ACTION_ACCESS_CONTROL_SECURE_IO_WRITE)
 
 /*----------------------------------------------------------------------------
   UID's for TMEL_MSG_FWUP

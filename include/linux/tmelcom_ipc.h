@@ -131,7 +131,23 @@ struct tmel_log_set_config_message {
 	struct tmel_msg_param_type_buf_in log;
 } __packed;
 
+struct tmel_secure_io {
+	u32 reg_addr;
+	u32 reg_val;
+} __packed;
+
+struct tmel_secure_io_read {
+	u32 status;
+	struct tmel_msg_param_type_buf_in_out read_buf;
+} __packed;
+
+struct tmel_secure_io_write {
+	u32 status;
+	struct tmel_msg_param_type_buf_in write_buf;
+} __packed;
+
 #ifdef CONFIG_QCOM_TMELCOM
+int tmelcom_probed(void);
 int tmelcom_init_attestation(u32 *key_buf, u32 key_buf_len, u32 *key_buf_size);
 int tmelcom_qwes_getattestation_report(u32 *req_buf, u32 req_buf_len,
 				       u32 *extclaim_buf, u32 extclaim_buf_len,
@@ -152,29 +168,36 @@ int tmelcom_licensing_get_toBeDel_licenses(void *toBeDelLic_buf, u32 toBeDelLic_
 					   u32 *used_toBeDelLic_len);
 int tmelcom_set_tmel_log_config(void *buf, u32 size);
 int tmelcom_get_tmel_log(void *buf, u32 max_buf_size, u32 *size);
+int tmelcom_secure_io_read(struct tmel_secure_io *buf, size_t size);
+int tmelcom_secure_io_write(struct tmel_secure_io *buf, size_t size);
 
 #else
+static inline int tmelcom_probed(void)
+{
+	return -EOPNOTSUPP;
+}
+
 static inline int tmelcom_fuse_list_read(struct tmel_fuse_payload *fuse,
 					 size_t size)
 {
-	return 0;
+	return -EOPNOTSUPP;
 }
 
 static inline int tmelcom_secboot_sec_auth(u32 sw_id, void *metadata,
 					   size_t size)
 {
-	return 0;
+	return -EOPNOTSUPP;
 }
 
 static inline int tmelcom_secboot_teardown(u32 sw_id, u32 secondary_sw_id)
 {
-	return 0;
+	return -EOPNOTSUPP;
 }
 
 static inline int tmelcom_init_attestation(u32 *key_buf, u32 key_buf_len,
 					   u32 *key_buf_size)
 {
-	return -ENOTSUPP;
+	return -EOPNOTSUPP;
 }
 static inline int tmelcom_qwes_getattestation_report(u32 *req_buf,
 						     u32 req_buf_len,
@@ -184,56 +207,65 @@ static inline int tmelcom_qwes_getattestation_report(u32 *req_buf,
 						     u32 resp_buf_len,
 						     u32 *resp_buf_size)
 {
-	return -ENOTSUPP;
+	return -EOPNOTSUPP;
 }
 static inline int tmelcom_qwes_device_provision(u32 *req_buf, u32 req_buf_len,
 						u32 *resp_buf, u32 resp_buf_len,
 						u32 *resp_buf_size)
 {
-	return -ENOTSUPP;
+	return -EOPNOTSUPP;
 }
 
 static inline int tmelcom_licensing_check(void *cbor_req, u32 req_len,
 					  void *cbor_resp, u32 resp_len,
 					  u32 *used_resp_len)
 {
-	return -ENOTSUPP;
+	return -EOPNOTSUPP;
 }
 
 static inline int tmelcom_ttime_get_req_params(void *params_buf, u32 buf_len,
 					       u32 *used_buf_len)
 {
-	return -ENOTSUPP;
+	return -EOPNOTSUPP;
 }
 
 static inline int tmelcom_ttime_set(void *ttime_buf, u32 buf_len)
 {
-	return -ENOTSUPP;
+	return -EOPNOTSUPP;
 }
 
 static inline int tmelcom_licensing_install(void *license_buf, u32 license_len,
 					    void *ident_buf, u32 ident_len,
 					    u32 *ident_used_len, u32 *flags)
 {
-	return -ENOTSUPP;
+	return -EOPNOTSUPP;
 }
 
 static inline int tmelcom_licensing_get_toBeDel_licenses(void *toBeDelLic_buf,
 							 u32 toBeDelLic_len,
 							 u32 *used_toBeDelLic_len)
 {
-	return -ENOTSUPP;
+	return -EOPNOTSUPP;
 }
 
 static inline int tmelcom_set_tmel_log_config(void *buf, u32 size)
 {
-	return -ENOTSUPP;
+	return -EOPNOTSUPP;
 }
 
 static inline int tmelcom_get_tmel_log(void *buf, u32 max_buf_size,  u32 *size)
 {
-	return -ENOTSUPP;
+	return -EOPNOTSUPP;
 }
 
+static inline int tmelcom_secure_io_read(struct tmel_secure_io *buf, size_t size)
+{
+	return -EOPNOTSUPP;
+}
+
+static inline int tmelcom_secure_io_write(struct tmel_secure_io *buf, size_t size)
+{
+	return -EOPNOTSUPP;
+}
 #endif /* CONFIG_QCOM_TMELCOM */
 #endif /* _TMELCOM_IPC_H_ */
