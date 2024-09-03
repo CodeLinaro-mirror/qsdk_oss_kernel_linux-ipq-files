@@ -115,7 +115,10 @@ int write_version(struct device *dev, uint32_t type, uint32_t version)
 		goto err_write;
 	}
 
-	ret = qcom_qfprom_write_version(type, version, qfprom_ret_ptr);
+	if (qcom_qfrom_fuse_row_write_available())
+		ret = qcom_qfprom_write_version(type, version, qfprom_ret_ptr);
+	else
+		ret = tmelcomm_secboot_update_arb_version(qfprom_ret_ptr);
 
 	dma_unmap_single(dev, qfprom_ret_ptr,
 			sizeof(*qfprom_api_status), DMA_FROM_DEVICE);

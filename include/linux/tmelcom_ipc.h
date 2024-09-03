@@ -163,6 +163,14 @@ struct tmel_get_arb_version {
 	struct tmel_get_arb_version_rsp rsp;
 } __packed;
 
+struct tmel_update_arb_version_rsp {
+	u32 status;
+} __packed;
+
+struct tmel_update_arb_version_req {
+	struct tmel_update_arb_version_rsp rsp;
+} __packed;
+
 #ifdef CONFIG_QCOM_TMELCOM
 int tmelcom_probed(void);
 int tmelcom_init_attestation(u32 *key_buf, u32 key_buf_len, u32 *key_buf_size);
@@ -188,6 +196,7 @@ int tmelcom_get_tmel_log(void *buf, u32 max_buf_size, u32 *size);
 int tmelcom_secure_io_read(struct tmel_secure_io *buf, size_t size);
 int tmelcom_secure_io_write(struct tmel_secure_io *buf, size_t size);
 int tmelcomm_secboot_get_arb_version(u32 type, u32 *version);
+int tmelcomm_secboot_update_arb_version(u32 status);
 
 #else
 static inline int tmelcom_probed(void)
@@ -282,6 +291,14 @@ static inline int tmelcom_secure_io_read(struct tmel_secure_io *buf, size_t size
 }
 
 static inline int tmelcom_secure_io_write(struct tmel_secure_io *buf, size_t size)
+{
+	return -EOPNOTSUPP;
+}
+static inline int tmelcomm_secboot_get_arb_version(u32 type, u32 *version)
+{
+	return -EOPNOTSUPP;
+}
+static inline int tmelcomm_secboot_update_arb_version(u32 status)
 {
 	return -EOPNOTSUPP;
 }
