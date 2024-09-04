@@ -80,7 +80,8 @@ static int debug_panic_handler(struct notifier_block *nb, unsigned long action,
 	if (tmp != IPQ5424_INTERNAL_Q6_CRASH)
 		memcpy_toio(reason->wr_addr, &val, sizeof(int));
 
-	iounmap(reason->wr_addr);
+	if (!in_interrupt())
+		iounmap(reason->wr_addr);
 
 	return NOTIFY_DONE;
 }
