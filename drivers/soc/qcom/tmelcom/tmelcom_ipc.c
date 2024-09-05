@@ -17,6 +17,16 @@
 #include "tmelcom.h"
 #include "tmelcom_message_uids.h"
 
+int tmelcom_probed(void)
+{
+	struct device *dev = tmelcom_get_device();
+
+	if (!dev)
+		return -ENODEV;
+	else
+		return 0;
+}
+
 int tmelcom_fuse_list_read(struct tmel_fuse_payload *fuse, size_t size)
 {
 	int ret;
@@ -557,3 +567,76 @@ int tmelcom_licensing_get_toBeDel_licenses(void *toBeDelLic_buf, u32 toBeDelLic_
 	return ret;
 }
 EXPORT_SYMBOL_GPL(tmelcom_licensing_get_toBeDel_licenses);
+
+int tmelcom_secure_io_read(struct tmel_secure_io *buf, size_t size)
+{
+	int ret;
+	struct tmel_secure_io_read msg = {0};
+	struct device *dev = tmelcom_get_device();
+	dma_addr_t dma_secure_io;
+
+	if (!dev || !buf || !size)
+		return -EINVAL;
+
+	dma_secure_io = dma_map_single(dev, buf, size, DMA_BIDIRECTIONAL);
+	ret = dma_mapping_error(dev, dma_secure_io);
+	if (ret) {
+		dev_err(dev, "DMA Mapping Error : %d\n", ret);
+		return ret;
+	}
+
+	msg.status = TMEL_ERROR_GENERIC;
+	msg.read_buf.buf = (u32)dma_secure_io;
+	msg.read_buf.buf_len = size;
+	msg.read_buf.out_buf_len = 0;
+
+	/*Send Secure IO read IPC call to TME*/
+	ret = tmelcom_process_request(TMEL_MSG_UID_ACCESS_CONTROL_SECURE_IO_READ,
+				      &msg, sizeof(msg));
+
+	dma_unmap_single(dev, dma_secure_io, size, DMA_BIDIRECTIONAL);
+
+	if (ret)
+		dev_err(dev, "Failed to send IPC: %d\n", ret);
+	else
+		ret = msg.status;
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tmelcom_secure_io_read);
+
+int tmelcom_secure_io_write(struct tmel_secure_io *buf, size_t size)
+{
+	int ret;
+	struct tmel_secure_io_write msg = {0};
+	struct device *dev = tmelcom_get_device();
+	dma_addr_t dma_secure_io;
+
+	if (!dev || !buf || !size)
+		return -EINVAL;
+
+	dma_secure_io = dma_map_single(dev, buf, size, DMA_BIDIRECTIONAL);
+	ret = dma_mapping_error(dev, dma_secure_io);
+	if (ret) {
+		dev_err(dev, "DMA Mapping Error : %d\n", ret);
+		return ret;
+	}
+
+	msg.status = TMEL_ERROR_GENERIC;
+	msg.write_buf.buf = (u32)dma_secure_io;
+	msg.write_buf.buf_len = size;
+
+	/*Send Secure IO write IPC call to TME*/
+	ret = tmelcom_process_request(TMEL_MSG_UID_ACCESS_CONTROL_SECURE_IO_WRITE,
+				      &msg, sizeof(msg));
+
+	dma_unmap_single(dev, dma_secure_io, size, DMA_BIDIRECTIONAL);
+
+	if (ret)
+		dev_err(dev, "Failed to send IPC: %d\n", ret);
+	else
+		ret = msg.status;
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tmelcom_secure_io_write);
