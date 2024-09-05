@@ -42,6 +42,8 @@
 #define LICENSE_IDENT_MAX_LEN	8
 #define TMEL_BOUND_MAX_LICENSE_FILES	30
 
+#define SMEM_SOFTSKU_INFO	508
+
 struct qmi_lm_feature_list_req_msg_v01 {
 	u32 reserved;
 	u8 feature_list_valid;
@@ -81,6 +83,7 @@ struct lm_svc_ctx {
 	struct device *dev;
 	struct qmi_handle *lm_svc_hdl;
 	struct list_head clients_feature_list;
+	struct list_head soc_hw_feature_list;
 	bool license_feature;
 	bool license_buf_valid;
 	void *license_buf;
@@ -89,6 +92,34 @@ struct lm_svc_ctx {
 	size_t license_buf_len;
 	bool soc_bounded;
 	bool tmel_bounded;
+};
+
+enum sec_feature_status_type {
+	SEC_FEATURE_STATUS_ACTIVE = 0x00,
+	SEC_FEATURE_STATUS_NOTACTIVE = 0x01,
+	SEC_FEATURE_STATUS_NOTPRESENT = 0x02,
+	SEC_FEATURE_STATUS_DISABLED = 0x03,
+};
+
+struct sec_feature_value_type {
+	u32 encoding_type;
+	u32 feature_value;
+};
+
+struct softsku_info_smem {
+	bool fid_updated;
+	u32 feature_id; /*featureID*/
+	enum sec_feature_status_type feature_status;
+	bool is_time_bound;
+	u64 grace_until;
+	struct sec_feature_value_type feature_value;
+};
+
+struct lm_soc_hw_feat {
+	struct list_head node;
+	bool fid_updated;
+	u32 feature_id; /*featureID*/
+	enum sec_feature_status_type feature_status;
 };
 
 struct feature_info {
