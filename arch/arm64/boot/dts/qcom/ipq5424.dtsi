@@ -15,6 +15,11 @@
 #include <dt-bindings/reset/qcom,ipq5424-nsscc.h>
 
 / {
+#ifdef __IPQ_MEM_PROFILE_256_MB__
+	MP_256;
+#elif __IPQ_MEM_PROFILE_512_MB__
+	MP_512;
+#endif
 	#address-cells = <2>;
 	#size-cells = <2>;
 	interrupt-parent = <&intc>;

@@ -12,6 +12,11 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 
 / {
+#ifdef __IPQ_MEM_PROFILE_256_MB__
+	MP_256;
+#elif __IPQ_MEM_PROFILE_512_MB__
+	MP_512;
+#endif
 	interrupt-parent = <&intc>;
 	#address-cells = <2>;
 	#size-cells = <2>;

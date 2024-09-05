@@ -21,9 +21,6 @@
 	model = "Qualcomm Technologies, Inc. IPQ5332/RDP441/AP-MI01.2";
 	compatible = "qcom,ipq5332-ap-mi01.2", "qcom,ipq5332-rdp441", "qcom,ipq5332";
 
-#if defined(__IPQ_MEM_PROFILE_256_MB__)
-	MP_256;
-#endif
 	aliases {
 		serial0 = &blsp1_uart0;
 		serial1 = &blsp1_uart1;
