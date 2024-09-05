@@ -20,6 +20,7 @@
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/firmware/qcom/qcom_scm.h>
+#include <linux/tmelcom_ipc.h>
 #include <soc/qcom/socinfo.h>
 
 /* NoC Control Offsets */
@@ -131,8 +132,49 @@ static int reg_update_probe(struct platform_device *pdev)
 	void __iomem *ubi_c0_gds;
 	struct clk *nss_csr_clk;
 	struct clk *nssnoc_nss_csr_clk;
-	int ret;
+	int ret, num_elem, i = 0;
 	struct device_node *np = (&pdev->dev)->of_node;
+	struct tmel_secure_io aggr_noc;
+
+	/* For IPQ54xx, only aggr_noc settings update is required */
+	if (of_device_is_compatible(np, "ipq,54xx-reg-update")) {
+		if (tmelcom_probed())
+			return -EPROBE_DEFER;
+
+		num_elem = of_property_count_elems_of_size(np, "aggr-noc-config",
+							   sizeof(u32));
+
+		while (i < num_elem) {
+			ret = of_property_read_u32_index(pdev->dev.of_node,
+							 "aggr-noc-config", i++,
+							 &aggr_noc.reg_addr);
+			if (ret) {
+				dev_err(&pdev->dev, "Failed to get aggr_noc reg %d\n", (i - 1));
+				return -EINVAL;
+			}
+
+			ret = of_property_read_u32_index(pdev->dev.of_node,
+							 "aggr-noc-config", i++,
+							 &aggr_noc.reg_val);
+			if (ret) {
+				dev_err(&pdev->dev, "Failed to get aggr_noc val %d\n", (i - 1));
+				return -EINVAL;
+			}
+
+			dev_dbg(&pdev->dev, "Configuring aggr_noc reg: 0x%x val: 0x%x\n",
+				aggr_noc.reg_addr, aggr_noc.reg_val);
+
+			ret = tmelcom_secure_io_write(&aggr_noc,
+						      sizeof(struct tmel_secure_io));
+			if (ret) {
+				dev_err(&pdev->dev, "Failed to update aggr_noc settings, ret = %d\n",
+					ret);
+				return ret;
+			}
+		}
+
+		return 0;
+	}
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "memnoc");
 	if(res) {
@@ -229,6 +271,7 @@ err_out:
 static const struct of_device_id reg_update_dt_match[] = {
 	{ .compatible = "ipq,reg-update", },
 	{ .compatible = "ipq,53xx-reg-update", },
+	{ .compatible = "ipq,54xx-reg-update", },
 	{ },
 };
 
