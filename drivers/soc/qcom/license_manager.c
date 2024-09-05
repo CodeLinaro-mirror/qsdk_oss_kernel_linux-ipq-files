@@ -755,7 +755,7 @@ static int lm_install_license(struct lm_svc_ctx *svc, const char *filename,
 
 	/* Install the license via IPC and get the response */
 	ret = tmelcom_licensing_install(lic_data_buf, license->size,
-					install_resp->identifier,
+					&install_resp->identifier,
 					LICENSE_IDENT_MAX_LEN,
 					&install_resp->ident_len,
 					&install_resp->flags);

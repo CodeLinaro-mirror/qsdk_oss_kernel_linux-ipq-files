@@ -39,7 +39,7 @@
 
 #define CLIENT_MAX 		6
 #define FILE_NAME_MAX 		128
-#define LICENSE_IDENT_MAX_LEN	16
+#define LICENSE_IDENT_MAX_LEN	8
 #define TMEL_BOUND_MAX_LICENSE_FILES	30
 
 struct qmi_lm_feature_list_req_msg_v01 {
@@ -143,7 +143,7 @@ struct ttime_set {
 
 struct lm_install_resp {
 	u32 ident_len;
-	u8 identifier[LICENSE_IDENT_MAX_LEN];
+	u64 identifier;
 	u32 flags;
 };
 
