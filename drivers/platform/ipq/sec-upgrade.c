@@ -38,6 +38,7 @@
 #include <linux/elf.h>
 #include <linux/decompress/unlzma.h>
 #include <linux/decompress/generic.h>
+#include <linux/tmelcom_ipc.h>
 
 #define QFPROM_MAX_VERSION_EXCEEDED             0x10
 #define QFPROM_IS_AUTHENTICATE_CMD_RSP_SIZE	0x2
@@ -63,6 +64,11 @@ enum qti_sec_img_auth_args {
 	QTI_SEC_IMG_ADDR,
 	QTI_SEC_HASH_ADDR,
 	QTI_SEC_AUTH_ARG_MAX
+};
+
+struct qfprom_node_cfg {
+	void *fuse_list;
+	bool is_rlbk_support;
 };
 
 static ssize_t
@@ -226,6 +232,7 @@ err_generic:
 	return ret;
 }
 
+#ifndef CONFIG_QCOM_TMELCOM
 static ssize_t
 show_sbl_version(struct device *dev,
 			struct device_attribute *attr,
@@ -337,6 +344,28 @@ store_apdp_version(struct device *dev,
 {
 	return generic_version(dev, buf, SW_TYPE_APDP, 2, count);
 }
+#else
+static ssize_t
+store_read_commit_version(struct device *dev, struct device_attribute *attr,
+			  const char *buf, size_t count)
+{
+	int ret;
+	u64 type;
+	u32 version;
+
+	if (kstrtoull(buf, 0, &type))
+		return -EINVAL;
+
+	ret = tmelcomm_secboot_get_arb_version(type, &version);
+	if (ret)
+		dev_err(dev, "Error in Version read for sw_type : 0x%llx\n",
+			type);
+	else
+		dev_info(dev, "Read version for sw_type 0x%llx is : 0x%x",
+			 type, version);
+	return count;
+}
+#endif
 
 static ssize_t
 store_version_commit(struct device *dev,
@@ -1032,10 +1061,32 @@ static struct device_attribute list_ipq5424_fuse_attr =
 static struct device_attribute list_ipq9574_fuse_attr =
 	__ATTR(list_ipq9574_fuse, 0444, show_list_ipq9574_fuse, NULL);
 
+static const struct qfprom_node_cfg ipq9574_qfprom_node_cfg = {
+	.fuse_list		=	&list_ipq9574_fuse_attr,
+	.is_rlbk_support	=	true,
+};
+
+static const struct qfprom_node_cfg ipq5332_qfprom_node_cfg = {
+	.fuse_list		=	&list_ipq5322_fuse_attr,
+	.is_rlbk_support	=	true,
+};
+
+static const struct qfprom_node_cfg ipq5424_qfprom_node_cfg = {
+	.fuse_list		=	&list_ipq5424_fuse_attr,
+	.is_rlbk_support	=	false,
+};
+
 /*
  * Do not change the order of attributes.
  * New types should be added at the end
  */
+#ifdef CONFIG_QCOM_TMELCOM
+static struct device_attribute qfprom_attrs[] = {
+	__ATTR(authenticate, 0444, qfprom_show_authenticate, NULL),
+	__ATTR(read_version, 0200, NULL, store_read_commit_version),
+	__ATTR(version_commit, 0200, NULL, store_version_commit),
+};
+#else
 static struct device_attribute qfprom_attrs[] = {
 	__ATTR(authenticate, 0444, qfprom_show_authenticate,
 					NULL),
@@ -1057,6 +1108,7 @@ static struct device_attribute qfprom_attrs[] = {
 					store_version_commit),
 
 };
+#endif
 
 static struct bus_type qfprom_subsys = {
 	.name = "qfprom",
@@ -1068,7 +1120,8 @@ static struct device device_qfprom = {
 	.bus = &qfprom_subsys,
 };
 
-static int __init qfprom_create_files(int size, int16_t sw_bitmap)
+static int __init qfprom_create_files(int size, int16_t sw_bitmap,
+				      const struct qfprom_node_cfg *cfg)
 {
 	int i;
 	int err;
@@ -1081,7 +1134,7 @@ static int __init qfprom_create_files(int size, int16_t sw_bitmap)
 		return err;
 	}
 
-	if (gl_version_enable != 1)
+	if (cfg->is_rlbk_support && gl_version_enable != 1)
 		return 0;
 
 	for (i = 1; i < size; i++) {
@@ -1093,9 +1146,11 @@ static int __init qfprom_create_files(int size, int16_t sw_bitmap)
 			* be added at the end of "qfprom_attrs" variable.
 			*/
 
-			sw_bit = i - 1;
-			if (!(sw_bitmap & (1 << sw_bit)))
-				break;
+			if (cfg->is_rlbk_support) {
+				sw_bit = i - 1;
+				if (!(sw_bitmap & (1 << sw_bit)))
+					break;
+			}
 			err = device_create_file(&device_qfprom, &qfprom_attrs[i]);
 			if (err) {
 				pr_err("%s: device_create_file(%s)=%d\n",
@@ -1150,7 +1205,7 @@ static int qfprom_probe(struct platform_device *pdev)
 	int16_t sw_bitmap = 0;
 	struct device_node *np = pdev->dev.of_node;
 	struct device *dev = &pdev->dev;
-	const struct of_device_id *match;
+	const struct qfprom_node_cfg *cfg;
 	u32 scm_cmd_id;
 
 	if (!qcom_scm_is_available()) {
@@ -1158,9 +1213,15 @@ static int qfprom_probe(struct platform_device *pdev)
 		return -EPROBE_DEFER;
 	}
 
-	gl_version_enable = is_version_rlbk_enabled(&pdev->dev, &sw_bitmap);
-	if (gl_version_enable == 0)
-		pr_info("\nVersion Rollback Feature Disabled\n");
+	cfg = of_device_get_match_data(dev);
+	if (!cfg)
+		return -EINVAL;
+
+	if (cfg->is_rlbk_support) {
+		gl_version_enable = is_version_rlbk_enabled(&pdev->dev, &sw_bitmap);
+		if (gl_version_enable == 0)
+			pr_info("\nVersion Rollback Feature Disabled\n");
+	}
 	/*
 	 * Registering under "/sys/devices/system"
 	 */
@@ -1232,12 +1293,8 @@ static int qfprom_probe(struct platform_device *pdev)
 
 	/* Error values are printed in qfprom_create_files API. Skipping the
 	   return value check to proceed with creating the next sysfs entry */
-	err = qfprom_create_files(ARRAY_SIZE(qfprom_attrs), sw_bitmap);
-
-	match  = of_match_device(dev->driver->of_match_table, dev);
-	if (!match)
-		return -EINVAL;
-	err = device_create_file(&device_qfprom, match->data);
+	err = qfprom_create_files(ARRAY_SIZE(qfprom_attrs), sw_bitmap, cfg);
+	err = device_create_file(&device_qfprom, cfg->fuse_list);
 	if (err) {
 		pr_err("%s: device_create_file with error %d\n",
 			__func__, err);
@@ -1249,13 +1306,13 @@ static const struct of_device_id qcom_qfprom_dt_match[] = {
 	{ .compatible = "qcom,qfprom-sec",},
 	{
 		.compatible = "qcom,qfprom-ipq9574-sec",
-		.data = (void *)&list_ipq9574_fuse_attr,
+		.data = (void *)&ipq9574_qfprom_node_cfg,
 	}, {
 		.compatible = "qcom,qfprom-ipq5332-sec",
-		.data = (void *)&list_ipq5322_fuse_attr,
+		.data = (void *)&ipq5332_qfprom_node_cfg,
 	}, {
 		.compatible = "qcom,qfprom-ipq5424-sec",
-		.data = (void *)&list_ipq5424_fuse_attr,
+		.data = (void *)&ipq5424_qfprom_node_cfg,
 	},
 	{}
 };

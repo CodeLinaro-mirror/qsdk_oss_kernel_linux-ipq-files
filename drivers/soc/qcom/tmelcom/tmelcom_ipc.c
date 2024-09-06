@@ -640,3 +640,22 @@ int tmelcom_secure_io_write(struct tmel_secure_io *buf, size_t size)
 	return ret;
 }
 EXPORT_SYMBOL_GPL(tmelcom_secure_io_write);
+
+int tmelcomm_secboot_get_arb_version(u32 type, u32 *version)
+{
+	struct device *dev = tmelcom_get_device();
+	struct tmel_get_arb_version msg = {0};
+	int ret;
+
+	msg.req.sw_id = type;
+	ret = tmelcom_process_request(TMEL_MSG_UID_SECBOOT_GET_ARB_VERSION,
+				      &msg, sizeof(msg));
+	if (ret || msg.rsp.status) {
+		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = %d\n",
+			__func__, ret, msg.rsp.status);
+	}
+
+	*version = msg.rsp.oem_version;
+	return ret ? ret : msg.rsp.status;
+}
+EXPORT_SYMBOL_GPL(tmelcomm_secboot_get_arb_version);
