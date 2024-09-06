@@ -97,6 +97,7 @@
 			clocks = <&apss_clk APSS_SILVER_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
+			#cooling-cells = <2>;
 			L2_0: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
@@ -119,6 +120,7 @@
 			clocks = <&apss_clk APSS_SILVER_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
+			#cooling-cells = <2>;
 			L2_100: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
@@ -136,6 +138,7 @@
 			clocks = <&apss_clk APSS_SILVER_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
+			#cooling-cells = <2>;
 			L2_200: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
@@ -153,6 +156,7 @@
 			clocks = <&apss_clk APSS_SILVER_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
+			#cooling-cells = <2>;
 			L2_300: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
