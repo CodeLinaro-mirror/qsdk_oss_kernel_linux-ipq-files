@@ -146,6 +146,23 @@ struct tmel_secure_io_write {
 	struct tmel_msg_param_type_buf_in write_buf;
 } __packed;
 
+struct tmel_get_arb_version_req {
+	u32 sw_id;
+} __packed;
+
+struct tmel_get_arb_version_rsp {
+	u8 oem_version;
+	u8 qti_version;
+	u8 oem_is_valid;
+	u8 qti_is_valid;
+	u32 status;
+} __packed;
+
+struct tmel_get_arb_version {
+	struct tmel_get_arb_version_req req;
+	struct tmel_get_arb_version_rsp rsp;
+} __packed;
+
 #ifdef CONFIG_QCOM_TMELCOM
 int tmelcom_probed(void);
 int tmelcom_init_attestation(u32 *key_buf, u32 key_buf_len, u32 *key_buf_size);
@@ -170,6 +187,7 @@ int tmelcom_set_tmel_log_config(void *buf, u32 size);
 int tmelcom_get_tmel_log(void *buf, u32 max_buf_size, u32 *size);
 int tmelcom_secure_io_read(struct tmel_secure_io *buf, size_t size);
 int tmelcom_secure_io_write(struct tmel_secure_io *buf, size_t size);
+int tmelcomm_secboot_get_arb_version(u32 type, u32 *version);
 
 #else
 static inline int tmelcom_probed(void)
