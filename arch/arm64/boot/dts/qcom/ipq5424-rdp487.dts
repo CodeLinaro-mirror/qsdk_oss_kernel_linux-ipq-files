@@ -9,15 +9,88 @@
 /dts-v1/;
 
 #include "ipq5424-rdp-common.dtsi"
-#ifdef __IPQ_MEM_PROFILE_512_MB__
+#if defined(__IPQ_MEM_PROFILE_512_MB__)
 #include "ipq5424-512MB-default-memory.dtsi"
-#else
+#elif !defined(__IPQ_MEM_PROFILE_256_MB__)
 #include "ipq5424-default-memory.dtsi"
 #endif
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ5424 RDP487";
 	compatible = "qcom,ipq5424-rdp487", "qcom,ipq5424";
+
+#ifdef __IPQ_MEM_PROFILE_256_MB__
+	/*                    256MB Profile
+	 * +==========+==============+========================+
+	 * |         |              |                         |
+	 * |  Region | Start Offset |          Size           |
+	 * |         |              |                         |
+	 * +---------+--------------+-------------------------+
+	 * |         |              |                         |
+	 * |   WLAN  |              |                         |
+	 * |    Q6   |  0x8a900000  |          21MB           |
+	 * |         |              |                         |
+	 * +---------+--------------+-------------------------+
+	 * |         |              |                         |
+	 * | IPQ5424 |              |                         |
+	 * |  QDSS   |  0x8d200000  |           1MB           |
+	 * |         |              |                         |
+	 * +---------+--------------+-------------------------+
+	 * |         |              |                         |
+	 * | QCN9224 |  0x8d900000  |          12MB           |
+	 * | PCIE0   |              |                         |
+	 * |         |              |                         |
+	 * +---------+--------------+-------------------------+
+	 * |         |              |                         |
+	 * |  MHI0   |    DYNAMIC   |          9MB            |
+	 * |         |              |                         |
+	 * +---------+--------------+-------------------------+
+	 * |         |              |                         |
+	 * |  MLO    |  0x9b300000  |          5MB            |
+	 * |         |              |                         |
+	 * +==================================================+
+	 * |                                                  |
+	 * |                                                  |
+	 * |                                                  |
+	 * |             Rest of memory for Linux             |
+	 * |                                                  |
+	 * |                                                  |
+	 * |                                                  |
+	 * +==================================================+
+	 */
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		q6_region: wcnss@8a900000 {
+			no-map;
+			reg = <0x0 0x8a900000 0x0 0x1500000>;
+		};
+
+		q6_etr_region: q6_etr_dump@8be00000 {
+			no-map;
+			reg = <0x0 0x8be00000 0x0 0x100000>;
+		};
+
+		qcn9224_pcie2: qcn9224_pcie2@8bf00000 {
+			no-map;
+			reg = <0x0 0x8bf00000 0x0 0xc00000>;
+		};
+
+		mhi_region2: dma_pool2@0 {
+			compatible = "shared-dma-pool";
+			no-map;
+			size = <0x0 0x00900000>;
+		};
+
+		mlo_global_mem0: mlo_global_mem_0@0 {
+			no-map;
+			reg = <0x0 0x9b300000 0x0 0x500000>;
+		};
+	};
+#endif
 
 	soc@0 {
 		qupv3: geniqup@1ac0000 {
@@ -217,6 +290,11 @@
 };
 
 &q6v5_wcss {
+#if __IPQ_MEM_PROFILE_256_MB__
+	memory-region = <&q6_region>,
+			<&q6_etr_region>,
+			<&mlo_global_mem0>;
+#endif
 	status = "okay";
 };
 
@@ -369,6 +447,26 @@
 };
 
 &wifi3 {
+#if __IPQ_MEM_PROFILE_256_MB__
+	/* qcn9224 tgt-mem-mode=2 layout - 12MB
+	 * +=========+==============+=========+
+	 * |  Region | Start Offset |   Size  |
+	 * +---------+--------------+---------+
+	 * | HREMOTE |  0x8bf00000  |   8MB   |
+	 * +---------+--------------+---------+
+	 * |   ETR   |  0x8c700000  |   1MB   |
+	 * +---------+--------------+---------+
+	 * |Pageable |  0x8c800000  |   3MB   |
+	 * +==================================+
+	 */
+	base-addr = <0x8bf00000>;
+	etr-addr = <0x8c700000>;
+	pageable-addr = <0x8c800000>;
+	hremote-size = <0x800000>;
+	pageable-size = <0x300000>;
+	caldb-size = <0>;
+	tgt-mem-mode = <0x2>;
+#endif
 	hremote_node = <&qcn9224_pcie2>;
 	board_id = <0x33>;
 	hw_link_id = <1 0>;
