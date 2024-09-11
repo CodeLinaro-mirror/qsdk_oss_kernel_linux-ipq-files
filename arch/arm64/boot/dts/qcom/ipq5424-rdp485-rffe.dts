@@ -276,8 +276,8 @@
 };
 
 &reg_update {
-	aggr-noc-config = <0x00610a08 0x80>, /* aggr_noc_pcie2 */
-			  <0x00610b08 0x80>; /* aggr_noc_pcie3 */
+	secure-reg = <0x00610a08 0x80>, /* aggr_noc_pcie2 */
+		     <0x00610b08 0x80>; /* aggr_noc_pcie3 */
 };
 
 &qusb_phy_1 {

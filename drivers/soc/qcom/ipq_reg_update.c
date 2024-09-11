@@ -134,41 +134,42 @@ static int reg_update_probe(struct platform_device *pdev)
 	struct clk *nssnoc_nss_csr_clk;
 	int ret, num_elem, i = 0;
 	struct device_node *np = (&pdev->dev)->of_node;
-	struct tmel_secure_io aggr_noc;
+	struct tmel_secure_io secure_reg;
 
-	/* For IPQ54xx, only aggr_noc settings update is required */
+	/* For IPQ54xx, handle secure regs to be updated via tmelcom here */
 	if (of_device_is_compatible(np, "ipq,54xx-reg-update")) {
 		if (tmelcom_probed())
 			return -EPROBE_DEFER;
 
-		num_elem = of_property_count_elems_of_size(np, "aggr-noc-config",
+		num_elem = of_property_count_elems_of_size(np, "secure-reg",
 							   sizeof(u32));
 
 		while (i < num_elem) {
 			ret = of_property_read_u32_index(pdev->dev.of_node,
-							 "aggr-noc-config", i++,
-							 &aggr_noc.reg_addr);
+							 "secure-reg", i++,
+							 &secure_reg.reg_addr);
 			if (ret) {
-				dev_err(&pdev->dev, "Failed to get aggr_noc reg %d\n", (i - 1));
+				dev_err(&pdev->dev, "Failed to get secure reg %d\n", (i - 1));
 				return -EINVAL;
 			}
 
 			ret = of_property_read_u32_index(pdev->dev.of_node,
-							 "aggr-noc-config", i++,
-							 &aggr_noc.reg_val);
+							 "secure-reg", i++,
+							 &secure_reg.reg_val);
 			if (ret) {
-				dev_err(&pdev->dev, "Failed to get aggr_noc val %d\n", (i - 1));
+				dev_err(&pdev->dev, "Failed to get secure reg val %d\n", (i - 1));
 				return -EINVAL;
 			}
 
-			dev_dbg(&pdev->dev, "Configuring aggr_noc reg: 0x%x val: 0x%x\n",
-				aggr_noc.reg_addr, aggr_noc.reg_val);
+			dev_dbg(&pdev->dev, "Configuring secure reg: 0x%x val: 0x%x\n",
+				secure_reg.reg_addr, secure_reg.reg_val);
 
-			ret = tmelcom_secure_io_write(&aggr_noc,
+			ret = tmelcom_secure_io_write(&secure_reg,
 						      sizeof(struct tmel_secure_io));
 			if (ret) {
-				dev_err(&pdev->dev, "Failed to update aggr_noc settings, ret = %d\n",
-					ret);
+				dev_err(&pdev->dev, "Failed to update secure_reg settings, ret = %d reg: 0x%x val: 0x%x\n",
+					ret, secure_reg.reg_addr,
+					secure_reg.reg_val);
 				return ret;
 			}
 		}
