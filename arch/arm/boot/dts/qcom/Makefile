@@ -21,6 +21,7 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	ipq5424-emulation-ssoc.dtb \
 	ipq5424-emulation-fbc.dtb \
 	ipq5424-rdp464.dtb \
+	ipq5424-rdp464-c2.dtb \
 	ipq5424-rdp466.dtb \
 	ipq5424-rdp466-rffe.dtb \
 	ipq5424-rdp485.dtb \
