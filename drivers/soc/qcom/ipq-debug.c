@@ -94,7 +94,8 @@ static int ipq_debug_atomic_ssr_handler(struct notifier_block *nb,
 
 	reason = container_of(nb, struct restart_reason, atomic_ssr_blk);
 
-	memcpy_toio(reason->wr_addr, &val, sizeof(int));
+	if (action == QCOM_SSR_NOTIFY_CRASH)
+		memcpy_toio(reason->wr_addr, &val, sizeof(int));
 
 	return NOTIFY_DONE;
 }
