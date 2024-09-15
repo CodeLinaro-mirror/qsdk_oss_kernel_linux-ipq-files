@@ -961,6 +961,8 @@
 				 <&gcc GCC_QUPV3_AHB_SLV_CLK>;
 			clock-names = "m-ahb", "s-ahb";
 			ranges;
+			#address-cells = <1>;
+			#size-cells = <1>;
 
 			status = "disabled";
 
