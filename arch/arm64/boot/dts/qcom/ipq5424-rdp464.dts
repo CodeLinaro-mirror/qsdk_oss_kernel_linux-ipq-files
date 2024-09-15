@@ -26,6 +26,14 @@
 				pinctrl-0 = <&qup_i2c0_default>;
 				pinctrl-names = "default";
 				status = "okay";
+
+				exp1: gpio@74 {
+					compatible = "ti,tca9539";
+					reg = <0x74>;
+
+					#gpio-cells = <2>;
+					gpio-controller;
+				};
 			};
 
 			i2c1: i2c@1a8c000 {
