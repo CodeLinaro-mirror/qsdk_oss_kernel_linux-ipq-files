@@ -2241,7 +2241,7 @@
 				<0 502 1>, /* umac_reset */
 				<0 558 1>, /* reo2ppe1 */
 				<0 586 1>, /* reo2ppe */
-				<0 573 1>, /* ppe_wbm_rel */
+				<0 550 1>, /* ppe_wbm_rel */
 				<0 562 1>, /* ppe2tcl */
 				/* Unused Interrupts - Mapping these interrupts to ce11 interrupt number since ce11 is unused */
 				<0 529 1>, /* host2rxdma-monitor-ring3 */
