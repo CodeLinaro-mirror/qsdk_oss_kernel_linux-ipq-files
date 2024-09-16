@@ -195,7 +195,7 @@ int tmelcom_init_attestation(u32 *key_buf, u32 key_buf_len, u32 *key_buf_size)
 		return -EINVAL;
 
 	dma_key_buf = dma_map_single(dev, key_buf,
-				     key_buf_len, DMA_BIDIRECTIONAL);
+				     key_buf_len, DMA_FROM_DEVICE);
 	ret = dma_mapping_error(dev, dma_key_buf);
 	if (ret != 0) {
 		dev_err(dev, "DMA Mapping Error : %d\n", ret);
@@ -214,7 +214,7 @@ int tmelcom_init_attestation(u32 *key_buf, u32 key_buf_len, u32 *key_buf_size)
 	else
 		*key_buf_size = msg.rsp.out_buf_len;
 
-	dma_unmap_single(dev, dma_key_buf, key_buf_len, DMA_BIDIRECTIONAL);
+	dma_unmap_single(dev, dma_key_buf, key_buf_len, DMA_FROM_DEVICE);
 	return ret ? ret : msg.status;
 }
 EXPORT_SYMBOL_GPL(tmelcom_init_attestation);
@@ -234,7 +234,7 @@ int tmelcom_qwes_getattestation_report(u32 *req_buf, u32 req_buf_len,
 		return -EINVAL;
 
 	dma_att_req_buf = dma_map_single(dev, req_buf,
-					 req_buf_len, DMA_FROM_DEVICE);
+					 req_buf_len, DMA_TO_DEVICE);
 	ret = dma_mapping_error(dev, dma_att_req_buf);
 	if (ret != 0) {
 		dev_err(dev, "DMA Mapping Error : %d\n", ret);
@@ -242,7 +242,7 @@ int tmelcom_qwes_getattestation_report(u32 *req_buf, u32 req_buf_len,
 	}
 	if (extclaim_buf) {
 		dma_ext_claim_buf = dma_map_single(dev, extclaim_buf,
-					extclaim_buf_len, DMA_FROM_DEVICE);
+					extclaim_buf_len, DMA_TO_DEVICE);
 		ret = dma_mapping_error(dev, dma_ext_claim_buf);
 		if (ret != 0) {
 			dev_err(dev, "DMA Mapping Error : %d\n", ret);
@@ -250,7 +250,7 @@ int tmelcom_qwes_getattestation_report(u32 *req_buf, u32 req_buf_len,
 		}
 	}
 	dma_att_rsp_buf = dma_map_single(dev, resp_buf, resp_buf_len,
-					 DMA_BIDIRECTIONAL);
+					 DMA_FROM_DEVICE);
 	ret = dma_mapping_error(dev, dma_att_rsp_buf);
 	if (ret != 0) {
 		dev_err(dev, "DMA Mapping Error : %d\n", ret);
@@ -274,14 +274,14 @@ int tmelcom_qwes_getattestation_report(u32 *req_buf, u32 req_buf_len,
 		*resp_buf_size = msg.rsp.out_buf_len;
 
 	dma_unmap_single(dev, dma_att_rsp_buf,
-			 resp_buf_len, DMA_BIDIRECTIONAL);
+			 resp_buf_len, DMA_FROM_DEVICE);
 dma_unmap_extclaim_buf:
 	if (extclaim_buf) {
 		dma_unmap_single(dev, dma_ext_claim_buf,
-					extclaim_buf_len, DMA_FROM_DEVICE);
+					extclaim_buf_len, DMA_TO_DEVICE);
 	}
 dma_unmap_req_buf:
-	dma_unmap_single(dev, dma_att_req_buf, req_buf_len, DMA_FROM_DEVICE);
+	dma_unmap_single(dev, dma_att_req_buf, req_buf_len, DMA_TO_DEVICE);
 
 	return ret ? ret : msg.status;
 }
@@ -301,7 +301,7 @@ int tmelcom_qwes_device_provision(u32 *req_buf, u32 req_buf_len, u32 *resp_buf,
 		return -EINVAL;
 
 	dma_prov_req_buf = dma_map_single(dev, req_buf, req_buf_len,
-					  DMA_FROM_DEVICE);
+					  DMA_TO_DEVICE);
 	ret = dma_mapping_error(dev, dma_prov_req_buf);
 	if (ret != 0) {
 		dev_err(dev, "DMA Mapping Error : %d\n", ret);
@@ -309,7 +309,7 @@ int tmelcom_qwes_device_provision(u32 *req_buf, u32 req_buf_len, u32 *resp_buf,
 	}
 
 	dma_prov_rsp_buf = dma_map_single(dev, resp_buf, resp_buf_len,
-					  DMA_BIDIRECTIONAL);
+					  DMA_FROM_DEVICE);
 	ret = dma_mapping_error(dev, dma_prov_rsp_buf);
 	if (ret != 0) {
 		dev_err(dev, "DMA Mapping Error : %d\n", ret);
@@ -331,10 +331,10 @@ int tmelcom_qwes_device_provision(u32 *req_buf, u32 req_buf_len, u32 *resp_buf,
 		*resp_buf_size = msg.rsp.out_buf_len;
 
 	dma_unmap_single(dev, dma_prov_rsp_buf,
-			 resp_buf_len, DMA_BIDIRECTIONAL);
+			 resp_buf_len, DMA_FROM_DEVICE);
 
 dma_unmap_prov_req_buf:
-	dma_unmap_single(dev, dma_prov_req_buf, req_buf_len, DMA_FROM_DEVICE);
+	dma_unmap_single(dev, dma_prov_req_buf, req_buf_len, DMA_TO_DEVICE);
 
 	return ret ? ret : msg.status;
 }
