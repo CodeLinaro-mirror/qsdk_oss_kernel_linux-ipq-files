@@ -367,7 +367,7 @@
 &blsp1_uart3 {
 	pinctrl-0 = <&gps_pins>;
 	pinctrl-names = "default";
-	status = "okay";
+	status = "disabled";
 };
 
 &blsp1_uart4 {
