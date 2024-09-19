@@ -57,6 +57,10 @@
 			};
 		};
 
+		gpio-keys {
+			status = "disabled";
+		};
+
 		wsi: wsi {
 			id = <0>;
 			num_chip = <3>;

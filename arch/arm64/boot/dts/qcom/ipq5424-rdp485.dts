@@ -57,6 +57,10 @@
 			};
 		};
 
+		gpio-keys {
+			status = "disabled";
+		};
+
 		mdio@90000 {
 			ethernet-phy@4 {
 				reg = <0>;
