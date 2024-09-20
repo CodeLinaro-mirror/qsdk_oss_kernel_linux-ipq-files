@@ -34,8 +34,8 @@
 
 #include "ipq-lpass.h"
 #include "ipq-lpass-cc.h"
-#ifdef CONFIG_SND_SOC_IPQ9574_LPASS_PCM_RAW
-#include "ipq9574-lpass-pcm.h"
+#ifdef CONFIG_SND_SOC_IPQ_LPASS_PCM_RAW
+#include "ipq-lpass-pcm.h"
 #else
 #include "ipq-lpass-tdm-pcm.h"
 #endif
