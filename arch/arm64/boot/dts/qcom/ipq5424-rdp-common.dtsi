@@ -72,21 +72,61 @@
 			mdio_clk_fixup; /* MDIO clock sequence fix up flag */
 			status = "okay";
 
-			ethernet-phy@0 {
+			phy0:ethernet-phy@0 {
 				reg = <1>;
 				fixup;
 			};
-			ethernet-phy@1 {
+			phy1:ethernet-phy@1 {
 				reg = <2>;
 				fixup;
 			};
-			ethernet-phy@2 {
+			phy2:ethernet-phy@2 {
 				reg = <3>;
 				fixup;
 			};
-			ethernet-phy@3 {
+			phy3:ethernet-phy@3 {
 				reg = <4>;
 				fixup;
+			};
+
+			switch0@10 {
+				compatible = "qca,qca8386";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0x10>;
+
+				ports {
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					port@1 {
+						reg = <1>;
+						label = "lan1";
+						phy-handle = <&phy0>;
+						phy-mode = "usxgmii";
+					};
+
+					port@2 {
+						reg = <2>;
+						label = "lan2";
+						phy-handle = <&phy1>;
+						phy-mode = "usxgmii";
+					};
+
+					port@3 {
+						reg = <3>;
+						label = "lan3";
+						phy-handle = <&phy2>;
+						phy-mode = "usxgmii";
+					};
+
+					port@4 {
+						reg = <4>;
+						label = "lan4";
+						phy-handle = <&phy3>;
+						phy-mode = "usxgmii";
+					};
+				};
 			};
 		};
 
