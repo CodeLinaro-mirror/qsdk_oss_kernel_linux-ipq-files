@@ -835,20 +835,6 @@
 	status = "okay";
 };
 
-&usb3 {
-	qcom,select-utmi-as-pipe-clk;
-	status = "okay";
-
-	dwc3@8a00000 {
-		phys = <&hs_m31phy_0>;
-		phy-names = "usb2-phy";
-	};
-};
-
-&hs_m31phy_0 {
-	status = "okay";
-};
-
 &wifi0 {
 	qcom,multipd_arch;
 	qcom,rproc = <&q6_wcss_pd1>;
