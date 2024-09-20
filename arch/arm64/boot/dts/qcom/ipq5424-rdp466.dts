@@ -117,12 +117,6 @@
 			};
 		};
 
-		pcm: pcm@0xA3C0000 {
-			pinctrl-0 = <&audio_pins_pri>;
-			pinctrl-names = "primary";
-			status = "disabled";
-		};
-
 		leds {
 			compatible = "gpio-leds";
 			pinctrl-0 = <&gpio_leds_default>;
@@ -291,6 +285,12 @@
 					<0 313 4>;		/* MHT port Tx complete ring id #31 IRQ info */
 		};
 	};
+};
+
+&pcm {
+	pinctrl-0 = <&audio_pins_pri>;
+	pinctrl-names = "primary";
+	status = "disabled";
 };
 
 &qpic_bam {
