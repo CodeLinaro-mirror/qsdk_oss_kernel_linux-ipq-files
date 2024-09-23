@@ -752,7 +752,7 @@ store_sec_auth(struct device *dev,
 			ret = qcom_sec_upgrade_auth(scm_cmd_id, sw_type, size, img_addr);
 		}
 		if (ret || status) {
-			pr_err("sec_upgrade_authentication failed return=%d status: %d\n",
+			pr_err("sec_upgrade_authentication failed return=%d status: %llx\n",
 			       ret, status);
 			goto free_out_data;
 		}
@@ -1038,7 +1038,7 @@ store_sec_dat(struct device *dev, struct device_attribute *attr,
 	else if (fuse_status == FUSEPROV_SUCCESS)
 		pr_info("Fuse Blow Success\n");
 	else
-		pr_info("Fuse blow failed with err code : 0x%lx\n", fuse_status);
+		pr_info("Fuse blow failed with err code : 0x%llx\n", fuse_status);
 
 	ret = count;
 

@@ -630,7 +630,7 @@ int tmelcomm_secboot_get_arb_version(u32 type, u32 *version)
 	ret = tmelcom_process_request(TMEL_MSG_UID_SECBOOT_GET_ARB_VERSION,
 				      &msg, sizeof(msg));
 	if (ret || msg.rsp.status)
-		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = %lx\n",
+		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = %x\n",
 			__func__, ret, msg.rsp.status);
 	else
 		*version = msg.rsp.oem_version;
@@ -649,7 +649,7 @@ int tmelcomm_secboot_update_arb_version(u32 status)
 	ret = tmelcom_process_request(TMEL_MSG_UID_SECBOOT_UPDATE_ARB_VERSION,
 				      &msg, sizeof(msg));
 	if (ret || msg.rsp.status)
-		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = %lx\n",
+		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = %x\n",
 			__func__, ret, msg.rsp.status);
 
 	return ret ? ret : msg.rsp.status;
