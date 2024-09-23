@@ -642,7 +642,7 @@
 		};
 
 		q6v5_wcss: remoteproc@d100000 {
-			boot-args = <0x1 0x5 0x3 0x0 0x26 0x2 0x1>;
+			boot-args = <0x1 0x5 0x3 0x1 0x2f 0x2 0x1>;
 			memory-region = <&q6_mem_regions>, <&mlo_global_mem0>;
 
 			q6_wcss_pd1: remoteproc_pd1 {
@@ -865,20 +865,6 @@
 };
 
 &license_manager {
-	status = "okay";
-};
-
-&usb3 {
-	qcom,select-utmi-as-pipe-clk;
-	status = "okay";
-
-	dwc3@8a00000 {
-		phys = <&hs_m31phy_0>;
-		phy-names = "usb2-phy";
-	};
-};
-
-&hs_m31phy_0 {
 	status = "okay";
 };
 
