@@ -346,80 +346,17 @@
 
 	soc@0 {
 		mdio:mdio@90000 {
-			pinctrl-0 = <&mdio1_pins &mdio0_pins>;
+			pinctrl-0 = <&mdio1_pins>;
 			pinctrl-names = "default";
-			/*gpio51 for manhattan reset*/
-			phy-reset-gpio = <&tlmm 51 GPIO_ACTIVE_LOW &tlmm 22 GPIO_ACTIVE_LOW>;
-			phyaddr_fixup = <0xC90F018>;
-			uniphyaddr_fixup = <0xC90F014>;
-			mdio_clk_fixup; /* MDIO clock sequence fix up flag */
+			/*gpio22 is for wan napa, gpio51 for lan napa*/
+			phy-reset-gpio = <&tlmm 22 GPIO_ACTIVE_LOW &tlmm 51 GPIO_ACTIVE_LOW>;
 			status = "okay";
 
 			phy0: ethernet-phy@0 {
-				reg = <1>;
-				fixup;
+				reg = <24>;
 			};
 			phy1: ethernet-phy@1 {
-				reg = <2>;
-				fixup;
-			};
-			phy2: ethernet-phy@2 {
-				reg = <3>;
-				fixup;
-			};
-			phy3: ethernet-phy@3 {
-				reg = <4>;
-				fixup;
-			};
-			phy4: ethernet-phy@4 {
-				reg = <12>;
-			};
-
-			switch0@10 {
-				compatible = "qca,qca8386";
-				#address-cells = <1>;
-				#size-cells = <0>;
-				reg = <0x10>;
-
-				ports {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					port@0 {
-						reg = <0>;
-						label = "cpu";
-						ethernet = <&gmac2>;
-						dsa-tag-protocol = "qca_4b";
-					};
-
-					port@1 {
-						reg = <1>;
-						label = "lan1";
-						phy-handle = <&phy0>;
-						phy-mode = "usxgmii";
-					};
-
-					port@2 {
-						reg = <2>;
-						label = "lan2";
-						phy-handle = <&phy1>;
-						phy-mode = "usxgmii";
-					};
-
-					port@3 {
-						reg = <3>;
-						label = "lan3";
-						phy-handle = <&phy2>;
-						phy-mode = "usxgmii";
-					};
-
-					port@4 {
-						reg = <4>;
-						label = "lan4";
-						phy-handle = <&phy3>;
-						phy-mode = "usxgmii";
-					};
-				};
+				reg = <28>;
 			};
 		};
 
@@ -453,109 +390,38 @@
 		};
 
 		ess-instance {
-			num_devices = <0x2>;
-
 			ess-switch@3a000000 {
 				pinctrl-names = "default";
 				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
 				switch_lan_bmp = <0x2>; /* lan port bitmap */
 				switch_wan_bmp = <0x4>; /* wan port bitmap */
-				switch_mac_mode = <0xc>; /* mac mode for uniphy instance0*/
+				switch_mac_mode = <0xf>; /* mac mode for uniphy instance0*/
 				switch_mac_mode1 = <0xf>; /* mac mode for uniphy instance1*/
 				switch_mac_mode2 = <0xff>; /* mac mode for uniphy instance2*/
 
 				qcom,port_phyinfo {
 					port@0 {
 						port_id = <1>;
-						forced-speed = <2500>;
-						forced-duplex = <1>;
-						switch_external {
-							switch_handle = <&switch1>;
-							switch_cpu_port = <0>;
-						};
+						phy_address = <24>;
 					};
 					port@1 {
 						port_id = <2>;
-						phy_address = <12>;
+						phy_address = <28>;
 					};
-				};
-			};
-
-			switch1: ess-switch1@1 {
-				compatible = "qcom,ess-switch-qca8386";
-				device_id = <1>;
-				switch_access_mode = "mdio";
-				mdio-bus = <&mdio>;
-				switch_mac_mode = <0xc>; /* mac mode for uniphy instance0 */
-				switch_mac_mode1 = <0xff>; /* mac mode1 for uniphy instance1 */
-				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
-				switch_lan_bmp = <0x1e>; /* lan port bitmap */
-				switch_wan_bmp = <0x0>;  /* wan port bitmap */
-				link-polling-required = <0>;
-				fdb_sync = "interrupt";
-				link-intr-gpio = <&tlmm 23 GPIO_ACTIVE_HIGH>;
-
-				qcom,port_phyinfo {
-					port@0 {
-						port_id = <0>;
-						forced-speed = <2500>;
-						forced-duplex = <1>;
-					};
-					port@1 {
-						port_id = <1>;
-						phy_address = <1>;
-					};
-					port@2 {
-						port_id = <2>;
-						phy_address = <2>;
-					};
-					port@3 {
-						port_id = <3>;
-						phy_address = <3>;
-					};
-					port@4 {
-						port_id = <4>;
-						phy_address = <4>;
-					};
-				};
-
-				led_source@2 {
-					source = <2>;
-					mode = "normal";
-					speed = "all";
-					blink_en = "enable";
-					active = "high";
-				};
-				led_source@5 {
-					source = <5>;
-					mode = "normal";
-					speed = "all";
-					blink_en = "enable";
-					active = "high";
-				};
-				led_source@8 {
-					source = <8>;
-					mode = "normal";
-					speed = "all";
-					blink_en = "enable";
-					active = "high";
-				};
-				led_source@11 {
-					source = <11>;
-					mode = "normal";
-					speed = "all";
-					blink_en = "enable";
-					active = "high";
 				};
 			};
 		};
 
 		nss-macsec0 {
 			compatible = "qcom,nss-macsec";
-			phy_addr = <12>;
+			phy_addr = <24>;
 			mdiobus = <&mdio>;
 		};
-
+		nss-macsec1 {
+			compatible = "qcom,nss-macsec";
+			phy_addr = <28>;
+			mdiobus = <&mdio>;
+		};
 		dp1 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
@@ -564,20 +430,22 @@
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
 			mdio-bus = <&mdio>;
-			qcom,phy-mdio-addr = <12>;
+			qcom,phy-mdio-addr = <28>;
 			qcom,link-poll = <1>;
 			phy-mode = "sgmii";
 		};
 
-		gmac2:dp2 {
+		dp2 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
 			qcom,id = <1>;
 			reg = <0x3a500000 0x4000>;
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
+			mdio-bus = <&mdio>;
+			qcom,phy-mdio-addr = <24>;
+			qcom,link-poll = <1>;
 			phy-mode = "sgmii";
-			qcom,mht-dev = <1>;
 		};
 
 		/* EDMA host driver configuration for the board */
