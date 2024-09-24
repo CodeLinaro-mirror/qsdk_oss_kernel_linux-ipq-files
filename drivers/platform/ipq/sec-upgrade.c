@@ -39,6 +39,8 @@
 #include <linux/decompress/unlzma.h>
 #include <linux/decompress/generic.h>
 #include <linux/tmelcom_ipc.h>
+#include <crypto/hash.h>
+#include <crypto/sha2.h>
 
 #define QFPROM_MAX_VERSION_EXCEEDED             0x10
 #define QFPROM_IS_AUTHENTICATE_CMD_RSP_SIZE	0x2
@@ -652,6 +654,172 @@ static int parse_n_extract_ld_segment(void *va_addr, u32 *md_size, unsigned int 
 		return -EINVAL;
 }
 
+static int elf64_parse_hash_n_meta_data(void *va_addr, char *alg_name, size_t digest_size,
+					unsigned int scm_cmd_id, unsigned int sw_type)
+{
+	Elf64_Ehdr *ehdr = (Elf64_Ehdr *)(uintptr_t)va_addr;
+	Elf64_Phdr *phdr = (Elf64_Phdr *)(uintptr_t)(va_addr + ehdr->e_phoff);
+	u8 *elf_seg_buf;
+	struct crypto_shash *alg;
+	struct shash_desc *desc;
+	u8 *shabuf;
+	u8 lds_cnt = 0;
+	size_t seg_size;
+	char *ld_seg_hash_buf;
+	u32 md_size;
+	u32 hash_buf_size;
+	int ret = 0;
+	void *metadata = NULL;
+	int i;
+
+	if ((!IS_ELF(*ehdr)) || ehdr->e_phnum < 3)
+		return -EINVAL;
+
+	alg = crypto_alloc_shash(alg_name, 0, 0);
+	if (IS_ERR(alg))
+		return PTR_ERR(alg);
+
+	shabuf = kzalloc(digest_size, GFP_KERNEL);
+	ld_seg_hash_buf = kzalloc((digest_size * ehdr->e_phnum - 2), GFP_KERNEL);
+	desc = kzalloc(sizeof(*desc) + crypto_shash_descsize(alg), GFP_KERNEL);
+
+	if (!shabuf || !desc || !ld_seg_hash_buf)
+		goto out_free;
+
+	desc->tfm = alg;
+
+	for (i = 0; i < ehdr->e_phnum; i++, phdr++) {
+		if (phdr->p_type == PT_NULL) {
+			md_size = phdr->p_offset + phdr->p_filesz;
+			continue;
+		}
+		if (phdr->p_type == PT_LOAD) {
+			elf_seg_buf = (u8 *)va_addr + phdr->p_offset;
+			seg_size = phdr->p_filesz;
+			if (phdr->p_filesz && phdr->p_memsz) {
+				if (crypto_shash_digest(desc, elf_seg_buf,
+							seg_size, shabuf) < 0)
+					goto out_free;
+				memcpy(ld_seg_hash_buf + (lds_cnt * digest_size), shabuf,
+				       digest_size);
+				memset(shabuf, 0, digest_size);
+				lds_cnt++;
+			}
+		}
+	}
+
+	hash_buf_size = digest_size * lds_cnt;
+
+	metadata = kzalloc(md_size, GFP_KERNEL);
+	if (!metadata)
+		goto out_hash_free;
+
+	memcpy(metadata, va_addr, md_size);
+
+	ret = qcom_sec_upgrade_auth_hash_n_metadata(scm_cmd_id, sw_type, metadata,
+						    md_size, NULL, 0, ld_seg_hash_buf,
+						    hash_buf_size);
+	kfree(metadata);
+out_hash_free:
+	kfree(ld_seg_hash_buf);
+out_free:
+	crypto_free_shash(alg);
+	kfree(desc);
+	kfree(shabuf);
+	return ret;
+}
+
+static int elf32_parse_hash_n_meta_data(void *va_addr, char *alg_name, size_t digest_size,
+					unsigned int scm_cmd_id, unsigned int sw_type)
+{
+	Elf32_Ehdr *ehdr = (Elf32_Ehdr *)(uintptr_t)va_addr;
+	Elf32_Phdr *phdr = (Elf32_Phdr *)(uintptr_t)(va_addr + ehdr->e_phoff);
+	u8 *elf_seg_buf;
+	struct crypto_shash *alg;
+	struct shash_desc *desc;
+	u8 *shabuf;
+	u8 lds_cnt = 0;
+	size_t seg_size;
+	char *ld_seg_hash_buf;
+	u32 md_size;
+	u32 hash_buf_size;
+	int ret = 0;
+	void *metadata = NULL;
+	int i;
+
+	if ((!IS_ELF(*ehdr)) || ehdr->e_phnum < 3)
+		return -EINVAL;
+
+	alg = crypto_alloc_shash(alg_name, 0, 0);
+	if (IS_ERR(alg))
+		return PTR_ERR(alg);
+
+	shabuf = kzalloc(digest_size, GFP_KERNEL);
+	ld_seg_hash_buf = kzalloc((digest_size * ehdr->e_phnum - 2), GFP_KERNEL);
+	desc = kzalloc(sizeof(*desc) + crypto_shash_descsize(alg), GFP_KERNEL);
+
+	if (!shabuf || !desc || !ld_seg_hash_buf)
+		goto out_free;
+
+	desc->tfm = alg;
+
+	for (i = 0; i < ehdr->e_phnum; i++, phdr++) {
+		if (phdr->p_type == PT_NULL) {
+			md_size = phdr->p_offset + phdr->p_filesz;
+			continue;
+		}
+		if (phdr->p_type == PT_LOAD) {
+			elf_seg_buf = (u8 *)va_addr + phdr->p_offset;
+			seg_size = phdr->p_filesz;
+			if (phdr->p_filesz && phdr->p_memsz) {
+				if (crypto_shash_digest(desc, elf_seg_buf,
+							seg_size, shabuf) < 0)
+					goto out_free;
+				memcpy(ld_seg_hash_buf + (lds_cnt * digest_size), shabuf,
+				       digest_size);
+				memset(shabuf, 0, digest_size);
+				lds_cnt++;
+			}
+		}
+	}
+
+	hash_buf_size = digest_size * lds_cnt;
+
+	metadata = kzalloc(md_size, GFP_KERNEL);
+	if (!metadata)
+		goto out_hash_free;
+
+	memcpy(metadata, va_addr, md_size);
+
+	ret = qcom_sec_upgrade_auth_hash_n_metadata(scm_cmd_id, sw_type, metadata,
+						    md_size, NULL, 0, ld_seg_hash_buf,
+						    hash_buf_size);
+	kfree(metadata);
+out_hash_free:
+	kfree(ld_seg_hash_buf);
+out_free:
+	crypto_free_shash(alg);
+	kfree(desc);
+	kfree(shabuf);
+	return ret;
+}
+
+static int parse_n_calculate_hash_n_meta_data(void *va_addr, char *alg_name,
+					      size_t digest_size, unsigned int scm_cmd_id,
+					      unsigned int sw_type)
+{
+	Elf32_Ehdr *ehdr = (Elf32_Ehdr *)va_addr;
+
+	if (ehdr->e_ident[EI_CLASS] == ELFCLASS64)
+		return elf64_parse_hash_n_meta_data(va_addr, alg_name,
+						    digest_size, scm_cmd_id, sw_type);
+	else if (ehdr->e_ident[EI_CLASS] == ELFCLASS32)
+		return elf32_parse_hash_n_meta_data(va_addr, alg_name,
+						    digest_size, scm_cmd_id, sw_type);
+	else
+		return -EINVAL;
+}
+
 static ssize_t
 rootfs_auth_flag(struct device *dev, struct device_attribute *sec_attr, char *buf)
 {
@@ -671,7 +839,7 @@ store_sec_auth(struct device *dev,
 {
 	int ret;
 	long size, sw_type;
-	unsigned int img_addr, img_size, hash_size;
+	unsigned int img_addr = 0, img_size = 0, hash_size = 0;
 	char *file_name, *sec_auth_str;
 	char *sec_auth_token[QTI_SEC_AUTH_ARG_MAX] = {NULL};
 	static void __iomem *file_buf;
@@ -679,13 +847,14 @@ store_sec_auth(struct device *dev,
 	int idx;
 	size_t data_size = 0;
 	u32 scm_cmd_id;
-	void *hash_file_buf = NULL;
-	void *data = NULL;
-	void *out_data = NULL;
+	void *hash_file_buf = NULL, *data = NULL, *hash_data = NULL,
+	*out_data = NULL, *metadata = NULL;
 	struct elf_info info = {0};
 	int ld_seg_cnt = 0;
 	u32 md_size = 0; /* ELF Metadata size */
 	u64 status = 0;
+	char *alg_name;
+	size_t digest_size;
 
 	file_name = kzalloc(count+1, GFP_KERNEL);
 	if (file_name == NULL)
@@ -697,6 +866,8 @@ store_sec_auth(struct device *dev,
 	for (idx = 0; (idx < QTI_SEC_AUTH_ARG_MAX && file_name != NULL); idx++) {
                 sec_auth_token[idx] = strsep(&file_name, " ");
         }
+
+	pr_info("%s authentication in progress\n", sec_auth_token[QTI_SEC_IMG_ADDR]);
 
 	ret = kstrtol(sec_auth_token[QTI_SEC_IMG_SW_TYPE], 0, &sw_type);
 
@@ -713,49 +884,12 @@ store_sec_auth(struct device *dev,
 	}
 	size = data_size;
 
-	np = of_find_node_by_name(NULL, "qfprom");
-	if (!np) {
-		pr_err("Unable to find qfprom node\n");
-		vfree(data);
-		goto free_mem;
-	}
-
-	ret = of_property_read_u32(np, "img-size", &img_size);
-	if (ret) {
-		pr_err("Read of property:img-size from node failed\n");
-		goto put_node;
-	}
-
-	if (size > img_size) {
-		pr_err("File size exceeds allocated memory region\n");
-		goto put_node;
-	}
-
-	ret = of_property_read_u32(np, "img-addr", &img_addr);
-	if (ret) {
-		pr_err("Read of property:img-addr from node failed\n");
-		goto put_node;
-	}
-
-	ret = of_property_read_u32(np, "scm-cmd-id", &scm_cmd_id);
-	if (ret)
-		scm_cmd_id = QCOM_KERNEL_AUTH_CMD;
-
-	file_buf = ioremap(img_addr, img_size);
-	if (file_buf == NULL) {
-		ret = -ENOMEM;
-		goto put_node;
-	}
-
-	memset_io(file_buf, 0x0, img_size);
-
 	if (data != NULL) {
-
 		if(is_compressed(data, &info)) {
 			out_data = kzalloc(info.memsize, GFP_KERNEL);
 			if(!out_data) {
 				pr_err("%s: Memory allocation failed for out_data buffer\n", __func__);
-				goto un_map;
+				goto free_mem;
 			}
 			if(!img_decompress(data + info.offset, info.filesz, out_data, &info)) {
 				printk("Uncompressed!\n");
@@ -766,51 +900,119 @@ store_sec_auth(struct device *dev,
 					printk("uncompressed MBN extracted!\n");
 					size = info.memsize;
 				}
-				memcpy_toio(file_buf, out_data, info.memsize);
 			} else {
 				printk("Failed uncompress!\n");
 				goto free_out_data;
 			}
-		} else {
-			memcpy_toio(file_buf, data, size);
 		}
-
-		vfree(data);
-		data = NULL;
-		data_size = 0;
 	} else {
 		pr_err("%s data is null\n",sec_auth_token[QTI_SEC_IMG_ADDR]);
 		goto free_out_data;
 	}
 
-	if (sec_auth_token[QTI_SEC_HASH_ADDR] != NULL) {
-
-		ret = kernel_read_file_from_path(sec_auth_token[QTI_SEC_HASH_ADDR], 0, &data,
-							INT_MAX, &data_size, READING_POLICY);
+	if (sec_auth_token[QTI_SEC_HASH_ADDR]) {
+		ret = kernel_read_file_from_path(sec_auth_token[QTI_SEC_HASH_ADDR], 0, &hash_data,
+						 INT_MAX, &data_size, READING_POLICY);
 		if (ret < 0) {
 			pr_err("%s File open failed\n", sec_auth_token[QTI_SEC_HASH_ADDR]);
 			ret = -EINVAL;
-			data = NULL;
-			goto free_out_data;
+			hash_data = NULL;
+			goto free_data;
 		}
 		hash_size = data_size;
 		hash_file_buf = kzalloc(hash_size, GFP_KERNEL);
 
 		if (!hash_file_buf) {
-			pr_err("%s: Memory allocation failed for hash file buffer\n", __func__);
 			ret = -ENOMEM;
-			goto free_out_data;
+			vfree(hash_data);
+			goto free_data;
 		}
-
-		if (data != NULL) {
-			memcpy(hash_file_buf, data, hash_size);
-			vfree(data);
-			data = NULL;
+		if (hash_data) {
+			memcpy(hash_file_buf, hash_data, hash_size);
+			vfree(hash_data);
+			hash_data = NULL;
 		} else {
-			pr_err("%s data is null\n",sec_auth_token[QTI_SEC_HASH_ADDR]);
+			pr_err("%s data is null\n", sec_auth_token[QTI_SEC_HASH_ADDR]);
 			goto hash_buf_alloc_err;
 		}
+	}
 
+	np = of_find_node_by_name(NULL, "qfprom");
+	if (!np) {
+		pr_err("Unable to find qfprom node\n");
+		vfree(data);
+		goto free_mem;
+	}
+
+	ret = of_property_read_u32(np, "img-size", &img_size);
+
+	ret = of_property_read_u32(np, "img-addr", &img_addr);
+
+	ret = of_property_read_u32(np, "scm-cmd-id", &scm_cmd_id);
+	if (ret)
+		scm_cmd_id = QCOM_KERNEL_AUTH_CMD;
+
+	if (!img_addr && !img_size) {
+		if (of_device_is_compatible(np, "qcom,qfprom-ipq5332-sec")) {
+			alg_name = "sha256";
+			digest_size = SHA256_DIGEST_SIZE;
+		} else {
+			alg_name = "sha384";
+			digest_size = SHA384_DIGEST_SIZE;
+		}
+		scm_cmd_id = QCOM_KERNEL_HASH_N_META_AUTH_CMD;
+		if (hash_file_buf) {
+			md_size = size;
+			metadata = kzalloc(md_size, GFP_KERNEL);
+			if (!metadata)
+				goto hash_buf_alloc_err;
+			memcpy(metadata, data, md_size);
+			ret = qcom_sec_upgrade_auth_hash_n_metadata(scm_cmd_id, sw_type,
+					metadata, md_size, NULL,
+					0, hash_file_buf, hash_size);
+			kfree(metadata);
+			if (ret) {
+				pr_err("Rootfs_auth_hash_n_metadata failed with %d\n", ret);
+				goto hash_buf_alloc_err;
+			}
+		} else if (out_data) {
+			ret = parse_n_calculate_hash_n_meta_data(out_data, alg_name, digest_size,
+								 scm_cmd_id, sw_type);
+		} else {
+			ret = parse_n_calculate_hash_n_meta_data(data, alg_name, digest_size,
+								 scm_cmd_id, sw_type);
+		}
+		if (ret) {
+			pr_err("Hash and Metadata authentication failed with %d\n", ret);
+			goto hash_buf_alloc_err;
+		}
+		ret = count;
+		goto hash_buf_alloc_err;
+	}
+
+	if (size > img_size) {
+		pr_err("File size exceeds allocated memory region\n");
+		goto hash_buf_alloc_err;
+	}
+
+	file_buf = ioremap(img_addr, img_size);
+	if (file_buf == NULL) {
+		ret = -ENOMEM;
+		goto hash_buf_alloc_err;
+	}
+
+	memset_io(file_buf, 0x0, img_size);
+
+	if (out_data)
+		memcpy_toio(file_buf, out_data, size);
+	else
+		memcpy_toio(file_buf, data, size);
+
+	vfree(data);
+	data = NULL;
+	data_size = 0;
+
+	if (hash_file_buf) {
 		/*
 		 * Metadata and hash contents are passed to TZ for rootfs auth
 		 * for all the targets. Both signature and Hash verification is done
@@ -823,7 +1025,7 @@ store_sec_auth(struct device *dev,
 						      hash_file_buf, hash_size);
 		if (ret) {
 			pr_err("sec_upgrade_auth_meta_data failed with return=%d\n", ret);
-			goto hash_buf_alloc_err;
+			goto free_out_data;
 		}
 
 		/*
@@ -837,7 +1039,7 @@ store_sec_auth(struct device *dev,
 								NULL, 0, &status);
 			if (ret) {
 				pr_err("sec_upgrade_auth_ld_segments failed with return=%d\n", ret);
-				goto hash_buf_alloc_err;
+				goto free_out_data;
 			}
 		}
 	}
@@ -853,7 +1055,7 @@ store_sec_auth(struct device *dev,
 			} else {
 				pr_err("Unable to parse the loadable segments: ret: %d\n",
 				       ld_seg_cnt);
-				goto free_out_data;
+				goto free_ld_buff;
 			}
 		} else {
 			ret = qcom_sec_upgrade_auth(scm_cmd_id, sw_type, size, img_addr);
@@ -866,15 +1068,17 @@ store_sec_auth(struct device *dev,
 	}
 	ret = count;
 
+free_ld_buff:
+	kfree(ld_seg_buff);
+un_map:
+	iounmap(file_buf);
 hash_buf_alloc_err:
-        kfree(hash_file_buf);
+	kfree(hash_file_buf);
+	of_node_put(np);
 free_out_data:
 	if(out_data)
 		kfree(out_data);
-un_map:
-	iounmap(file_buf);
-put_node:
-	of_node_put(np);
+free_data:
 	vfree(data);
 free_mem:
 	kfree(sec_auth_str);
