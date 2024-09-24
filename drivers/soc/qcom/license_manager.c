@@ -871,6 +871,10 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	struct feature_info *itr, *tmp;
 	struct ttime_set ttime_st;
 	struct bindings_resp br;
+	void *cbor_req;
+	void *cbor_resp;
+	struct lm_license_check_cbor lm_cbor;
+	u32 cbor_resp_used_len = 0;
 	int i, len = 0, ret = 0;
 
 	switch(cmd) {
@@ -1044,6 +1048,66 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			kfree(ttime_buf);
 
 		break;
+
+		case LICENSE_CHECK:
+			ret = copy_from_user(&lm_cbor, argp, sizeof(struct lm_license_check_cbor));
+			if (ret) {
+				dev_err(svc->dev, "IOCTL: LICENSE_CHECK copy from user error\n");
+				goto licnese_check_err;
+			}
+			if (!lm_cbor.used_len) {
+				dev_err(svc->dev, "IOCTL: LICENSE CHECK invalid buf len\n");
+				ret = -EINVAL;
+				goto licnese_check_err;
+			}
+
+			cbor_req = kzalloc(sizeof(u8) * lm_cbor.used_len, GFP_KERNEL);
+			if (!cbor_req) {
+				dev_err(svc->dev, "IOCTL: LICENSE CHECK mem alloc failed\n");
+				ret = -ENOMEM;
+				goto licnese_check_err;
+			}
+
+			ret = copy_from_user(cbor_req, lm_cbor.buf, lm_cbor.used_len);
+			if (ret) {
+				dev_err(svc->dev, "IOCTL: LICENSE CHECK copy from user error\n");
+				goto license_check_free_req;
+			}
+
+			cbor_resp = kzalloc(sizeof(u8) * lm_cbor.buf_len, GFP_KERNEL);
+			if (!cbor_resp) {
+				dev_err(svc->dev, "Unable to acquire CBOR req and resp buffers\n");
+				ret = -ENOMEM;
+				goto license_check_free_req;
+			}
+
+
+			ret = tmelcom_licensing_check(cbor_req, lm_cbor.used_len, cbor_resp, lm_cbor.buf_len, &cbor_resp_used_len);
+			if (ret) {
+				dev_err(svc->dev, "%s: Licensing check IPC failed: %d\n", __func__, ret);
+				goto license_check_free_resp;
+			}
+
+			ret = copy_to_user(lm_cbor.buf, cbor_resp, cbor_resp_used_len);
+			if (ret) {
+				dev_err(svc->dev, "IOCTL: LICENSE CHECK copy to user error\n");
+				goto license_check_free_resp;
+			}
+
+			lm_cbor.used_len = cbor_resp_used_len;
+
+			ret = copy_to_user(argp, &lm_cbor, sizeof(struct lm_license_check_cbor));
+			if (ret) {
+				dev_err(svc->dev, "IOCTL: LICENSE CHECK copy to user error\n");
+				goto license_check_free_resp;
+			}
+
+		license_check_free_resp:
+			kfree(cbor_resp);
+		license_check_free_req:
+			kfree(cbor_req);
+		licnese_check_err:
+			break;
 
 		case GET_TMEL_BOUNDED:
 			ret = put_user(svc->tmel_bounded, (int __user *)arg);

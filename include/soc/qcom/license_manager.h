@@ -42,6 +42,8 @@
 #define LICENSE_IDENT_MAX_LEN	8
 #define TMEL_BOUND_MAX_LICENSE_FILES	30
 
+#define CBOR_BUFFER_SIZE	4096
+
 #define SMEM_SOFTSKU_INFO	508
 
 struct qmi_lm_feature_list_req_msg_v01 {
@@ -188,6 +190,12 @@ struct lm_get_toBeDel_lic {
 	u32 used_len;
 };
 
+struct lm_license_check_cbor {
+	void *buf;
+	u32 buf_len;
+	u32 used_len;
+};
+
 #define GET_FID_INFO 		_IOWR('L', 1, struct client_target_info)
 #define LICENSE_RESCAN 		_IO('L', 2)
 #define GET_BINDINGS		_IOWR('L', 3, struct bindings_resp)
@@ -196,6 +204,7 @@ struct lm_get_toBeDel_lic {
 #define GET_TMEL_BOUNDED	_IOWR('L', 6, u32)
 #define LICENSE_INSTALL		_IOWR('L', 7, struct lm_install_info)
 #define GET_TOBEDEL_LICENSES	_IOWR('L', 8, struct lm_get_toBeDel_lic)
+#define LICENSE_CHECK		_IOWR('L', 9, struct lm_license_check_cbor)
 
 enum req_type {
 	INTERNAL,
