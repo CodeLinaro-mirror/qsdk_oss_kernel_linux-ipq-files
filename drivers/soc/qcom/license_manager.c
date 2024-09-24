@@ -613,7 +613,7 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	dma_addr_t nonce_dma_addr, ecdsa_dma_addr;
 	void *nonce_buf, *ecdsa_buf;
 	struct bindings_resp br;
-	u32 ecdsa_consumed;
+	u32 ecdsa_consumed = 0;
 	int i, len = 0, ret = 0;
 
 	switch(cmd) {
