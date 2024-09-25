@@ -171,6 +171,36 @@ struct tmel_update_arb_version_req {
 	struct tmel_update_arb_version_rsp rsp;
 } __packed;
 
+struct tmel_response_cbuffer {
+	u32 data;
+	u32 len;
+	u32 len_used;
+} __packed;
+
+struct tmel_km_ecdh_ipkey_req {
+	u32 feature_id;
+	u32 key_id;
+} __packed;
+
+struct tmel_seq_status_rsp {
+	u32 tmel_err_status;
+	u32 seq_err_status;
+	u32 seq_kp_err_status0;
+	u32 seq_kp_err_status1;
+	u32 seq_rsp_status;
+} __packed;
+
+struct tmel_km_ecdh_ipkey_rsp {
+	struct tmel_response_cbuffer rsp_buf;
+	u32 status;
+	struct tmel_seq_status_rsp seq_status;
+} __packed;
+
+struct tmel_km_ecdh_ipkey_msg {
+	struct tmel_km_ecdh_ipkey_req req;
+	struct tmel_km_ecdh_ipkey_rsp rsp;
+} __packed;
+
 #ifdef CONFIG_QCOM_TMELCOM
 int tmelcom_probed(void);
 int tmelcom_init_attestation(u32 *key_buf, u32 key_buf_len, u32 *key_buf_size);
@@ -197,6 +227,7 @@ int tmelcom_secure_io_read(struct tmel_secure_io *buf, size_t size);
 int tmelcom_secure_io_write(struct tmel_secure_io *buf, size_t size);
 int tmelcomm_secboot_get_arb_version(u32 type, u32 *version);
 int tmelcomm_secboot_update_arb_version(u32 status);
+int tmelcomm_get_ecc_public_key(u32 type, void *buf, u32 size, u32 *rsp_len);
 
 #else
 static inline int tmelcom_probed(void)
@@ -294,11 +325,18 @@ static inline int tmelcom_secure_io_write(struct tmel_secure_io *buf, size_t siz
 {
 	return -EOPNOTSUPP;
 }
+
 static inline int tmelcomm_secboot_get_arb_version(u32 type, u32 *version)
 {
 	return -EOPNOTSUPP;
 }
+
 static inline int tmelcomm_secboot_update_arb_version(u32 status)
+{
+	return -EOPNOTSUPP;
+}
+
+static inline int tmelcomm_get_public_key(u32 type, void *buf, u32 *rsp_len)
 {
 	return -EOPNOTSUPP;
 }

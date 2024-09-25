@@ -308,7 +308,7 @@
 &blsp1_uart3 {
 	pinctrl-0 = <&gps_pins>;
 	pinctrl-names = "default";
-	status = "okay";
+	status = "disabled";
 };
 
 &blsp1_uart4 {
@@ -377,6 +377,10 @@
 	pinctrl-names = "default";
 	perst-gpios = <&tlmm 32 GPIO_ACTIVE_LOW>;
 	status = "okay";
+
+	pcie3_rp {
+		reg = <0 0 0 0 0>;
+	};
 };
 
 &qpic_bam {

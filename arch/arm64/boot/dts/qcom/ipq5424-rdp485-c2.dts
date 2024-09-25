@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 /*
- * IPQ5424 RDP464 board device tree source
+ * IPQ5424 RDP485 board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
@@ -16,20 +16,14 @@
 #endif
 
 / {
-	model = "Qualcomm Technologies, Inc. IPQ5424 RDP464-c2";
-	compatible = "qcom,ipq5424-rdp464-c2", "qcom,ipq5424";
+	model = "Qualcomm Technologies, Inc. IPQ5424 RDP485-c2";
+	compatible = "qcom,ipq5424-rdp485-c2", "qcom,ipq5424";
 
 	soc@0 {
 		qupv3: geniqup@1ac0000 {
 
 			i2c0: i2c@1a88000 {
 				pinctrl-0 = <&qup_i2c0_default>;
-				pinctrl-names = "default";
-				status = "okay";
-			};
-
-			i2c1: i2c@1a8c000 {
-				pinctrl-0 = <&qup_i2c1_default>;
 				pinctrl-names = "default";
 				status = "okay";
 			};
@@ -47,21 +41,6 @@
 					spi-max-frequency = <50000000>;
 				};
 			};
-
-			/delete-node/ spi@1a94000;
-
-			i2c2: i2c@1a94000 {
-				compatible = "qcom,geni-i2c";
-				reg = <0x1a94000 0x4000>;
-				/* i2c2 shares spi1 clock, so use spi1_clk as per gcc driver */
-				clocks = <&gcc GCC_QUPV3_SPI1_CLK>;
-				clock-names = "se";
-				clock-frequency = <100000>;
-				interrupts = <GIC_SPI 344 IRQ_TYPE_LEVEL_HIGH>;
-				pinctrl-0 = <&qup_i2c2_default>;
-				pinctrl-names = "default";
-				status = "okay";
-			};
 		};
 
 		leds {
@@ -72,28 +51,21 @@
 			led-0 {
 				color = <LED_COLOR_ID_GREEN>;
 				function = LED_FUNCTION_WLAN;
-				gpios = <&tlmm 41 GPIO_ACTIVE_HIGH>;
+				gpios = <&tlmm 42 GPIO_ACTIVE_HIGH>;
 				linux,default-trigger = "phy0tx";
 				default-state = "off";
 			};
 		};
 
 		mdio@90000 {
-			/* GPIO36 is for port 1 QCA81xx PHY */
-			/* GPIO37 is for port 2 QCA81xx PHY */
+			/* GPIO28 is for port 2 QCA81XX PHY */
 			/* GPIO18 is for QCA8386 switch */
 			phy-reset-gpio = <
-				&tlmm 36 GPIO_ACTIVE_LOW
-				&tlmm 37 GPIO_ACTIVE_LOW
+				&tlmm 28 GPIO_ACTIVE_LOW
 				&tlmm 18 GPIO_ACTIVE_LOW
 			>;
 
 			ethernet-phy@4 {
-				reg = <8>;
-				compatible ="ethernet-phy-ieee802.3-c45";
-			};
-
-			ethernet-phy@5 {
 				reg = <12>;
 				compatible ="ethernet-phy-ieee802.3-c45";
 			};
@@ -104,14 +76,14 @@
 				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
 				switch_lan_bmp = <0xc>; /* lan port bitmap */
 				switch_wan_bmp = <0x2>; /* wan port bitmap */
-				switch_mac_mode = <0xd>; /* mac mode for uniphy instance0*/
+				switch_mac_mode = <0xe>; /* mac mode for uniphy instance0*/
 				switch_mac_mode1 = <0xd>; /* mac mode for uniphy instance1*/
 
 				qcom,port_phyinfo {
 					port@0 {
 						port_id = <1>;
-						phy_address = <8>;
-						ethernet-phy-ieee802.3-c45;
+						media-type = "sfp"; /* fiber mode */
+						sfp_rx_los_pin = <&tlmm 0xffff GPIO_ACTIVE_HIGH>;
 					};
 					port@1 {
 						port_id = <2>;
@@ -124,7 +96,7 @@
 			ess-switch1@1 {
 				link-polling-required = <0>;
 				fdb_sync = "interrupt";
-				link-intr-gpio = <&tlmm 40 GPIO_ACTIVE_HIGH>;
+				link-intr-gpio = <&tlmm 41 GPIO_ACTIVE_HIGH>;
 			};
 		};
 
@@ -135,9 +107,7 @@
 			reg = <0x3A500000 0x4000>;
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
-			qcom,phy-mdio-addr = <8>;
-			qcom,link-poll = <1>;
-			phy-mode = "usxgmii";
+			phy-mode = "sgmii";
 		};
 
 		dp2 {
@@ -253,11 +223,10 @@
 
 		wsi: wsi {
 			id = <0>;
-			num_chip = <4>;
-			chip_info = <0 2 1 3>,
-				    <1 2 0 2>,
-				    <2 2 3 1>,
-				    <3 2 2 0>;
+			num_chip = <3>;
+			chip_info = <0 2 1 2>,
+				    <1 2 2 0>,
+				    <2 2 0 1>;
 			status = "okay";
 		};
 	};
@@ -269,41 +238,6 @@
 
 &qpic_nand {
 	status = "okay";
-};
-
-&sdhc {
-	max-frequency = <192000000>;
-	bus-width = <4>;
-	mmc-ddr-1_8v;
-	mmc-hs200-1_8v;
-	non-removable;
-	pinctrl-0 = <&sdc_default_state>;
-	pinctrl-names = "default";
-	status = "disabled";
-};
-
-&pcie1_phy {
-	status = "okay";
-};
-
-&pcie1 {
-	status = "okay";
-	perst-gpio = <&tlmm 28 GPIO_ACTIVE_LOW>;
-
-	pcie1_rp {
-		reg = <0 0 0 0 0>;
-
-		qcom,mhi@1 {
-			reg = <0 0 0 0 0>;
-			boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
-					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
-					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
-			memory-region = <&qcn9224_pcie1>, <&mhi_region1>;
-			qcom,board_id = <0x21>;
-			qcom,wsi = <&wsi>;
-			qcom,wsi_index = <2>;
-		};
-	};
 };
 
 &pcie2_phy {
@@ -319,11 +253,11 @@
 
 		qcom,mhi@2 {
 			reg = <0 0 0 0 0>;
-			boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
-					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
+			boot-args = <0x2 0x4 0xFF 0x3 0x0 0x0  /* MX Rail, Invalid GPIO, Drive strength 0x3 */
+					0x5 0x4 0x34 0x3 0x0 0x16 /* CX Rail, GPIO52, Drive strength 0x3, CPR1_fuse 0x0, CPR0_fuse 0x16 */
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 			memory-region = <&qcn9224_pcie2>, <&mhi_region2>;
-			qcom,board_id = <0x26>;
+			qcom,board_id = <0x29>;
 			qcom,wsi = <&wsi>;
 			qcom,wsi_index = <1>;
 		};
@@ -343,21 +277,20 @@
 
 		qcom,mhi@3 {
 			reg = <0 0 0 0 0>;
-			boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
-					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
+			boot-args = <0x2 0x4 0xFF 0x3 0x0 0x0  /* MX Rail, Invalid GPIO, Drive strength 0x3 */
+					0x5 0x4 0x34 0x3 0x0 0x16 /* CX Rail, GPIO52, Drive strength 0x3, CPR1_fuse 0x0, CPR0_fuse 0x16 */
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 			memory-region = <&qcn9224_pcie3>, <&mhi_region3>;
-			qcom,board_id = <0x22>;
+			qcom,board_id = <0x28>;
 			qcom,wsi = <&wsi>;
-			qcom,wsi_index = <3>;
+			qcom,wsi_index = <2>;
 		};
 	};
 };
 
 &reg_update {
-	aggr-noc-config = <0x00610908 0x80>, /* aggr_noc_pcie1 */
-			  <0x00610a08 0x80>, /* aggr_noc_pcie2 */
-			  <0x00610b08 0x80>; /* aggr_noc_pcie3 */
+	secure-reg = <0x00610a08 0x80>, /* aggr_noc_pcie2 */
+		     <0x00610b08 0x80>; /* aggr_noc_pcie3 */
 };
 
 &qusb_phy_1 {
@@ -390,30 +323,10 @@
 
 &tlmm {
 	gpio_leds_default: gpio-leds-default-state {
-		pins = "gpio41";
+		pins = "gpio42";
 		function = "gpio";
-		drive-strength = <4>;
+		drive-strength = <8>;
 		bias-pull-down;
-	};
-
-	pcie0_default_state: pcie0-default-state {
-		perst-n-pins {
-			pins = "gpio25";
-			function = "gpio";
-			drive-strength = <8>;
-			bias-pull-up;
-			output-low;
-		};
-	};
-
-	pcie1_default_state: pcie1-default-state {
-		perst-n-pins {
-			pins = "gpio28";
-			function = "gpio";
-			drive-strength = <8>;
-			bias-pull-up;
-			output-low;
-		};
 	};
 
 	pcie2_default_state: pcie2-default-state {
@@ -436,12 +349,35 @@
 		};
 	};
 
+	qspi_default_state: qspi-default-state {
+		qspi_clock {
+			pins = "gpio5";
+			function = "qspi_clk";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+
+		qspi_cs {
+			pins = "gpio4";
+			function = "qspi_cs";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+
+		qspi_data {
+			pins = "gpio0", "gpio1", "gpio2", "gpio3";
+			function = "qspi_data";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+	};
+
 	qup_i2c0_default: qup-i2c0-default-state {
 		qup_i2c0_scl {
 			pins = "gpio14";
 			function = "i2c0_scl";
 			drive-strength = <8>;
-			bias-pull-up;
+			bias-disable;
 		};
 		qup_i2c0_sda {
 			pins = "gpio15";
@@ -451,65 +387,32 @@
 		};
 	};
 
-	qup_i2c1_default: qup-i2c1-default-state {
-		qup_i2c1_scl {
-			pins = "gpio16";
-			function = "i2c1_scl";
-			drive-strength = <8>;
-			bias-disable;
-		};
-		qup_i2c1_sda {
-			pins = "gpio17";
-			function = "i2c1_sda";
-			drive-strength = <8>;
-			bias-disable;
-		};
-	};
-
-	qup_i2c2_default: qup-i2c2-default-state {
-		qup_i2c2_scl {
-			pins = "gpio47";
-			/* i2c2 shares spi1, so map spi10 function as per pinctrl driver */
-			function = "spi10";
-			drive-strength = <8>;
-			bias-disable;
-		};
-
-		qup_i2c2_sda {
-			pins = "gpio48";
-			/* i2c2 shares spi1, so map spi10 function as per pinctrl driver */
-			function = "spi10";
-			drive-strength = <8>;
-			bias-pull-up;
-		};
-	};
-
 	qup_spi0_default: qup-spi0-default-state {
 		qup_spi0_clk {
 			pins = "gpio6";
 			function = "spi0_clk";
-			drive-strength = <4>;
+			drive-strength = <8>;
 			bias-pull-down;
 		};
 
 		qup_spi0_cs {
 			pins = "gpio7";
 			function = "spi0_cs";
-			drive-strength = <4>;
-			bias-pull-down;
+			drive-strength = <8>;
+			bias-pull-up;
 		};
 
 		qup_spi0_miso {
 			pins = "gpio8";
 			function = "spi0_miso";
-			drive-strength = <4>;
+			drive-strength = <8>;
 			bias-pull-down;
 		};
 
 		qup_spi0_mosi {
 			pins = "gpio9";
 			function = "spi0_mosi";
-			drive-strength = <4>;
+			drive-strength = <8>;
 			bias-pull-down;
 		};
 	};
@@ -518,37 +421,14 @@
 		qup_uart1_tx: tx-pins {
 			pins = "gpio44";
 			function = "uart1_tx";
-			drive-strength = <4>;
+			drive-strength = <8>;
 			bias-pull-down;
 		};
 
 		qup_uart1_rx: rx-pins {
 			pins = "gpio43";
 			function = "uart1_rx";
-			drive-strength = <4>;
-			bias-disable;
-		};
-	};
-
-	qspi_default_state: qspi-default-state {
-		qspi_clock {
-			pins = "gpio5";
-			function = "qspi_clk";
-			drive-strength = <4>;
-			bias-pull-down;
-		};
-
-		qspi_cs {
-			pins = "gpio4";
-			function = "qspi_cs";
-			drive-strength = <4>;
-			bias-disable;
-		};
-
-		qspi_data {
-			pins = "gpio0", "gpio1", "gpio2", "gpio3";
-			function = "qspi_data";
-			drive-strength = <4>;
+			drive-strength = <8>;
 			bias-pull-up;
 		};
 	};
@@ -577,10 +457,6 @@
 	};
 };
 
-&qcn9224_pcie1 {
-	status = "okay";
-};
-
 &qcn9224_pcie2 {
 	status = "okay";
 };
@@ -590,10 +466,6 @@
 };
 
 #if defined(__MHI_BUS_RESERVED_DMA_POOL__)
-&mhi_region1 {
-	status = "okay";
-};
-
 &mhi_region2 {
 	status = "okay";
 };
@@ -604,7 +476,6 @@
 #endif
 
 &mlo_global_mem0 {
-	reg = <0x0 0x9b300000 0x0 0x1800000>;
 	status = "okay";
 };
 
@@ -614,29 +485,21 @@
 	memory-region = <&q6_region>;
 	qcom,wsi = <&wsi>;
 	qcom,wsi_index = <0>;
-	qcom,board_id = <0x10>;
+	qcom,board_id = <0x11>;
 	hw_link_id = <0 0>;
-	led-gpio = <&tlmm 41 GPIO_ACTIVE_HIGH>;
-	status = "okay";
-};
-
-&wifi2 {
-	hremote_node = <&qcn9224_pcie1>;
-	board_id = <0x21>;
-	hw_link_id = <2 0>;
 	status = "okay";
 };
 
 &wifi3 {
 	hremote_node = <&qcn9224_pcie2>;
-	board_id = <0x26>;
-	hw_link_id = <3 0>;
+	board_id = <0x29>;
+	hw_link_id = <1 0>;
 	status = "okay";
 };
 
 &wifi4 {
 	hremote_node = <&qcn9224_pcie3>;
-	board_id = <0x22>;
-	hw_link_id = <1 0>;
+	board_id = <0x28>;
+	hw_link_id = <2 0>;
 	status = "okay";
 };
