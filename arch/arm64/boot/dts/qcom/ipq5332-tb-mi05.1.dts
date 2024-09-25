@@ -14,7 +14,7 @@
 #include <dt-bindings/leds/common.h>
 
 / {
-	model = "Qualcomm Technologies, Inc. IPQ5332/RDP478/TB-MI05.1";
+	model = "Qualcomm Technologies, Inc. IPQ5332/TB-MI05.1";
 	compatible = "qcom,ipq5332-tb-mi05.1", "qcom,ipq5332";
 #ifdef __IPQ_MEM_PROFILE_256_MB__
 	/*        LM256 Layout for IPQ5332 + QCN6432
