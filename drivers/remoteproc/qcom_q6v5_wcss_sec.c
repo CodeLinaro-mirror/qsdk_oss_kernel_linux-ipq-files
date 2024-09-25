@@ -36,8 +36,8 @@
 
 #define RESET_CMD_ID			0x18
 
-#define TCSR_SPARE_APU_REG0		0x1946000
-#define TCSR_SPARE_APU_REG0_SIZE	4
+#define TCSR_SPARE_REG0		0x1959000
+#define TCSR_SPARE_REG0_SIZE	4
 
 static int debug_wcss;
 
@@ -112,7 +112,7 @@ static int q6v5_wcss_sec_start(struct rproc *rproc)
 
 	if (debug_wcss) {
 		writel(0x1, wcss->debug_wcss_reg);
-		dev_info(wcss->dev, "Writing 1 to TCSR_SPARE_APU_REG0\n");
+		dev_info(wcss->dev, "Writing 1 to TCSR_SPARE_REG0\n");
 	}
 
 	if (desc->tmelcom_support)
@@ -502,8 +502,8 @@ static int q6v5_wcss_sec_probe(struct platform_device *pdev)
 	if (ret)
 		goto free_rproc;
 
-	wcss->debug_wcss_reg = devm_ioremap(&pdev->dev, TCSR_SPARE_APU_REG0,
-					    TCSR_SPARE_APU_REG0_SIZE);
+	wcss->debug_wcss_reg = devm_ioremap(&pdev->dev, TCSR_SPARE_REG0,
+					    TCSR_SPARE_REG0_SIZE);
 	if (!wcss->debug_wcss_reg) {
 		dev_err(&pdev->dev, "Failed to ioremap debug_wcss register\n");
 		return PTR_ERR(wcss->debug_wcss_reg);
