@@ -655,3 +655,40 @@ int tmelcomm_secboot_update_arb_version(u32 status)
 	return ret ? ret : msg.rsp.status;
 }
 EXPORT_SYMBOL_GPL(tmelcomm_secboot_update_arb_version);
+
+int tmelcomm_get_ecc_public_key(u32 type, void *buf, u32 size, u32 *rsp_len)
+{
+	int ret;
+	struct tmel_km_ecdh_ipkey_msg msg = {0};
+	struct device *dev = tmelcom_get_device();
+	dma_addr_t dma_addr;
+
+	if (!dev)
+		return -EINVAL;
+
+	dma_addr = dma_map_single(dev, buf, size,
+				  DMA_FROM_DEVICE);
+	ret = dma_mapping_error(dev, dma_addr);
+	if (ret != 0) {
+		pr_err("DMA Mapping Error : %d\n", ret);
+		return -EINVAL;
+	}
+
+	msg.rsp.status = TMEL_ERROR_GENERIC;
+	msg.req.key_id = type;
+	msg.rsp.rsp_buf.data = (u32)dma_addr;
+	msg.rsp.rsp_buf.len = size;
+
+	ret = tmelcom_process_request(TMEL_MSG_UID_KM_EXPORT_ECDH_IP,
+				      &msg, sizeof(msg));
+	if (ret || msg.rsp.status || msg.rsp.seq_status.tmel_err_status)
+		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = %x tme response status = %x\n",
+			__func__, ret, msg.rsp.status,
+			msg.rsp.seq_status.tmel_err_status);
+	else
+		*rsp_len = msg.rsp.rsp_buf.len_used;
+
+	dma_unmap_single(dev, dma_addr, size, DMA_FROM_DEVICE);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tmelcomm_get_ecc_public_key);
