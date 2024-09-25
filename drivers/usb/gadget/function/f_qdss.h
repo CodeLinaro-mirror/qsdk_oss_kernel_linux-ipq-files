@@ -37,6 +37,7 @@ struct gqdss {
 	struct usb_ep *ctrl_out;
 	struct usb_ep *ctrl_in;
 	struct usb_ep *data;
+	struct usb_ep *data2;
 	int (*send_encap_cmd)(enum qti_port_type qport, void *buf, size_t len);
 	void (*notify_modem)(void *g, enum qti_port_type qport, int cbits);
 };

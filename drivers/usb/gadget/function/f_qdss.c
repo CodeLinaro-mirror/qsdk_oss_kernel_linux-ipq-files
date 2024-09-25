@@ -37,7 +37,7 @@ static struct usb_interface_descriptor qdss_data_intf_desc = {
 	.bLength            =	sizeof(qdss_data_intf_desc),
 	.bDescriptorType    =	USB_DT_INTERFACE,
 	.bAlternateSetting  =   0,
-	.bNumEndpoints      =	1,
+	.bNumEndpoints      =	2,
 	.bInterfaceClass    =	USB_CLASS_VENDOR_SPEC,
 	.bInterfaceSubClass =	USB_SUBCLASS_VENDOR_SPEC,
 	.bInterfaceProtocol =	0x70,
@@ -55,6 +55,22 @@ static struct usb_endpoint_descriptor qdss_ss_data_desc = {
 	.bLength              =	 USB_DT_ENDPOINT_SIZE,
 	.bDescriptorType      =	 USB_DT_ENDPOINT,
 	.bEndpointAddress     =	 USB_DIR_IN,
+	.bmAttributes         =  USB_ENDPOINT_XFER_BULK,
+	.wMaxPacketSize       =	 cpu_to_le16(1024),
+};
+
+static struct usb_endpoint_descriptor qdss_hs_data_2_desc = {
+	.bLength              =	 USB_DT_ENDPOINT_SIZE,
+	.bDescriptorType      =	 USB_DT_ENDPOINT,
+	.bEndpointAddress     =	 USB_DIR_OUT,
+	.bmAttributes         =	 USB_ENDPOINT_XFER_BULK,
+	.wMaxPacketSize       =	 cpu_to_le16(512),
+};
+
+static struct usb_endpoint_descriptor qdss_ss_data_2_desc = {
+	.bLength              =	 USB_DT_ENDPOINT_SIZE,
+	.bDescriptorType      =	 USB_DT_ENDPOINT,
+	.bEndpointAddress     =	 USB_DIR_OUT,
 	.bmAttributes         =  USB_ENDPOINT_XFER_BULK,
 	.wMaxPacketSize       =	 cpu_to_le16(1024),
 };
@@ -134,6 +150,14 @@ static struct usb_endpoint_descriptor qdss_fs_data_desc = {
 	.wMaxPacketSize     =	cpu_to_le16(64),
 };
 
+static struct usb_endpoint_descriptor qdss_fs_data_2_desc = {
+	.bLength            =	USB_DT_ENDPOINT_SIZE,
+	.bDescriptorType    =	USB_DT_ENDPOINT,
+	.bEndpointAddress   =	USB_DIR_OUT,
+	.bmAttributes       =	USB_ENDPOINT_XFER_BULK,
+	.wMaxPacketSize     =	cpu_to_le16(64),
+};
+
 static struct usb_endpoint_descriptor qdss_fs_ctrl_in_desc  = {
 	.bLength            =	USB_DT_ENDPOINT_SIZE,
 	.bDescriptorType    =	USB_DT_ENDPOINT,
@@ -153,6 +177,7 @@ static struct usb_endpoint_descriptor qdss_fs_ctrl_out_desc = {
 static struct usb_descriptor_header *qdss_fs_desc[] = {
 	(struct usb_descriptor_header *) &qdss_data_intf_desc,
 	(struct usb_descriptor_header *) &qdss_fs_data_desc,
+	(struct usb_descriptor_header *) &qdss_fs_data_2_desc,
 	(struct usb_descriptor_header *) &qdss_ctrl_intf_desc,
 	(struct usb_descriptor_header *) &qdss_fs_ctrl_in_desc,
 	(struct usb_descriptor_header *) &qdss_fs_ctrl_out_desc,
@@ -162,6 +187,7 @@ static struct usb_descriptor_header *qdss_fs_desc[] = {
 static struct usb_descriptor_header *qdss_hs_desc[] = {
 	(struct usb_descriptor_header *) &qdss_data_intf_desc,
 	(struct usb_descriptor_header *) &qdss_hs_data_desc,
+	(struct usb_descriptor_header *) &qdss_hs_data_2_desc,
 	(struct usb_descriptor_header *) &qdss_ctrl_intf_desc,
 	(struct usb_descriptor_header *) &qdss_hs_ctrl_in_desc,
 	(struct usb_descriptor_header *) &qdss_hs_ctrl_out_desc,
@@ -171,6 +197,7 @@ static struct usb_descriptor_header *qdss_hs_desc[] = {
 static struct usb_descriptor_header *qdss_ss_desc[] = {
 	(struct usb_descriptor_header *) &qdss_data_intf_desc,
 	(struct usb_descriptor_header *) &qdss_ss_data_desc,
+	(struct usb_descriptor_header *) &qdss_ss_data_2_desc,
 	(struct usb_descriptor_header *) &qdss_data_ep_comp_desc,
 	(struct usb_descriptor_header *) &qdss_ctrl_intf_desc,
 	(struct usb_descriptor_header *) &qdss_ss_ctrl_in_desc,
@@ -183,18 +210,21 @@ static struct usb_descriptor_header *qdss_ss_desc[] = {
 static struct usb_descriptor_header *qdss_fs_data_only_desc[] = {
 	(struct usb_descriptor_header *) &qdss_data_intf_desc,
 	(struct usb_descriptor_header *) &qdss_fs_data_desc,
+	(struct usb_descriptor_header *) &qdss_fs_data_2_desc,
 	NULL,
 };
 
 static struct usb_descriptor_header *qdss_hs_data_only_desc[] = {
 	(struct usb_descriptor_header *) &qdss_data_intf_desc,
 	(struct usb_descriptor_header *) &qdss_hs_data_desc,
+	(struct usb_descriptor_header *) &qdss_hs_data_2_desc,
 	NULL,
 };
 
 static struct usb_descriptor_header *qdss_ss_data_only_desc[] = {
 	(struct usb_descriptor_header *) &qdss_data_intf_desc,
 	(struct usb_descriptor_header *) &qdss_ss_data_desc,
+	(struct usb_descriptor_header *) &qdss_ss_data_2_desc,
 	(struct usb_descriptor_header *) &qdss_data_ep_comp_desc,
 	NULL,
 };
@@ -409,6 +439,7 @@ static int qdss_bind(struct usb_configuration *c, struct usb_function *f)
 	struct usb_gadget *gadget = c->cdev->gadget;
 	struct f_qdss *qdss = func_to_qdss(f);
 	struct usb_ep *ep;
+	struct usb_ep *ep2;
 	int iface, id, ret;
 
 	qdss_log("channel:%s\n", qdss->ch.name);
@@ -461,12 +492,25 @@ static int qdss_bind(struct usb_configuration *c, struct usb_function *f)
 	qdss->port.data = ep;
 	ep->driver_data = qdss;
 
+	ep2 = usb_ep_autoconfig(gadget, &qdss_fs_data_2_desc);
+	if (!ep2) {
+		pr_err("%s: ep_autoconfig error\n", __func__);
+		goto clear_ep;
+	}
+	qdss->port.data2 = ep2;
+	ep2->driver_data = qdss;
+
 	if (!qdss_uses_sw_path(qdss)) {
 		ret = msm_ep_set_mode(qdss->port.data, qdss->ch.ch_type);
 		if (ret < 0)
 			goto clear_ep;
 
+		ret = msm_ep_set_mode(qdss->port.data2, qdss->ch.ch_type);
+		if (ret < 0)
+			goto clear_ep;
+
 		msm_ep_update_ops(qdss->port.data);
+		msm_ep_update_ops(qdss->port.data2);
 	}
 
 	if (qdss->debug_inface_enabled) {
@@ -501,6 +545,9 @@ static int qdss_bind(struct usb_configuration *c, struct usb_function *f)
 	qdss_hs_data_desc.bEndpointAddress =
 		qdss_ss_data_desc.bEndpointAddress =
 			qdss_fs_data_desc.bEndpointAddress;
+	qdss_hs_data_2_desc.bEndpointAddress =
+		qdss_ss_data_2_desc.bEndpointAddress =
+			qdss_fs_data_2_desc.bEndpointAddress;
 	if (qdss->debug_inface_enabled) {
 		qdss_hs_ctrl_in_desc.bEndpointAddress =
 			qdss_ss_ctrl_in_desc.bEndpointAddress =
@@ -730,6 +777,22 @@ static int qdss_set_alt(struct usb_function *f, unsigned int intf,
 
 		qdss->port.data->driver_data = qdss;
 		qdss->data_enabled = 1;
+
+		ret = config_ep_by_speed(gadget, f, qdss->port.data2);
+		if (ret) {
+			pr_err("%s: failed config_ep_by_speed ret:%d\n",
+							__func__, ret);
+			goto fail;
+		}
+
+		ret = usb_ep_enable(qdss->port.data2);
+		if (ret) {
+			pr_err("%s: failed to enable ep ret:%d\n",
+							__func__, ret);
+			goto fail;
+		}
+
+		qdss->port.data2->driver_data = qdss;
 
 
 	} else if ((intf == qdss->ctrl_iface_id) &&
