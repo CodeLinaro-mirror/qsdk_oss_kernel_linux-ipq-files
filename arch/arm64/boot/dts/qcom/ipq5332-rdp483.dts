@@ -70,6 +70,7 @@
 
 	reserved-memory {
 
+		/delete-node/ q6_ipq5332_data@4b500000;
 		/delete-node/ m3_dump@4cc00000;
 		/delete-node/ q6_etr_dump@1;
 		/delete-node/ mlo_global_mem_0@0x4db00000;
@@ -184,6 +185,7 @@
 	*/
 	reserved-memory {
 
+		/delete-node/ q6_ipq5332_data@4b500000;
 		/delete-node/ m3_dump@4cc00000;
 		/delete-node/ q6_etr_dump@1;
 		/delete-node/ mlo_global_mem_0@0x4db00000;
