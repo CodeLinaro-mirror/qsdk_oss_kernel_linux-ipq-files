@@ -1,6 +1,6 @@
 /* Copyright (c) 2012-2013,2015-2016, The Linux Foundation. All rights reserved.
  *
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022,2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -29,9 +29,9 @@
 #include <linux/string.h>
 #include <linux/platform_device.h>
 #include <linux/of_device.h>
-#include "ipq9574-lpass-pcm.h"
-#ifdef CONFIG_SND_SOC_IPQ9574_LPASS_PCM_RAW
-#include "ipq9574-lpass-pcm.h"
+#include "ipq-lpass-pcm.h"
+#ifdef CONFIG_SND_SOC_IPQ_LPASS_PCM_RAW
+#include "ipq-lpass-pcm.h"
 #else
 #include "ipq-pcm-raw.h"
 #endif
@@ -49,7 +49,7 @@
  */
 
 static void pcm_start_test(int pcm_index);
-static void ipq9574_pcm_fill_data(uint32_t *tx_buff, uint32_t size,
+static void ipq_pcm_fill_data(uint32_t *tx_buff, uint32_t size,
 						int pcm_index);
 
 /* the test configurations supported */
@@ -103,7 +103,7 @@ struct pcm_lb_test_ctx {
 };
 
 static struct pcm_lb_test_ctx ctx[IPQ_LPASS_MAX_PCM_INTERFACE];
-#ifdef CONFIG_SND_SOC_IPQ9574_LPASS_PCM_RAW
+#ifdef CONFIG_SND_SOC_IPQ_LPASS_PCM_RAW
 struct ipq_lpass_pcm_params cfg_params[IPQ_LPASS_MAX_PCM_INTERFACE];
 #else
 struct ipq_pcm_params cfg_params;
@@ -195,7 +195,7 @@ uint32_t pcm_read_write(int pcm_index)
 		* We will write 1, 2, 3, ..., 255, 1, 2, 3...
 		*/
 
-		ipq9574_pcm_fill_data((uint32_t *)tx_buff,
+		ipq_pcm_fill_data((uint32_t *)tx_buff,
 				(size / sizeof(uint32_t)), pcm_index);
 	}
 
@@ -485,7 +485,7 @@ void process_read(uint32_t size, int pcm_index)
 	}
 }
 
-static void ipq9574_pcm_fill_data(uint32_t *tx_buff, uint32_t size,
+static void ipq_pcm_fill_data(uint32_t *tx_buff, uint32_t size,
 						int pcm_index)
 {
 	uint32_t i;
