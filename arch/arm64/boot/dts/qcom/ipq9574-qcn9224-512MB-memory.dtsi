@@ -167,6 +167,7 @@
 		mlo_global_mem0: mlo_global_mem_0@0 {
 			no-map;
 			size = <0x0 0x1100000>;
+			alignment = <0x0 0x100000>;
 			status = "disabled";
 		};
 	};
