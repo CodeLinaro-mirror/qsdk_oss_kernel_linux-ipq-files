@@ -769,7 +769,6 @@
     memory-region = <&q6_qcn6432_data_1>;
     qcom,wsi = <&wsi>;
     qcom,wsi_index = <1>;
-    interrupts = <GIC_SPI 410 IRQ_TYPE_EDGE_RISING>;
-    interrupt-names = "umac_reset";
     status = "okay";
+    interrupts = <GIC_SPI 410 IRQ_TYPE_EDGE_RISING>;
 };

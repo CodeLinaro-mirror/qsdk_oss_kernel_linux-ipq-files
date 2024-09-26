@@ -895,6 +895,5 @@
 	qcom,wsi_index = <1>;
 	qcom,pci_slot_id = <1>;
 	interrupts = <GIC_SPI 410 IRQ_TYPE_EDGE_RISING>;
-	interrupt-names = "umac_reset";
 	status = "ok";
 };
