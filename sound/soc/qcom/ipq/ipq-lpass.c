@@ -30,6 +30,7 @@
 #include <linux/of_device.h>
 #include <linux/clk.h>
 #include <linux/reset.h>
+#include <linux/nvmem-consumer.h>
 
 #include "ipq-lpass.h"
 #include "ipq-lpass-cc.h"
@@ -1858,11 +1859,33 @@ static int ipq_lpass_probe(struct platform_device *pdev)
 	struct lpass_res *resource;
 	const struct of_device_id *match;
 	int ret;
+	struct nvmem_cell *lpass_nvmem;
+	u8 *disable_status;
+	size_t len;
 
 	match = of_match_device(ipq_lpass_id_table, &pdev->dev);
 	if (!match)
 		return -ENODEV;
 	ipq_hw = (enum ipq_hw_type)match->data;
+
+	if (ipq_hw == IPQ5424) {
+		lpass_nvmem = of_nvmem_cell_get(pdev->dev.of_node, NULL);
+		if (IS_ERR(lpass_nvmem)) {
+			if (PTR_ERR(lpass_nvmem) == -EPROBE_DEFER)
+				return -EPROBE_DEFER;
+		} else {
+			disable_status = nvmem_cell_read(lpass_nvmem, &len);
+			nvmem_cell_put(lpass_nvmem);
+			if ( !IS_ERR(disable_status) && ((unsigned int)
+						(*disable_status) == 1)) {
+				dev_info(dev,"Disabled in qfprom efuse\n");
+				kfree(disable_status);
+				return -ENODEV;
+			}
+			kfree(disable_status);
+		}
+	}
+
 	resource = devm_kzalloc(dev, sizeof(*resource), GFP_KERNEL);
 	if (!resource)
 		return -ENOMEM;
@@ -1940,6 +1963,9 @@ static int ipq_lpass_probe(struct platform_device *pdev)
 	ipq_lpass_clk_init();
 
 	ipq_lpass_lpm_lpaif_reset();
+
+	if (of_platform_populate(pdev->dev.of_node, NULL, NULL, &pdev->dev))
+		dev_err(dev, "ipq lpass populate child failed!!\n");
 
 	return 0;
 err_clk_sway:
