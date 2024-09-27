@@ -974,11 +974,8 @@
 	qcom,pci_slot_id = <0>;
 	qcom,wsi = <&wsi>;
 	qcom,wsi_index = <1>;
-	interrupt-names = "umac_reset";
-	interrupts = <0 33 1>;
 	status = "ok";
 	interrupts = <GIC_SPI 33 IRQ_TYPE_EDGE_RISING>;
-	interrupt-names = "umac_reset";
 };
 
 &wifi2 {
@@ -1004,9 +1001,6 @@
 	qcom,pci_slot_id = <1>;
 	qcom,wsi = <&wsi>;
 	qcom,wsi_index = <2>;
-	interrupt-names = "umac_reset";
-	interrupts = <0 410 1>;
 	status = "ok";
 	interrupts = <GIC_SPI 410 IRQ_TYPE_EDGE_RISING>;
-	interrupt-names = "umac_reset";
 };
