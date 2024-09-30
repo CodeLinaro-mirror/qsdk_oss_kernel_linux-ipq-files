@@ -7,7 +7,7 @@
 #include <linux/kernel.h>
 #include <linux/device.h>
 #include <linux/dma-mapping.h>
-#include <linux/usb/dwc3-msm.h>
+#include <linux/usb/dwc3-qcom.h>
 
 #include "f_qdss.h"
 
@@ -36,9 +36,9 @@ static int enable_qdss_ebc_data_connection(struct f_qdss *qdss)
 {
 	int ret;
 
-	ret = msm_ep_config(qdss->port.data, qdss->endless_req, 1);
+	ret = qcom_ep_config(qdss->port.data, qdss->endless_req, 1);
 	if (ret)
-		pr_err("msm_ep_config failed\n");
+		pr_err("qcom_ep_config failed\n");
 
 	return ret;
 }
@@ -61,9 +61,9 @@ int set_qdss_data_connection(struct f_qdss *qdss, int enable)
 	if (enable) {
 		ret = enable_qdss_ebc_data_connection(qdss);
 	} else {
-		ret = msm_ep_unconfig(qdss->port.data);
+		ret = qcom_ep_unconfig(qdss->port.data);
 		if (ret)
-			pr_err("msm_ep_unconfig failed\n");
+			pr_err("qcom_ep_unconfig failed\n");
 	}
 
 	return ret;

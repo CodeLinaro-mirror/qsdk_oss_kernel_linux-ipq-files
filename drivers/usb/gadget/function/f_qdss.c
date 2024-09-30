@@ -12,23 +12,15 @@
 #include <linux/device.h>
 #include <linux/usb/usb_qdss.h>
 #include <linux/usb/cdc.h>
-#include <linux/usb/dwc3-msm.h>
+#include <linux/usb/dwc3-qcom.h>
 
 #include "f_qdss.h"
 
-static void *_qdss_ipc_log;
-
 #define NUM_PAGES	10 /* # of pages for ipc logging */
 
-#ifdef CONFIG_DYNAMIC_DEBUG
 #define qdss_log(fmt, ...) do { \
-	ipc_log_string(_qdss_ipc_log, "%s: " fmt,  __func__, ##__VA_ARGS__); \
 	dynamic_pr_debug("%s: " fmt, __func__, ##__VA_ARGS__); \
 } while (0)
-#else
-#define qdss_log(fmt, ...) \
-	ipc_log_string(_qdss_ipc_log, "%s: " fmt,  __func__, ##__VA_ARGS__)
-#endif
 
 static DEFINE_SPINLOCK(channel_lock);
 static LIST_HEAD(usb_qdss_ch_list);
@@ -418,8 +410,8 @@ static void clear_eps(struct usb_function *f)
 		qdss->port.ctrl_out->driver_data = NULL;
 	if (qdss->port.data) {
 		if (!qdss_uses_sw_path(qdss)) {
-			msm_ep_clear_ops(qdss->port.data);
-			msm_ep_set_mode(qdss->port.data, USB_EP_NONE);
+			qcom_ep_clear_ops(qdss->port.data);
+			qcom_ep_set_mode(qdss->port.data, USB_EP_NONE);
 		}
 		qdss->port.data->driver_data = NULL;
 	}
@@ -501,16 +493,16 @@ static int qdss_bind(struct usb_configuration *c, struct usb_function *f)
 	ep2->driver_data = qdss;
 
 	if (!qdss_uses_sw_path(qdss)) {
-		ret = msm_ep_set_mode(qdss->port.data, qdss->ch.ch_type);
+		ret = qcom_ep_set_mode(qdss->port.data, qdss->ch.ch_type);
 		if (ret < 0)
 			goto clear_ep;
 
-		ret = msm_ep_set_mode(qdss->port.data2, qdss->ch.ch_type);
+		ret = qcom_ep_set_mode(qdss->port.data2, qdss->ch.ch_type);
 		if (ret < 0)
 			goto clear_ep;
 
-		msm_ep_update_ops(qdss->port.data);
-		msm_ep_update_ops(qdss->port.data2);
+		qcom_ep_update_ops(qdss->port.data);
+		qcom_ep_update_ops(qdss->port.data2);
 	}
 
 	if (qdss->debug_inface_enabled) {
@@ -701,6 +693,7 @@ static void usb_qdss_connect_work(struct work_struct *work)
 
 	mutex_lock(&qdss->mutex);
 
+	qdss->opened = true;
 	qdss_log("channel:%s opened:%d\n", qdss->ch.name, qdss->opened);
 	if (!qdss->opened)
 		goto unlock_out;
@@ -1276,10 +1269,6 @@ static int __init usb_qdss_init(void)
 {
 	int ret;
 
-	_qdss_ipc_log = ipc_log_context_create(NUM_PAGES, "usb_qdss", 0);
-	if (IS_ERR_OR_NULL(_qdss_ipc_log))
-		_qdss_ipc_log =  NULL;
-
 	INIT_LIST_HEAD(&usb_qdss_ch_list);
 	ret = usb_function_register(&qdssusb_func);
 	if (ret) {
@@ -1291,7 +1280,6 @@ static int __init usb_qdss_init(void)
 
 static void __exit usb_qdss_exit(void)
 {
-	ipc_log_context_destroy(_qdss_ipc_log);
 	usb_function_unregister(&qdssusb_func);
 	qdss_cleanup();
 }

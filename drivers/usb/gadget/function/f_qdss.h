@@ -9,7 +9,6 @@
 
 #include <linux/completion.h>
 #include <linux/kernel.h>
-#include <linux/ipc_logging.h>
 #include <linux/list.h>
 #include <linux/mutex.h>
 #include <linux/usb/ch9.h>
