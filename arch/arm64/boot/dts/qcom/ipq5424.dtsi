@@ -177,28 +177,25 @@
 		 * ------------------------------------------------------------
 		 * Frequency     1.4GHz	   1.8GHz(no limit)	opp-supported-hw
 		 * ------------------------------------------------------------
-		 * 800000000	   0	      0			0x0
+		 * 816000000	   1	      1			0x3
 		 * 1416000000      1	      1			0x3
 		 * 1800000000      0	      1			0x1
 		 * -----------------------------------------------------------*/
 
-		opp-800000000 {
-			opp-hz = /bits/ 64 <800000000>;
-			opp-microvolt = <1>;
-			opp-supported-hw = <0x0>;
+		opp-816000000 {
+			opp-hz = /bits/ 64 <816000000>;
+			opp-supported-hw = <0x3>;
 			clock-latency-ns = <200000>;
 		};
 
 		opp-1416000000 {
 			opp-hz = /bits/ 64 <1416000000>;
-			opp-microvolt = <1>;
 			opp-supported-hw = <0x3>;
 			clock-latency-ns = <200000>;
 		};
 
 		opp-1800000000 {
 			opp-hz = /bits/ 64 <1800000000>;
-			opp-microvolt = <2>;
 			opp-supported-hw = <0x1>;
 			clock-latency-ns = <200000>;
 		};
