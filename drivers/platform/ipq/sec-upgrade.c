@@ -1097,6 +1097,8 @@ store_sec_dat(struct device *dev, struct device_attribute *attr,
 		goto file_close;
 	}
 	fuse_blow.address = dma_req_addr;
+	fuse_blow.status = &fuse_status;
+	fuse_blow.size = fuse_blow_size_req ? size : 0;
 
 	ret = of_property_read_u32(np, "scm-cmd-id", &scm_cmd_id);
 	if (ret) {
@@ -1104,22 +1106,37 @@ store_sec_dat(struct device *dev, struct device_attribute *attr,
 		goto free_mem;
 	}
 
-	if (qcom_sec_dat_fuse_available()) {
-		fuse_blow.status = &fuse_status;
-		fuse_blow.size = fuse_blow_size_req ? size : 0;
+	if (!IS_ELF(*((Elf32_Ehdr *)ptr)) &&
+	    qcom_sec_dat_fuse_available(TZ_BLOW_FUSE_SECDAT)) {
 		ret = qcom_fuseipq_scm_call(QCOM_SCM_SVC_FUSE,
-					    TZ_BLOW_FUSE_SECDAT, &fuse_blow,
+					    TZ_BLOW_FUSE_SECDAT,
+					    &fuse_blow,
 					    sizeof(fuse_blow));
-	} else {
-		/* Pass the ptr containing the elf for loadable segment extraction */
+	} else if (IS_ELF(*((Elf32_Ehdr *)ptr)) &&
+		   qcom_sec_dat_fuse_available(QCOM_AUTH_FUSE_UIE_KEY_CMD)) {
+		ret = qcom_fuseipq_scm_call(QCOM_SCM_SVC_FUSE,
+					    QCOM_AUTH_FUSE_UIE_KEY_CMD,
+					    &fuse_blow,
+					    sizeof(fuse_blow));
+	} else if (IS_ELF(*((Elf32_Ehdr *)ptr)) &&
+		   qcom_sec_upgrade_auth_ld_segments_available(scm_cmd_id)) {
+		/* Pass the ptr containing the elf for loadable segment
+		 * extraction
+		 */
 		ld_seg_cnt = parse_n_extract_ld_segment(ptr, &md_size,
 							dma_req_addr);
 		ret = qcom_sec_upgrade_auth_ld_segments(scm_cmd_id,
 							SW_TYPE_SEC_DATA,
-							dma_req_addr, md_size,
-							ld_seg_buff, ld_seg_cnt,
+							dma_req_addr,
+							md_size,
+							ld_seg_buff,
+							ld_seg_cnt,
 							&fuse_status);
+	} else {
+		ret = -EINVAL;
+		goto free_mem;
 	}
+
 	if (ret) {
 		pr_err("Error in QFPROM write (%d)\n", ret);
 		ret = -EIO;
