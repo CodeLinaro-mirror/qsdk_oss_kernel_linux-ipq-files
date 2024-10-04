@@ -86,7 +86,7 @@ static long qwes_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			}
 			ret = tmelcom_init_attestation(key_buf,
 					QWES_M3_KEY_BUFF_MAX_SIZE, key_len);
-			if (ret == -ENOTSUPP) {
+			if (ret == -EOPNOTSUPP) {
 				ret = qcom_scm_get_device_attestation_ephimeral_key(
 					key_buf, QWES_M3_KEY_BUFF_MAX_SIZE, key_len);
 			}
@@ -168,7 +168,7 @@ static long qwes_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			ret = tmelcom_qwes_getattestation_report(req_buf,
 				ar.req_buf_len, claim_buf, ar.claim_buf_len,
 				resp_buf, QWES_RESP_BUFF_MAX_SIZE, resp_size);
-			if (ret == -ENOTSUPP) {
+			if (ret == -EOPNOTSUPP) {
 				ret = qcom_scm_get_device_attestation_response(req_buf,
 					ar.req_buf_len, claim_buf, ar.claim_buf_len,
 					resp_buf, QWES_RESP_BUFF_MAX_SIZE, resp_size);
@@ -238,7 +238,7 @@ static long qwes_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 					pr.req_buf_len, resp_buf,
 					QWES_RESP_BUFF_MAX_SIZE, resp_size);
 
-			if (ret == -ENOTSUPP) {
+			if (ret == -EOPNOTSUPP) {
 				ret = qcom_scm_get_device_provision_response(req_buf,
 					pr.req_buf_len, resp_buf,
 					QWES_RESP_BUFF_MAX_SIZE, resp_size);
