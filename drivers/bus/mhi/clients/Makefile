@@ -1,1 +1,1 @@
-obj-y += netdev.o
+obj-$(CONFIG_MHI_NETDEV) += netdev.o

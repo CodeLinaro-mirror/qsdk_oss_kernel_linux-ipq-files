@@ -12,7 +12,6 @@
 #include <linux/if_arp.h>
 #include <linux/dma-mapping.h>
 #include <linux/debugfs.h>
-#include <linux/ipc_logging.h>
 #include <linux/device.h>
 #include <linux/errno.h>
 #include <linux/of_device.h>
@@ -87,6 +86,12 @@ struct mhi_netbuf {
 	struct mhi_buf mhi_buf; /* this must be first element */
 	void (*unmap)(struct device *dev, dma_addr_t addr, size_t size,
 		      enum dma_data_direction dir);
+};
+
+struct mhi_device_info {
+	const char *ifname;
+	u32 mru;
+	bool chain;
 };
 
 static struct mhi_driver mhi_netdev_driver;
@@ -209,7 +214,7 @@ static void mhi_netdev_queue(struct mhi_netdev *mhi_netdev)
 	struct mhi_netbuf *netbuf;
 	struct mhi_buf *mhi_buf;
 	struct mhi_netbuf **netbuf_pool = mhi_netdev->netbuf_pool;
-	int nr_tre = mhi_get_no_free_descriptors(mhi_dev, DMA_FROM_DEVICE);
+	int nr_tre = mhi_get_free_desc_count(mhi_dev, DMA_FROM_DEVICE);
 	int i, peak, cur_index, ret;
 	const int pool_size = mhi_netdev->pool_size - 1, max_peak = 4;
 
@@ -550,9 +555,7 @@ static int mhi_netdev_enable_iface(struct mhi_netdev *mhi_netdev)
 	if (mhi_netdev->alias < 0)
 		mhi_netdev->alias = 0;
 
-	ret = of_property_read_string(of_node, "mhi,interface-name",
-				      &mhi_netdev->interface_name);
-	if (ret)
+	if (!mhi_netdev->interface_name)
 		mhi_netdev->interface_name = mhi_netdev_driver.driver.name;
 
 	if (!strcmp(mhi_netdev->interface_name, MHI_RMNET_IF_NAME))
@@ -588,7 +591,7 @@ static int mhi_netdev_enable_iface(struct mhi_netdev *mhi_netdev)
 		goto napi_alloc_fail;
 	}
 
-	netif_napi_add(mhi_netdev->ndev, mhi_netdev->napi,
+	netif_napi_add_weight(mhi_netdev->ndev, mhi_netdev->napi,
 		       mhi_netdev_poll, napi_poll_weight);
 	ret = register_netdev(mhi_netdev->ndev);
 	if (ret) {
@@ -632,10 +635,11 @@ static void mhi_netdev_push_skb(struct mhi_netdev *mhi_netdev,
 				struct mhi_result *mhi_result)
 {
 	struct sk_buff *skb;
+	void *ptr;
 
 	if (unlikely(drop_at_mhi)) {
-		if (unlikely(put_page_testzero(mhi_buf->page)))
-			free_compound_page(mhi_buf->page);
+		ptr = page_address(mhi_buf->page);
+		folio_put(virt_to_folio(ptr));
 	} else {
 		skb = alloc_skb(0, GFP_ATOMIC);
 		if (!skb) {
@@ -674,6 +678,7 @@ static void mhi_netdev_xfer_dl_cb(struct mhi_device *mhi_dev,
 	s64 time_difference = 0;
 	ktime_t second_jiffy;
 	u64 bytes_received_2;
+	void *ptr;
 
 	netbuf->unmap(dev, mhi_buf->dma_addr, mhi_buf->len, DMA_FROM_DEVICE);
 
@@ -725,8 +730,8 @@ static void mhi_netdev_xfer_dl_cb(struct mhi_device *mhi_dev,
 	}
 
 	if (unlikely(drop_at_mhi)) {
-		if (unlikely(put_page_testzero(mhi_buf->page)))
-			free_compound_page(mhi_buf->page);
+		ptr = page_address(mhi_buf->page);
+		folio_put(virt_to_folio(ptr));
 	} else {
 		/* we support chaining */
 		skb = alloc_skb(0, GFP_ATOMIC);
@@ -918,11 +923,11 @@ static int fwainfo_proc_open(struct inode *inode, struct file *file)
 	return single_open(file, fwainfo_proc_show, NULL);
 }
 
-static const struct file_operations fwainfo_proc_fops = {
-	.open		= fwainfo_proc_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
+static const struct proc_ops fwainfo_proc_fops = {
+	.proc_open		= fwainfo_proc_open,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release		= single_release,
 };
 
 static int mhi_netdev_probe(struct mhi_device *mhi_dev,
@@ -934,11 +939,9 @@ static int mhi_netdev_probe(struct mhi_device *mhi_dev,
 	struct device *dbg_dev = &mhi_dev->dev;
 	int nr_tre;
 	struct device_node *phandle;
-	bool no_chain;
+	bool chain;
 	static int fwa_proc_created;
-
-	if (!of_node)
-		return -ENODEV;
+	const struct mhi_device_info *info = (struct mhi_device_info *)id->driver_data;
 
 	mhi_netdev = devm_kzalloc(&mhi_dev->dev, sizeof(*mhi_netdev),
 				  GFP_KERNEL);
@@ -948,9 +951,9 @@ static int mhi_netdev_probe(struct mhi_device *mhi_dev,
 	mhi_netdev->mhi_dev = mhi_dev;
 	dev_set_drvdata(&mhi_dev->dev, mhi_netdev);
 
-	ret = of_property_read_u32(of_node, "mhi,mru", &mhi_netdev->mru);
-	if (ret)
-		return -ENODEV;
+	mhi_netdev->interface_name = info->ifname;
+	mhi_netdev->mru = info->mru;
+	chain = info->chain;
 
 	/* MRU must be multiplication of page size */
 	mhi_netdev->order = __ilog2_u32(mhi_netdev->mru / PAGE_SIZE);
@@ -980,9 +983,7 @@ static int mhi_netdev_probe(struct mhi_device *mhi_dev,
 		mhi_netdev_clone_dev(mhi_netdev, p_netdev);
 		put_device(dev);
 	} else {
-		no_chain = of_property_read_bool(of_node,
-						 "mhi,disable-chain-skb");
-		if (!no_chain) {
+		if (chain) {
 			mhi_netdev->chain = devm_kzalloc(&mhi_dev->dev,
 							 sizeof(*mhi_netdev->chain),
 							 GFP_KERNEL);
@@ -1005,7 +1006,7 @@ static int mhi_netdev_probe(struct mhi_device *mhi_dev,
 	}
 
 	/* setup pool size ~2x ring length*/
-	nr_tre = mhi_get_no_free_descriptors(mhi_dev, DMA_FROM_DEVICE);
+	nr_tre = mhi_get_free_desc_count(mhi_dev, DMA_FROM_DEVICE);
 	mhi_netdev->pool_size = 1 << __ilog2_u32(nr_tre);
 	if (nr_tre > mhi_netdev->pool_size)
 		mhi_netdev->pool_size <<= 1;
@@ -1049,11 +1050,23 @@ error_start:
 	return ret;
 }
 
+static const struct mhi_device_info mhi_hwip0 = {
+	.ifname = "rmnet_mhi",
+	.mru = 0x4000,
+	.chain = true
+};
+
+static const struct mhi_device_info mhi_swip0 = {
+	.ifname = "rmnet_mhi_sw",
+	.mru = 0x4000,
+	.chain = false
+};
+
 static const struct mhi_device_id mhi_netdev_match_table[] = {
-	{ .chan = "IP_HW0" },
+	{ .chan = "IP_HW0", .driver_data = (kernel_ulong_t)&mhi_hwip0 },
 	{ .chan = "IP_HW_ADPL" },
 	{ .chan = "IP_HW0_RSC" },
-	{ .chan = "IP_SW0" },
+	{ .chan = "IP_SW0", .driver_data = (kernel_ulong_t)&mhi_swip0 },
 	{},
 };
 
