@@ -848,7 +848,7 @@
 	qcom,tgt-mem-mode = <0>;
 	qcom,caldb-size = <0x500000>;
 #endif
-	qcom,board_id = <0x1b>;
+	qcom,board_id = <0x31>;
 	memory-region = <&q6_ipq5332_data>;
 	qcom,wsi = <&wsi>;
 	qcom,wsi_index = <0>;
