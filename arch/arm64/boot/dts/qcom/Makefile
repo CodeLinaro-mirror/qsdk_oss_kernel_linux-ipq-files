@@ -63,6 +63,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-rdp457.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-rdp458.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-rdp459.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-rdp461.dtb
+dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-rdp461-c21.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-rdp467.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-rdp469.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-rdp475.dtb
