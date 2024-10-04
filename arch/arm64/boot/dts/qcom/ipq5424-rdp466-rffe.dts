@@ -51,10 +51,6 @@
 			};
 		};
 
-		gpio-keys {
-			status = "disabled";
-		};
-
 		mdio@90000 {
 			/* GPIO40 is for port 1 QCA81XX PHY */
 			/* GPIO28 is for port 2 QCA81XX PHY */
