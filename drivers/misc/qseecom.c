@@ -3330,8 +3330,10 @@ store_load_start(struct device *dev, struct device_attribute *attr,
 			req_size = sizeof(struct qseecom_load_lib_ireq);
 			if (load_request(dev, smc_id, cmd_id, req_size))
 				pr_info("Loading app libs failed\n");
-			else
+			else {
+				pr_info("Successfully loaded app libraries\n");
 				app_libs_state = 1;
+			}
 			if (props->logging_support_enabled) {
 				if (qtidbg_register_qsee_log_buf(dev))
 					pr_info("Registering log buf failed\n");
@@ -3349,8 +3351,10 @@ store_load_start(struct device *dev, struct device_attribute *attr,
 				req_size = sizeof(struct qseecom_load_app_ireq);
 				if (load_request(dev, smc_id, cmd_id, req_size))
 					pr_info("Loading app failed\n");
-				else
+				else {
+					pr_info("Successfully loaded TZApp and services\n");
 					app_state = 1;
+				}
 			} else {
 				pr_info("App already loaded...\n");
 			}
@@ -4206,7 +4210,7 @@ static int __init qseecom_probe(struct platform_device *pdev)
 		return -1;
 	}
 	pr_info("QSEECom: Notify App Region Successful\n");
-	pr_info("QSEECom: TZApp using Memory Region of size 0x%llx from:0x%llx to 0x%llx\n",
+	pr_info("QSEECom: Memory reserved for TZApp region of size 0x%llx from:0x%llx to 0x%llx\n",
 		(long long unsigned int) notify_app.applications_region_size,
 		(long long unsigned int) notify_app.applications_region_addr,
 		(long long unsigned int) notify_app.applications_region_addr +
@@ -4234,9 +4238,7 @@ load:
 		}
 	}
 
-	if (!qtiapp_init(qdev))
-		pr_info("Loaded tzapp successfully!\n");
-	else
+	if (qtiapp_init(qdev))
 		pr_info("Failed to load tzapp module\n");
 
 	if (props->function & AES_SEC_KEY) {
