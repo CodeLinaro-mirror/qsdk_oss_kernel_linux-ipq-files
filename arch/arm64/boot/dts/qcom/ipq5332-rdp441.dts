@@ -231,8 +231,8 @@
 					};
 					port@1 {
 						port_id = <2>;
-						phy_address = <30>;
 						media-type = "sfp"; /* fiber mode */
+						i2c-bus = <&blsp1_i2c1>;
 					};
 				};
 			};
@@ -313,8 +313,7 @@
 			reg = <0x3a504000 0x4000>;
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
-			mdio-bus = <&mdio>;
-			qcom,phy-mdio-addr = <30>;
+			i2c-bus = <&blsp1_i2c1>;
 			qcom,link-poll = <1>;
 			phy-mode = "sgmii";
 		};
