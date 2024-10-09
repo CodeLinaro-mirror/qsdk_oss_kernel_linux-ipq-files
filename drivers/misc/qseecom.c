@@ -133,35 +133,6 @@ static int qtidbg_register_qsee_log_buf(struct device *dev)
 	return 0;
 }
 
-static ssize_t
-show_qsee_app_log_buf(struct device *dev, struct device_attribute *attr,
-		     char *buf)
-{
-	ssize_t count = 0;
-
-	if (app_state) {
-		if (g_qsee_log->log_pos.wrap != 0) {
-			memcpy(buf, g_qsee_log->log_buf +
-			      g_qsee_log->log_pos.offset, QSEE_LOG_BUF_SIZE -
-			      g_qsee_log->log_pos.offset - 4);
-			count = QSEE_LOG_BUF_SIZE -
-				g_qsee_log->log_pos.offset - 4;
-			memcpy(buf + count, g_qsee_log->log_buf,
-			      g_qsee_log->log_pos.offset);
-			count = count + g_qsee_log->log_pos.offset;
-		} else {
-			memcpy(buf, g_qsee_log->log_buf,
-			      g_qsee_log->log_pos.offset);
-			count = g_qsee_log->log_pos.offset;
-		}
-	} else {
-		pr_err("load app and then view log..\n");
-		return -EINVAL;
-	}
-
-	return count;
-}
-
 /*
  * store_aes_derive_key()
  * Function to store aes derive key
@@ -3169,8 +3140,6 @@ static int load_request(struct device *dev, uint32_t smc_id,
 		return -EFAULT;
 	}
 
-	pr_info("Successfully loaded app and services!!!!!\n");
-
 	qsee_app_id = resp.data;
 	return 0;
 }
@@ -3304,6 +3273,46 @@ store_decrypt_input(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
+static int tzapp_log_open(struct inode *inode, struct file *file)
+{
+	ssize_t count = 0;
+
+	if (!app_state) {
+		pr_err("load app and then view log..\n");
+		return -EINVAL;
+	}
+
+	if (g_qsee_log->log_pos.wrap != 0) {
+		memcpy(tzapp_log, g_qsee_log->log_buf +
+		       g_qsee_log->log_pos.offset, QSEE_LOG_BUF_SIZE -
+		       g_qsee_log->log_pos.offset - 4);
+		count = QSEE_LOG_BUF_SIZE - g_qsee_log->log_pos.offset - 4;
+		memcpy(tzapp_log + count, g_qsee_log->log_buf,
+		       g_qsee_log->log_pos.offset);
+		count = count + g_qsee_log->log_pos.offset;
+	} else {
+		memcpy(tzapp_log, g_qsee_log->log_buf,
+		       g_qsee_log->log_pos.offset);
+		count = g_qsee_log->log_pos.offset;
+	}
+
+	tzapp_log_len = count;
+
+	return 0;
+}
+
+static ssize_t tzapp_log_read(struct file *fp, char __user *buf, size_t count,
+			      loff_t *position)
+{
+	return simple_read_from_buffer(buf, count, position, tzapp_log,
+				       tzapp_log_len);
+}
+
+static const struct file_operations fops_tzapp_log = {
+	.open = tzapp_log_open,
+	.read = tzapp_log_read,
+};
+
 static ssize_t
 store_load_start(struct device *dev, struct device_attribute *attr,
 		const char *buf, size_t count)
@@ -3312,6 +3321,7 @@ store_load_start(struct device *dev, struct device_attribute *attr,
 	uint32_t smc_id = 0;
 	uint32_t cmd_id = 0;
 	size_t req_size = 0;
+	struct dentry *ret;
 
 	dev = qdev;
 
@@ -3352,6 +3362,20 @@ store_load_start(struct device *dev, struct device_attribute *attr,
 				if (load_request(dev, smc_id, cmd_id, req_size))
 					pr_info("Loading app failed\n");
 				else {
+					if (props->logging_support_enabled) {
+						ret = debugfs_create_file("tzapp_log",
+									      0444,
+									      NULL,
+									      NULL,
+									      &fops_tzapp_log);
+						if (IS_ERR_OR_NULL(ret)) {
+							pr_err("unable to \
+								create tzapp_log \
+								debugfs\n");
+							return -EIO;
+						}
+					}
+
 					pr_info("Successfully loaded TZApp and services\n");
 					app_state = 1;
 				}
@@ -3965,9 +3989,6 @@ static int __init qtiapp_init(struct device *dev)
 
 	if (props->function & MISC)
 		qtiapp_attrs[i++] = &dev_attr_misc.attr;
-
-	if (props->logging_support_enabled)
-		qtiapp_attrs[i++] = &dev_attr_log_buf.attr;
 
 	qtiapp_attrs[i] = NULL;
 
