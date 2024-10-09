@@ -2101,7 +2101,11 @@
 			qcom,caldb-addr = <0x8d300000 0x8d300000 0x0
 					   0x0 0x0 0x0>;
 			qcom,caldb-size = <0x600000>;
-			interrupts = <0 559 1>, /* misc-pulse1 */
+			interrupts = <0 0 0>,
+				<0 0 0>,
+				<0 0 0>,
+				<0 0 0>,
+				<0 559 1>, /* misc-pulse1 */
 				<0 560 1>, /* misc-latch */
 				<0 561 1>, /* sw-exception */
 				<0 518 1>, /* ce0 */
@@ -2163,7 +2167,16 @@
 				<0 529 1>, /* rxdma2host-destination-ring-mac2 */
 				<0 529 1>; /* rxdma2host-destination-ring-mac1 */
 
-			interrupt-names = "misc-pulse1",
+			interrupts-extended = <&wcss_smp2p_in 8 0>,
+				<&wcss_smp2p_in 9 0>,
+				<&wcss_smp2p_in 12 0>,
+				<&wcss_smp2p_in 11 0>;
+
+			interrupt-names = "fatal",
+				"ready",
+				"spawn",
+				"stop-ack",
+				"misc-pulse1",
 				"misc-latch",
 				"sw-exception",
 				"ce0",
@@ -2234,6 +2247,19 @@
 			qcom,bt-priority-time = <0x12>;
 			qcom,coex-algo = <0x2>;
 			qcom,pta-priority = <0x80800505>;
+			qcom,smem-states = <&wcss_smp2p_out 8>,
+					   <&wcss_smp2p_out 9>,
+					   <&wcss_smp2p_out 10>;
+			qcom,smem-state-names = "shutdown",
+						"stop",
+						"spawn";
+#if defined(__RPROC_DISABLE_MPD_SUPPORT__)
+			dump-region = <&q6_ipq5424_data>,
+					<&m3_dump>,
+					<&q6_etr_region>,
+					<&q6_ipq5424_caldb>,
+					<&mlo_global_mem0>;
+#endif
 			status = "disabled";
 		};
 

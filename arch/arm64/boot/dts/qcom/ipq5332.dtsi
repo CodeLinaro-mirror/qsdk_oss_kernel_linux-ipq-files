@@ -926,7 +926,11 @@
 			qcom,caldb-addr = <0x4CE00000 0x4CE00000 0x0
 					0x0 0x0 0x0>;
 			qcom,caldb-size = <0x500000>;
-			interrupts = <GIC_SPI 559 IRQ_TYPE_EDGE_RISING>, /* misc-pulse1 */
+			interrupts = <0 0 0>,
+				<0 0 0>,
+				<0 0 0>,
+				<0 0 0>,
+				<GIC_SPI 559 IRQ_TYPE_EDGE_RISING>, /* misc-pulse1 */
 				<GIC_SPI 560 IRQ_TYPE_EDGE_RISING>, /* misc-latch */
 				<GIC_SPI 561 IRQ_TYPE_EDGE_RISING>, /* sw-exception */
 				<GIC_SPI 422 IRQ_TYPE_EDGE_RISING>, /* ce0 */
@@ -985,8 +989,16 @@
 				<GIC_SPI 558 IRQ_TYPE_EDGE_RISING>, /* rxdma2host-destination-ring-mac2 */
 				<GIC_SPI 558 IRQ_TYPE_EDGE_RISING>; /* rxdma2host-destination-ring-mac1 */
 
+			interrupts-extended = <&wcss_smp2p_in 8 0>,
+				<&wcss_smp2p_in 9 0>,
+				<&wcss_smp2p_in 12 0>,
+				<&wcss_smp2p_in 11 0>;
 
-			interrupt-names = "misc-pulse1",
+			interrupt-names = "fatal",
+				"ready",
+				"spawn",
+				"stop-ack",
+				"misc-pulse1",
 				"misc-latch",
 				"sw-exception",
 				"ce0",
@@ -1051,22 +1063,60 @@
 			qcom,bt-priority-time = <0x12>;
 			qcom,coex-algo = <0x2>;
 			qcom,pta-priority = <0x80800505>;
+			qcom,smem-states = <&wcss_smp2p_out 8>,
+					<&wcss_smp2p_out 9>,
+					<&wcss_smp2p_out 10>;
+			qcom,smem-state-names = "shutdown",
+					"stop",
+					"spawn";
 			status = "disabled";
 		};
 
 		wifi1: wifi1@c0000000 {
 			compatible = "qcom,cnss-qcn6432" , "qcom,qcn6432-wifi";
 			interrupt-bmap = <0x100510>;
-			interrupt-names = "umac_reset";
 			msi-parent = <&v2m0>;
+			interrupts-extended = <&wcss_smp2p_in 16 0>,
+					<&wcss_smp2p_in 17 0>,
+					<&wcss_smp2p_in 20 0>,
+					<&wcss_smp2p_in 19 0>;
+
+			interrupt-names = "fatal",
+					"ready",
+					"spawn",
+					"stop-ack",
+					"umac_reset";
+
+			qcom,smem-states = <&wcss_smp2p_out 16>,
+					<&wcss_smp2p_out 17>,
+					<&wcss_smp2p_out 18>;
+			qcom,smem-state-names = "shutdown",
+						"stop",
+						"spawn";
 			status = "disabled";
 		};
 
 		wifi2: wifi2@c0000000 {
 			compatible = "qcom,cnss-qcn6432" , "qcom,qcn6432-wifi";
 			interrupt-bmap = <0x100510>;
-			interrupt-names = "umac_reset";
 			msi-parent = <&v2m0>;
+			interrupts-extended = <&wcss_smp2p_in 24 0>,
+					<&wcss_smp2p_in 25 0>,
+					<&wcss_smp2p_in 28 0>,
+					<&wcss_smp2p_in 27 0>;
+
+			interrupt-names = "fatal",
+					"ready",
+					"spawn",
+					"stop-ack",
+					"umac_reset";
+
+			qcom,smem-states = <&wcss_smp2p_out 24>,
+					<&wcss_smp2p_out 25>,
+					<&wcss_smp2p_out 26>;
+			qcom,smem-state-names = "shutdown",
+						"stop",
+						"spawn";
 			status = "disabled";
 		};
 
@@ -2367,7 +2417,11 @@
 		};
 
 		q6v5_wcss: remoteproc@d100000 {
+#if defined(__RPROC_DISABLE_MPD_SUPPORT__)
+			compatible ="qcom,ipq5332-q6v5-wcss-sec";
+#else
 			compatible = "qcom,ipq5332-q6-mpd";
+#endif
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges;
@@ -2387,7 +2441,6 @@
 					   <&wcss_smp2p_out 1>;
 			qcom,smem-state-names = "shutdown",
 						"stop";
-
 			memory-region = <&q6_region>;
 			qcom,bootargs_smem = <507>;
 			qcom,bootargs_version = <2>;
@@ -2419,6 +2472,9 @@
 				qcom,smem-state-names = "shutdown",
 							"stop",
 							"spawn";
+#if defined(__RPROC_DISABLE_MPD_SUPPORT__)
+				status = "disabled";
+#endif
 			};
 		};
 	};

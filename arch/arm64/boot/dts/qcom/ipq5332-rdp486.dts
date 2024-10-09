@@ -459,7 +459,11 @@
 						<&m3_dump>,
 						<&q6_etr_region>,
 						<&q6_ipq5332_caldb>;
+#if defined(__RPROC_DISABLE_MPD_SUPPORT__)
+				status = "disabled";
+#else
 				status = "ok";
+#endif
 			};
 
 			q6_wcss_pd2: remoteproc_pd2 {
@@ -485,7 +489,11 @@
 						<&m3_dump_qcn6432_1>,
 						<&q6_qcn6432_etr_1>,
 						<&q6_qcn6432_caldb_1>;
+#if defined(__RPROC_DISABLE_MPD_SUPPORT__)
+				status = "disabled";
+#else
 				status = "ok";
+#endif
 			};
 		};
 	};
@@ -701,25 +709,43 @@
 };
 
 &wifi0 {
+#if defined(__RPROC_DISABLE_MPD_SUPPORT__)
+    qcom,rproc = <&q6v5_wcss>;
+    dump-region = <&q6_ipq5332_data>,
+                  <&m3_dump>,
+                  <&q6_etr_region>,
+                  <&q6_ipq5332_caldb>,
+                  <&mlo_global_mem0>;
+#else
     qcom,multipd_arch;
     qcom,rproc = <&q6_wcss_pd1>;
     qcom,rproc_rpd = <&q6v5_wcss>;
+#endif
     qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
     qcom,bdf-addr = <0x4BD00000 0x4BD00000 0x4BD00000 0x0 0x0 0x0>;
     qcom,caldb-addr = <0x4D400000 0x4D400000 0x4D400000 0x0 0x0 0x0>;
     qcom,tgt-mem-mode = <0>;
     qcom,caldb-size = <0x500000>;
     qcom,board_id = <0x13>;
-    memory-region = <&q6_ipq5332_data>;
+    memory-region = <&q6_ipq5332_data>, <&q6_mem_regions>;
     qcom,wsi = <&wsi>;
     qcom,wsi_index = <0>;
     status = "ok";
 };
 
 &wifi1 {
+#if defined(__RPROC_DISABLE_MPD_SUPPORT__)
+    qcom,rproc = <&q6v5_wcss>;
+    dump-region = <&q6_qcn6432_data_1>,
+                  <&m3_dump_qcn6432_1>,
+                  <&q6_qcn6432_etr_1>,
+                  <&q6_qcn6432_caldb_1>,
+                  <&mlo_global_mem0>;
+#else
     qcom,multipd_arch;
     qcom,rproc = <&q6_wcss_pd2>;
     qcom,rproc_rpd = <&q6v5_wcss>;
+#endif
     qcom,wide_band = <2>;
     qcom,userpd-subsys-name = "q6v5_wcss_userpd2";
     qcom,bdf-addr = <0x4D900000 0x4D900000 0x4D900000 0x0 0x0 0x0>;
@@ -727,7 +753,7 @@
     qcom,caldb-size = <0x500000>;
     qcom,tgt-mem-mode = <0>;
     qcom,board_id = <0x070>;
-    memory-region = <&q6_qcn6432_data_1>;
+    memory-region = <&q6_qcn6432_data_1>, <&q6_mem_regions>;
     qcom,wsi = <&wsi>;
     qcom,wsi_index = <1>;
     status = "ok";
