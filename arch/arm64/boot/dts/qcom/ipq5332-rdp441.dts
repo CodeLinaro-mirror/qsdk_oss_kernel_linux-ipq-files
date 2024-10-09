@@ -33,12 +33,17 @@
 	};
 
 #if defined(__IPQ_MEM_PROFILE_256_MB__)
-
 	/*	  256MB Profile for IPQ5322 + QCN9224
 	 * +=========+==============+========================+
 	 * |        |              |                         |
 	 * | Region | Start Offset |          Size           |
 	 * |        |              |                         |
+	 * +--------+--------------+-------------------------+
+	 * |  SMEM  |  0x4A800000  |          192KB          |
+	 * +--------+--------------+-------------------------+
+	 * |  ATF   |  0x4A830000  |          512KB          |
+	 * +--------+--------------+-------------------------+
+	 * |       320 KB not-reserved, used by linux        |
 	 * +--------+--------------+-------------------------+
 	 * | WLAN   |              |                         |
 	 * |   Q6   |  0x4A900000  |          20MB           |
@@ -62,6 +67,22 @@
 	 */
 
 	reserved-memory {
+		/delete-node/ bootloader@4a300000;
+		/delete-node/ sbl@4a500000;
+		/delete-node/ tz@4a600000;
+
+		smem@4a800000 {
+			compatible = "qcom,smem";
+			reg = <0x0 0x4a800000 0x0 0x30000>;
+			no-map;
+			hwlocks = <&tcsr_mutex 3>;
+		};
+
+		atf@4a830000 {
+			reg = <0x0 0x4a830000 0x0 0x80000>;
+			no-map;
+		};
+
 		q6_region: wcnss@4a900000 {
 			no-map;
 			reg = <0x0 0x4A900000 0x0 0x1400000>;
