@@ -998,7 +998,7 @@ static int qdss_mhi_probe(struct mhi_device *mhi_dev, const struct mhi_device_id
 	drvdata->mode = MHI_TRANSFER_TYPE_UCI;
 	drvdata->mtu = min_t(size_t, id->driver_data, mhi_dev->mtu);
 	drvdata->mhi_dev = mhi_dev;
-	dev_set_drvdata(drvdata->dev, drvdata);
+	dev_set_drvdata(&mhi_dev->dev, drvdata);
 
 	ret = qdss_mhi_init(drvdata);
 	if (ret) {
