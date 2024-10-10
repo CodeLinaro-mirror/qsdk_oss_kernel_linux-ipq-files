@@ -119,6 +119,29 @@
 						ethernet-phy-ieee802.3-c45;
 					};
 				};
+
+				qcom,port_ledinfo {
+					port@0 {
+						port = <1>;
+						led_source@0 {
+							source = <0>;
+							mode = "normal";
+							speed = "all";
+							active = "low";
+							blink_en = "enable";
+						};
+					};
+					port@1 {
+						port = <2>;
+						led_source@0 {
+							source = <0>;
+							mode = "normal";
+							speed = "all";
+							active = "low";
+							blink_en = "enable";
+						};
+					};
+				};
 			};
 		};
 
