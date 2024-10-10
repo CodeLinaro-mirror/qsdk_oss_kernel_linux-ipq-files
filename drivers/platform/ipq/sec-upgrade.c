@@ -1146,6 +1146,8 @@ store_sec_dat(struct device *dev, struct device_attribute *attr,
 		pr_info("Fuse already blown\n");
 	else if (fuse_status == FUSEPROV_INVALID_HASH)
 		pr_info("Invalid sec.dat\n");
+	else if (fuse_status == IMAGE_AUTH_FAILURE)
+		pr_info("Image authentication failed\n");
 	else if (fuse_status == FUSEPROV_SUCCESS)
 		pr_info("Fuse Blow Success\n");
 	else
