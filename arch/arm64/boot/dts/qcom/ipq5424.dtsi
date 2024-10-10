@@ -1143,6 +1143,7 @@
 			qcom,bootargs_smem = <507>;
 			qcom,bootargs_version = <2>;
 			qcom,userpd-bootargs;
+			upd-firmware-names = "IPQ5424/q6_fw1.mdt";
 			status = "disabled";
 
 			glink-edge {

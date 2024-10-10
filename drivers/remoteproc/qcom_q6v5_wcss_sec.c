@@ -32,6 +32,7 @@
 #define RPD_SWID			0xD
 
 #define Q6_BOOT_ARGS_SMEM_SIZE		4096
+#define UPD_BOOTARGS_HEADER_TYPE	0x2
 #define LIC_BOOTARGS_HEADER_TYPE        0x3
 
 #define RESET_CMD_ID			0x18
@@ -90,6 +91,13 @@ struct bootargs_header {
 	u8 type;
 	u8 length;
 };
+
+struct q6_userpd_bootargs {
+	struct bootargs_header header;
+	u8 pid;
+	u32 bootaddr;
+	u32 data_size;
+} __packed;
 
 struct license_bootargs {
 	struct bootargs_header header;
@@ -181,6 +189,77 @@ static void *q6v5_wcss_sec_da_to_va(struct rproc *rproc, u64 da, size_t len,
 		return NULL;
 
 	return wcss->mem_region + offset;
+}
+
+static int load_userpd_info_to_bootargs(struct rproc *rproc,
+					struct bootargs_smem_info *boot_args)
+{
+	struct q6v5_wcss_sec *wcss = rproc->priv;
+	struct q6_userpd_bootargs upd_bootargs = {0};
+	int ret, num_userpds, i;
+	const struct firmware *fw;
+	const char **fw_names;
+	u16 cnt;
+
+	num_userpds = of_property_count_strings(wcss->dev->of_node,
+						"upd-firmware-names");
+	if (num_userpds < 0)
+		return -ENODEV;
+
+	fw_names = kcalloc(num_userpds + 1, sizeof(*fw_names), GFP_KERNEL);
+	if (!fw_names)
+		return -ENOMEM;
+
+	ret = of_property_read_string_array(wcss->dev->of_node,
+					    "upd-firmware-names",
+					    fw_names, num_userpds);
+	if (ret < 0) {
+		dev_err(wcss->dev, "Failed to get userpd firmware names: %d\n", ret);
+		goto out;
+	}
+
+	cnt = *((u16 *)boot_args->smem_elem_cnt_ptr);
+	cnt += sizeof(struct q6_userpd_bootargs) * num_userpds;
+	memcpy_toio(boot_args->smem_elem_cnt_ptr, &cnt, sizeof(u16));
+
+	for (i = 0; i < num_userpds; i++) {
+		pr_err("fw_names[%d/%d] = %s\n", i, num_userpds, fw_names[i]);
+
+		/* TYPE */
+		upd_bootargs.header.type = UPD_BOOTARGS_HEADER_TYPE;
+
+		/* LENGTH */
+		upd_bootargs.header.length =
+			sizeof(struct q6_userpd_bootargs) - sizeof(upd_bootargs.header);
+
+		/* PID*/
+		upd_bootargs.pid = i + 2;
+
+		ret = request_firmware(&fw, fw_names[i], wcss->dev);
+		if (ret) {
+			dev_err(wcss->dev, "Failed to get firmware %d", ret);
+			break;
+		}
+
+		/* Load address */
+		upd_bootargs.bootaddr = rproc_get_boot_addr(rproc, fw);
+
+		/* PIL data size */
+		upd_bootargs.data_size = qcom_mdt_get_file_size(fw);
+
+		release_firmware(fw);
+
+		/* copy into smem bootargs array*/
+		memcpy_toio(boot_args->smem_bootargs_ptr,
+			    &upd_bootargs, sizeof(struct q6_userpd_bootargs));
+
+		boot_args->smem_bootargs_ptr +=
+					sizeof(struct q6_userpd_bootargs);
+	}
+
+out:
+	kfree(fw_names);
+	return ret;
 }
 
 static
@@ -309,7 +388,7 @@ static int share_bootargs_to_q6(struct rproc *rproc, struct device *dev)
 	of_node_put(np);
 	kfree(bootargs_arr);
 
-	ret = q6v5_userpd_copy_bootargs(rproc, (void *)&boot_args);
+	ret = load_userpd_info_to_bootargs(rproc, &boot_args);
 	if (ret < 0) {
 		pr_err("failed to read userpd boot args ret:%d\n", ret);
 		return ret;
