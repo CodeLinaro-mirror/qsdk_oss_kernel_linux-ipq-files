@@ -334,9 +334,9 @@
 			id = <0>;
 			num_chip = <4>;
 			chip_info = <0 2 1 3>,
-				    <1 2 0 2>,
+				    <1 2 2 0>,
 				    <2 2 3 1>,
-				    <3 2 2 0>;
+				    <3 2 0 2>;
 			status = "okay";
 		};
 	};
@@ -408,7 +408,7 @@
 			memory-region = <&qcn9224_pcie2>, <&mhi_region2>;
 			qcom,board_id = <0x26>;
 			qcom,wsi = <&wsi>;
-			qcom,wsi_index = <1>;
+			qcom,wsi_index = <3>;
 		};
 	};
 };
@@ -434,7 +434,7 @@
 			memory-region = <&qcn9224_pcie3>, <&mhi_region3>;
 			qcom,board_id = <0x22>;
 			qcom,wsi = <&wsi>;
-			qcom,wsi_index = <3>;
+			qcom,wsi_index = <1>;
 		};
 	};
 };
