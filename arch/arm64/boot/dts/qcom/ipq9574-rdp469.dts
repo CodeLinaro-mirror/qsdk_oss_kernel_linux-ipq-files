@@ -591,6 +591,12 @@
 	status = "okay";
 };
 
+&nss0 {
+       npu-supply = <&npu_vreg>;
+       mx-supply = <&ipq9574_s4>;
+       status = "okay";
+};
+
 /* Enable the reserved memory regions of QCN9224 on PCIe0, PCIe2 */
 &qcn9224_pcie0 {
         status = "ok";

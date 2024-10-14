@@ -672,6 +672,12 @@
 	status = "okay";
 };
 
+&nss0 {
+       npu-supply = <&npu_vreg>;
+       mx-supply = <&ipq9574_s4>;
+       status = "okay";
+};
+
 /* Enable IPQ9574 integrated radio's reserved memory */
 &q6_region {
         status = "ok";

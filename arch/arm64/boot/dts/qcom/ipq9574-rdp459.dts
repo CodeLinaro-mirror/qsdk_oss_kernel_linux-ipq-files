@@ -633,3 +633,9 @@
 	vdd-supply = <&ipq9574_s2>;
 	status = "okay";
 };
+
+&nss0 {
+       npu-supply = <&npu_vreg>;
+       mx-supply = <&ipq9574_s4>;
+       status = "okay";
+};

@@ -157,7 +157,7 @@
 		compatible = "qcom,cpr3-ipq9574-npu-regulator";
 		reg = <0xa4000 0x1000>, <0x0193d008 0x4>;
 		reg-names = "fuse_base", "cpr_tcsr_reg";
-		status = "disabled";
+		status = "okay";
 		qcom,cpr-ctrl-name = "npu";
 		qcom,voltage-step = <12500>;
 		thread@0 {

@@ -330,7 +330,7 @@
 		nss@40000000 {
 			no-map;
 			reg = <0x0 0x40000000 0x0 0x02000000>;
-			status = "disabled";
+			status = "okay";
 		};
 
 		tzapp:tzapp@49600000 {  /* TZAPPS */
@@ -421,6 +421,7 @@
 			assigned-clock-rates = <100000000>,
 					       <100000000>;
 			status = "okay";
+			ubi_core_enable;
 		};
 
 		pcie0_phy: phy@84000 {
@@ -3515,6 +3516,188 @@
 				status = "disabled";
 			};
 		};
+
+		nss-common {
+			compatible = "qcom,nss-common";
+			reg = <0x39B28A04 0x01>;
+			reg-names = "nss-misc-reset";
+		};
+
+		nss0: nss@40000000 {
+			compatible = "qcom,nss";
+			interrupts = <0 431 0x1>, <0 430 0x1>, <0 429 0x1>,
+				     <0 428 0x1>, <0 427 0x1>, <0 426 0x1>,
+				     <0 425 0x1>, <0 424 0x1>, <0 423 0x1>,
+				     <0 422 0x1>;
+			reg = <0x38F00000 0x100>, <0x38200000 0xC000>,
+			      <0xB11A000 0x1000>;
+			reg-names = "nphys", "vphys", "qgic-phys";
+			clocks = <&nsscc NSS_CC_NSS_CSR_CLK>,
+				 <&nsscc NSS_CC_NSSNOC_NSS_CSR_CLK>,
+				 <&nsscc NSS_CC_HAQ_AHB_CLK>,
+				 <&nsscc NSS_CC_HAQ_AXI_CLK>,
+				 <&nsscc NSS_CC_NSSNOC_HAQ_AHB_CLK>,
+				 <&nsscc NSS_CC_NSSNOC_HAQ_AXI_CLK>,
+				 <&nsscc NSS_CC_CE_APB_CLK>,
+				 <&nsscc NSS_CC_CE_AXI_CLK>,
+				 <&nsscc NSS_CC_NSSNOC_CE_APB_CLK>,
+				 <&nsscc NSS_CC_NSSNOC_CE_AXI_CLK>,
+				 <&nsscc NSS_CC_CLC_AXI_CLK>,
+				 <&nsscc NSS_CC_NSSNOC_CLC_AXI_CLK>,
+				 <&nsscc NSS_CC_IMEM_QSB_CLK>,
+				 <&nsscc NSS_CC_NSSNOC_IMEM_QSB_CLK>,
+				 <&nsscc NSS_CC_IMEM_AHB_CLK>,
+				 <&nsscc NSS_CC_NSSNOC_IMEM_AHB_CLK>,
+				 <&nsscc NSS_CC_NSSNOC_UBI32_AHB0_CLK>,
+				 <&nsscc NSS_CC_NSSNOC_UBI32_AXI0_CLK>,
+				 <&nsscc NSS_CC_NSSNOC_UBI32_INT0_AHB_CLK>,
+				 <&nsscc NSS_CC_NSSNOC_UBI32_NC_AXI0_1_CLK>,
+				 <&nsscc NSS_CC_NSSNOC_UBI32_NC_AXI0_CLK>,
+				 <&nsscc NSS_CC_UBI32_CORE0_CLK>,
+				 <&nsscc NSS_CC_UBI32_AHB0_CLK>,
+				 <&nsscc NSS_CC_UBI32_AXI0_CLK>,
+				 <&nsscc NSS_CC_UBI32_INTR0_AHB_CLK>,
+				 <&nsscc NSS_CC_UBI32_NC_AXI0_CLK>,
+				 <&nsscc NSS_CC_UBI32_UTCM0_CLK>,
+				 <&gcc GCC_MEM_NOC_NSSNOC_CLK>,
+				 <&gcc GCC_NSS_TBU_CLK>,
+				 <&gcc GCC_NSS_TS_CLK>,
+				 <&gcc GCC_NSSCC_CLK>,
+				 <&gcc GCC_NSSCFG_CLK>,
+				 <&gcc GCC_NSSNOC_ATB_CLK>,
+				 <&gcc GCC_NSSNOC_MEM_NOC_1_CLK>,
+				 <&gcc GCC_NSSNOC_MEMNOC_CLK>,
+				 <&gcc GCC_NSSNOC_NSSCC_CLK>,
+				 <&gcc GCC_NSSNOC_PCNOC_1_CLK>,
+				 <&gcc GCC_NSSNOC_QOSGEN_REF_CLK>,
+				 <&gcc GCC_NSSNOC_SNOC_1_CLK>,
+				 <&gcc GCC_NSSNOC_SNOC_CLK>,
+				 <&gcc GCC_NSSNOC_TIMEOUT_REF_CLK>,
+				 <&gcc GCC_NSSNOC_XO_DCD_CLK>;
+			clock-names = "nss-csr-clk", "nss-nssnoc-csr-clk",
+				      "nss-haq-ahb-clk", "nss-haq-axi-clk",
+				      "nss-nssnoc-haq-ahb-clk", "nss-nssnoc-haq-axi-clk",
+				      "nss-ce-ahb-clk", "nss-ce-axi-clk",
+				      "nss-nssnoc-ce-ahb-clk", "nss-nssnoc-ce-axi-clk",
+				      "nss-clc-axi-clk", "nss-nssnoc-clc-axi-clk",
+				      "nss-imem-qsb-clk", "nss-nssnoc-imem-qsb-clk",
+				      "nss-imem-ahb-clk", "nss-nssnoc-imem-ahb-clk",
+				      "nss-nssnoc-ahb0-clk", "nss-nssnoc-axi0-clk",
+				      "nss-nssnoc-int0-ahb-clk", "nss-nssnoc-nc-axi0-1-clk",
+				      "nss-nssnoc-nc-axi0-clk",
+				      "nss-core-clk", "nss-ahb-clk", "nss-axi-clk",
+				      "nss-intr-ahb-clk", "nss-nc-axi-clk", "nss-utcm-clk",
+				      "nss-mem-noc-nssnoc-clk", "nss-tbu-clk", "nss-ts-clk",
+				      "nss-nsscc-clk", "nss-nsscfg-clk", "nss-nsscnoc-atb-clk",
+				      "nss-nssnoc-mem-noc-1-clk", "nss-nssnoc-memnoc-clk", "nss-nssnoc-nsscc-clk",
+				      "nss-nssnoc-pcnoc-1-clk", "nss-nssnoc-qosgen-ref-clk", "nss-nssnoc-snoc-1-clk",
+				      "nss-nssnoc-snoc-clk", "nss-nssnoc-timeout-ref-clk", "nss-nssnoc-xo-dcd-clk";
+			qcom,id = <0>;
+			qcom,num-queue = <4>;
+			qcom,num-irq = <10>;
+			qcom,num-pri = <4>;
+			qcom,load-addr = <0x40000000>;
+			qcom,low-frequency = <748800000>;
+			qcom,mid-frequency = <1497600000>;
+			qcom,max-frequency = <1689600000>;
+			qcom,edma-lite-enabled;
+			qcom,capwap-enabled;
+			qcom,trustsec-enabled;
+			qcom,dtls-enabled;
+			qcom,crypto-enabled;
+		};
+
+		nss_crypto: qcom,nss_crypto {
+			compatible = "qcom,nss-crypto";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			qcom,max-contexts = <64>;
+			qcom,max-context-size = <32>;
+			status = "ok";
+			ranges;
+
+			eip197_node {
+				compatible = "qcom,eip197";
+				reg-names = "crypto_pbase";
+				reg = <0x39800000 0x7ffff>;
+				clocks = <&nsscc NSS_CC_CRYPTO_CLK>,
+					<&nsscc NSS_CC_NSSNOC_CRYPTO_CLK>,
+					<&nsscc NSS_CC_CRYPTO_PPE_CLK>;
+				clock-names = "crypto_clk", "crypto_nocclk",
+						"crypto_ppeclk";
+				clock-frequency = /bits/ 64 <600000000 600000000 300000000>;
+				qcom,dma-mask = <0xff>;
+				qcom,transform-enabled;
+				qcom,aes128-cbc;
+				qcom,aes192-cbc;
+				qcom,aes256-cbc;
+				qcom,aes128-ctr;
+				qcom,aes192-ctr;
+				qcom,aes256-ctr;
+				qcom,aes128-ecb;
+				qcom,aes192-ecb;
+				qcom,aes256-ecb;
+				qcom,3des-cbc;
+				qcom,md5-hash;
+				qcom,sha160-hash;
+				qcom,sha224-hash;
+				qcom,sha384-hash;
+				qcom,sha512-hash;
+				qcom,sha256-hash;
+				qcom,md5-hmac;
+				qcom,sha160-hmac;
+				qcom,sha224-hmac;
+				qcom,sha256-hmac;
+				qcom,sha384-hmac;
+				qcom,sha512-hmac;
+				qcom,aes128-gcm-gmac;
+				qcom,aes192-gcm-gmac;
+				qcom,aes256-gcm-gmac;
+				qcom,aes128-cbc-md5-hmac;
+				qcom,aes128-cbc-sha160-hmac;
+				qcom,aes192-cbc-md5-hmac;
+				qcom,aes192-cbc-sha160-hmac;
+				qcom,aes256-cbc-md5-hmac;
+				qcom,aes256-cbc-sha160-hmac;
+				qcom,aes128-ctr-sha160-hmac;
+				qcom,aes192-ctr-sha160-hmac;
+				qcom,aes256-ctr-sha160-hmac;
+				qcom,aes128-ctr-md5-hmac;
+				qcom,aes192-ctr-md5-hmac;
+				qcom,aes256-ctr-md5-hmac;
+				qcom,3des-cbc-md5-hmac;
+				qcom,3des-cbc-sha160-hmac;
+				qcom,aes128-cbc-sha256-hmac;
+				qcom,aes192-cbc-sha256-hmac;
+				qcom,aes256-cbc-sha256-hmac;
+				qcom,aes128-ctr-sha256-hmac;
+				qcom,aes192-ctr-sha256-hmac;
+				qcom,aes256-ctr-sha256-hmac;
+				qcom,3des-cbc-sha256-hmac;
+				qcom,aes128-cbc-sha384-hmac;
+				qcom,aes192-cbc-sha384-hmac;
+				qcom,aes256-cbc-sha384-hmac;
+				qcom,aes128-ctr-sha384-hmac;
+				qcom,aes192-ctr-sha384-hmac;
+				qcom,aes256-ctr-sha384-hmac;
+				qcom,aes128-cbc-sha512-hmac;
+				qcom,aes192-cbc-sha512-hmac;
+				qcom,aes256-cbc-sha512-hmac;
+				qcom,aes128-ctr-sha512-hmac;
+				qcom,aes192-ctr-sha512-hmac;
+				qcom,aes256-ctr-sha512-hmac;
+
+				engine0 {
+					reg_offset = <0x80000>;
+					qcom,ifpp-enabled;
+					qcom,ipue-enabled;
+					qcom,ofpp-enabled;
+					qcom,opue-enabled;
+				};
+			};
+		};
+
+
 
 		edma@3ab00000 {
 			compatible = "qcom,edma";
