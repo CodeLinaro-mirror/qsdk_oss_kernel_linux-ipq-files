@@ -544,6 +544,7 @@
 	hremote_node = <&qcn9224_pcie0>;
 	node_id=<0x0>;
 	board_id = <0x1010>;
+	hw_link_id = <0 1>;
 	status = "okay";
 };
 
@@ -556,6 +557,7 @@
 	hremote_node = <&qcn9224_pcie2>;
 	node_id=<0x2>;
 	board_id = <0x100e>;
+	hw_link_id = <2 3>;
 	status = "okay";
 };
 
