@@ -149,7 +149,10 @@
 				reg = <4>;
 				fixup;
 			};
-
+			phy4: ethernet-phy@4 {
+				reg = <12>;
+				compatible ="ethernet-phy-ieee802.3-c45";
+			};
 			switch0@10 {
 				compatible = "qca,qca8386";
 				#address-cells = <1>;
@@ -231,13 +234,11 @@
 			num_devices = <0x2>;
 
 			ess-switch@3a000000 {
-				pinctrl-0 = <&sfp_pins>;
-				pinctrl-names = "default";
 				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
 				switch_lan_bmp = <0x2>; /* lan port bitmap */
 				switch_wan_bmp = <0x4>; /* wan port bitmap */
 				switch_mac_mode = <0xc>; /* mac mode for uniphy instance0*/
-				switch_mac_mode1 = <0xe>; /* mac mode for uniphy instance1*/
+				switch_mac_mode1 = <0xd>; /* mac mode for uniphy instance1*/
 				switch_mac_mode2 = <0xff>; /* mac mode for uniphy instance2*/
 
 				qcom,port_phyinfo {
@@ -252,8 +253,8 @@
 					};
 					port@1 {
 						port_id = <2>;
-						phy_address = <30>;
-						media-type = "sfp"; /* fiber mode */
+						phy_address = <12>;
+						ethernet-phy-ieee802.3-c45;
 					};
 				};
 			};
@@ -334,10 +335,9 @@
 			reg = <0x3a504000 0x4000>;
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
-			mdio-bus = <&mdio>;
-			qcom,phy-mdio-addr = <30>;
+			qcom,phy-mdio-addr = <12>;
 			qcom,link-poll = <1>;
-			phy-mode = "sgmii";
+			phy-mode = "usxgmii";
 		};
 
 		gmac2:dp2 {
@@ -722,22 +722,6 @@
 		bias-pull-up;
 		output-low;
 	};
-
-	sfp_pins: sfp-state {
-		sfp_rx {
-			pins = "gpio45";
-			function = "rx1";
-			bias-disable;
-		};
-		sfp_tx {
-			pins = "gpio24";
-			function = "gpio";
-			drive-strength = <8>;
-			bias-pull-down;
-			output-low;
-		};
-	};
-
 };
 
 &license_manager {
