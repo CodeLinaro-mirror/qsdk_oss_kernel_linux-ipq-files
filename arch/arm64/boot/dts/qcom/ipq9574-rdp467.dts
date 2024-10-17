@@ -734,7 +734,8 @@
         /delete-property/ interrupt-bmap;
 	node_id=<0x0>;
         hw_link_id = <0 0>;
-        status = "ok";
+	hw_link_id = <0 0>;
+	status = "okay";
 };
 
 &wifi5 {
@@ -743,7 +744,8 @@
         /delete-property/ interrupt-bmap;
         hw_link_id = <3 0>;
 	node_id=<0x1>;
-        status = "ok";
+	hw_link_id = <3 0>;
+	status = "okay";
 };
 
 &wifi6 {
@@ -751,7 +753,8 @@
         board_id = <0x04>;
         hw_link_id = <2 0>;
 	node_id=<0x2>;
-        status = "ok";
+	hw_link_id = <2 0>;
+	status = "okay";
 };
 
 &wifi7 {
@@ -759,5 +762,6 @@
         board_id = <0x12>;
         hw_link_id = <1 0>;
 	node_id=<0x3>;
-        status = "ok";
+	hw_link_id = <1 0>;
+	status = "okay";
 };
