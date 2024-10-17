@@ -80,6 +80,7 @@ static int version_commit_enable;
 static int fuse_blow_size_req;
 static int decompress_error;
 struct load_segs_info *ld_seg_buff;
+static int rootfs_auth_enable;
 
 enum qti_sec_img_auth_args {
 	QTI_SEC_IMG_SW_TYPE,
@@ -652,6 +653,18 @@ static int parse_n_extract_ld_segment(void *va_addr, u32 *md_size, unsigned int 
 }
 
 static ssize_t
+rootfs_auth_flag(struct device *dev, struct device_attribute *sec_attr, char *buf)
+{
+	ssize_t ret = 0;
+
+	if (rootfs_auth_enable)
+		ret = snprintf(buf, sizeof("Enabled"), "%s\n", "Enabled");
+	else
+		ret = snprintf(buf, sizeof("Disabled"), "%s\n", "Disabled");
+	return ret;
+}
+
+static ssize_t
 store_sec_auth(struct device *dev,
 			struct device_attribute *sec_attr,
 			const char *buf, size_t count)
@@ -870,6 +883,9 @@ free_mem:
 
 static struct device_attribute sec_attr =
 	__ATTR(sec_auth, 0644, NULL, store_sec_auth);
+
+static struct device_attribute rootfs_attr =
+	__ATTR(rootfs_auth, 0644, rootfs_auth_flag, NULL);
 
 struct kobject *sec_kobj;
 
@@ -1335,6 +1351,9 @@ static int qfprom_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	const struct qfprom_node_cfg *cfg;
 	u32 scm_cmd_id;
+	struct resource *res;
+	void __iomem *secure_boot = NULL;
+	u32 value = 0;
 
 	if (!qcom_scm_is_available()) {
 		pr_info("SCM call is not initialized, defering probe\n");
@@ -1403,6 +1422,32 @@ static int qfprom_probe(struct platform_device *pdev)
 				pr_info("Failed to register sec_auth sysfs\n");
 				kobject_put(sec_kobj);
 				sec_kobj = NULL;
+			}
+		}
+
+		if (sec_kobj) {
+			err = sysfs_create_file(sec_kobj, &rootfs_attr.attr);
+			if (err) {
+				pr_info("Failed to register rootfs_auth sysfs\n");
+				kobject_put(sec_kobj);
+				sec_kobj = NULL;
+			}
+		}
+
+		if (!err) {
+			res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+			secure_boot = devm_ioremap_resource(&pdev->dev, res);
+			if (IS_ERR(secure_boot)) {
+				pr_info("ioremap failed for rootfs auth fuse");
+			} else {
+				value = readl(secure_boot);
+
+				/*
+				 * Bit5 of the fuse <SECURE_BOOTn> indicates
+				 * if rootfs auth is enabled or not
+				 */
+				if (value & BIT(5))
+					rootfs_auth_enable = 1;
 			}
 		}
 	}
