@@ -545,8 +545,8 @@ static int upd_alloc_memory_region(struct user_pd *upd)
 	return 0;
 }
 
-int q6v5_upd_rproc_notifier_cb(struct notifier_block *nb, unsigned long action,
-			       void *data)
+static int q6v5_upd_rproc_notifier_cb(struct notifier_block *nb,
+				      unsigned long action, void *data)
 {
 	struct user_pd *upd = container_of(nb, struct user_pd, rproc_nb);
 	int ret;
@@ -555,8 +555,6 @@ int q6v5_upd_rproc_notifier_cb(struct notifier_block *nb, unsigned long action,
 		 action, upd->rproc->name);
 
 	switch (action) {
-	case QCOM_SSR_BEFORE_POWERUP:
-		break;
 	case QCOM_SSR_AFTER_POWERUP:
 		if (!upd->autostart) {
 			dev_info(upd->dev, "Ignoring event %lu for rproc: %s",
@@ -568,23 +566,46 @@ int q6v5_upd_rproc_notifier_cb(struct notifier_block *nb, unsigned long action,
 			dev_err(upd->dev, "Failed to start userpd %d\n", ret);
 			break;
 		}
-		break;
+		return NOTIFY_OK;
+
 	case QCOM_SSR_BEFORE_SHUTDOWN:
 		ret = q6v5_stop_user_pd(upd);
 		if (ret) {
 			dev_err(upd->dev, "Failed to stop userpd %d\n", ret);
 			break;
 		}
-		break;
+		return NOTIFY_OK;
+
+	case QCOM_SSR_BEFORE_POWERUP:
+		fallthrough;
 	case QCOM_SSR_AFTER_SHUTDOWN:
-		break;
+		fallthrough;
+	default:
+		return NOTIFY_DONE;
+	}
+	return NOTIFY_DONE;
+}
+
+static int q6v5_upd_rproc_atomic_notifier_cb(struct notifier_block *nb,
+					     unsigned long action, void *data)
+{
+	struct user_pd *upd = container_of(nb, struct user_pd, rproc_atomic_nb);
+
+	dev_info(upd->dev, "Received atomic event %lu for rproc: %s\n",
+		 action, upd->rproc->name);
+
+	switch (action) {
 	case QCOM_SSR_NOTIFY_CRASH:
 		/* Complete any pending waits for the userpd if rproc crashed */
 		complete(&upd->spawn_done);
 		complete(&upd->start_done);
 		complete(&upd->stop_done);
-		break;
+		return NOTIFY_OK;
+
+	default:
+		return NOTIFY_DONE;
 	}
+
 	return NOTIFY_DONE;
 }
 
@@ -689,6 +710,9 @@ static int q6v5_upd_probe(struct platform_device *pdev)
 	upd->rproc_nb.notifier_call = q6v5_upd_rproc_notifier_cb;
 	upd->rproc_nb.priority = 1;
 
+	upd->rproc_atomic_nb.notifier_call = q6v5_upd_rproc_atomic_notifier_cb;
+	upd->rproc_atomic_nb.priority = 1;
+
 	upd->ssr_notifier = qcom_register_ssr_notifier(upd->rproc->name,
 						       &upd->rproc_nb);
 
@@ -699,7 +723,7 @@ static int q6v5_upd_probe(struct platform_device *pdev)
 
 	upd->ssr_atomic_notifier =
 			qcom_register_ssr_atomic_notifier(upd->rproc->name,
-							  &upd->rproc_nb);
+							  &upd->rproc_atomic_nb);
 
 	if (IS_ERR(upd->ssr_atomic_notifier)) {
 		dev_err(upd->dev, "Failed to register SSR atomic notifier\n");
@@ -749,7 +773,7 @@ static int q6v5_upd_remove(struct platform_device *pdev)
 	dev_info(upd->dev, "%s\n", __func__);
 
 	qcom_unregister_ssr_atomic_notifier(upd->ssr_atomic_notifier,
-					    &upd->rproc_nb);
+					    &upd->rproc_atomic_nb);
 	qcom_unregister_ssr_notifier(upd->ssr_notifier, &upd->rproc_nb);
 
 	return 0;
