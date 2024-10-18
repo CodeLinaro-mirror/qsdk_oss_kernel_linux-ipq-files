@@ -16,7 +16,7 @@
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ5332/RDP484/AP-MI01.2-c2";
-	compatible = "qcom,ipq5332-ap-mi01.2", "qcom,ipq5332-rdp484", "qcom,ipq5332";
+	compatible = "qcom,ipq5332-ap-mi01.2-c2", "qcom,ipq5332-rdp484", "qcom,ipq5332";
 
 	aliases {
 		serial0 = &blsp1_uart0;
