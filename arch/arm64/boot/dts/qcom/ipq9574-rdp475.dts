@@ -93,7 +93,7 @@
 				switch_mac_mode1 = <0xd>; /* mac mode for uniphy instance1*/
 				switch_mac_mode2 = <0xe>; /* mac mode for uniphy instance2*/
 				bm_tick_mode = <0>; /* bm tick mode */
-				tm_tick_mode = <0>; /* tm tick mode */
+				tm_tick_mode = <2>; /* tm tick mode */
 
 				qcom,port_phyinfo {
 					port@0 {
