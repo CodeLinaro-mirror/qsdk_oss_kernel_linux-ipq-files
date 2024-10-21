@@ -228,11 +228,10 @@
 		qti,tz-ring-off = <7>;
 		qti,tz-log-pos-info-off = <810>;
 	};
+
 	qseecom: qseecom {
 		compatible = "ipq9574-qseecom";
-#if !defined(__IPQ_MEM_PROFILE_256_MB__)
 		memory-region = <&tzapp>;
-#endif
 		status = "okay";
 	};
 
@@ -241,30 +240,24 @@
 		#size-cells = <2>;
 		ranges;
 
-#if defined(__IPQ_MEM_PROFILE_256_MB__)
-		smem@4a800000 {
-			compatible = "qcom,smem";
-			reg = <0x0 0x4a800000 0x0 0x30000>;
+		tzapp:tzapp@49600000 {  /* TZAPPS */
+#if !defined(__IPQ_MEM_PROFILE_512_MB__) && !defined(__IPQ_MEM_PROFILE_256_MB__)
+			reg = <0x0 0x49600000 0x0 0x00600000>;
+#endif
 			no-map;
-			hwlocks = <&tcsr_mutex 3>;
 		};
 
-		atf@4a830000 {
-			reg = <0x0 0x4a830000 0x0 0x66000>;
+#if defined(__IPQ_MEM_PROFILE_256_MB__)
+		bootloader@4a300000 {
+			reg = <0x0 0x4a300000 0x0 0x200000>;
 			no-map;
 		};
 #else
-		tzapp:tzapp@49600000 {  /* TZAPPS */
-		#if !defined(__IPQ_MEM_PROFILE_512_MB__)
-			reg = <0x0 0x49600000 0x0 0x00600000>;
-		#endif
-			no-map;
-		};
-
 		bootloader@4a000000 {
 			reg = <0x0 0x4a000000 0x0 0x500000>;
 			no-map;
 		};
+#endif
 
 		sbl@4a500000 {
 			reg = <0x0 0x4a500000 0x0 0x100000>;
@@ -283,7 +276,6 @@
 
 			hwlocks = <&tcsr_mutex 3>;
 		};
-#endif
 	};
 
 	soc@0 {
@@ -792,34 +784,36 @@
 			clock-names = "sway", "axim", "snoc_cfg", "pcnoc";
 			resets = <&gcc GCC_LPASS_BCR>;
 			reset-names = "lpass";
-			status = "disabled";
-		};
-
-		pcm: pcm@0xA3C0000{
-			compatible = "qca,ipq5332-lpass-pcm";
-			reg =  <0xA3C0000 0x23014>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges;
 			status = "disabled";
 
-			pcm0: pcm0@0 {
-				interrupts = <0 370 IRQ_TYPE_LEVEL_HIGH>;
-				interrupt-names = "out0";
-				capture_memory = "lpm";
-				playback_memory = "lpm";
-				voice_loopback = <0>;
-				slave = <0>;
+			pcm: pcm@0xA3C0000{
+				compatible = "qca,ipq5332-lpass-pcm";
+				reg =  <0xA3C0000 0x23014>;
 				status = "disabled";
-			};
 
-			pcm1: pcm1@1 {
-				interrupts = <0 371 IRQ_TYPE_LEVEL_HIGH>;
-				interrupt-names = "out1";
-				capture_memory = "lpm";
-				playback_memory = "lpm";
-				voice_loopback = <0>;
-				slave = <0>;
-				status = "disabled";
-			};
+				pcm0: pcm0@0 {
+					interrupts = <0 370 IRQ_TYPE_LEVEL_HIGH>;
+					interrupt-names = "out0";
+					capture_memory = "lpm";
+					playback_memory = "lpm";
+					voice_loopback = <0>;
+					slave = <0>;
+					status = "disabled";
+				};
 
+				pcm1: pcm1@1 {
+					interrupts = <0 371 IRQ_TYPE_LEVEL_HIGH>;
+					interrupt-names = "out1";
+					capture_memory = "lpm";
+					playback_memory = "lpm";
+					voice_loopback = <0>;
+					slave = <0>;
+					status = "disabled";
+				};
+			};
 		};
 
 		pcm_lb: pcm_lb@0 {

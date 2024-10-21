@@ -33,6 +33,77 @@
 
 					#gpio-cells = <2>;
 					gpio-controller;
+
+					io-exp-hog0 {
+						gpio-hog;
+						gpios = <0 GPIO_ACTIVE_HIGH>;
+						output-low;
+						line-name = "io_exp_gpio0";
+					};
+
+					io-exp-hog1 {
+						gpio-hog;
+						gpios = <1 GPIO_ACTIVE_HIGH>;
+						output-high;
+						line-name = "io_exp_gpio1";
+					};
+
+					io-exp-hog2 {
+						gpio-hog;
+						gpios = <2 GPIO_ACTIVE_HIGH>;
+						output-low;
+						line-name = "io_exp_gpio2";
+					};
+
+					io-exp-hog3 {
+						gpio-hog;
+						gpios = <3 GPIO_ACTIVE_HIGH>;
+						output-high;
+						line-name = "io_exp_gpio3";
+					};
+
+					io-exp-hog4 {
+						gpio-hog;
+						gpios = <4 GPIO_ACTIVE_HIGH>;
+						output-high;
+						line-name = "io_exp_gpio4";
+					};
+
+					io-exp-hog5 {
+						gpio-hog;
+						gpios = <5 GPIO_ACTIVE_HIGH>;
+						output-high;
+						line-name = "io_exp_gpio5";
+					};
+
+					io-exp-hog6 {
+						gpio-hog;
+						gpios = <6 GPIO_ACTIVE_HIGH>;
+						output-high;
+						line-name = "io_exp_gpio6";
+					};
+
+					io-exp-hog7 {
+						gpio-hog;
+						gpios = <7 GPIO_ACTIVE_HIGH>;
+						output-high;
+						line-name = "io_exp_gpio7";
+					};
+
+					io-exp-hog8 {
+						gpio-hog;
+						gpios = <8 GPIO_ACTIVE_HIGH>;
+						output-high;
+						line-name = "io_exp_gpio8";
+					};
+
+					io-exp-hog9 {
+						gpio-hog;
+						gpios = <9 GPIO_ACTIVE_HIGH>;
+						output-high;
+						line-name = "io_exp_gpio9";
+					};
+
 				};
 			};
 
@@ -86,26 +157,45 @@
 			};
 		};
 
+		mdio@90000 {
+			/* GPIO36 is for port 1 QCA81xx PHY */
+			/* GPIO37 is for port 2 QCA81xx PHY */
+			/* GPIO18 is for QCA8386 switch */
+			phy-reset-gpio = <
+				&tlmm 36 GPIO_ACTIVE_LOW
+				&tlmm 37 GPIO_ACTIVE_LOW
+				&tlmm 18 GPIO_ACTIVE_LOW
+			>;
+
+			ethernet-phy@4 {
+				reg = <8>;
+				compatible ="ethernet-phy-ieee802.3-c45";
+			};
+
+			ethernet-phy@5 {
+				reg = <12>;
+				compatible ="ethernet-phy-ieee802.3-c45";
+			};
+		};
+
 		ess-instance {
-                        ess-switch@3a000000 {
-				pinctrl-0 = <&sfp_pins>;
-				pinctrl-names = "default";
+			ess-switch@3a000000 {
 				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
 				switch_lan_bmp = <0xc>; /* lan port bitmap */
 				switch_wan_bmp = <0x2>; /* wan port bitmap */
-				switch_mac_mode = <0xe>; /* mac mode for uniphy instance0*/
-				switch_mac_mode1 = <0xe>; /* mac mode for uniphy instance1*/
+				switch_mac_mode = <0xd>; /* mac mode for uniphy instance0*/
+				switch_mac_mode1 = <0xd>; /* mac mode for uniphy instance1*/
 
 				qcom,port_phyinfo {
 					port@0 {
 						port_id = <1>;
-						media-type = "sfp"; /* fiber mode */
-						i2c-bus = <&i2c2>;
+						phy_address = <8>;
+						ethernet-phy-ieee802.3-c45;
 					};
 					port@1 {
 						port_id = <2>;
-						media-type = "sfp"; /* fiber mode */
-						i2c-bus = <&i2c1>;
+						phy_address = <12>;
+						ethernet-phy-ieee802.3-c45;
 					};
 				};
 			};
@@ -124,9 +214,9 @@
 			reg = <0x3A500000 0x4000>;
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
-			i2c-bus = <&i2c2>;
+			qcom,phy-mdio-addr = <8>;
 			qcom,link-poll = <1>;
-			phy-mode = "sgmii";
+			phy-mode = "usxgmii";
 		};
 
 		dp2 {
@@ -136,9 +226,9 @@
 			reg = <0x3A504000 0x4000>;
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
-			i2c-bus = <&i2c1>;
+			qcom,phy-mdio-addr = <12>;
 			qcom,link-poll = <1>;
-			phy-mode = "sgmii";
+			phy-mode = "usxgmii";
 		};
 
 		dp3 {
@@ -221,15 +311,15 @@
 					<0 252 4>,		/* PPEDS Node #1(Rx Desc ring id #2) Rx Desc IRQ info */
 					<0 276 4>,		/* PPEDS Node #1(RxFill Desc ring id #2) Rx Fill IRQ info */
 					<0 285 4>,		/* PPEDS Node #2(TxComp ring id #3) TxComplete IRQ info */
-                                        <0 253 4>,		/* PPEDS Node #2(Rx Desc ring id #3) Rx Desc IRQ info */
-                                        <0 277 4>,		/* PPEDS Node #2(RxFill Desc ring id #3) Rx Fill IRQ info */
+					<0 253 4>,		/* PPEDS Node #2(Rx Desc ring id #3) Rx Desc IRQ info */
+					<0 277 4>,		/* PPEDS Node #2(RxFill Desc ring id #3) Rx Fill IRQ info */
 					<0 282 4>,		/* PPEDS Node #3(TxComp ring id #0) TxComplete IRQ info */
 					<0 250 4>,		/* PPEDS Node #3(Rx Desc ring id #0) Rx Desc IRQ info */
 					<0 274 4>,		/* PPEDS Node #3(RxFill Desc ring id #0) Rx Fill IRQ info */
 					<0 302 4>,		/* MHT port Tx complete ring id #20 IRQ info */
-                                        <0 303 4>,		/* MHT port Tx complete ring id #21 IRQ info */
-                                        <0 304 4>,		/* MHT port Tx complete ring id #22 IRQ info */
-                                        <0 305 4>,		/* MHT port Tx complete ring id #23 IRQ info */
+					<0 303 4>,		/* MHT port Tx complete ring id #21 IRQ info */
+					<0 304 4>,		/* MHT port Tx complete ring id #22 IRQ info */
+					<0 305 4>,		/* MHT port Tx complete ring id #23 IRQ info */
 					<0 306 4>,		/* MHT port Tx complete ring id #24 IRQ info */
 					<0 307 4>,		/* MHT port Tx complete ring id #25 IRQ info */
 					<0 308 4>,		/* MHT port Tx complete ring id #26 IRQ info */
@@ -286,6 +376,8 @@
 			reg = <0 0 0 0 0>;
 			boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
 					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
+					0x6 0x4 0x30 0x7 0x0 0x0  /* WSI0, GPIO48, Drive strength 16mA */
+					0x7 0x4 0x31 0x7 0x0 0x0  /* WSI1, GPIO49, Drive strength 16mA */
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 			memory-region = <&qcn9224_pcie1>, <&mhi_region1>;
 			qcom,board_id = <0x21>;
@@ -310,6 +402,8 @@
 			reg = <0 0 0 0 0>;
 			boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
 					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
+					0x6 0x4 0x30 0x7 0x0 0x0  /* WSI0, GPIO48, Drive strength 16mA */
+					0x7 0x4 0x31 0x7 0x0 0x0  /* WSI1, GPIO49, Drive strength 16mA */
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 			memory-region = <&qcn9224_pcie2>, <&mhi_region2>;
 			qcom,board_id = <0x26>;
@@ -334,6 +428,8 @@
 			reg = <0 0 0 0 0>;
 			boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
 					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
+					0x6 0x4 0x30 0x7 0x0 0x0  /* WSI0, GPIO48, Drive strength 16mA */
+					0x7 0x4 0x31 0x7 0x0 0x0  /* WSI1, GPIO49, Drive strength 16mA */
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 			memory-region = <&qcn9224_pcie3>, <&mhi_region3>;
 			qcom,board_id = <0x22>;
@@ -344,9 +440,9 @@
 };
 
 &reg_update {
-	secure-reg = <0x00610908 0x80>, /* aggr_noc_pcie1 */
-		     <0x00610a08 0x80>, /* aggr_noc_pcie2 */
-		     <0x00610b08 0x80>; /* aggr_noc_pcie3 */
+	aggr-noc-config = <0x00610908 0x80>, /* aggr_noc_pcie1 */
+			  <0x00610a08 0x80>, /* aggr_noc_pcie2 */
+			  <0x00610b08 0x80>; /* aggr_noc_pcie3 */
 };
 
 &qusb_phy_1 {
@@ -565,33 +661,19 @@
 		};
 	};
 
-	sfp_pins: sfp-state {
-		sfp0_rx {
-			pins = "gpio39";
-			function = "rx0";
-			bias-disable;
-		};
-
-		sfp0_tx {
-			pins = "gpio36";
-			function = "gpio";
-			drive-strength = <8>;
+	wsi_default_state: wsi-default-state {
+		wsi0 {
+			pins = "gpio27";
+			function = "wsi_clk";
+			drive-strength = <16>;
 			bias-pull-down;
-			output-low;
 		};
 
-		sfp1_rx {
-			pins = "gpio38";
-			function = "rx1";
-			bias-disable;
-		};
-
-		sfp1_tx {
-			pins = "gpio37";
-			function = "gpio";
-			drive-strength = <8>;
+		wsi1 {
+			pins = "gpio29";
+			function = "wsi_data";
+			drive-strength = <16>;
 			bias-pull-down;
-			output-low;
 		};
 	};
 };

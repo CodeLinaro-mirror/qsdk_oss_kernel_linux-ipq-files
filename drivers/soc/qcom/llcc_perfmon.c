@@ -1139,7 +1139,7 @@ static ssize_t perfmon_start_store(struct device *dev, struct device_attribute *
 	llcc_bcast_read(llcc_priv, status_offset, &status_val);
 	pr_info("PERFMON_STATUS = 0x%08x\n", status_val);
 	pr_info("wrote val = 0x%08x and mask_val = 0x%08x(PERFMON_MODE)\n",
-		val, mask_val, offset);
+		val, mask_val);
 
 	/* Updating total counters to dump info, based on configured counters */
 	offset = PERFMON_NUM_CNTRS_DUMP_CFG(llcc_priv->drv_ver);

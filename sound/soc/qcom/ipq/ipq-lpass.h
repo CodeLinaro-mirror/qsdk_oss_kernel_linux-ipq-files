@@ -3384,8 +3384,6 @@ struct lpass_res{
 	struct clk *sway_clk;
 	struct clk *snoc_cfg_clk;
 	struct clk *pcnoc_clk;
-	struct clk *axi_snoc_clk;
-	struct clk *sway_snoc_clk;
 };
 
 struct ipq_lpass_pll{

@@ -120,10 +120,9 @@
 #define IPQ_LPASS_MAX_INTERFACE			2
 
 enum ipq_hw_type {
-	IPQ5018,
 	IPQ9574,
-	IPQ8074,
-	IPQ5332
+	IPQ5332,
+	IPQ5424,
 };
 
 enum ipq_pcm_sampling_rate {

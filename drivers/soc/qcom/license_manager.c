@@ -830,7 +830,7 @@ static int lm_install_licenses_to_tmel(struct lm_install_info *install_info)
 		ret = lm_install_license(svc, token, &install_resp);
 		if (ret < 0 && ret != -ENOENT)
 			goto err_licenseinfo;
-		else if (!ret) {
+		else {
 			/* Copy the license response of a file to the license info */
 			memcpy((void *)&install_info->lm_resp[install_info->num_of_resp],
 			       (void *)&install_resp, sizeof(struct lm_install_resp));

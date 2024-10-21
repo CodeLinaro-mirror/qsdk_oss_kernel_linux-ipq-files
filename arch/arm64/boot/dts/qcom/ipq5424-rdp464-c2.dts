@@ -26,6 +26,85 @@
 				pinctrl-0 = <&qup_i2c0_default>;
 				pinctrl-names = "default";
 				status = "okay";
+
+				exp1: gpio@74 {
+					compatible = "ti,tca9539";
+					reg = <0x74>;
+
+					#gpio-cells = <2>;
+					gpio-controller;
+
+					io-exp-hog0 {
+						gpio-hog;
+						gpios = <0 GPIO_ACTIVE_HIGH>;
+						output-low;
+						line-name = "io_exp_gpio0";
+					};
+
+					io-exp-hog1 {
+						gpio-hog;
+						gpios = <1 GPIO_ACTIVE_HIGH>;
+						output-high;
+						line-name = "io_exp_gpio1";
+					};
+
+					io-exp-hog2 {
+						gpio-hog;
+						gpios = <2 GPIO_ACTIVE_HIGH>;
+						output-low;
+						line-name = "io_exp_gpio2";
+					};
+
+					io-exp-hog3 {
+						gpio-hog;
+						gpios = <3 GPIO_ACTIVE_HIGH>;
+						output-high;
+						line-name = "io_exp_gpio3";
+					};
+
+					io-exp-hog4 {
+						gpio-hog;
+						gpios = <4 GPIO_ACTIVE_HIGH>;
+						output-high;
+						line-name = "io_exp_gpio4";
+					};
+
+					io-exp-hog5 {
+						gpio-hog;
+						gpios = <5 GPIO_ACTIVE_HIGH>;
+						output-high;
+						line-name = "io_exp_gpio5";
+					};
+
+					io-exp-hog6 {
+						gpio-hog;
+						gpios = <6 GPIO_ACTIVE_HIGH>;
+						output-high;
+						line-name = "io_exp_gpio6";
+					};
+
+					io-exp-hog7 {
+						gpio-hog;
+						gpios = <7 GPIO_ACTIVE_HIGH>;
+						output-high;
+						line-name = "io_exp_gpio7";
+					};
+
+					io-exp-hog8 {
+						gpio-hog;
+						gpios = <8 GPIO_ACTIVE_HIGH>;
+						output-high;
+						line-name = "io_exp_gpio8";
+					};
+
+					io-exp-hog9 {
+						gpio-hog;
+						gpios = <9 GPIO_ACTIVE_HIGH>;
+						output-high;
+						line-name = "io_exp_gpio9";
+					};
+
+				};
 			};
 
 			i2c1: i2c@1a8c000 {
@@ -278,6 +357,8 @@
 			reg = <0 0 0 0 0>;
 			boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
 					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
+					0x6 0x4 0x30 0x7 0x0 0x0  /* WSI0, GPIO48, Drive strength 16mA */
+					0x7 0x4 0x31 0x7 0x0 0x0  /* WSI1, GPIO49, Drive strength 16mA */
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 			memory-region = <&qcn9224_pcie1>, <&mhi_region1>;
 			qcom,board_id = <0x21>;
@@ -302,6 +383,8 @@
 			reg = <0 0 0 0 0>;
 			boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
 					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
+					0x6 0x4 0x30 0x7 0x0 0x0  /* WSI0, GPIO48, Drive strength 16mA */
+					0x7 0x4 0x31 0x7 0x0 0x0  /* WSI1, GPIO49, Drive strength 16mA */
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 			memory-region = <&qcn9224_pcie2>, <&mhi_region2>;
 			qcom,board_id = <0x26>;
@@ -326,6 +409,8 @@
 			reg = <0 0 0 0 0>;
 			boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
 					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
+					0x6 0x4 0x30 0x7 0x0 0x0  /* WSI0, GPIO48, Drive strength 16mA */
+					0x7 0x4 0x31 0x7 0x0 0x0  /* WSI1, GPIO49, Drive strength 16mA */
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 			memory-region = <&qcn9224_pcie3>, <&mhi_region3>;
 			qcom,board_id = <0x22>;
@@ -336,9 +421,9 @@
 };
 
 &reg_update {
-	aggr-noc-config = <0x00610908 0x80>, /* aggr_noc_pcie1 */
-			  <0x00610a08 0x80>, /* aggr_noc_pcie2 */
-			  <0x00610b08 0x80>; /* aggr_noc_pcie3 */
+	secure-reg = <0x00610908 0x80>, /* aggr_noc_pcie1 */
+		     <0x00610a08 0x80>, /* aggr_noc_pcie2 */
+		     <0x00610b08 0x80>; /* aggr_noc_pcie3 */
 };
 
 &qusb_phy_1 {
@@ -584,6 +669,22 @@
 			drive-strength = <8>;
 			bias-pull-down;
 			output-low;
+		};
+	};
+
+	wsi_default_state: wsi-default-state {
+		wsi0 {
+			pins = "gpio27";
+			function = "wsi_clk";
+			drive-strength = <16>;
+			bias-pull-down;
+		};
+
+		wsi1 {
+			pins = "gpio29";
+			function = "wsi_data";
+			drive-strength = <16>;
+			bias-pull-down;
 		};
 	};
 };

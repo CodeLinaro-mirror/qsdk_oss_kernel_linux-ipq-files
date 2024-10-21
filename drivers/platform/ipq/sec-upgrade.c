@@ -43,15 +43,37 @@
 #define QFPROM_MAX_VERSION_EXCEEDED             0x10
 #define QFPROM_IS_AUTHENTICATE_CMD_RSP_SIZE	0x2
 
-#define SW_TYPE_DEFAULT				0xFF
-#define SW_TYPE_SBL				0x0
-#define SW_TYPE_TZ				0x7
-#define SW_TYPE_APPSBL				0x9
-#define SW_TYPE_HLOS				0x17
-#define SW_TYPE_RPM				0xA
-#define SW_TYPE_DEVCFG				0x5
-#define SW_TYPE_APDP				0x200
 #define SW_TYPE_SEC_DATA			0x2B
+
+#ifdef CONFIG_QCOM_TMELCOM
+enum sw_types {
+	SW_TYPE_DEFAULT		=	0xFF,
+	SW_TYPE_TZ		=	0x7,
+	SW_TYPE_APPSBL		=	0x9,
+	SW_TYPE_HLOS		=	0x71,
+	SW_TYPE_DEVCFG		=	0x5,
+	SW_TYPE_TME		=	0x73,
+	SW_TYPE_XBL_SC		=	0x36,
+	SW_TYPE_XBL_CFG		=	0x25,
+	SW_TYPE_ATF		=	0x1E,
+	SW_TYPE_Q6_ROOTPD	=	0xD,
+	SW_TYPE_USERPD_WDT	=	0x12,
+	SW_TYPE_USERPD_OEM	=	0x63,
+	SW_TYPE_IU_FW		=	0x2C,
+
+};
+#else
+enum sw_types {
+	SW_TYPE_DEFAULT		=	0xFF,
+	SW_TYPE_SBL		=	0x0,
+	SW_TYPE_TZ		=	0x7,
+	SW_TYPE_APPSBL		=	0x9,
+	SW_TYPE_HLOS		=	0x17,
+	SW_TYPE_RPM		=	0xA,
+	SW_TYPE_DEVCFG		=	0x5,
+	SW_TYPE_APDP		=	0x200,
+};
+#endif
 
 static int gl_version_enable;
 static int version_commit_enable;
@@ -143,9 +165,17 @@ int read_version(struct device *dev, int type, uint32_t **version_ptr)
 		uint32_t value;
 		uint32_t qfprom_ret_ptr;
 	} rdip;
+	u32 *qfprom_api_status;
+	u32 version;
 
-	uint32_t *qfprom_api_status = kzalloc(sizeof(uint32_t), GFP_KERNEL);
+	if (!qcom_qfrom_fuse_row_read_available()) {
+		ret = tmelcomm_secboot_get_arb_version(type, &version);
+		if (!ret)
+			**version_ptr = version;
+		return ret;
+	}
 
+	qfprom_api_status = kzalloc(sizeof(uint32_t), GFP_KERNEL);
 	if (!qfprom_api_status)
 		return -ENOMEM;
 
@@ -238,8 +268,8 @@ err_generic:
 #ifndef CONFIG_QCOM_TMELCOM
 static ssize_t
 show_sbl_version(struct device *dev,
-			struct device_attribute *attr,
-			char *buf)
+		 struct device_attribute *attr,
+		 char *buf)
 {
 	return generic_version(dev, buf, SW_TYPE_SBL, 1, 0);
 }
@@ -253,14 +283,6 @@ store_sbl_version(struct device *dev,
 }
 
 static ssize_t
-show_tz_version(struct device *dev,
-			struct device_attribute *attr,
-			char *buf)
-{
-	return generic_version(dev, buf, SW_TYPE_TZ, 1, 0);
-}
-
-static ssize_t
 store_tz_version(struct device *dev,
 			struct device_attribute *attr,
 			const char *buf, size_t count)
@@ -269,27 +291,11 @@ store_tz_version(struct device *dev,
 }
 
 static ssize_t
-show_appsbl_version(struct device *dev,
-			struct device_attribute *attr,
-			char *buf)
-{
-	return generic_version(dev, buf, SW_TYPE_APPSBL, 1, 0);
-}
-
-static ssize_t
 store_appsbl_version(struct device *dev,
 			struct device_attribute *attr,
 			const char *buf, size_t count)
 {
 	return generic_version(dev, buf, SW_TYPE_APPSBL, 2, count);
-}
-
-static ssize_t
-show_hlos_version(struct device *dev,
-			struct device_attribute *attr,
-			char *buf)
-{
-	return generic_version(dev, buf, SW_TYPE_HLOS, 1, 0);
 }
 
 static ssize_t
@@ -317,14 +323,6 @@ store_rpm_version(struct device *dev,
 }
 
 static ssize_t
-show_devcfg_version(struct device *dev,
-			struct device_attribute *attr,
-			char *buf)
-{
-	return generic_version(dev, buf, SW_TYPE_DEVCFG, 1, 0);
-}
-
-static ssize_t
 store_devcfg_version(struct device *dev,
 			struct device_attribute *attr,
 			const char *buf, size_t count)
@@ -349,6 +347,70 @@ store_apdp_version(struct device *dev,
 }
 #else
 static ssize_t
+show_tmel_version(struct device *dev,
+		  struct device_attribute *attr,
+		  char *buf)
+{
+	return generic_version(dev, buf, SW_TYPE_TME, 1, 0);
+}
+
+static ssize_t
+show_xbl_sc_version(struct device *dev,
+		    struct device_attribute *attr,
+		    char *buf)
+{
+	return generic_version(dev, buf, SW_TYPE_XBL_SC, 1, 0);
+}
+
+static ssize_t
+show_xbl_cfg_version(struct device *dev,
+		     struct device_attribute *attr,
+		     char *buf)
+{
+	return generic_version(dev, buf, SW_TYPE_XBL_CFG, 1, 0);
+}
+
+static ssize_t
+show_atf_version(struct device *dev,
+		 struct device_attribute *attr,
+		 char *buf)
+{
+	return generic_version(dev, buf, SW_TYPE_ATF, 1, 0);
+}
+
+static ssize_t
+show_q6_rootpd_version(struct device *dev,
+		       struct device_attribute *attr,
+		       char *buf)
+{
+	return generic_version(dev, buf, SW_TYPE_Q6_ROOTPD, 1, 0);
+}
+
+static ssize_t
+show_userpd_wdt_version(struct device *dev,
+			struct device_attribute *attr,
+			char *buf)
+{
+	return generic_version(dev, buf, SW_TYPE_USERPD_WDT, 1, 0);
+}
+
+static ssize_t
+show_userpd_oem_version(struct device *dev,
+			struct device_attribute *attr,
+			char *buf)
+{
+	return generic_version(dev, buf, SW_TYPE_USERPD_OEM, 1, 0);
+}
+
+static ssize_t
+show_iu_fw_version(struct device *dev,
+		   struct device_attribute *attr,
+		   char *buf)
+{
+	return generic_version(dev, buf, SW_TYPE_IU_FW, 1, 0);
+}
+
+static ssize_t
 store_read_commit_version(struct device *dev, struct device_attribute *attr,
 			  const char *buf, size_t count)
 {
@@ -369,6 +431,38 @@ store_read_commit_version(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 #endif
+
+static ssize_t
+show_devcfg_version(struct device *dev,
+		    struct device_attribute *attr,
+		    char *buf)
+{
+	return generic_version(dev, buf, SW_TYPE_DEVCFG, 1, 0);
+}
+
+static ssize_t
+show_tz_version(struct device *dev,
+		struct device_attribute *attr,
+		char *buf)
+{
+	return generic_version(dev, buf, SW_TYPE_TZ, 1, 0);
+}
+
+static ssize_t
+show_appsbl_version(struct device *dev,
+		    struct device_attribute *attr,
+		    char *buf)
+{
+	return generic_version(dev, buf, SW_TYPE_APPSBL, 1, 0);
+}
+
+static ssize_t
+show_hlos_version(struct device *dev,
+		  struct device_attribute *attr,
+		  char *buf)
+{
+	return generic_version(dev, buf, SW_TYPE_HLOS, 1, 0);
+}
 
 static ssize_t
 store_version_commit(struct device *dev,
@@ -752,7 +846,7 @@ store_sec_auth(struct device *dev,
 			ret = qcom_sec_upgrade_auth(scm_cmd_id, sw_type, size, img_addr);
 		}
 		if (ret || status) {
-			pr_err("sec_upgrade_authentication failed return=%d status: %d\n",
+			pr_err("sec_upgrade_authentication failed return=%d status: %llx\n",
 			       ret, status);
 			goto free_out_data;
 		}
@@ -1003,6 +1097,8 @@ store_sec_dat(struct device *dev, struct device_attribute *attr,
 		goto file_close;
 	}
 	fuse_blow.address = dma_req_addr;
+	fuse_blow.status = &fuse_status;
+	fuse_blow.size = fuse_blow_size_req ? size : 0;
 
 	ret = of_property_read_u32(np, "scm-cmd-id", &scm_cmd_id);
 	if (ret) {
@@ -1010,22 +1106,37 @@ store_sec_dat(struct device *dev, struct device_attribute *attr,
 		goto free_mem;
 	}
 
-	if (qcom_sec_dat_fuse_available()) {
-		fuse_blow.status = &fuse_status;
-		fuse_blow.size = fuse_blow_size_req ? size : 0;
+	if (!IS_ELF(*((Elf32_Ehdr *)ptr)) &&
+	    qcom_sec_dat_fuse_available(TZ_BLOW_FUSE_SECDAT)) {
 		ret = qcom_fuseipq_scm_call(QCOM_SCM_SVC_FUSE,
-					    TZ_BLOW_FUSE_SECDAT, &fuse_blow,
+					    TZ_BLOW_FUSE_SECDAT,
+					    &fuse_blow,
 					    sizeof(fuse_blow));
-	} else {
-		/* Pass the ptr containing the elf for loadable segment extraction */
+	} else if (IS_ELF(*((Elf32_Ehdr *)ptr)) &&
+		   qcom_sec_dat_fuse_available(QCOM_AUTH_FUSE_UIE_KEY_CMD)) {
+		ret = qcom_fuseipq_scm_call(QCOM_SCM_SVC_FUSE,
+					    QCOM_AUTH_FUSE_UIE_KEY_CMD,
+					    &fuse_blow,
+					    sizeof(fuse_blow));
+	} else if (IS_ELF(*((Elf32_Ehdr *)ptr)) &&
+		   qcom_sec_upgrade_auth_ld_segments_available(scm_cmd_id)) {
+		/* Pass the ptr containing the elf for loadable segment
+		 * extraction
+		 */
 		ld_seg_cnt = parse_n_extract_ld_segment(ptr, &md_size,
 							dma_req_addr);
 		ret = qcom_sec_upgrade_auth_ld_segments(scm_cmd_id,
 							SW_TYPE_SEC_DATA,
-							dma_req_addr, md_size,
-							ld_seg_buff, ld_seg_cnt,
+							dma_req_addr,
+							md_size,
+							ld_seg_buff,
+							ld_seg_cnt,
 							&fuse_status);
+	} else {
+		ret = -EINVAL;
+		goto free_mem;
 	}
+
 	if (ret) {
 		pr_err("Error in QFPROM write (%d)\n", ret);
 		ret = -EIO;
@@ -1038,7 +1149,7 @@ store_sec_dat(struct device *dev, struct device_attribute *attr,
 	else if (fuse_status == FUSEPROV_SUCCESS)
 		pr_info("Fuse Blow Success\n");
 	else
-		pr_info("Fuse blow failed with err code : 0x%lx\n", fuse_status);
+		pr_info("Fuse blow failed with err code : 0x%llx\n", fuse_status);
 
 	ret = count;
 
@@ -1086,6 +1197,18 @@ static const struct qfprom_node_cfg ipq5424_qfprom_node_cfg = {
 #ifdef CONFIG_QCOM_TMELCOM
 static struct device_attribute qfprom_attrs[] = {
 	__ATTR(authenticate, 0444, qfprom_show_authenticate, NULL),
+	__ATTR(tz_version, 0444, show_tz_version, NULL),
+	__ATTR(appsbl_version, 0444, show_appsbl_version, NULL),
+	__ATTR(hlos_version, 0444, show_hlos_version, NULL),
+	__ATTR(devcfg_version, 0444, show_devcfg_version, NULL),
+	__ATTR(tmel_version, 0444, show_tmel_version, NULL),
+	__ATTR(xbl_sc_version, 0444, show_xbl_sc_version, NULL),
+	__ATTR(xbl_cfg_version, 0444, show_xbl_cfg_version, NULL),
+	__ATTR(atf_version, 0444, show_atf_version, NULL),
+	__ATTR(q6_rootpd_version, 0444, show_q6_rootpd_version, NULL),
+	__ATTR(userpd_wdt_version, 0444, show_userpd_wdt_version, NULL),
+	__ATTR(userpd_oem_version, 0444, show_userpd_oem_version, NULL),
+	__ATTR(iu_fw_version, 0444, show_iu_fw_version, NULL),
 	__ATTR(read_version, 0200, NULL, store_read_commit_version),
 	__ATTR(version_commit, 0200, NULL, store_version_commit),
 };

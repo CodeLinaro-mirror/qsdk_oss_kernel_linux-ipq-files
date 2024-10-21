@@ -1,6 +1,6 @@
 /* Copyright (c) 2012-2013,2015-2016, The Linux Foundation. All rights reserved.
  *
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022,2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -29,9 +29,9 @@
 #include <linux/string.h>
 #include <linux/platform_device.h>
 #include <linux/of_device.h>
-#include "ipq9574-lpass-pcm.h"
-#ifdef CONFIG_SND_SOC_IPQ9574_LPASS_PCM_RAW
-#include "ipq9574-lpass-pcm.h"
+#include "ipq-lpass-pcm.h"
+#ifdef CONFIG_SND_SOC_IPQ_LPASS_PCM_RAW
+#include "ipq-lpass-pcm.h"
 #else
 #include "ipq-pcm-raw.h"
 #endif
@@ -49,7 +49,7 @@
  */
 
 static void pcm_start_test(int pcm_index);
-static void ipq9574_pcm_fill_data(uint32_t *tx_buff, uint32_t size,
+static void ipq_pcm_fill_data(uint32_t *tx_buff, uint32_t size,
 						int pcm_index);
 
 /* the test configurations supported */
@@ -67,6 +67,10 @@ static void ipq9574_pcm_fill_data(uint32_t *tx_buff, uint32_t size,
 #define PCM_LBTEST_16BIT_16KHZ_4CH_RX_TO_TX	601
 #define PCM_LBTEST_16BIT_8KHZ_16CH_TX_TO_RX	7
 #define PCM_LBTEST_16BIT_8KHZ_16CH_RX_TO_TX	701
+#define PCM_LBTEST_8BIT_8KHZ_8CH_TX_TO_RX	8
+#define PCM_LBTEST_8BIT_8KHZ_8CH_RX_TO_TX	801
+#define PCM_LBTEST_16BIT_8KHZ_8CH_TX_TO_RX	9
+#define PCM_LBTEST_16BIT_8KHZ_8CH_RX_TO_TX	901
 /* The max value for loopback test config is 601(3 digits + 1 null byte)
  * This macro needs to be updated when more configs are added.
  */
@@ -79,7 +83,9 @@ static void ipq9574_pcm_fill_data(uint32_t *tx_buff, uint32_t size,
 		(config == PCM_LBTEST_8BIT_16KHZ_4CH_RX_TO_TX) ||	\
 		(config == PCM_LBTEST_16BIT_16KHZ_2CH_RX_TO_TX) ||	\
 		(config == PCM_LBTEST_16BIT_16KHZ_4CH_RX_TO_TX) ||	\
-		(config == PCM_LBTEST_16BIT_8KHZ_16CH_RX_TO_TX))
+		(config == PCM_LBTEST_16BIT_8KHZ_16CH_RX_TO_TX) ||	\
+		(config == PCM_LBTEST_8BIT_8KHZ_8CH_RX_TO_TX) ||	\
+		(config == PCM_LBTEST_16BIT_8KHZ_8CH_RX_TO_TX))
 
 #define LOOPBACK_FAIL_THRESHOLD		200
 
@@ -97,7 +103,7 @@ struct pcm_lb_test_ctx {
 };
 
 static struct pcm_lb_test_ctx ctx[IPQ_LPASS_MAX_PCM_INTERFACE];
-#ifdef CONFIG_SND_SOC_IPQ9574_LPASS_PCM_RAW
+#ifdef CONFIG_SND_SOC_IPQ_LPASS_PCM_RAW
 struct ipq_lpass_pcm_params cfg_params[IPQ_LPASS_MAX_PCM_INTERFACE];
 #else
 struct ipq_pcm_params cfg_params;
@@ -189,7 +195,7 @@ uint32_t pcm_read_write(int pcm_index)
 		* We will write 1, 2, 3, ..., 255, 1, 2, 3...
 		*/
 
-		ipq9574_pcm_fill_data((uint32_t *)tx_buff,
+		ipq_pcm_fill_data((uint32_t *)tx_buff,
 				(size / sizeof(uint32_t)), pcm_index);
 	}
 
@@ -345,6 +351,58 @@ uint32_t pcm_init(int index)
 		ret = ipq_pcm_init(&cfg_params[index]);
 		break;
 
+	case PCM_LBTEST_8BIT_8KHZ_8CH_TX_TO_RX:
+	case PCM_LBTEST_8BIT_8KHZ_8CH_RX_TO_TX:
+		cfg_params[index].bit_width = 8;
+		cfg_params[index].rate = 8000;
+		cfg_params[index].slot_count = 8;
+		cfg_params[index].active_slot_count = 8;
+		cfg_params[index].tx_slots[0] = 4;
+		cfg_params[index].tx_slots[1] = 5;
+		cfg_params[index].tx_slots[2] = 0;
+		cfg_params[index].tx_slots[3] = 7;
+		cfg_params[index].tx_slots[4] = 2;
+		cfg_params[index].tx_slots[5] = 3;
+		cfg_params[index].tx_slots[6] = 1;
+		cfg_params[index].tx_slots[7] = 6;
+		cfg_params[index].rx_slots[0] = 4;
+		cfg_params[index].rx_slots[1] = 5;
+		cfg_params[index].rx_slots[2] = 0;
+		cfg_params[index].rx_slots[3] = 7;
+		cfg_params[index].rx_slots[4] = 2;
+		cfg_params[index].rx_slots[5] = 3;
+		cfg_params[index].rx_slots[6] = 1;
+		cfg_params[index].rx_slots[7] = 6;
+		cfg_params[index].pcm_index = index;
+		ret = ipq_pcm_init(&cfg_params[index]);
+		break;
+
+	case PCM_LBTEST_16BIT_8KHZ_8CH_TX_TO_RX:
+	case PCM_LBTEST_16BIT_8KHZ_8CH_RX_TO_TX:
+		cfg_params[index].bit_width = 16;
+		cfg_params[index].rate = 8000;
+		cfg_params[index].slot_count = 8;
+		cfg_params[index].active_slot_count = 8;
+		cfg_params[index].tx_slots[0] = 4;
+		cfg_params[index].tx_slots[1] = 5;
+		cfg_params[index].tx_slots[2] = 0;
+		cfg_params[index].tx_slots[3] = 7;
+		cfg_params[index].tx_slots[4] = 2;
+		cfg_params[index].tx_slots[5] = 3;
+		cfg_params[index].tx_slots[6] = 1;
+		cfg_params[index].tx_slots[7] = 6;
+		cfg_params[index].rx_slots[0] = 4;
+		cfg_params[index].rx_slots[1] = 5;
+		cfg_params[index].rx_slots[2] = 0;
+		cfg_params[index].rx_slots[3] = 7;
+		cfg_params[index].rx_slots[4] = 2;
+		cfg_params[index].rx_slots[5] = 3;
+		cfg_params[index].rx_slots[6] = 1;
+		cfg_params[index].rx_slots[7] = 6;
+		cfg_params[index].pcm_index = index;
+		ret = ipq_pcm_init(&cfg_params[index]);
+		break;
+
 	default:
 		ret = -EINVAL;
 		pr_err("Unknown configuration\n");
@@ -427,7 +485,7 @@ void process_read(uint32_t size, int pcm_index)
 	}
 }
 
-static void ipq9574_pcm_fill_data(uint32_t *tx_buff, uint32_t size,
+static void ipq_pcm_fill_data(uint32_t *tx_buff, uint32_t size,
 						int pcm_index)
 {
 	uint32_t i;
@@ -486,7 +544,7 @@ int pcm_test_rw(void *data)
 
 static void pcm_start_test(int pcm_index)
 {
-	if (!(ctx[pcm_index].start >= 0 && ctx[pcm_index].start <= 7) &&
+	if (!(ctx[pcm_index].start >= 0 && ctx[pcm_index].start <= 9) &&
 		!IS_PCM_LBTEST_RX_TO_TX(ctx[pcm_index].start))
 	{
 		pr_notice("%ld is not supported configuration\n",
@@ -530,6 +588,7 @@ static void pcm_start_test(int pcm_index)
 static const struct of_device_id qca_raw_lb_match_table[] = {
 	{ .compatible = "qca,ipq9574-pcm-lb", .data = (void *)IPQ9574 },
 	{ .compatible = "qca,ipq5332-pcm-lb", .data = (void *)IPQ5332 },
+	{ .compatible = "qca,ipq5424-pcm-lb", .data = (void *)IPQ5424 },
 	{},
 };
 

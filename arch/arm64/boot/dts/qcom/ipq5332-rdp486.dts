@@ -67,6 +67,7 @@
 	*/
 	reserved-memory {
 
+		/delete-node/ q6_ipq5332_data@4b500000;
 		/delete-node/ m3_dump@4cc00000;
 		/delete-node/ q6_etr_dump@1;
 		/delete-node/ mlo_global_mem_0@0x4db00000;
@@ -448,7 +449,7 @@
 		};
 
 		q6v5_wcss: remoteproc@d100000 {
-			boot-args = <0x1 0x4 0x3 0x1 0x2f 0x2>;
+			boot-args = <0x1 0x5 0x3 0x1 0x2f 0x2 0x1>;
 			memory-region = <&q6_mem_regions>;
 
 			q6_wcss_pd1: remoteproc_pd1 {

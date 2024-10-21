@@ -21,9 +21,10 @@
 #include "clk-regmap.h"
 #include "common.h"
 
-#define GPLL0_CLK_RATE		800000000
+#define CPU_SVS_CLK_RATE	816000000
 #define CPU_NOM_CLK_RATE	1416000000
 #define CPU_TURBO_CLK_RATE	1800000000
+#define L3_SVS_CLK_RATE		816000000
 #define L3_NOM_CLK_RATE		984000000
 #define L3_TURBO_CLK_RATE	1272000000
 
@@ -92,7 +93,7 @@ static const struct parent_map parents_apss_silver_clk_src_map[] = {
 };
 
 static const struct freq_tbl ftbl_apss_clk_src[] = {
-	F(GPLL0_CLK_RATE, P_GPLL0, 1, 0, 0),
+	F(CPU_SVS_CLK_RATE, P_APSS_PLL_EARLY, 1, 0, 0),
 	F(CPU_NOM_CLK_RATE, P_APSS_PLL_EARLY, 1, 0, 0),
 	F(CPU_TURBO_CLK_RATE, P_APSS_PLL_EARLY, 1, 0, 0),
 	{ }
@@ -160,7 +161,7 @@ static const struct parent_map parents_l3_clk_src_map[] = {
 };
 
 static const struct freq_tbl ftbl_l3_clk_src[] = {
-	F(GPLL0_CLK_RATE, P_GPLL0, 1, 0, 0),
+	F(L3_SVS_CLK_RATE, P_L3_PLL, 1, 0, 0),
 	F(L3_NOM_CLK_RATE, P_L3_PLL, 1, 0, 0),
 	F(L3_TURBO_CLK_RATE, P_L3_PLL, 1, 0, 0),
 	{ }

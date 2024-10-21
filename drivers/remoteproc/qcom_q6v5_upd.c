@@ -26,9 +26,6 @@
 #define UPD_SWID		0x12
 #define BUF_SIZE			35
 
-#define Q6_BOOT_ARGS_SMEM_SIZE		4096
-#define UPD_BOOTARGS_HEADER_TYPE	0x2
-
 struct upd_ops {
 	int (*mdt_load)(struct device *dev, const struct firmware *fw,
 			const char *fw_name, int pas_id, void *mem_region,
@@ -72,24 +69,6 @@ struct user_pd {
 };
 
 static struct user_pd *g_upd;
-
-struct bootargs_smem_info {
-	void *smem_base_ptr;
-	void *smem_elem_cnt_ptr;
-	void *smem_bootargs_ptr;
-};
-
-struct bootargs_header {
-	u8 type;
-	u8 length;
-};
-
-struct q6_userpd_bootargs {
-	struct bootargs_header header;
-	u8 pid;
-	u32 bootaddr;
-	u32 data_size;
-} __packed;
 
 static int q6v5_userpd_load_m3_firmware(struct user_pd *upd)
 {
@@ -293,61 +272,6 @@ static int q6v5_stop_user_pd(struct user_pd *upd)
 
 	dev_info(upd->dev, "stopped userpd!\n");
 
-	return ret;
-}
-
-int q6v5_userpd_copy_bootargs(struct rproc *rproc, void *data)
-{
-	struct user_pd *upd = g_upd;
-	struct q6_userpd_bootargs upd_bootargs = {0};
-	struct bootargs_smem_info *boot_args;
-	const struct firmware *fw;
-	const char *fw_name = NULL;
-	int ret;
-	u16 cnt;
-
-	if (!upd)
-		return 0;
-
-	boot_args = (struct bootargs_smem_info *)data;
-	ret = of_property_read_string(upd->dev->of_node, "firmware", &fw_name);
-	if (ret) {
-		dev_err(upd->dev, "Failed to get firmware name\n");
-		return -ENOENT;
-	}
-
-	ret = request_firmware(&fw, fw_name, upd->dev);
-	if (ret) {
-		dev_err(upd->dev, "Failed to get firmware %d", ret);
-		return ret;
-	}
-
-	cnt = *((u16 *)boot_args->smem_elem_cnt_ptr);
-	cnt += sizeof(struct q6_userpd_bootargs);
-	memcpy_toio(boot_args->smem_elem_cnt_ptr, &cnt, sizeof(u16));
-
-	/* TYPE */
-	upd_bootargs.header.type = UPD_BOOTARGS_HEADER_TYPE;
-
-	/* LENGTH */
-	upd_bootargs.header.length =
-		sizeof(struct q6_userpd_bootargs) - sizeof(upd_bootargs.header);
-
-	/* PID */
-	upd_bootargs.pid = upd->pd_asid + 1;
-
-	/* Load address */
-	upd_bootargs.bootaddr = rproc_get_boot_addr(upd->rproc, fw);
-
-	/* PIL data size */
-	upd_bootargs.data_size = qcom_mdt_get_file_size(fw);
-
-	release_firmware(fw);
-
-	/* copy into smem bootargs array*/
-	memcpy_toio(boot_args->smem_bootargs_ptr,
-		    &upd_bootargs, sizeof(struct q6_userpd_bootargs));
-	boot_args->smem_bootargs_ptr += sizeof(struct q6_userpd_bootargs);
 	return ret;
 }
 

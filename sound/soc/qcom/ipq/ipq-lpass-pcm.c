@@ -41,7 +41,7 @@
 #include <linux/pinctrl/consumer.h>
 
 #include "ipq-lpass.h"
-#include "ipq9574-lpass-pcm.h"
+#include "ipq-lpass-pcm.h"
 
 #define DEFAULT_CLK_RATE		2048000
 #define PCM_VOICE_LOOPBACK_BUFFER_SIZE	0x1000
@@ -332,7 +332,7 @@ static void __iomem *ipq_lpass_phy_virt_lpm(uint32_t phy_addr,
 }
 
 
-static int ipq9574_lpass_setup_bit_clock(uint32_t clk_rate,
+static int ipq_lpass_setup_bit_clock(uint32_t clk_rate,
 				struct ipq_lpass_pcm_config config)
 {
 /*
@@ -362,7 +362,7 @@ static int ipq9574_lpass_setup_bit_clock(uint32_t clk_rate,
 	return 0;
 }
 
-static void ipq9574_lpass_pcm_update_config( struct ipq_lpass_props *data,
+static void ipq_lpass_pcm_update_config(struct ipq_lpass_props *data,
 			struct ipq_lpass_pcm_config *config, int pcm_index)
 {
 	struct ipq_lpass_pcm_tdm_config *pcm_config;
@@ -473,10 +473,10 @@ int ipq_pcm_init(struct ipq_lpass_pcm_params *params)
 
 	dword_per_sample_intr = bytes_per_sample_intr >> 2;
 
-	ipq9574_lpass_pcm_update_config(&ipq9574_lpass_pcm_cfg, &config,
+	ipq_lpass_pcm_update_config(&ipq9574_lpass_pcm_cfg, &config,
 								pcm_index);
 
-	ret = ipq9574_lpass_setup_bit_clock(clk_rate, config);
+	ret = ipq_lpass_setup_bit_clock(clk_rate, config);
 	if (ret)
 		return ret;
 /*
@@ -729,6 +729,7 @@ EXPORT_SYMBOL(ipq_pcm_deinit);
 static const struct of_device_id qca_raw_match_table[] = {
 	{ .compatible = "qca,ipq9574-lpass-pcm", .data = &ipq9574_lpass_pcm_cfg },
 	{ .compatible = "qca,ipq5332-lpass-pcm", .data = &ipq9574_lpass_pcm_cfg },
+	{ .compatible = "qca,ipq5424-lpass-pcm", .data = &ipq9574_lpass_pcm_cfg },
 	{},
 };
 
@@ -1039,7 +1040,7 @@ static int ipq_lpass_pcm_driver_remove(struct platform_device *pdev)
  * DESCRIPTION OF PCM RAW MODULE
  */
 
-#define DRIVER_NAME "ipq9574_lpass_pcm_raw"
+#define DRIVER_NAME "ipq_lpass_pcm_raw"
 
 static struct platform_driver ipq_lpass_pcm_raw_driver = {
 	.probe		= ipq_lpass_pcm_driver_probe,

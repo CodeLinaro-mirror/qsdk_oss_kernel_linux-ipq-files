@@ -467,7 +467,7 @@
 		};
 
 		q6v5_wcss: remoteproc@d100000 {
-			boot-args = <0x1 0x4 0x3 0x0 0x26 0x2>;
+			boot-args = <0x1 0x5 0x3 0x0 0x26 0x2 0x1>;
 			memory-region = <&q6_mem_regions>, <&mlo_global_mem0>;
 
 
@@ -785,10 +785,8 @@
 	qcom,wsi = <&wsi>;
 	qcom,wsi_index = <1>;
 	qcom,pci_slot_id = <0>;
-	interrupts = <0 33 1>;
 	status = "okay";
 	interrupts = <GIC_SPI 33 IRQ_TYPE_EDGE_RISING>;
-	interrupt-names = "umac_reset";
 };
 
 &qcn9224_pcie1 {
