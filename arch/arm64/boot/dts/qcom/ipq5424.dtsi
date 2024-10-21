@@ -350,8 +350,8 @@
 
 		qfprom {
 			compatible = "qcom,qfprom-ipq5424-sec";
-			img-addr = <0x89f00000>;
-			img-size = <0x00500000>;
+			img-addr = <0x8a200000>;
+			img-size = <0x00400000>;
 			scm-cmd-id = <0x1f>;
 			version-commit-enable = <0x1>;
 			reg = <0xA0058 0x4>;
