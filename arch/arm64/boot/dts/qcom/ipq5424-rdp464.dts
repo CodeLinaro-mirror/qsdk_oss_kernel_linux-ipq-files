@@ -662,14 +662,14 @@
 	};
 
 	wsi_default_state: wsi-default-state {
-		wsi0 {
+		wsi2 {
 			pins = "gpio27";
 			function = "wsi_clk";
 			drive-strength = <16>;
 			bias-pull-down;
 		};
 
-		wsi1 {
+		wsi3 {
 			pins = "gpio29";
 			function = "wsi_data";
 			drive-strength = <16>;
