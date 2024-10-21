@@ -25,30 +25,6 @@ struct qseecom_props {
 	bool aes_v2;
 };
 
-const struct qseecom_props qseecom_props_ipq807x = {
-	.function = (MUL | CRYPTO | AES_SEC_KEY | RSA_SEC_KEY | LOG_BITMASK |
-					FUSE | MISC | AES_TZAPP | RSA_TZAPP |
-					FUSE_WRITE),
-	.libraries_inbuilt = false,
-	.logging_support_enabled = true,
-	.aes_v2 = false,
-};
-
-const struct qseecom_props qseecom_props_ipq6018 = {
-	.function = (MUL | CRYPTO | AES_SEC_KEY | RSA_SEC_KEY),
-	.libraries_inbuilt = false,
-	.logging_support_enabled = true,
-	.aes_v2 = false,
-};
-
-const struct qseecom_props qseecom_props_ipq5018 = {
-	.function = (MUL | CRYPTO | AES_SEC_KEY | RSA_SEC_KEY | LOG_BITMASK |
-					FUSE | MISC | RSA_TZAPP | FUSE_WRITE),
-	.libraries_inbuilt = false,
-	.logging_support_enabled = true,
-	.aes_v2 = false,
-};
-
 const struct qseecom_props qseecom_props_ipq9574 = {
 	.function = (MUL | CRYPTO | AES_SEC_KEY | RSA_SEC_KEY | LOG_BITMASK |
 					FUSE | MISC | AES_TZAPP | RSA_TZAPP |
