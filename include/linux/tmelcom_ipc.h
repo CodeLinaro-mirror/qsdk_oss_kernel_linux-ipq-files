@@ -107,6 +107,12 @@ struct tmel_ttime_set {
 	struct tmel_msg_param_type_buf_in ttime;
 } __packed;
 
+struct tmel_qwes_enf_hw_feat_msg {
+	u32 status;
+	struct tmel_msg_param_type_buf_in_out featid_buf;
+	u32 hw_reg_inf_ver;
+} __packed;
+
 struct tmel_licensing_install {
 	u32 status;
 	struct tmel_msg_param_type_buf_in license;
@@ -384,6 +390,7 @@ int tmelcom_licensing_check(void *cbor_req, u32 req_len, void *cbor_resp,
 			    u32 resp_len, u32 *used_resp_len);
 int tmelcom_ttime_get_req_params(void *params_buf, u32 buf_len, u32 *used_buf_len);
 int tmelcom_ttime_set(void *ttime_buf, u32 buf_len);
+int tmelcomm_qwes_enforce_hw_features(void *buf, u32 size);
 int tmelcom_licensing_install(void *license_buf, u32 license_len, void *ident_buf,
 			      u32 ident_len, u32 *ident_used_len, u32 *flags);
 int tmelcom_licensing_get_toBeDel_licenses(void *toBeDelLic_buf, u32 toBeDelLic_len,
@@ -466,6 +473,11 @@ static inline int tmelcom_ttime_get_req_params(void *params_buf, u32 buf_len,
 }
 
 static inline int tmelcom_ttime_set(void *ttime_buf, u32 buf_len)
+{
+	return -EOPNOTSUPP;
+}
+
+static inline int tmelcomm_qwes_enforce_hw_features(void *buf, u32 size)
 {
 	return -EOPNOTSUPP;
 }
