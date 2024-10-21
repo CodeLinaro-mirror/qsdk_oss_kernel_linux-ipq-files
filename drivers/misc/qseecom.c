@@ -34,9 +34,19 @@ const struct qseecom_props qseecom_props_ipq9574 = {
 	.aes_v2 = true,
 };
 
+const struct qseecom_props qseecom_props_ipq5424 = {
+	.function = RSA_SEC_KEY,
+	.libraries_inbuilt = false,
+	.logging_support_enabled = true,
+	.aes_v2 = true,
+};
+
 static const struct of_device_id qseecom_of_table[] = {
 	{	.compatible = "ipq9574-qseecom",
 		.data = (void *) &qseecom_props_ipq9574,
+	},
+	{	.compatible = "ipq5424-qseecom",
+		.data = (void *) &qseecom_props_ipq5424,
 	},
 	{}
 };
