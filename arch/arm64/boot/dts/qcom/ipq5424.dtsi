@@ -1819,6 +1819,15 @@
 			phy-names = "pciephy";
 
 			status = "disabled";
+
+			pcie3_rp {
+				qcom,mhi@3 {
+				secure-reg = <0x00610708 0x130100>, /* pcie3 Main Ctl Low */
+						<0x00610738 0x44410>, /* pcie3 TrType LUT Low */
+						<0x00610748 0x100>, /* pci3 dynattr Alloc Low */
+						<0x00610750 0x7>; /*pci3 dynattr CacheIndexVal Low*/
+				};
+			};
 		};
 
 		/* 2L controller */
@@ -1907,6 +1916,15 @@
 			phy-names = "pciephy";
 
 			status = "disabled";
+
+			pcie2_rp {
+				qcom,mhi@2 {
+				secure-reg = <0x00610608 0x130100>, /* pcie2 Main Ctl Low */
+						<0x00610638 0x44410>, /* pcie2 TrType LUT Low */
+						<0x00610648 0x100>, /* pci2 dynattr Alloc Low */
+						<0x00610650 0x6>; /*pci2 dynattr CacheIndexVal Low*/
+				};
+			};
 		};
 
 		/* 1L controller */
@@ -1995,6 +2013,15 @@
 			phy-names = "pciephy";
 
 			status = "disabled";
+
+			pcie1_rp {
+				qcom,mhi@1 {
+				secure-reg = <0x00610508 0x130100>, /* pcie1 Main Ctl Low */
+						<0x00610538 0x44410>, /* pcie1 TrType LUT Low */
+						<0x00610548 0x100>, /* pci1 dynattr Alloc Low */
+						<0x00610550 0x7>; /*pci1 dynattr CacheIndexVal Low*/
+				};
+			};
 		};
 
 		/* 1L controller */
@@ -2083,6 +2110,15 @@
 			phy-names = "pciephy";
 
 			status = "disabled";
+
+			pcie0_rp {
+				qcom,mhi@0 {
+				secure-reg = <0x00610408 0x130100>, /* pcie0 Main Ctl Low */
+						<0x00610438 0x44410>, /* pcie0 TrType LUT Low */
+						<0x00610448 0x100>, /* pci0 dynattr Alloc Low */
+						<0x00610450 0x6>; /*pci0 dynattr CacheIndexVal Low*/
+				};
+			};
 		};
 
 		wifi0: wifi@c0000000 {
