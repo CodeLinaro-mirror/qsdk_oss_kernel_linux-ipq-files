@@ -4016,11 +4016,11 @@
 			cooling-maps {
 				map0 {
 					trip = <&cpu0_thermal_alert>;
-					/* Set maximum frequency as 1.4164 MHz  */
-					cooling-device = <&CPU0 1 1>,
-							 <&CPU1 1 1>,
-							 <&CPU2 1 1>,
-							 <&CPU3 1 1>;
+					/* Set maximum frequency as 816 MHz */
+					cooling-device = <&CPU0 2 2>,
+							 <&CPU1 2 2>,
+							 <&CPU2 2 2>,
+							 <&CPU3 2 2>;
 				};
 			};
 		};
