@@ -342,6 +342,14 @@
 	status = "disabled";
 };
 
+&pcie0 {
+	perst-gpio = <&tlmm 25 GPIO_ACTIVE_LOW>;
+
+	pcie0_rp {
+		reg = <0 0 0 0 0>;
+	};
+};
+
 &pcie1_phy {
 	status = "okay";
 };

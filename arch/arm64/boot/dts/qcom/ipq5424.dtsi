@@ -436,42 +436,6 @@
 					bias-pull-down;
 				};
 			};
-
-			pcie0_default_state: pcie0-default-state {
-				perst-n-pins {
-					pins = "gpio25";
-					function = "gpio";
-					drive-strength = <2>;
-					output-low;
-				};
-			};
-
-			pcie1_default_state: pcie1-default-state {
-				perst-n-pins {
-					pins = "gpio28";
-					function = "gpio";
-					drive-strength = <2>;
-					output-low;
-				};
-			};
-
-			pcie2_default_state: pcie2-default-state {
-				perst-n-pins {
-					pins = "gpio31";
-					function = "gpio";
-					drive-strength = <2>;
-					output-low;
-				};
-			};
-
-			pcie3_default_state: pcie3-default-state {
-				perst-n-pins {
-					pins = "gpio34";
-					function = "gpio";
-					drive-strength = <2>;
-					output-low;
-				};
-			};
 		};
 
 		pcie0_phy: phy@84000 {
