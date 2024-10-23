@@ -42,6 +42,7 @@
 #include <linux/of_address.h>
 #include <linux/random.h>
 #include <linux/of_reserved_mem.h>
+#include <linux/debugfs.h>
 
 #define QTI_CMD_AES_CLEAR_KEY		10
 #define QTI_CMD_AES_DERIVE_KEY		9
@@ -105,6 +106,9 @@
 static int app_state;
 static int app_libs_state;
 struct qseecom_props *props;
+
+char tzapp_log[QSEE_LOG_BUF_SIZE];
+u32 tzapp_log_len;
 
 enum qti_crypto_service_aes_cmd_t {
 	QTI_CRYPTO_SERVICE_AES_ENC_ID = 0x1,
@@ -625,9 +629,6 @@ enum qti_app_cmd_ids {
 	QTI_APP_CLEAR_KEY
 };
 
-static ssize_t show_qsee_app_log_buf(struct device *dev,
-				    struct device_attribute *attr, char *buf);
-
 static ssize_t generate_key_blob(struct device *dev,
 				struct device_attribute *attr, char *buf);
 
@@ -903,7 +904,6 @@ static ssize_t store_blow_fuse_write_qtiapp(struct device *dev,
 
 /* Qti app device attrs starts here....*/
 
-static DEVICE_ATTR(log_buf, 0644, show_qsee_app_log_buf, NULL);
 static DEVICE_ATTR(load_start, S_IWUSR, NULL, store_load_start);
 static DEVICE_ATTR(basic_data, 0644, show_basic_output, store_basic_input);
 static DEVICE_ATTR(encrypt, 0644, show_encrypt_output, store_encrypt_input);

@@ -291,10 +291,12 @@ Please refer the qseecom_props structure in qseecom driver to know the list of T
 supported by each platform.
 Note: IPQ53xx platform uses the same qseecom_props structure of IPQ95xx platform.
 
-Note: sampleapp logging has been enabled for QSEE sample app. To view the log at
-any point after loading the sample app from kernel, please use below command:
+Note: sampleapp logging has been enabled for QSEE sample app.
+The default size of the log buffer is 4k bytes. However it can be increased by
+changing the QSEE_LOG_BUF_SIZE macro in qseecom.h file.
 
-cat /sys/firmware/tzapp/log_buf > log.txt
+To view the log at any point after loading the sample app from kernel, please use below command:
+cat /sys/kernel/debug/tzapp_log
 
 The sampleapp supports below operations:
 (1) Basic multiplication test
@@ -357,7 +359,7 @@ Provide required RSA parameters
 Encrypt RSA:
 (8)  cat 256.txt > /sys/firmware/tzapp/rsa/encrypt_rsa
 (9)  cat /sys/firmware/tzapp/rsa/encrypt_rsa > sam.txt
-(10) cat /sys/firmware/tzapp/log_buf
+(10) cat /sys/kernel/debug/tzapp_log
 
 Decrypt RSA:
 (11) cat sam.txt > /sys/firmware/tzapp/rsa/decrypt_rsa
@@ -392,7 +394,7 @@ To decrypt:
 (8) cat /tmp/pt.txt
 
 To check the tzlog buff after above operations if required:
-(8) cat sys/firmware/tzapp/log_buf
+(8) cat /sys/kernel/debug/tzapp_log
 
 ------------------------------------------------------------
 |Steps for performing AESv2 crypto operation from sampleapp|
@@ -452,7 +454,7 @@ QFPROM_RAW_OEM_SPARE_REGION_31_REGION:
 QFPROM_RAW_FEC_ENABLES_REGION:
 
 (1) echo 1 > /sys/firmware/tzapp/fuse
-(2) cat /sys/firmware/tzapp/log_buf
+(2) cat /sys/kernel/debug/tzapp_log
 
 ---------------------------------------------------------
 |Steps for performing fusewrite operation from sampleapp|
@@ -469,7 +471,7 @@ Input the fuse address according to target
 (2) echo 0x1 > /sys/firmware/tzapp/fuse_write/value
 (3) echo 0 > /sys/firmware/tzapp/fuse_write/fec_enable (fec - forward error correction. Set this entry to enable error correction in fuse)
 (4) echo 1 > /sys/firmware/tzapp/fuse_write/blow
-(5) cat /sys/firmware/tzapp/log_buf
+(5) cat /sys/kernel/debug/tzapp_log
 
 ----------------------------------------------------------
 |Steps for performing Logbitmask operation from sampleapp|
@@ -478,13 +480,13 @@ Supported targets: IPQ50xx/IPQ807x/IPQ95xx/IPQ53xx
 
 TZapp supports different logging levels. This API will set mask for different log levels and checks if only expected logs are present.
 If expected logs are present then success is returned.
-User should check the /sys/firmware/tzapp/log_buf to see the result.
+User should check the /sys/kernel/debug/tzapp_log to see the result.
 
-If the below print is seen in log_buf, then it means the logbitmask test has encountered some error while testing the different log levels.
+If the below print is seen in tzapp_log, then it means the logbitmask test has encountered some error while testing the different log levels.
 -- ALERT: Should Not see this - run_log_bitmask_test----
 
 (1) echo 1 > /sys/firmware/tzapp/log_bitmask
-(2) cat /sys/firmware/tzapp/log_buf
+(2) cat /sys/kernel/debug/tzapp_log
 
 ------------------------------------------
 |Steps for performing misc from sampleapp|
@@ -496,7 +498,7 @@ Misc API: (qseecom_props function = MISC)
 This API runs some miscellaneous tests to test the QSEE API's for malloc, free and some other string manipulation functions.
 
 (1) echo 1 > /sys/firmware/tzapp/misc
-(2) cat /sys/firmware/tzapp/log_buf
+(2) cat /sys/kernel/debug/tzapp_log
 
 ---------------------------
 |Steps to unload sampleapp|
