@@ -697,6 +697,12 @@
 	status = "okay";
 };
 
+&nss0 {
+       npu-supply = <&npu_vreg>;
+       mx-supply = <&ipq9574_s4>;
+       status = "okay";
+};
+
 &wifi0 {
        led-gpio = <&tlmm 64 GPIO_ACTIVE_LOW>;
        status = "disabled";

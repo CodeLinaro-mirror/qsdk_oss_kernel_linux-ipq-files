@@ -589,6 +589,12 @@
 	status = "okay";
 };
 
+&nss0 {
+       npu-supply = <&npu_vreg>;
+       mx-supply = <&ipq9574_s4>;
+       status = "okay";
+};
+
 &wifi5 {
 	hremote_node = <&qcn9224_pcie1>;
 	board_id = <0x01>;
