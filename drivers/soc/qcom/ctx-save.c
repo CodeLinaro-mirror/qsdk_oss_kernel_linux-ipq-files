@@ -1323,17 +1323,14 @@ int minidump_dump_wlan_modules(void){
 
 			for (i = 0; i < mod->sect_attrs->nsections; i++) {
 				if ((!strcmp(".bss", mod->sect_attrs->attrs[i].battr.attr.name))) {
-					module_tlv_info.start = (unsigned long)
-					mod->sect_attrs->attrs[i].address;
-					module_tlv_info.size = (unsigned long)mod->sect_attrs->attrs[i].address - (unsigned long )mod->mem[MOD_TEXT].base + (unsigned long)mod->mem[MOD_TEXT].size;
 #ifdef CONFIG_QCA_MINIDUMP_DEBUG
 					pr_err("\n MINIDUMP VA .bss start=%lx module=%s",
 						(unsigned long)mod->sect_attrs->attrs[i].address,
 						mod->name);
 #endif
 					/* Log .bss VA of module in buffer */
-					ret_val = minidump_fill_segments_internal(module_tlv_info.start,
-					module_tlv_info.size, QCA_WDT_LOG_DUMP_TYPE_WLAN_MOD,
+					ret_val = minidump_fill_segments_internal(mod->mem[MOD_DATA].base,
+					mod->mem[MOD_DATA].size, QCA_WDT_LOG_DUMP_TYPE_WLAN_MOD,
 						mod->name, 0);
 					if (ret_val) {
 						pr_err("Minidump: Crashdump buffer is full %d", ret_val);
