@@ -504,13 +504,13 @@ static const struct proc_ops age_ops = {
 bool check_alt_partition(char *partition)
 {
 
-	int i;
 	char *alt_part_name;
 	uint8_t size;
 #ifdef CONFIG_MMC
 	struct gendisk *disk = NULL;
 	struct block_device *part;
 	unsigned long idx;
+	int i;
 #endif
 	struct mtd_info *mtd;
 	int alt_part = 0;
@@ -563,9 +563,9 @@ bool check_alt_partition(char *partition)
 			rcu_read_unlock();
 		}
 	}
-#endif
 
 exit:
+#endif
 	if (alt_part_name)
 		kfree(alt_part_name);
 	return alt_part;
@@ -579,11 +579,12 @@ static int write_to_flash (struct sbl_if_dualboot_info_type_v2 *data,
 	struct erase_info erase;
 	size_t retlen;
 	uint8_t *flash_data;
-	int i, ret = -1;
+	int ret = -1;
 #ifdef CONFIG_MMC
 	struct gendisk *disk = NULL;
 	struct block_device *bdev;
 	unsigned long idx;
+	int i;
 #endif
 
 	printk("Restoring %s\n",partition);
@@ -592,6 +593,7 @@ static int write_to_flash (struct sbl_if_dualboot_info_type_v2 *data,
 	if (IS_ERR(mtd)) {
 		/*Flash to EMMC*/
 
+#ifdef CONFIG_EMMC
 		for (i = 0; i < MAX_MMC_DEVICE; i++) {
 
 			bdev = blkdev_get_by_dev(MKDEV(MMC_BLOCK_MAJOR,
@@ -618,7 +620,7 @@ static int write_to_flash (struct sbl_if_dualboot_info_type_v2 *data,
 
 		if(ret)
 			return ret;
-
+#endif
 	} else {
 
 		/*
