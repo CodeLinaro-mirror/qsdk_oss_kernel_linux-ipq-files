@@ -689,11 +689,15 @@ static int elf64_parse_hash_n_meta_data(void *va_addr, char *alg_name, size_t di
 	desc->tfm = alg;
 
 	for (i = 0; i < ehdr->e_phnum; i++, phdr++) {
-		if (phdr->p_type == PT_NULL) {
-			md_size = phdr->p_offset + phdr->p_filesz;
-			continue;
-		}
 		if (phdr->p_type == PT_LOAD) {
+		/* NULL segment before the first loadable segment is considered
+		 * for metadata size calculation.
+		 */
+			if (!lds_cnt) {
+				phdr--;
+				md_size = phdr->p_offset + phdr->p_filesz;
+				phdr++;
+			}
 			elf_seg_buf = (u8 *)va_addr + phdr->p_offset;
 			seg_size = phdr->p_filesz;
 			if (phdr->p_filesz && phdr->p_memsz) {
@@ -764,11 +768,15 @@ static int elf32_parse_hash_n_meta_data(void *va_addr, char *alg_name, size_t di
 	desc->tfm = alg;
 
 	for (i = 0; i < ehdr->e_phnum; i++, phdr++) {
-		if (phdr->p_type == PT_NULL) {
-			md_size = phdr->p_offset + phdr->p_filesz;
-			continue;
-		}
 		if (phdr->p_type == PT_LOAD) {
+		/* NULL segment before the first loadable segment is considered
+		 * for metadata size calculation.
+		 */
+			if (!lds_cnt) {
+				phdr--;
+				md_size = phdr->p_offset + phdr->p_filesz;
+				phdr++;
+			}
 			elf_seg_buf = (u8 *)va_addr + phdr->p_offset;
 			seg_size = phdr->p_filesz;
 			if (phdr->p_filesz && phdr->p_memsz) {
@@ -1055,6 +1063,7 @@ store_sec_auth(struct device *dev,
 			} else {
 				pr_err("Unable to parse the loadable segments: ret: %d\n",
 				       ld_seg_cnt);
+				ret = ld_seg_cnt;
 				goto free_ld_buff;
 			}
 		} else {
