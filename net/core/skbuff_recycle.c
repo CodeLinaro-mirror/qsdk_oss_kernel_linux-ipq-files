@@ -36,6 +36,14 @@ static int skb_recycler_max_spare_skbs_core[NR_CPUS];
 static struct global_recycler glob_recycler;
 static int skb_recycle_spare_max_skbs = SKB_RECYCLE_SPARE_MAX_SKBS;
 #endif
+#ifdef CONFIG_SKB_RECYCLER_ENABLE_COUNTER
+static DEFINE_PER_CPU(int, skb_recycle_alloc_fail);
+#ifdef CONFIG_SKB_RECYCLER_MULTI_CPU
+static DEFINE_PER_CPU(int, skb_recycle_glbl_cache_alloc);
+#endif
+static DEFINE_PER_CPU(int, skb_recycle_cpu_cache_alloc);
+static DEFINE_PER_CPU(int, skb_recycler_overflow_no_consume_cnt);
+#endif
 
 static int skb_recycling_enable = 1;
 
@@ -87,6 +95,13 @@ inline struct sk_buff *skb_recycler_alloc(struct net_device *dev,
 	struct sk_buff_head *h;
 	struct sk_buff *skb = NULL;
 	struct sk_buff *ln = NULL;
+#ifdef CONFIG_SKB_RECYCLER_ENABLE_COUNTER
+	int *missed_cnt = NULL;
+#ifdef CONFIG_SKB_RECYCLER_MULTI_CPU
+	int *global_cnt = NULL;
+#endif
+	int *recycle_cnt = NULL;
+#endif
 
 	/* Allocate the recycled skbs if the skb_recycling_enable */
 	if (unlikely(!skb_recycling_enable)) {
@@ -108,6 +123,11 @@ inline struct sk_buff *skb_recycler_alloc(struct net_device *dev,
 		skbuff_debugobj_sum_validate(ln);
 		__skb_unlink(skb, h);
 		skbuff_debugobj_sum_update(ln);
+#ifdef CONFIG_SKB_RECYCLER_ENABLE_COUNTER
+		recycle_cnt = &get_cpu_var(skb_recycle_cpu_cache_alloc);
+		(*recycle_cnt)++;
+		put_cpu_var(skb_recycle_cpu_cache_alloc);
+#endif
 	}
 #ifdef CONFIG_SKB_RECYCLER_MULTI_CPU
 	if (unlikely(!skb)) {
@@ -144,6 +164,11 @@ inline struct sk_buff *skb_recycler_alloc(struct net_device *dev,
 				skbuff_debugobj_sum_validate(ln);
 				__skb_unlink(skb, h);
 				skbuff_debugobj_sum_update(ln);
+#ifdef CONFIG_SKB_RECYCLER_ENABLE_COUNTER
+				global_cnt = &get_cpu_var(skb_recycle_glbl_cache_alloc);
+				(*global_cnt)++;
+				put_cpu_var(skb_recycle_glbl_cache_alloc);
+#endif
 			}
 		}
 	}
@@ -191,6 +216,12 @@ inline struct sk_buff *skb_recycler_alloc(struct net_device *dev,
 			skb->recycled_for_ds = 1;
 		}
 		mem_debug_update_skb(skb);
+	} else {
+#ifdef CONFIG_SKB_RECYCLER_ENABLE_COUNTER
+		missed_cnt = &get_cpu_var(skb_recycle_alloc_fail);
+		(*missed_cnt)++;
+		put_cpu_var(skb_recycle_alloc_fail);
+#endif
 	}
 
 	return skb;
@@ -204,6 +235,10 @@ inline bool skb_recycler_consume(struct sk_buff *skb)
 	int max_skbs;
 #ifdef CONFIG_SKB_RECYCLER_MULTI_CPU
 	int max_spare_skbs;
+#endif
+#ifdef CONFIG_SKB_RECYCLER_ENABLE_COUNTER
+	int *free_cnt = NULL;
+	int *enqueue_fail_cnt = NULL;
 #endif
 
 	/* Consume the skbs if the skb_recycling_enable */
@@ -306,6 +341,12 @@ inline bool skb_recycler_consume(struct sk_buff *skb)
 	}
 #endif
 
+#ifdef CONFIG_SKB_RECYCLER_ENABLE_COUNTER
+	enqueue_fail_cnt = &get_cpu_var(skb_recycler_overflow_no_consume_cnt);
+	(*enqueue_fail_cnt)++;
+	put_cpu_var(skb_recycler_overflow_no_consume_cnt);
+#endif
+
 	local_irq_restore(flags);
 	preempt_enable();
 
@@ -345,6 +386,10 @@ inline bool skb_recycler_consume_list_fast(struct sk_buff_head *skb_list)
 	int max_skbs;
 #ifdef CONFIG_SKB_RECYCLER_MULTI_CPU
 	int max_spare_skbs;
+#endif
+#ifdef CONFIG_SKB_RECYCLER_ENABLE_COUNTER
+	int *free_cnt = NULL;
+	int *enqueue_fail_cnt = NULL;
 #endif
 
 	max_skbs = skb_recycler_max_skbs_core[get_cpu_index()];
@@ -413,6 +458,12 @@ inline bool skb_recycler_consume_list_fast(struct sk_buff_head *skb_list)
 		preempt_enable();
 		return true;
 	}
+#endif
+
+#ifdef CONFIG_SKB_RECYCLER_ENABLE_COUNTER
+	enqueue_fail_cnt = &get_cpu_var(skb_recycler_overflow_no_consume_cnt);
+	(*enqueue_fail_cnt)++;
+	put_cpu_var(skb_recycler_overflow_no_consume_cnt);
 #endif
 
 	local_irq_restore(flags);
@@ -719,6 +770,134 @@ static const struct proc_ops proc_skb_max_spare_skbs_fops = {
 };
 #endif /* CONFIG_SKB_RECYCLER_MULTI_CPU */
 
+#ifdef CONFIG_SKB_RECYCLER_ENABLE_COUNTER
+/*
+ * proc_recycle_skb_recycler_alloc()
+ *	Show SKB from main recycler pool
+ */
+static int proc_recycle_recycler_skbs_show(struct seq_file *seq, void *v)
+{
+	int cpu;
+	int miss_cnt;
+
+	for_each_online_cpu(cpu) {
+		miss_cnt = per_cpu(skb_recycle_cpu_cache_alloc, cpu);
+		seq_printf(seq, "skb_recycle_cpu_cache_alloc[%d]: %d\n",
+				cpu, miss_cnt);
+	}
+	return 0;
+}
+
+/*
+ * proc_missed_skb_recycler_alloc()
+ * 	Show missed recycler count
+ */
+static int proc_missed_recycler_skbs_show(struct seq_file *seq, void *v)
+{
+	int cpu;
+	int miss_cnt;
+
+	for_each_online_cpu(cpu) {
+		miss_cnt = per_cpu(skb_recycle_alloc_fail, cpu);
+		seq_printf(seq, "skb_recycle_alloc_fail[%d]: %d\n",
+				cpu, miss_cnt);
+	}
+	return 0;
+}
+
+/*
+ * proc_global_skb_recycler_skbs_show()
+ *	show global skb recycler count
+ */
+#ifdef CONFIG_SKB_RECYCLER_MULTI_CPU
+static int proc_global_recycler_skbs_show(struct seq_file *seq, void *v)
+{
+	int cpu;
+	int miss_cnt;
+
+	for_each_online_cpu(cpu) {
+		miss_cnt = per_cpu(skb_recycle_glbl_cache_alloc, cpu);
+		seq_printf(seq, "skb_recycle_glbl_cache_alloc[%d]: %d\n",
+				cpu, miss_cnt);
+	}
+	return 0;
+}
+#endif
+
+/*
+ * proc_replenish_enqueue_fail_recycler_skbs_show()
+ *	show replenish enqueue fail recycler count
+ */
+static int proc_replenish_enqueue_fail_recycler_skbs_show(struct seq_file *seq, void *v)
+{
+	int cpu;
+	int enqueue_fail_cnt;
+
+	for_each_online_cpu(cpu) {
+		enqueue_fail_cnt = per_cpu(skb_recycler_overflow_no_consume_cnt, cpu);
+		seq_printf(seq, "skb_recycler_overflow_no_consume_cnt[%d]: %d\n",
+				cpu, enqueue_fail_cnt);
+	}
+	return 0;
+}
+
+static int proc_missed_recycler_skbs_open(struct inode *inode, struct file *file)
+{
+	return single_open(file,
+			   proc_missed_recycler_skbs_show,
+			   pde_data(inode));
+}
+
+static int proc_recycle_recycler_skbs_open(struct inode *inode, struct file *file)
+{
+	return single_open(file,
+			   proc_recycle_recycler_skbs_show,
+			   pde_data(inode));
+}
+
+#ifdef CONFIG_SKB_RECYCLER_MULTI_CPU
+static int proc_global_recycler_skbs_open(struct inode *inode, struct file *file)
+{
+	return single_open(file,
+			   proc_global_recycler_skbs_show,
+			   pde_data(inode));
+}
+#endif
+
+static int proc_replenish_enqueue_fail_recycler_skbs_open(struct inode *inode, struct file *file)
+{
+	return single_open(file,
+			   proc_replenish_enqueue_fail_recycler_skbs_show,
+			   pde_data(inode));
+}
+
+static const struct proc_ops  proc_missed_recycler_skbs_fops = {
+	.proc_open    = proc_missed_recycler_skbs_open,
+	.proc_read    = seq_read,
+	.proc_release = single_release,
+};
+
+static const struct proc_ops  proc_recycle_recycler_skbs_fops = {
+	.proc_open    = proc_recycle_recycler_skbs_open,
+	.proc_read    = seq_read,
+	.proc_release = single_release,
+};
+
+#ifdef CONFIG_SKB_RECYCLER_MULTI_CPU
+static const struct proc_ops  proc_global_recycler_skbs_fops = {
+	.proc_open    = proc_global_recycler_skbs_open,
+	.proc_read    = seq_read,
+	.proc_release = single_release,
+};
+#endif
+
+static const struct proc_ops proc_replenish_enqueue_fail_recycler_skbs_fops = {
+	.proc_open    = proc_replenish_enqueue_fail_recycler_skbs_open,
+	.proc_read    = seq_read,
+	.proc_release = single_release,
+};
+#endif
+
 /* procfs: skb_recycler_enable
  * By default, recycler is disabled for QSDK_512 profile.
  * Can be enabled for alder/miami QSDK_512 profile.
@@ -933,6 +1112,31 @@ static void skb_recycler_init_procfs(void)
 			 proc_net_skbrecycler,
 			 &proc_skb_max_spare_skbs_fops))
 		pr_err("cannot create proc net skb_recycle max_spare_skbs\n");
+#endif
+
+#ifdef CONFIG_SKB_RECYCLER_ENABLE_COUNTER
+	if (!proc_create("skb_recycle_alloc_fail",
+			 S_IRUGO,
+			 proc_net_skbrecycler,
+			 &proc_missed_recycler_skbs_fops))
+		pr_err("cannot create proc net missed_skb_recycler_alloc\n");
+	if (!proc_create("skb_recycle_cpu_cache_alloc,",
+			 S_IRUGO,
+			 proc_net_skbrecycler,
+			 &proc_recycle_recycler_skbs_fops))
+		pr_err("cannot create proc net recycle_skb_recycler_alloc\n");
+#ifdef CONFIG_SKB_RECYCLER_MULTI_CPU
+	if (!proc_create("skb_recycle_glbl_cache_alloc",
+			 S_IRUGO,
+			 proc_net_skbrecycler,
+			 &proc_global_recycler_skbs_fops))
+		pr_err("cannot create proc net global_skb_recycler_alloc\n");
+#endif
+	if (!proc_create("skb_recycler_overflow_no_consume_cnt",
+			 S_IRUGO,
+			 proc_net_skbrecycler,
+			 &proc_replenish_enqueue_fail_recycler_skbs_fops))
+		pr_err("cannot create proc net replenish_enqueue_fail_skb_recycler_alloc\n");
 #endif
 
 	if (!proc_create("skb_recycler_enable",
