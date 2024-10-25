@@ -626,6 +626,10 @@
 			memory-region = <&q6_mem_regions>,
 					<&mlo_global_mem0>;
 
+			upd-firmware-names = "IPQ5332/q6_fw1.mdt",
+					     "IPQ5332/q6_fw2.mdt",
+					     "IPQ5332/q6_fw3.mdt",
+					     "IPQ5332/q6_fw4.mdt";
 			/delete-node/ remoteproc_pd1;
 			/delete-node/ remoteproc_pd2;
 			/delete-node/ remoteproc_pd3;
