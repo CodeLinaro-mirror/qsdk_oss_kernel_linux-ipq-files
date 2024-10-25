@@ -506,6 +506,8 @@
 					<0x1 0x5 0x5 0x2 0x2C 0x0 0x1>;
 			memory-region = <&q6_mem_regions>,
 					<&mlo_global_mem0>;
+			textpd_fw = "IPQ5332/q6_fw5.mdt";
+			textpd_pasid = <0x512>;
 
 			upd-firmware-names = "IPQ5332/q6_fw1.mdt",
 					     "IPQ5332/q6_fw2.mdt",

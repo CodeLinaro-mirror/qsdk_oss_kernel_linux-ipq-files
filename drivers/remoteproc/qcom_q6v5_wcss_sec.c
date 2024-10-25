@@ -50,6 +50,8 @@ enum q6_bootargs_version {
 struct q6v5_wcss_sec {
 	struct device *dev;
 	struct qcom_rproc_glink glink_subdev;
+	const char *textpd_fw;
+	u32 textpd_pasid;
 	struct qcom_rproc_ssr ssr_subdev;
 	struct qcom_q6v5 q6;
 	phys_addr_t mem_phys;
@@ -150,6 +152,13 @@ wait_for_start:
 		lm_free_license(lic_param.buf, lic_param.dma_buf, lic_param.size);
 		lic_param.buf = NULL;
 	}
+
+	if (!ret && wcss->textpd_fw) {
+		ret = qcom_scm_pas_auth_and_reset(wcss->textpd_pasid);
+		if (ret)
+			dev_err(wcss->dev, "Failed to start textpd fw : %d\n", ret);
+	}
+
 	return ret;
 }
 
@@ -162,6 +171,12 @@ static int q6v5_wcss_sec_stop(struct rproc *rproc)
 
 	if (!desc)
 		return -EINVAL;
+
+	if (wcss->textpd_fw) {
+		ret = qcom_scm_pas_shutdown(wcss->textpd_pasid);
+		if (ret)
+			dev_err(wcss->dev, "Failed to stop textpd fw: %d\n", ret);
+	}
 
 	if (desc->tmelcom_support)
 		ret = tmelcom_secboot_teardown(desc->pasid, 0);
@@ -402,6 +417,7 @@ static int share_bootargs_to_q6(struct rproc *rproc, struct device *dev)
 static int q6v5_wcss_sec_load(struct rproc *rproc, const struct firmware *fw)
 {
 	struct q6v5_wcss_sec *wcss = rproc->priv;
+	const struct firmware *textpd_fw;
 	int ret;
 	const struct wcss_data *desc =
 				of_device_get_match_data(wcss->dev);
@@ -430,15 +446,38 @@ static int q6v5_wcss_sec_load(struct rproc *rproc, const struct firmware *fw)
 
 	/* Load firmware into DDR */
 	if (desc->tmelcom_support)
-		return qcom_mdt_load_no_init(wcss->dev, fw, rproc->firmware,
-					     desc->pasid, wcss->mem_region,
-					     wcss->mem_phys, wcss->mem_size,
-					     &wcss->mem_reloc);
+		ret = qcom_mdt_load_no_init(wcss->dev, fw, rproc->firmware,
+					    desc->pasid, wcss->mem_region,
+					    wcss->mem_phys, wcss->mem_size,
+					    &wcss->mem_reloc);
 	else
-		return qcom_mdt_load(wcss->dev, fw, rproc->firmware,
-				     desc->pasid, wcss->mem_region,
-				     wcss->mem_phys, wcss->mem_size,
-				     &wcss->mem_reloc);
+		ret = qcom_mdt_load(wcss->dev, fw, rproc->firmware,
+				    desc->pasid, wcss->mem_region,
+				    wcss->mem_phys, wcss->mem_size,
+				    &wcss->mem_reloc);
+
+	if (!ret && wcss->textpd_fw) {
+		ret = request_firmware(&textpd_fw, wcss->textpd_fw,
+				       wcss->dev);
+		if (ret < 0) {
+			dev_err(wcss->dev, "Failed to get textpd firmware: %d\n",
+				ret);
+			return ret;
+		}
+
+		ret = qcom_mdt_load(wcss->dev, textpd_fw,
+				    wcss->textpd_fw,
+				    wcss->textpd_pasid,
+				    wcss->mem_region, wcss->mem_phys,
+				    wcss->mem_size, &wcss->mem_reloc);
+		if (ret)
+			dev_err(wcss->dev, "Failed to load %s\n",
+				wcss->textpd_fw);
+
+		release_firmware(textpd_fw);
+	}
+
+	return ret;
 }
 
 static unsigned long q6v5_wcss_sec_panic(struct rproc *rproc)
@@ -577,6 +616,21 @@ static int q6v5_wcss_sec_probe(struct platform_device *pdev)
 	wcss = rproc->priv;
 	wcss->dev = &pdev->dev;
 
+	ret = of_property_read_string(pdev->dev.of_node, "textpd_fw",
+				      &wcss->textpd_fw);
+	if (ret < 0 && ret != -EINVAL) {
+		dev_err(&pdev->dev, "Failed to get textpd fw: %d\n", ret);
+		goto free_rproc;
+	}
+
+	if (wcss->textpd_fw) {
+		if (of_property_read_u32(pdev->dev.of_node, "textpd_pasid",
+					  &wcss->textpd_pasid)) {
+			dev_err(&pdev->dev, "Failed to get texpd pasid: %d\n", ret);
+			goto free_rproc;
+		}
+	}
+
 	ret = q6_alloc_memory_region(wcss);
 	if (ret)
 		goto free_rproc;
@@ -585,7 +639,8 @@ static int q6v5_wcss_sec_probe(struct platform_device *pdev)
 					    TCSR_SPARE_REG0_SIZE);
 	if (!wcss->debug_wcss_reg) {
 		dev_err(&pdev->dev, "Failed to ioremap debug_wcss register\n");
-		return PTR_ERR(wcss->debug_wcss_reg);
+		ret = PTR_ERR(wcss->debug_wcss_reg);
+		goto free_rproc;
 	}
 
 	ret = qcom_q6v5_init(&wcss->q6, pdev, rproc, desc->remote_id,
