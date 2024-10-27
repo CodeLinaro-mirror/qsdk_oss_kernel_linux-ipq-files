@@ -897,7 +897,7 @@ store_sec_auth(struct device *dev,
 			out_data = kzalloc(info.memsize, GFP_KERNEL);
 			if(!out_data) {
 				pr_err("%s: Memory allocation failed for out_data buffer\n", __func__);
-				goto free_mem;
+				goto free_data;
 			}
 			if(!img_decompress(data + info.offset, info.filesz, out_data, &info)) {
 				printk("Uncompressed!\n");
@@ -915,7 +915,7 @@ store_sec_auth(struct device *dev,
 		}
 	} else {
 		pr_err("%s data is null\n",sec_auth_token[QTI_SEC_IMG_ADDR]);
-		goto free_out_data;
+		goto free_mem;
 	}
 
 	if (sec_auth_token[QTI_SEC_HASH_ADDR]) {
@@ -948,8 +948,7 @@ store_sec_auth(struct device *dev,
 	np = of_find_node_by_name(NULL, "qfprom");
 	if (!np) {
 		pr_err("Unable to find qfprom node\n");
-		vfree(data);
-		goto free_mem;
+		goto hash_buf_alloc_err;
 	}
 
 	ret = of_property_read_u32(np, "img-size", &img_size);
@@ -973,7 +972,7 @@ store_sec_auth(struct device *dev,
 			md_size = size;
 			metadata = kzalloc(md_size, GFP_KERNEL);
 			if (!metadata)
-				goto hash_buf_alloc_err;
+				goto free_np;
 			memcpy(metadata, data, md_size);
 			ret = qcom_sec_upgrade_auth_hash_n_metadata(scm_cmd_id, sw_type,
 					metadata, md_size, NULL,
@@ -981,7 +980,7 @@ store_sec_auth(struct device *dev,
 			kfree(metadata);
 			if (ret) {
 				pr_err("Rootfs_auth_hash_n_metadata failed with %d\n", ret);
-				goto hash_buf_alloc_err;
+				goto free_np;
 			}
 		} else if (out_data) {
 			ret = parse_n_calculate_hash_n_meta_data(out_data, alg_name, digest_size,
@@ -992,21 +991,21 @@ store_sec_auth(struct device *dev,
 		}
 		if (ret) {
 			pr_err("Hash and Metadata authentication failed with %d\n", ret);
-			goto hash_buf_alloc_err;
+			goto free_np;
 		}
 		ret = count;
-		goto hash_buf_alloc_err;
+		goto free_np;
 	}
 
 	if (size > img_size) {
 		pr_err("File size exceeds allocated memory region\n");
-		goto hash_buf_alloc_err;
+		goto free_np;
 	}
 
 	file_buf = ioremap(img_addr, img_size);
 	if (file_buf == NULL) {
 		ret = -ENOMEM;
-		goto hash_buf_alloc_err;
+		goto free_np;
 	}
 
 	memset_io(file_buf, 0x0, img_size);
@@ -1033,7 +1032,7 @@ store_sec_auth(struct device *dev,
 						      hash_file_buf, hash_size);
 		if (ret) {
 			pr_err("sec_upgrade_auth_meta_data failed with return=%d\n", ret);
-			goto free_out_data;
+			goto un_map;
 		}
 
 		/*
@@ -1047,7 +1046,7 @@ store_sec_auth(struct device *dev,
 								NULL, 0, &status);
 			if (ret) {
 				pr_err("sec_upgrade_auth_ld_segments failed with return=%d\n", ret);
-				goto free_out_data;
+				goto un_map;
 			}
 		}
 	}
@@ -1072,7 +1071,7 @@ store_sec_auth(struct device *dev,
 		if (ret || status) {
 			pr_err("sec_upgrade_authentication failed return=%d status: %llx\n",
 			       ret, status);
-			goto free_out_data;
+			goto un_map;
 		}
 	}
 	ret = count;
@@ -1081,9 +1080,10 @@ free_ld_buff:
 	kfree(ld_seg_buff);
 un_map:
 	iounmap(file_buf);
+free_np:
+	of_node_put(np);
 hash_buf_alloc_err:
 	kfree(hash_file_buf);
-	of_node_put(np);
 free_out_data:
 	if(out_data)
 		kfree(out_data);
