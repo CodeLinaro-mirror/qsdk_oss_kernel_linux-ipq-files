@@ -351,21 +351,22 @@ int tmelcom_licensing_check(void *cbor_req, u32 req_len, void *cbor_resp,
 	if (!dev || !cbor_req || !req_len || !cbor_resp || !resp_len)
 		return -EINVAL;
 
-	dma_cbor_req = dma_map_single(dev, cbor_req, req_len, DMA_BIDIRECTIONAL);
+	dma_cbor_req = dma_map_single(dev, cbor_req, req_len, DMA_TO_DEVICE);
 	ret = dma_mapping_error(dev, dma_cbor_req);
 	if (ret != 0) {
 		dev_err(dev, "DMA Mapping Error, cbor_req : %d\n", ret);
 		return ret;
 	}
 
-	dma_cbor_resp = dma_map_single(dev, cbor_resp, resp_len, DMA_BIDIRECTIONAL);
+	dma_cbor_resp = dma_map_single(dev, cbor_resp, resp_len, DMA_FROM_DEVICE);
 	ret = dma_mapping_error(dev, dma_cbor_resp);
 	if (ret != 0) {
 		dev_err(dev, "DMA Mapping Error, cbor_resp : %d\n", ret);
-		dma_unmap_single(dev, dma_cbor_req, req_len, DMA_BIDIRECTIONAL);
+		dma_unmap_single(dev, dma_cbor_req, req_len, DMA_TO_DEVICE);
 		return ret;
 	}
 
+	msg.status = TMEL_ERROR_GENERIC;
 	msg.request.buf = dma_cbor_req;
 	msg.request.buf_len = req_len;
 	msg.response.buf = dma_cbor_resp;
@@ -373,8 +374,8 @@ int tmelcom_licensing_check(void *cbor_req, u32 req_len, void *cbor_resp,
 	ret = tmelcom_process_request(TMEL_MSG_UID_QWES_LICENSING_CHECK,
 				      &msg, sizeof(msg));
 
-	dma_unmap_single(dev, dma_cbor_req, req_len, DMA_BIDIRECTIONAL);
-	dma_unmap_single(dev, dma_cbor_resp, resp_len, DMA_BIDIRECTIONAL);
+	dma_unmap_single(dev, dma_cbor_req, req_len, DMA_TO_DEVICE);
+	dma_unmap_single(dev, dma_cbor_resp, resp_len, DMA_FROM_DEVICE);
 
 	if (ret || msg.status)
 		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = 0x%x\n",
@@ -468,7 +469,7 @@ int tmelcom_licensing_install(void *license_buf, u32 license_len, void *ident_bu
 		return -EINVAL;
 
 	dma_license_buf = dma_map_single(dev, license_buf, license_len,
-					 DMA_BIDIRECTIONAL);
+					 DMA_TO_DEVICE);
 	ret = dma_mapping_error(dev, dma_license_buf);
 	if (ret != 0) {
 		dev_err(dev, "DMA Mapping Error, license_buf: %d\n", ret);
@@ -476,12 +477,12 @@ int tmelcom_licensing_install(void *license_buf, u32 license_len, void *ident_bu
 	}
 
 	dma_ident_buf = dma_map_single(dev, ident_buf, ident_len,
-				       DMA_BIDIRECTIONAL);
+				       DMA_FROM_DEVICE);
 	ret = dma_mapping_error(dev, dma_ident_buf);
 	if (ret != 0) {
 		dev_err(dev, "DMA Mapping Error, identifier_buf: %d\n", ret);
 		dma_unmap_single(dev, dma_license_buf, license_len,
-				 DMA_BIDIRECTIONAL);
+				 DMA_TO_DEVICE);
 		return ret;
 	}
 
@@ -494,8 +495,8 @@ int tmelcom_licensing_install(void *license_buf, u32 license_len, void *ident_bu
 	ret = tmelcom_process_request(TMEL_MSG_UID_QWES_LICENSING_INSTALL,
 				      &msg, sizeof(msg));
 
-	dma_unmap_single(dev, dma_license_buf, license_len, DMA_BIDIRECTIONAL);
-	dma_unmap_single(dev, dma_ident_buf, ident_len, DMA_BIDIRECTIONAL);
+	dma_unmap_single(dev, dma_license_buf, license_len, DMA_TO_DEVICE);
+	dma_unmap_single(dev, dma_ident_buf, ident_len, DMA_FROM_DEVICE);
 
 	if (ret || msg.status) {
 		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = 0x%x\n",
