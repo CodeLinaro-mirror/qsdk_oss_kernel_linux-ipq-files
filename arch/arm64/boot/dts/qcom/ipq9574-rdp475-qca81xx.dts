@@ -77,7 +77,8 @@
 				reg = <8>;
 			};
 			phy5: ethernet-phy@5 {
-				reg = <30>;
+				compatible ="ethernet-phy-ieee802.3-c45";
+				reg = <12>;
 			};
 		};
 
@@ -91,7 +92,7 @@
 				switch_wan_bmp = <0x40>; /* wan port bitmap */
 				switch_mac_mode = <0x0>; /* mac mode for uniphy instance0*/
 				switch_mac_mode1 = <0xd>; /* mac mode for uniphy instance1*/
-				switch_mac_mode2 = <0xe>; /* mac mode for uniphy instance2*/
+				switch_mac_mode2 = <0xd>; /* mac mode for uniphy instance2*/
 				bm_tick_mode = <0>; /* bm tick mode */
 				tm_tick_mode = <0>; /* tm tick mode */
 
@@ -119,8 +120,8 @@
 					};
 					port@5 {
 						port_id = <6>;
-						phy_address = <30>;
-						media-type = "sfp"; /* fiber mode */
+						phy_address = <12>;
+						ethernet-phy-ieee802.3-c45;
 					};
 				};
 
@@ -226,7 +227,9 @@
 			qcom,id = <6>;
 			reg = <0x3a514000 0x4000>;
 			qcom,mactype = <1>;
+			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
+			qcom,phy-mdio-addr = <12>;
 			phy-mode = "usxgmii";
 		};
 
