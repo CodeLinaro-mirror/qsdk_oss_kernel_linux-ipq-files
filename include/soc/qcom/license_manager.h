@@ -109,6 +109,7 @@ struct sec_feature_value_type {
 struct softsku_info_smem {
 	bool fid_updated;
 	u32 feature_id; /*featureID*/
+	bool HWEnforceStatus;
 	enum sec_feature_status_type feature_status;
 	bool is_time_bound;
 	u64 grace_until;
@@ -120,6 +121,7 @@ struct lm_soc_hw_feat {
 	bool fid_updated;
 	u32 feature_id; /*featureID*/
 	enum sec_feature_status_type feature_status;
+	bool HWEnforceStatus;
 };
 
 struct feature_info {

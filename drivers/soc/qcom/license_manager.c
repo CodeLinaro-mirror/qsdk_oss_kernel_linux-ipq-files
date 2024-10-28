@@ -1327,6 +1327,7 @@ static int populate_soc_hw_features(struct lm_svc_ctx *svc)
 		feat = kzalloc(sizeof(*feat), GFP_KERNEL);
 		feat->feature_id = smem[i].feature_id;
 		feat->feature_status = smem[i].feature_status;
+		feat->HWEnforceStatus = smem[i].HWEnforceStatus;
 		list_add_tail(&feat->node, &svc->soc_hw_feature_list);
 	}
 
@@ -1348,7 +1349,8 @@ static ssize_t show_licensed_features(struct kobject *k,
 
 		if (!list_empty(&lm_svc->soc_hw_feature_list)) {
 			list_for_each_entry(feat, &lm_svc->soc_hw_feature_list, node) {
-				if (feat->feature_status == 0) {
+				if (feat->feature_status == SEC_FEATURE_STATUS_ACTIVE &&
+						feat->HWEnforceStatus) {
 					len += scnprintf(buf + len, max_buf_len - len,
 						"%u\n", feat->feature_id);
 					count++;
