@@ -495,7 +495,7 @@ bool is_compressed(void *header, struct elf_info *info)
 	bool com_flg = false;
 
 	if(!IS_ELF(*((Elf32_Ehdr*) header))) {
-		printk("Invalid Image\n");
+		pr_info("Image is not an elf\n");
 		return com_flg;
 	}
 
@@ -666,7 +666,7 @@ static int elf64_parse_hash_n_meta_data(void *va_addr, char *alg_name, size_t di
 	u8 lds_cnt = 0;
 	size_t seg_size;
 	char *ld_seg_hash_buf;
-	u32 md_size;
+	u32 md_size = 0;
 	u32 hash_buf_size;
 	int ret = 0;
 	void *metadata = NULL;
@@ -693,7 +693,7 @@ static int elf64_parse_hash_n_meta_data(void *va_addr, char *alg_name, size_t di
 		/* NULL segment before the first loadable segment is considered
 		 * for metadata size calculation.
 		 */
-			if (!lds_cnt) {
+			if (!lds_cnt && !md_size) {
 				phdr--;
 				md_size = phdr->p_offset + phdr->p_filesz;
 				phdr++;
@@ -745,7 +745,7 @@ static int elf32_parse_hash_n_meta_data(void *va_addr, char *alg_name, size_t di
 	u8 lds_cnt = 0;
 	size_t seg_size;
 	char *ld_seg_hash_buf;
-	u32 md_size;
+	u32 md_size = 0;
 	u32 hash_buf_size;
 	int ret = 0;
 	void *metadata = NULL;
@@ -772,7 +772,7 @@ static int elf32_parse_hash_n_meta_data(void *va_addr, char *alg_name, size_t di
 		/* NULL segment before the first loadable segment is considered
 		 * for metadata size calculation.
 		 */
-			if (!lds_cnt) {
+			if (!lds_cnt && !md_size) {
 				phdr--;
 				md_size = phdr->p_offset + phdr->p_filesz;
 				phdr++;
@@ -840,6 +840,58 @@ rootfs_auth_flag(struct device *dev, struct device_attribute *sec_attr, char *bu
 	return ret;
 }
 
+static bool elf_has_nand_preamble_magic(void *va_addr)
+{
+	struct nand_codeword *xbl_nand = (struct nand_codeword *)va_addr;
+
+	if (xbl_nand && xbl_nand->magic_num1 == SBL_MAGIC_NUM_1 &&
+	    xbl_nand->magic_num2 == SBL_MAGIC_NUM_2 &&
+	    xbl_nand->magic_num3 == SBL_MAGIC_NUM_3) {
+		return true;
+	}
+	return false;
+}
+
+/*
+ * XBL Nand elf image
+ *   ----------------------
+ *   | (MAGIC)            |
+ *   | PREAMBLE (10K)     |
+ *   |--------------------|
+ *   |SBL_CONTENT(118K)   |
+ *   |--------------------|
+ *   |SBL_MAGIC (12bytes) |
+ *   |--------------------|
+ *   |SBL_CONTENT(118K)   |
+ *   |--------------------|
+ *   |SBL_MAGIC (12bytes) |
+ *   ----------------------
+ * Every 128K segment is followed by MAGIC cookie
+ * Preamble & MAGIC cookie has to be removed before calculating the hash.
+ */
+static void remove_nand_preamble_n_magic_bytes(void **data, long *img_size)
+{
+	unsigned char *xbl_nand_data = (unsigned char *)(*data);
+	size_t remaining_bytes;
+	int offset;
+	int blk_size;
+
+	blk_size = NAND_BLOCK_SIZE - SBL_MAGIC_NUM_OFFSET;
+	for (offset = 0; offset < *img_size; offset += blk_size) {
+	/* calculate the number of bytes left in the image after the current blk */
+		remaining_bytes = *img_size - offset;
+		if (remaining_bytes > NAND_BLOCK_SIZE + SBL_MAGIC_NUM_OFFSET) {
+			memmove(xbl_nand_data + offset + NAND_BLOCK_SIZE,
+				xbl_nand_data + offset + NAND_BLOCK_SIZE +
+				SBL_MAGIC_NUM_OFFSET, remaining_bytes -
+				NAND_BLOCK_SIZE - SBL_MAGIC_NUM_OFFSET);
+			*img_size = *img_size - SBL_MAGIC_NUM_OFFSET;
+		}
+	}
+	*data += NAND_PREAMBLE_SIZE;
+	*img_size -= NAND_PREAMBLE_SIZE;
+}
+
 static ssize_t
 store_sec_auth(struct device *dev,
 			struct device_attribute *sec_attr,
@@ -863,6 +915,7 @@ store_sec_auth(struct device *dev,
 	u64 status = 0;
 	char *alg_name;
 	size_t digest_size;
+	bool xbl_nand = false;
 
 	file_name = kzalloc(count+1, GFP_KERNEL);
 	if (file_name == NULL)
@@ -891,8 +944,13 @@ store_sec_auth(struct device *dev,
 		goto free_mem;
 	}
 	size = data_size;
+	data_size = 0;
 
 	if (data != NULL) {
+		if (elf_has_nand_preamble_magic(data)) {
+			xbl_nand = true;
+			remove_nand_preamble_n_magic_bytes(&data, &size);
+		}
 		if(is_compressed(data, &info)) {
 			out_data = kzalloc(info.memsize, GFP_KERNEL);
 			if(!out_data) {
@@ -948,6 +1006,8 @@ store_sec_auth(struct device *dev,
 	np = of_find_node_by_name(NULL, "qfprom");
 	if (!np) {
 		pr_err("Unable to find qfprom node\n");
+		if (xbl_nand)
+			data -= NAND_PREAMBLE_SIZE;
 		goto hash_buf_alloc_err;
 	}
 
@@ -1014,10 +1074,6 @@ store_sec_auth(struct device *dev,
 		memcpy_toio(file_buf, out_data, size);
 	else
 		memcpy_toio(file_buf, data, size);
-
-	vfree(data);
-	data = NULL;
-	data_size = 0;
 
 	if (hash_file_buf) {
 		/*
@@ -1088,6 +1144,8 @@ free_out_data:
 	if(out_data)
 		kfree(out_data);
 free_data:
+	if (xbl_nand)
+		data -= NAND_PREAMBLE_SIZE;
 	vfree(data);
 free_mem:
 	kfree(sec_auth_str);
