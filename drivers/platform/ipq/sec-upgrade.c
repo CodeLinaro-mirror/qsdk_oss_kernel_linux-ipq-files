@@ -564,32 +564,33 @@ static int elf64_parse_ld_segments(void *va_addr, u32 *md_size, unsigned int pa_
 		return -ENOMEM;
 
 	for (int i = 0; i < ehdr->e_phnum; i++, phdr++) {
-		/* Sum of the offset and filesize of the last NULL segment */
-		if (phdr->p_type == PT_NULL) {
-			*md_size = phdr->p_offset + phdr->p_filesz;
-			continue;
+		/* Sum of the offset and filesize of the NULL segment before
+		 * the first loadable segment */
+		if (phdr->p_type == PT_LOAD) {
+			if (!lds_cnt && *md_size == 0) {
+				--phdr;
+				*md_size = phdr->p_offset + phdr->p_filesz;
+				++phdr;
+			}
+
+			if (!phdr->p_filesz && !phdr->p_memsz)
+				continue;
+			if (!phdr->p_filesz && phdr->p_memsz) {
+				ld_seg_buff[lds_cnt].start_addr = 0;
+				ld_seg_buff[lds_cnt++].end_addr = 0;
+				continue;
+			}
+			/* Populating the start and end address of valid loadable
+			 * segments by adding the offset with the physical elf address
+			 */
+			ld_start_addr = phdr->p_offset + pa_addr;
+			ld_seg_buff[lds_cnt].start_addr = ld_start_addr;
+			ld_seg_buff[lds_cnt++].end_addr = ld_start_addr + phdr->p_filesz;
+
+			pr_debug("lds_cnt: %d, start_addr: %x, end_addr: %x\n", lds_cnt,
+				 ld_seg_buff[lds_cnt - 1].start_addr,
+				 ld_seg_buff[lds_cnt - 1].end_addr);
 		}
-
-		if (phdr->p_type != PT_LOAD)
-			continue;
-
-		if (!phdr->p_filesz && !phdr->p_memsz)
-			continue;
-		if (!phdr->p_filesz && phdr->p_memsz) {
-			ld_seg_buff[lds_cnt].start_addr = 0;
-			ld_seg_buff[lds_cnt++].end_addr = 0;
-			continue;
-		}
-		/* Populating the start and end address of valid loadable
-		 * segments by adding the offset with the physical elf address
-		 */
-		ld_start_addr = phdr->p_offset + pa_addr;
-		ld_seg_buff[lds_cnt].start_addr = ld_start_addr;
-		ld_seg_buff[lds_cnt++].end_addr = ld_start_addr + phdr->p_filesz;
-
-		pr_debug("lds_cnt: %d, start_addr: %x, end_addr: %x\n", lds_cnt,
-			 ld_seg_buff[lds_cnt - 1].start_addr,
-			 ld_seg_buff[lds_cnt - 1].end_addr);
 	}
 	return lds_cnt;
 }
@@ -612,32 +613,33 @@ static int elf32_parse_ld_segments(void *va_addr, u32 *md_size, unsigned int pa_
 		return -ENOMEM;
 
 	for (int i = 0; i < ehdr->e_phnum; i++, phdr++) {
-		/* Sum of the offset and filesize of the last NULL segment */
-		if (phdr->p_type == PT_NULL) {
-			*md_size = phdr->p_offset + phdr->p_filesz;
-			continue;
+		/* Sum of the offset and filesize of the NULL segment before
+		 * the first loadable segment */
+		if (phdr->p_type == PT_LOAD) {
+			if (!lds_cnt && *md_size == 0) {
+				--phdr;
+				*md_size = phdr->p_offset + phdr->p_filesz;
+				++phdr;
+			}
+
+			if (!phdr->p_filesz && !phdr->p_memsz)
+				continue;
+			if (!phdr->p_filesz && phdr->p_memsz) {
+				ld_seg_buff[lds_cnt].start_addr = 0;
+				ld_seg_buff[lds_cnt++].end_addr = 0;
+				continue;
+			}
+			/* Populating the start and end address of valid loadable
+			 * segments by adding the offset with the physical elf address
+			 */
+			ld_start_addr = phdr->p_offset + pa_addr;
+			ld_seg_buff[lds_cnt].start_addr = ld_start_addr;
+			ld_seg_buff[lds_cnt++].end_addr = ld_start_addr + phdr->p_filesz;
+
+			pr_debug("lds_cnt: %d, start_addr: %x, end_addr: %x\n", lds_cnt,
+				 ld_seg_buff[lds_cnt - 1].start_addr,
+				 ld_seg_buff[lds_cnt - 1].end_addr);
 		}
-
-		if (phdr->p_type != PT_LOAD)
-			continue;
-
-		if (!phdr->p_filesz && !phdr->p_memsz)
-			continue;
-		if (!phdr->p_filesz && phdr->p_memsz) {
-			ld_seg_buff[lds_cnt].start_addr = 0;
-			ld_seg_buff[lds_cnt++].end_addr = 0;
-			continue;
-		}
-		/* Populating the start and end address of valid loadable
-		 * segments by adding the offset with the physical elf address
-		 */
-		ld_start_addr = phdr->p_offset + pa_addr;
-		ld_seg_buff[lds_cnt].start_addr = ld_start_addr;
-		ld_seg_buff[lds_cnt++].end_addr = ld_start_addr + phdr->p_filesz;
-
-		pr_debug("lds_cnt: %d, start_addr: %x, end_addr: %x\n", lds_cnt,
-			 ld_seg_buff[lds_cnt - 1].start_addr,
-			 ld_seg_buff[lds_cnt - 1].end_addr);
 	}
 	return lds_cnt;
 }
