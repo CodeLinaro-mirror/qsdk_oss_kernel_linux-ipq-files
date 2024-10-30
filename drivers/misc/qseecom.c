@@ -152,6 +152,7 @@ static ssize_t tmecomm_show_aes_v2_derive_key(struct device *dev,
 	dma_addr_t dma_kdf_spec;
 	size_t req_size = 0;
 	uint32_t kdf_len;
+	char message[32] = {0};
 
 	dev = qdev;
 
@@ -195,10 +196,15 @@ static ssize_t tmecomm_show_aes_v2_derive_key(struct device *dev,
 	kdf_len = sizeof(struct tme_kdf_spec);
 
 	ret = tmelcom_aes_v2_derive_key(key_id, &dma_kdf_spec, kdf_len, tmel_key_handle);
-	if (ret)
+	if (ret) {
+		snprintf(message, 32, "AES Key derive failed\n");
 		pr_info("Error: Failed to derive key\n");
-	else
+	} else {
+		snprintf(message, 32, "%lu\n", (unsigned long)*tmel_key_handle);
 		pr_info("aes key handle: %lu\n", (unsigned long)*tmel_key_handle);
+	}
+
+	memcpy(buf, message, strlen(message) + 1);
 
 	dma_free_coherent(dev, dma_buf_size, kdf_spec, dma_kdf_spec);
 	return ret;
@@ -591,7 +597,7 @@ static ssize_t show_aes_derive_key(struct device *dev,
 	size_t req_size = 0;
 	size_t dma_buf_size = 0;
 	dma_addr_t dma_req_addr = 0;
-	const char *message = NULL;
+	char message[32] = {0};
 	int message_len = 0;
 
 	if (!source_data || !context_data_len || !bindings_data) {
@@ -629,13 +635,12 @@ static ssize_t show_aes_derive_key(struct device *dev,
 	if (rc == KEY_HANDLE_OUT_OF_SLOT)
 		pr_info("Key handle out of slot. Clear a key and try again!\n");
 	if (!rc) {
-		message = "AES Key derive successful\n\0";
+		snprintf(message, 32, "%lu\n", (unsigned long)*key_handle);
+		pr_info("key_handle is: %lu\n", (unsigned long)*key_handle);
 	} else {
 		pr_err("SCM call failed..return value = %d\n", rc);
-		message = "AES Key derive failed\n\0";
+		pr_err("AES Key derive failed\n");
 	}
-
-	pr_info("key_handle is: %lu\n", (unsigned long)*key_handle);
 
 	message_len = strlen(message) + 1;
 	memcpy(buf, message, message_len);
@@ -656,7 +661,7 @@ static ssize_t show_aes_derive_128_byte_key(struct device *dev,
 	size_t req_size = 0;
 	size_t dma_buf_size = 0;
 	dma_addr_t dma_req_addr = 0;
-	const char *message = NULL;
+	char message[32] = {0};
 	int message_len = 0;
 
 	if (!source_data || !context_data_len || !bindings_data) {
@@ -694,13 +699,12 @@ static ssize_t show_aes_derive_128_byte_key(struct device *dev,
 	if (rc == KEY_HANDLE_OUT_OF_SLOT)
 		pr_info("Key handle out of slot. Clear a key and try again!\n");
 	if (!rc) {
-		message = "AES Key derive successful\n\0";
+		snprintf(message, 32, "%lu\n", (unsigned long)*key_handle);
+		pr_info("key_handle is: %lu\n", (unsigned long)*key_handle);
 	} else {
 		pr_err("SCM call failed..return value = %d\n", rc);
-		message = "AES Key derive failed\n\0";
+		pr_err("AES Key derive failed\n");
 	}
-
-	pr_info("key_handle is: %lu\n", (unsigned long)*key_handle);
 
 	message_len = strlen(message) + 1;
 	memcpy(buf, message, message_len);
@@ -3226,7 +3230,7 @@ static ssize_t show_aes_derive_key_qtiapp(struct device *dev,
 	size_t req_size = 0;
 	size_t dma_buf_size = 0;
 	dma_addr_t dma_req_addr = 0;
-	const char *message = NULL;
+	char message[32] = {0};
 	int message_len = 0;
 
 	if (!aes_source_data || !aes_context_data_len || !aes_bindings_data) {
@@ -3258,13 +3262,12 @@ static ssize_t show_aes_derive_key_qtiapp(struct device *dev,
 	rc = qtiapp_test(dev, (uint8_t *)dma_req_addr, NULL, req_size,
 						QTI_APP_KEY_DERIVE_TEST);
 	if (!rc) {
-		message = "AES Key derive successful\n\0";
+		snprintf(message, 32, "%lu\n", (unsigned long)*aes_key_handle);
+		pr_info("key_handle is: %lu\n", (unsigned long)*aes_key_handle);
 	} else {
 		pr_err("SCM call failed..return value = %d\n", rc);
-		message = "AES Key derive failed\n\0";
+		pr_err("AES Key derive failed\n");
 	}
-
-	pr_info("key_handle is: %lu\n", (unsigned long)*aes_key_handle);
 
 	message_len = strlen(message) + 1;
 	memcpy(buf, message, message_len);
