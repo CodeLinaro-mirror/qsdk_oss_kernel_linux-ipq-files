@@ -1518,6 +1518,16 @@
 				"nss-nssnoc-nsscc-clk", "nss-nssnoc-pcnoc-1-clk", "nss-nssnoc-qosgen-ref-clk",
 				"nss-nssnoc-snoc-1-clk", "nss-nssnoc-snoc-clk", "nss-nssnoc-timeout-ref-clk",
 				"nss-nssnoc-xo-dcd-clk";
+
+			nss_noc {
+				prop-name = "nss_noc";
+				secure-write;
+				reg-base = <0x01D80000>;
+				reg-offset = <0x00005138 0x44410>,	/* CE Type LUT lower bits */
+						<0x00005108 0x100>,	/* CE Main control lower bits */
+						<0x00005238 0x44410>,	/* PPE Type LUT lower bits */
+						<0x00005208 0x100>;	/* PPE Main control low */
+			};
                 };
 
 		nss-ppe {
