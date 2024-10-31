@@ -8,6 +8,9 @@
 #define TMEL_MAX_FUSE_ADDR_SIZE 8
 #define SECBOOT_SW_ID_ROOTPD 0xD
 
+#define TME_KDF_SW_CONTEXT_BYTES_MAX 128
+#define TME_KDF_SALT_LABEL_BYTES_MAX 64
+
 struct tmel_msg_param_type_buf_in {
 	u32 buf;
 	u32 buf_len;
@@ -201,6 +204,170 @@ struct tmel_km_ecdh_ipkey_msg {
 	struct tmel_km_ecdh_ipkey_rsp rsp;
 } __packed;
 
+typedef enum tme_status_e {
+	TME_STATUS_SUCCESS,		/* Success */
+	TME_STATUS_FAILURE,		/* Generic Failure */
+	TME_STATUS_INVALID_INPUT,	/* Invalid Input */
+	TME_STATUS_MALFORMED_TOKEN,	/* Token is malformed */
+	TME_STATUS_NOT_IMPLEMENTED,	/* Not Supported/Implemented */
+	TME_STATUS_INVALID_MEMORY,	/* Invalid Memory Location */
+	TME_STATUS_SMALL_OUTPUT_BUFFER,	/* Length of output buffer is smaller than expected */
+	TME_STATUS_NOT_READY,		/* FW is not ready or set. */
+	TME_STATUS_ME_DATA_UNAVAILABLE,	/* Expected ME Data is not available */
+	TME_STATUS_UNKNOWN = 0x7FFFFFFF	/* Unknown */
+} tme_status;
+
+struct tmel_cbuffer {
+	u32 buf;
+	u32 buf_len;
+} __packed;
+
+struct tmel_cbuffer_resp {
+	u32 buf;
+	u32 length;
+	u32 length_used;
+} __packed;
+
+struct tmel_plain_text_key {
+	u32 buf;
+	u32 buf_len;
+} __packed;
+
+struct tme_sequencer_status_resp {
+	u32 tme_error_status;
+	u32 seq_error_status;
+	u32 seqkp_error_status0;
+	u32 seqkp_error_status1;
+	u32 seq_rsp_status;
+} __packed;
+
+struct tme_key_policy {
+	u32 low;
+	u32 high;
+} __packed;
+
+struct tme_kdf_spec {
+	u32 kdf_algo;
+	u32 input_key;
+	u32 mix_key;
+	u32 l2_key;
+	struct tme_key_policy policy;
+	u8 sw_context[TME_KDF_SW_CONTEXT_BYTES_MAX];
+	u32 sw_context_len;
+	u32 security_context;
+	u8 salt_label[TME_KDF_SALT_LABEL_BYTES_MAX];
+	u32 salt_label_len;
+	u32 prf_digest_algo;
+} __packed;
+
+struct tmel_aes_v2_derive_key_req {
+	u32 key_id;
+	struct tmel_cbuffer kdf_info;
+	u32 cred_slot;
+} __packed;
+
+struct tmel_aes_v2_derive_key_resp {
+	u32 key_id;
+	tme_status status;
+	struct tme_sequencer_status_resp seq_status;
+} __packed;
+
+struct tmel_aes_v2_derive_key_msg {
+	struct tmel_aes_v2_derive_key_req req;
+	struct tmel_aes_v2_derive_key_resp resp;
+} __packed;
+
+struct tmel_aes_v2_clear_key_req {
+	u32 key_id;
+} __packed;
+
+struct tmel_aes_v2_clear_key_resp {
+	tme_status status;
+	struct tme_sequencer_status_resp seq_status;
+} __packed;
+
+struct tmel_aes_v2_clear_key_msg {
+	struct tmel_aes_v2_clear_key_req req;
+	struct tmel_aes_v2_clear_key_resp resp;
+} __packed;
+
+struct tmel_aes_v2_encrypt_req {
+	u32 algo;
+	u32 key_id;
+	struct tmel_cbuffer in_aad;
+	struct tmel_cbuffer in_plain_txt;
+} __packed;
+
+struct tmel_aes_v2_encrypt_resp {
+	struct tmel_cbuffer_resp out_aad;
+	struct tmel_cbuffer_resp out_iv;
+	struct tmel_cbuffer_resp out_tag;
+	struct tmel_cbuffer_resp out_cipher_txt;
+	tme_status status;
+	struct tme_sequencer_status_resp seq_status;
+} __packed;
+
+struct tmel_aes_v2_encrypt_msg {
+	struct tmel_aes_v2_encrypt_req req;
+	struct tmel_aes_v2_encrypt_resp resp;
+} __packed;
+
+struct tmel_aes_v2_decrypt_req {
+	u32 algo;
+	u32 key_id;
+	struct tmel_cbuffer in_aad;
+	struct tmel_cbuffer in_iv;
+	struct tmel_cbuffer in_tag;
+	struct tmel_cbuffer in_cipher_txt;
+} __packed;
+
+struct tmel_aes_v2_decrypt_resp {
+	struct tmel_cbuffer_resp out_aad;
+	struct tmel_cbuffer_resp out_plain_txt;
+	tme_status status;
+	struct tme_sequencer_status_resp seq_status;
+} __packed;
+
+struct tmel_aes_v2_decrypt_msg {
+	struct tmel_aes_v2_decrypt_req req;
+	struct tmel_aes_v2_decrypt_resp resp;
+} __packed;
+
+struct tmel_aes_v2_generate_key_req {
+	u32 key_id;
+	struct tme_key_policy policy;
+	u32 cred_slot;
+} __packed;
+
+struct tmel_aes_v2_generate_key_resp {
+	u32 key_id;
+	tme_status status;
+	struct tme_sequencer_status_resp seq_status;
+} __packed;
+
+struct tmel_aes_v2_generate_key_msg {
+	struct tmel_aes_v2_generate_key_req req;
+	struct tmel_aes_v2_generate_key_resp resp;
+} __packed;
+
+struct tmel_aes_v2_import_key_req {
+	u32 key_id;
+	struct tme_key_policy key_policy;
+	struct tmel_plain_text_key key_material;
+	u32 cred_slot;
+} __packed;
+
+struct tmel_aes_v2_import_key_resp {
+	u32 key_id;
+	tme_status status;
+	struct tme_sequencer_status_resp seq_status;
+} __packed;
+
+struct tmel_aes_v2_import_key_msg {
+	struct tmel_aes_v2_import_key_req req;
+	struct tmel_aes_v2_import_key_resp resp;
+} __packed;
+
 #ifdef CONFIG_QCOM_TMELCOM
 int tmelcom_probed(void);
 int tmelcom_init_attestation(u32 *key_buf, u32 key_buf_len, u32 *key_buf_size);
@@ -228,6 +395,14 @@ int tmelcom_secure_io_write(struct tmel_secure_io *buf, size_t size);
 int tmelcomm_secboot_get_arb_version(u32 type, u32 *version);
 int tmelcomm_secboot_update_arb_version(u32 status);
 int tmelcomm_get_ecc_public_key(u32 type, void *buf, u32 size, u32 *rsp_len);
+
+int tmelcom_aes_v2_derive_key(u32 key_id, dma_addr_t *dma_kdf_spec, u32 kdf_len,
+			      u8 *key_handle);
+int tmelcom_aes_v2_clear_key(u32 handle);
+int tmel_aes_v2_encrypt(struct tmel_aes_v2_encrypt_msg *msg, u32 size);
+int tmel_aes_v2_decrypt(struct tmel_aes_v2_decrypt_msg *msg, u32 size);
+int tmel_aes_v2_generate_key(struct tmel_aes_v2_generate_key_msg *msg, u32 size);
+int tmel_aes_v2_import_key(struct tmel_aes_v2_import_key_msg *msg, u32 size);
 
 #else
 static inline int tmelcom_probed(void)
@@ -340,5 +515,42 @@ static inline int tmelcomm_get_public_key(u32 type, void *buf, u32 *rsp_len)
 {
 	return -EOPNOTSUPP;
 }
+
+static inline int tmelcom_aes_v2_derive_key(u32 key_id, dma_addr_t *dma_kdf_spec,
+					    u32 kdf_len,
+					    u8 *key_handle)
+{
+	return -EOPNOTSUPP;
+}
+
+static inline int tmelcom_aes_v2_clear_key(u32 handle)
+{
+	return -EOPNOTSUPP;
+}
+
+static inline int tmel_aes_v2_encrypt(struct tmel_aes_v2_encrypt_msg *msg,
+				      u32 size)
+{
+	return -EOPNOTSUPP;
+}
+
+static inline int tmel_aes_v2_decrypt(struct tmel_aes_v2_decrypt_msg *msg,
+				      u32 size)
+{
+	return -EOPNOTSUPP;
+}
+
+static inline int tmel_aes_v2_generate_key(struct tmel_aes_v2_generate_key_msg *msg,
+					   u32 size)
+{
+	return -EOPNOTSUPP;
+}
+
+static inline int tmel_aes_v2_import_key(struct tmel_aes_v2_import_key_msg *msg,
+					 u32 size)
+{
+	return -EOPNOTSUPP;
+}
+
 #endif /* CONFIG_QCOM_TMELCOM */
 #endif /* _TMELCOM_IPC_H_ */
