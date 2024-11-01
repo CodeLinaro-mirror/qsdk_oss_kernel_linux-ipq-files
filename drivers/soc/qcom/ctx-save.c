@@ -1329,7 +1329,7 @@ int minidump_dump_wlan_modules(void){
 						mod->name);
 #endif
 					/* Log .bss VA of module in buffer */
-					ret_val = minidump_fill_segments_internal(mod->mem[MOD_DATA].base,
+					ret_val = minidump_fill_segments_internal((uint64_t)(uintptr_t)mod->mem[MOD_DATA].base,
 					mod->mem[MOD_DATA].size, QCA_WDT_LOG_DUMP_TYPE_WLAN_MOD,
 						mod->name, 0);
 					if (ret_val) {
