@@ -70,6 +70,17 @@
 				reg = <12>;
 				compatible ="ethernet-phy-ieee802.3-c45";
 			};
+
+			switch0@10 {
+				ports {
+					port@0 {
+						reg = <0>;
+						label = "cpu";
+						ethernet = <&gmac2>;
+						dsa-tag-protocol = "qca_4b";
+					};
+				};
+			};
 		};
 
 		ess-instance {
@@ -126,7 +137,7 @@
 			phy-mode = "usxgmii";
 		};
 
-		dp3 {
+		gmac2:dp3 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
 			qcom,id = <3>;
