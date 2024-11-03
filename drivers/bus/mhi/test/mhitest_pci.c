@@ -872,7 +872,7 @@ int mhitest_pci_register_mhi(struct mhitest_platform *mplat)
 	struct pci_dev *pci_dev = mplat->pci_dev;
 	struct mhi_controller *mhi_ctrl;
 	struct device_node *np;
-	int ret;
+	int ret, i = 0;
 	struct resource memory;
 
 	mhi_ctrl = mhi_alloc_controller();
@@ -907,19 +907,21 @@ int mhitest_pci_register_mhi(struct mhitest_platform *mplat)
 		goto out;
 	}
 
-	if (of_address_to_resource(np, 0, &memory)) {
+	while (of_address_to_resource(np, i, &memory) == 0) {
+		if (!i)
+			mhi_ctrl->iova_start = memory.start;
+		mhi_ctrl->iova_stop = memory.end;
+		i++;
+	}
+
+	if (!mhi_ctrl->iova_start || !mhi_ctrl->iova_stop) {
 		MHITEST_ERR("Unable to get resource: memory");
 		ret = -ENOMEM;
 		goto out;
 	}
 
-	mhi_ctrl->iova_start = (dma_addr_t)memory.start;
-	mhi_ctrl->iova_stop = (dma_addr_t)(memory.start +
-					   (resource_size(&memory) - 1));
-
-	MHITEST_VERB("iova_start:%x iova_stop:%x\n",
-			(unsigned int)mhi_ctrl->iova_start,
-			(unsigned int)mhi_ctrl->iova_stop);
+	MHITEST_VERB("iova_start:%llx iova_stop:%llx\n", (u64)mhi_ctrl->iova_start,
+		     (u64)mhi_ctrl->iova_stop);
 
 	mhi_ctrl->status_cb = mhitest_mhi_notify_status;
 	mhi_ctrl->runtime_get = mhitest_mhi_pm_runtime_get;
