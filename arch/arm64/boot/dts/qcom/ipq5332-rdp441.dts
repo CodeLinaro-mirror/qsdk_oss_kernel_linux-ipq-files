@@ -516,7 +516,7 @@
 	};
 };
 
-#if !defined(__IPQ_MEM_PROFILE_256_MB__)
+#if !defined(__IPQ_MEM_PROFILE_256_MB__) && !defined(__IPQ_MEM_PROFILE_512_MB__)
 &pcie1_phy_x2 {
 	status = "okay";
 };
@@ -609,7 +609,7 @@
 	status = "okay";
 };
 
-#if !defined(__IPQ_MEM_PROFILE_256_MB__)
+#if !defined(__IPQ_MEM_PROFILE_256_MB__) && !defined(__IPQ_MEM_PROFILE_512_MB__)
 &qcn9224_pcie1 {
 	status = "ok";
 };
