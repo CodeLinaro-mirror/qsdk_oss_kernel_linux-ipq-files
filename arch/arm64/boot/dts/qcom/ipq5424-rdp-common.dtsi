@@ -132,8 +132,13 @@
 
 		ess-instance {
 			num_devices = <0x2>;
-
+#ifdef __CONFIG_IO_COHERENCY__
+			dma-coherent;
+#endif
 			ess-switch@3a000000 {
+#ifdef __CONFIG_IO_COHERENCY__
+				dma-coherent;
+#endif
 				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
 				switch_lan_bmp = <0x8>; /* lan port bitmap */
 				switch_mac_mode = <0xff>; /* mac mode for uniphy instance0*/
@@ -155,6 +160,9 @@
 			};
 
 			switch1: ess-switch1@1 {
+#ifdef __CONFIG_IO_COHERENCY__
+				dma-coherent;
+#endif
 				compatible = "qcom,ess-switch-qca8386";
 				device_id = <1>;
 				switch_access_mode = "mdio";

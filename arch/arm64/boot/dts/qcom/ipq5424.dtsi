@@ -1091,8 +1091,14 @@
 
 		ess-instance {
 			compatible = "qcom,ess-instance";
+#ifdef __CONFIG_IO_COHERENCY__
+			dma-coherent;
+#endif
 			ess-switch@3a000000 {
 				compatible = "qcom,ess-switch-ipq54xx";
+#ifdef __CONFIG_IO_COHERENCY__
+				dma-coherent;
+#endif
 				switch_access_mode = "local bus";
 				reg = <0x3a000000 0x1000000>;
 				clocks = <&gcc GCC_CMN_12GPLL_AHB_CLK>,
@@ -1497,6 +1503,9 @@
 
 		edma@3ab00000 {
 			compatible = "qcom,edma";
+#ifdef __CONFIG_IO_COHERENCY__
+			dma-coherent;
+#endif
 			reg = <0x3ab00000 0xef800>;
 			reg-names = "edma-reg-base";
 			reset-names = "edma_rst";
@@ -1538,10 +1547,16 @@
 
 		nss-ppe {
 			compatible = "qcom,nss-ppe";
+#ifdef __CONFIG_IO_COHERENCY__
+			dma-coherent;
+#endif
 		};
 
 		eip: eip196@39800000 {
 			compatible = "qcom,eip";
+#ifdef __CONFIG_IO_COHERENCY__
+			dma-coherent;
+#endif
 			reg-names = "eip_pbase";
 			reg = <0x39800000 0x7ffff>;
 			reg_offset = <0x80000>;
