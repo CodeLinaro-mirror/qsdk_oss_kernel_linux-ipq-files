@@ -2392,6 +2392,7 @@
 			qcom,bootargs_smem = <507>;
 			qcom,bootargs_version = <2>;
 			qcom,userpd-bootargs;
+			upd-firmware-names = "IPQ5332/q6_fw1.mdt";
 
 			glink-edge {
 				interrupts = <GIC_SPI 417 IRQ_TYPE_EDGE_RISING>;
