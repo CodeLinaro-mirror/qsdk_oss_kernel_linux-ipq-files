@@ -15,6 +15,7 @@
 #include <linux/err.h>
 #include <linux/firmware/qcom/qcom_scm.h>
 #include <linux/dma-mapping.h>
+#include <linux/tmelcom_ipc.h>
 
 #define SEC_MAX_KEY_SIZE	64
 /* Cipher algorithm */
@@ -32,6 +33,16 @@
 #define MODE_ECB	0
 #define MODE_CTR	2
 
+#define TME_KID_ALLOC			0xAAAAAAAA
+#define TME_KAL_KDF_NIST                0x80000
+#define TME_KAL_KDF_HKDF                0x84000
+#define TME_KID_CHIP_RAND_BASE          0x9
+#define TME_KID_OEM_PRODUCT_SEED        0xC
+#define TME_KID_L2_SECURESTRGSVC        0x7
+#define TME_KAL_AES256_ECB              0xC
+#define TME_KSC_SWContext               0x00000020
+#define TME_KAL_SHA512_HMAC             0x58000
+
 struct sec_config_key_sec {
 	uint32_t keylen;
 }__attribute__((packed));
@@ -45,6 +56,13 @@ struct secure_nand_aes_cmd {
 	u64 reqlen;
 	u64 *rsp_buf;
 	u64 rsplen;
+	/* For IPC use cases */
+	bool use_tmelcom;
+	u8 *tag;
+	u8 *ivd;
+	u8 *key_handle;
+	u32 tag_len;
+	u32 ivd_len;
 };
 
 struct sec_cipher_ctx {
@@ -118,6 +136,56 @@ static LIST_HEAD(skcipher_algs);
 
 static DEFINE_MUTEX(seccrypt_spinlock);
 
+static int seccrypt_derive_key(struct sec_alg_template *tmpl)
+{
+	struct sec_crypt_device *sec = tmpl->sec;
+	struct device *dev = sec->dev;
+	struct tme_kdf_spec *kdf_spec;
+	dma_addr_t dma_kdf_spec;
+	u32 key_id = TME_KID_ALLOC;
+	int flag = tmpl->alg_flags;
+	int ret;
+
+	kdf_spec = (struct tme_kdf_spec *)dma_alloc_coherent(dev,
+							     sizeof(struct tme_kdf_spec),
+							     &dma_kdf_spec,
+							     GFP_KERNEL);
+	if (!kdf_spec)
+		return -ENOMEM;
+
+	kdf_spec->kdf_algo = TME_KAL_KDF_NIST;
+	kdf_spec->input_key = TME_KID_CHIP_RAND_BASE;
+	kdf_spec->mix_key = 0x0;
+	kdf_spec->l2_key = TME_KID_L2_SECURESTRGSVC;
+	if (IS_ECB(flag)) {
+		kdf_spec->policy.low = 0x4c204c20;
+		kdf_spec->policy.high = 0x84040;
+	} else {
+		dev_info(dev, "Invalid AES mode\n");
+		ret = -EINVAL;
+		goto derive_exit;
+	}
+	memset(kdf_spec->sw_context, 0, 128);
+	kdf_spec->sw_context_len = 128;
+	kdf_spec->security_context = TME_KSC_SWContext;
+	memset(kdf_spec->salt_label, 0, 64);
+	kdf_spec->salt_label_len = 64;
+	kdf_spec->prf_digest_algo = TME_KAL_SHA512_HMAC;
+
+	ret = tmelcom_aes_v2_derive_key(key_id, &dma_kdf_spec,
+					sizeof(struct tme_kdf_spec),
+					sec->cptr->key_handle);
+	if (ret)
+		dev_err(dev, "Error: Failed to derive key\n");
+	else
+		dev_info(dev, "Derive key success\n");
+
+derive_exit:
+	dma_free_coherent(dev, sizeof(struct tme_kdf_spec), kdf_spec,
+			  dma_kdf_spec);
+	return ret;
+}
+
 static int seccrypt_setkey_sec(unsigned int keylen)
 {
 	struct sec_config_key_sec key;
@@ -175,10 +243,12 @@ static int sec_skcipher_setkey(struct crypto_skcipher *tfm, const u8 *key,
 		return -EINVAL;
 
 	if (sec->fallback_tz) {
-		ret = seccrypt_setkey_sec(keylen);
+		if (sec->cptr->use_tmelcom)
+			ret = seccrypt_derive_key(tmpl);
+		else
+			ret = seccrypt_setkey_sec(keylen);
 		if (ret) {
-			pr_info("Error in setting Key by tz\n");
-			return ret;
+			pr_err("Error in setting Key by tz/tmel\n");
 		}
 	}
 
@@ -191,16 +261,152 @@ static int sec_skcipher_setkey(struct crypto_skcipher *tfm, const u8 *key,
 	return ret;
 }
 
+static int seccrypt_ipc_encrypt(struct sec_crypt_device *sec)
+{
+	struct secure_nand_aes_cmd *cptr = sec->cptr;
+	struct tmel_aes_v2_encrypt_msg *msg;
+	struct device *dev = sec->dev;
+	dma_addr_t phy_tag;
+	int err;
+
+	msg = kzalloc(sizeof(struct tmel_aes_v2_encrypt_msg), GFP_KERNEL);
+	if (!msg) {
+		dev_err(dev, "Cannot allocate memory for IPC msg\n");
+		return -ENOMEM;
+	}
+
+	if (cptr->tag) {
+		phy_tag = dma_map_single(dev, cptr->tag, 256, DMA_FROM_DEVICE);
+		if (dma_mapping_error(dev, phy_tag)) {
+			dev_err(dev, "failed to DMA MAP phy_tag buffer\n");
+			kfree(msg);
+			return -EIO;
+		}
+	}
+
+	if (cptr->mode == MODE_ECB) {
+		msg->req.algo = TME_KAL_AES256_ECB;
+	} else {
+		pr_info("Invalid AES mode\n");
+		err = -EINVAL;
+		goto ipc_enc_exit;
+	}
+
+	msg->req.key_id = *(cptr->key_handle);
+	msg->req.in_aad.buf = 0;
+	msg->req.in_aad.buf_len = 0;
+	msg->req.in_plain_txt.buf = (u64) cptr->req_buf;
+	msg->req.in_plain_txt.buf_len = cptr->reqlen;
+	msg->resp.out_aad.buf = 0;
+	msg->resp.out_aad.length = 0;
+	msg->resp.out_aad.length_used = 0;
+	msg->resp.out_iv.buf = (u64) cptr->iv_buf;
+	msg->resp.out_iv.length = AES_BLOCK_SIZE;
+	msg->resp.out_iv.length_used = 0;
+	msg->resp.out_tag.buf = (u64) phy_tag;
+	msg->resp.out_tag.length = 256;
+	msg->resp.out_tag.length_used = 0;
+	msg->resp.out_cipher_txt.buf = (u64) cptr->rsp_buf;
+	msg->resp.out_cipher_txt.length = cptr->rsplen;
+	msg->resp.out_cipher_txt.length_used = 0;
+
+	err = tmel_aes_v2_encrypt(msg, sizeof(*msg));
+	if (err) {
+		dev_err(dev, "AES encrypt failed\n");
+		goto ipc_enc_exit;
+	}
+
+	cptr->ivd_len = msg->resp.out_iv.length_used;
+	cptr->tag_len = msg->resp.out_tag.length_used;
+
+ipc_enc_exit:
+	dma_unmap_single(dev, phy_tag, 256, DMA_FROM_DEVICE);
+	kfree(msg);
+	return err;
+}
+
+static int seccrypt_ipc_decrypt(struct sec_crypt_device *sec)
+{
+	struct secure_nand_aes_cmd *cptr = sec->cptr;
+	struct tmel_aes_v2_decrypt_msg *msg;
+	struct device *dev = sec->dev;
+	dma_addr_t phy_tag;
+	int err;
+
+	msg = kzalloc(sizeof(struct tmel_aes_v2_decrypt_msg), GFP_KERNEL);
+	if (!msg) {
+		dev_err(dev, "Cannot allocate memory for IPC msg\n");
+		return -ENOMEM;
+	}
+
+	if (cptr->tag) {
+		phy_tag = dma_map_single(dev, cptr->tag, 256, DMA_TO_DEVICE);
+		if (dma_mapping_error(dev, phy_tag)) {
+			dev_err(dev, "failed to DMA MAP phy_tag buffer\n");
+			kfree(msg);
+			return -EIO;
+		}
+	}
+
+	if (cptr->mode == MODE_ECB) {
+		msg->req.algo = TME_KAL_AES256_ECB;
+	} else {
+		pr_info("Invalid AES mode\n");
+		err = -EINVAL;
+		goto ipc_dec_exit;
+	}
+
+	msg->req.key_id = *(cptr->key_handle);
+	msg->req.in_aad.buf = 0;
+	msg->req.in_aad.buf_len = 0;
+	msg->req.in_iv.buf = (u64) cptr->iv_buf;
+	msg->req.in_iv.buf_len = cptr->ivd_len;
+	msg->req.in_tag.buf = (u64) phy_tag;
+	msg->req.in_tag.buf_len = cptr->tag_len;
+	msg->req.in_cipher_txt.buf = (u64) cptr->req_buf;
+	msg->req.in_cipher_txt.buf_len = cptr->reqlen;
+	msg->resp.out_aad.buf = 0;
+	msg->resp.out_aad.length = 0;
+	msg->resp.out_aad.length_used = 0;
+	msg->resp.out_plain_txt.buf = (u64) cptr->rsp_buf;
+	msg->resp.out_plain_txt.length = cptr->rsplen;
+	msg->resp.out_plain_txt.length_used = 0;
+
+	err = tmel_aes_v2_decrypt(msg, sizeof(*msg));
+	if (err)
+		dev_err(dev, "AES decrypt failed\n");
+
+ipc_dec_exit:
+	dma_unmap_single(dev, phy_tag, 256, DMA_TO_DEVICE);
+	kfree(msg);
+	return err;
+}
+
+static int seccrypt_ipc(struct sec_alg_template *tmpl)
+{
+	struct sec_crypt_device *sec = tmpl->sec;
+	struct secure_nand_aes_cmd *cptr = sec->cptr;
+	int err;
+
+	if (cptr->direction)
+		err = seccrypt_ipc_encrypt(sec);
+	else
+		err = seccrypt_ipc_decrypt(sec);
+
+	return err;
+}
+
 static int seccrypt_tz(struct skcipher_request *req,
-			struct sec_alg_template *tmpl, int encrypt)
+		struct sec_alg_template *tmpl, int encrypt)
 {
 	struct sec_crypt_device *sec = tmpl->sec;
 	struct secure_nand_aes_cmd *cptr = sec->cptr;
 	struct device *dev;
 	struct skcipher_walk walk;
-	int err = 0, ivsize = 0, reqlen = 0, flag = 0;
+	int err = 0, ivsize = 0, flag = 0, reqlen = 0;
 	u8 *src, *dst, *iv_buf;
 	dma_addr_t phy_src = 0, phy_dst = 0, phy_iv = 0;
+
 	dev = sec->dev;
 	flag = tmpl->alg_flags;
 
@@ -217,7 +423,8 @@ static int seccrypt_tz(struct skcipher_request *req,
 		phy_src = dma_map_single(dev, src, reqlen, DMA_TO_DEVICE);
 		if (dma_mapping_error(dev, phy_src)) {
 			dev_err(dev, "failed to DMA MAP phy_src buffer\n");
-			return -EIO;
+			err = -EIO;
+			goto exit;
 		}
 	}
 
@@ -225,19 +432,36 @@ static int seccrypt_tz(struct skcipher_request *req,
 		phy_dst = dma_map_single(dev, dst, reqlen, DMA_FROM_DEVICE);
 		if (dma_mapping_error(dev, phy_dst)) {
 			dev_err(dev, "failed to DMA MAP phy_dst buffer\n");
-			return -EIO;
+			err = -EIO;
+			goto clear_src;
 		}
 	}
 
-	if (iv_buf) {
-		phy_iv = dma_map_single(dev, iv_buf, AES_BLOCK_SIZE, DMA_TO_DEVICE);
-		if (dma_mapping_error(dev, phy_iv)) {
-			dev_err(dev, "failed to DMA MAP phy_iv buffer\n");
-			return -EIO;
+	if (cptr->use_tmelcom) {
+		if (cptr->ivd) {
+			memset(cptr->ivd, 0, AES_BLOCK_SIZE);
+			if (encrypt)
+				phy_iv = dma_map_single(dev, cptr->ivd,
+							AES_BLOCK_SIZE,
+							DMA_FROM_DEVICE);
+			else
+				phy_iv = dma_map_single(dev, cptr->ivd,
+							AES_BLOCK_SIZE,
+							DMA_TO_DEVICE);
 		}
+	} else {
+		if (iv_buf)
+			phy_iv = dma_map_single(dev, iv_buf, AES_BLOCK_SIZE,
+						DMA_TO_DEVICE);
 	}
 
-	/* Fill the structure to pass to TZ */
+	if (dma_mapping_error(dev, phy_iv)) {
+		dev_err(dev, "failed to dma map phy_iv buffer\n");
+		err = -EIO;
+		goto clear_dst;
+	}
+
+	/* Fill the structure to pass to TZ/TME-L */
 	cptr->direction = encrypt;
 	if (IS_CBC(flag))
 		cptr->mode = MODE_CBC;
@@ -252,18 +476,27 @@ static int seccrypt_tz(struct skcipher_request *req,
 	cptr->rsp_buf = (u64 *)phy_dst;
 	cptr->rsplen = reqlen;
 
-	err = qti_sec_crypt(cptr, sizeof(struct secure_nand_aes_cmd));
-	if (err) {
-		dev_err(dev, "enc|dec smc call failed :%d\n", err);
+	if (cptr->use_tmelcom) {
+		err = seccrypt_ipc(tmpl);
+		if (err)
+			dev_err(dev, "AES enc|dec IPC failed : %d\n", err);
+	} else {
+
+		err = qti_sec_crypt(cptr, sizeof(struct secure_nand_aes_cmd));
+		if (err) {
+			dev_err(dev, "enc|dec smc call failed :%d\n", err);
+		}
 	}
 
-	if (phy_src)
-		dma_unmap_single(dev, phy_src, reqlen, DMA_TO_DEVICE);
-	if (phy_dst)
-		dma_unmap_single(dev, phy_dst, reqlen, DMA_FROM_DEVICE);
 	if (phy_iv)
 		dma_unmap_single(dev, phy_iv, AES_BLOCK_SIZE, DMA_TO_DEVICE);
-
+clear_dst:
+	if (phy_dst)
+		dma_unmap_single(dev, phy_dst, reqlen, DMA_FROM_DEVICE);
+clear_src:
+	if (phy_src)
+		dma_unmap_single(dev, phy_src, reqlen, DMA_TO_DEVICE);
+exit:
 	err = skcipher_walk_done(&walk, 0);
 
 	mutex_unlock(&seccrypt_spinlock);
@@ -372,7 +605,22 @@ static int sec_skcipher_init_fallback(struct crypto_skcipher *tfm)
 
 static void sec_skcipher_exit(struct crypto_skcipher *tfm)
 {
-	 struct sec_cipher_ctx *ctx = crypto_skcipher_ctx(tfm);
+	struct sec_alg_template *tmpl = sec_to_cipher_tmpl(tfm);
+	struct sec_crypt_device *sec = tmpl->sec;
+	struct sec_cipher_ctx *ctx = crypto_skcipher_ctx(tfm);
+	int ret;
+
+	 if (sec->cptr->use_tmelcom) {
+		 if (sec->cptr->key_handle && *(sec->cptr->key_handle)) {
+			 ret = tmelcom_aes_v2_clear_key(*(sec->cptr->key_handle));
+			 if (ret) {
+				 dev_info(sec->dev, "Failed to clear key\n");
+			 } else {
+				 dev_info(sec->dev, "Clear key success\n");
+				 *(sec->cptr->key_handle) = 0;
+			 }
+		 }
+	 }
 
 	 crypto_free_skcipher(ctx->fallback);
 }
@@ -512,13 +760,27 @@ static ssize_t tz_fallback_store(struct kobject *kobj,
 {
 	int use_fixed_key;
 	struct sec_crypt_device *sec = to_seccryptdev(kobj);
+	int ret;
 
 	sscanf(buf, "%du", &use_fixed_key);
 	if (use_fixed_key == 1) {
 		sec->fallback_tz = true;
 	} else {
-		if (qti_seccrypt_clearkey() < 0)
-			pr_err("error in clearing key.\n");
+		if (sec->cptr->use_tmelcom) {
+			if (sec->cptr->key_handle && *(sec->cptr->key_handle)) {
+				ret = tmelcom_aes_v2_clear_key(*(sec->cptr->key_handle));
+				if (ret)
+					pr_info("seccrypt: Error: Failed to clear key\n");
+				else {
+					pr_info("seccrypt: Cleared key %u\n", *(sec->cptr->key_handle));
+					*(sec->cptr->key_handle) = 0;
+				}
+			}
+		} else {
+			if (qti_seccrypt_clearkey() < 0)
+				pr_err("error in clearing key.\n");
+		}
+
 		sec->fallback_tz = false;
 	}
 	return count;
@@ -603,6 +865,19 @@ static int seccrypt_probe(struct platform_device *pdev)
 	if (ret)
 		goto err;
 
+	if (!tmelcom_probed())
+		sec->cptr->use_tmelcom = 1;
+
+	if (sec->cptr->use_tmelcom) {
+		sec->cptr->tag = devm_kzalloc(dev, 256, GFP_KERNEL);
+		sec->cptr->ivd = devm_kzalloc(dev, AES_BLOCK_SIZE, GFP_KERNEL);
+		sec->cptr->key_handle = devm_kzalloc(dev, sizeof(u8), GFP_KERNEL);
+		if (!sec->cptr->tag || !sec->cptr->ivd || !sec->cptr->key_handle) {
+			dev_err(dev, "DMA alloc failed\n");
+			return -ENOMEM;
+		}
+	}
+
 	return 0;
 err:
 	sec_skcipher_unregister(dev);
@@ -613,6 +888,7 @@ static int seccrypt_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct sec_crypt_device *sec = platform_get_drvdata(pdev);
+
 	sec_skcipher_unregister(dev);
 	seccrypt_sysfs_deinit(sec);
 	return 0;

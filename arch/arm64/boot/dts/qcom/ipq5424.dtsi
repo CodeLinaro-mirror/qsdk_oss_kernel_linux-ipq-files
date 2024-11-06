@@ -1609,6 +1609,11 @@
 			status = "disabled";
 		};
 
+		seccrypt: qcom,seccrypt {
+			compatible = "qcom,seccrypt";
+			status = "okay";
+		};
+
 		tmelcom: qcom,tmelcom-qmp-client {
 			compatible = "qcom,tmelcom-qmp-client";
 			mboxes = <&qmp_tmel 0>;
