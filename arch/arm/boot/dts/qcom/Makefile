@@ -73,6 +73,7 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	ipq9574-db-al02-c3.dtb \
 	ipq5332-rdp441.dtb \
 	ipq5332-rdp441-qca81xx.dtb \
+	ipq5332-rdp441-qca81xx-i2c.dtb \
 	ipq5332-rdp442.dtb \
 	ipq5332-rdp446.dtb \
 	ipq5332-rdp468.dtb \

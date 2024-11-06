@@ -23,6 +23,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= ipq5424-db-mr01.1.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq5018-rdp432-c2.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq5332-rdp441.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq5332-rdp441-qca81xx.dtb
+dtb-$(CONFIG_ARCH_QCOM)	+= ipq5332-rdp441-qca81xx-i2c.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq5332-rdp442.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq5332-rdp446.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq5332-rdp468.dtb
