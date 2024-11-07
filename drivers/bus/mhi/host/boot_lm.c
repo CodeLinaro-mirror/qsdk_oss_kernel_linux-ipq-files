@@ -256,9 +256,8 @@ int mhi_handle_boot_args(struct mhi_controller *mhi_cntrl)
 		return 0;
 	}
 
-	mhi_cntrl->bootargs_buf = mhi_fw_alloc_coherent(mhi_cntrl, PAGE_SIZE,
-			&mhi_cntrl->bootargs_dma, GFP_KERNEL);
-
+	/* Allocate page from DMA Zone - 32bit DMA Address */
+	mhi_cntrl->bootargs_buf = (u8 *)__get_dma_pages(GFP_KERNEL, 0);
 	if (!mhi_cntrl->bootargs_buf) {
 		mhi_update_scratch_reg(mhi_cntrl, 0);
 		return -ENOMEM;
@@ -269,8 +268,7 @@ int mhi_handle_boot_args(struct mhi_controller *mhi_cntrl)
 							"boot-args", i, &val);
 		if (ret) {
 			dev_err(dev, "failed to read boot args\n");
-			mhi_fw_free_coherent(mhi_cntrl, PAGE_SIZE,
-				mhi_cntrl->bootargs_buf, mhi_cntrl->bootargs_dma);
+			free_pages((unsigned long)mhi_cntrl->bootargs_buf, 0);
 			mhi_cntrl->bootargs_buf = NULL;
 			mhi_update_scratch_reg(mhi_cntrl, 0);
 			return ret;
@@ -278,7 +276,7 @@ int mhi_handle_boot_args(struct mhi_controller *mhi_cntrl)
 		mhi_cntrl->bootargs_buf[i] = (u8)val;
 	}
 
-	ret = mhi_update_scratch_reg(mhi_cntrl, lower_32_bits(mhi_cntrl->bootargs_dma));
+	ret = mhi_update_scratch_reg(mhi_cntrl, virt_to_phys(mhi_cntrl->bootargs_buf));
 
 	dev_dbg(dev, "boot-args address copied to PCIE_REG_FOR_BOOT_ARGS\n");
 
@@ -288,7 +286,7 @@ int mhi_handle_boot_args(struct mhi_controller *mhi_cntrl)
 void mhi_free_boot_args(struct mhi_controller *mhi_cntrl)
 {
 	if (mhi_cntrl->bootargs_buf != NULL) {
-		mhi_fw_free_coherent(mhi_cntrl, PAGE_SIZE, mhi_cntrl->bootargs_buf, mhi_cntrl->bootargs_dma);
+		free_pages((unsigned long)mhi_cntrl->bootargs_buf, 0);
 		mhi_cntrl->bootargs_buf = NULL;
 	}
 }
