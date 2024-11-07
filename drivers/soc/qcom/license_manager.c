@@ -641,7 +641,7 @@ void *lm_get_license(enum req_type type, dma_addr_t *dma_addr, size_t *buf_len,
 			return NULL;
 		} else {
 			buf = lm_get_cbor_response(dma_addr, cbor_req_buf, cbor_req_len);
-			if (IS_ERR(buf)) {
+			if (PTR_ERR(buf)) {
 				dev_err(svc->dev, "cbor_response get failed\n");
 				goto err;
 			}
@@ -676,7 +676,7 @@ void *lm_get_license(enum req_type type, dma_addr_t *dma_addr, size_t *buf_len,
 		/* Check if license is endpoint bounded, then send SSLM */
 		if (!svc->soc_bounded) {
 			buf = lm_get_license_meta_buffer(dma_addr);
-			if (IS_ERR(buf)) {
+			if (PTR_ERR(buf)) {
 				dev_err(svc->dev, "SSLM buffer not prepared\n");
 				goto err;
 			}
@@ -691,7 +691,7 @@ void *lm_get_license(enum req_type type, dma_addr_t *dma_addr, size_t *buf_len,
 			}
 
 			buf = lm_get_ecdsa_buffer(dma_addr, nonce_dma_addr);
-			if (IS_ERR(buf)) {
+			if (PTR_ERR(buf)) {
 				dev_err(svc->dev, "ECDSA buffer not prepared\n");
 				goto err;
 			}
