@@ -35,6 +35,7 @@
 #include <linux/io.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/of_reserved_mem.h>
 #include <linux/elf.h>
 #include <linux/decompress/unlzma.h>
 #include <linux/decompress/generic.h>
@@ -918,6 +919,8 @@ store_sec_auth(struct device *dev,
 	char *alg_name;
 	size_t digest_size;
 	bool xbl_nand = false;
+	struct device_node *node;
+	struct reserved_mem *rmem = NULL;
 
 	file_name = kzalloc(count+1, GFP_KERNEL);
 	if (file_name == NULL)
@@ -930,7 +933,7 @@ store_sec_auth(struct device *dev,
                 sec_auth_token[idx] = strsep(&file_name, " ");
         }
 
-	pr_info("%s authentication in progress\n", sec_auth_token[QTI_SEC_IMG_ADDR]);
+	pr_info("Authenticating Image %s\n", sec_auth_token[QTI_SEC_IMG_ADDR]);
 
 	ret = kstrtol(sec_auth_token[QTI_SEC_IMG_SW_TYPE], 0, &sw_type);
 
@@ -1017,6 +1020,20 @@ store_sec_auth(struct device *dev,
 
 	ret = of_property_read_u32(np, "img-addr", &img_addr);
 
+	node = of_parse_phandle(np, "memory-region", 0);
+
+	if (node) {
+		rmem = of_reserved_mem_lookup(node);
+		of_node_put(node);
+
+		if (!rmem) {
+			pr_err("Unable to acquire memory-region\n");
+			goto free_np;
+		}
+		img_addr = rmem->base;
+		img_size = rmem->size;
+	}
+
 	ret = of_property_read_u32(np, "scm-cmd-id", &scm_cmd_id);
 	if (ret)
 		scm_cmd_id = QCOM_KERNEL_AUTH_CMD;
@@ -1061,6 +1078,7 @@ store_sec_auth(struct device *dev,
 
 	if (size > img_size) {
 		pr_err("File size exceeds allocated memory region\n");
+		ret = -EINVAL;
 		goto free_np;
 	}
 
