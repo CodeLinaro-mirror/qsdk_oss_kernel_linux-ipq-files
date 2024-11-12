@@ -42,6 +42,10 @@
 #include <linux/init.h>
 #include <linux/prefetch.h>
 #include <linux/if.h>
+#ifdef CONFIG_ATHMEMDEBUG
+#include <linux/ath_memdebug.h>
+#endif
+
 
 #define SKB_RECYCLE_SIZE	CONFIG_SKB_RECYCLE_SIZE
 #define SKB_RECYCLE_MIN_SIZE	SKB_RECYCLE_SIZE
