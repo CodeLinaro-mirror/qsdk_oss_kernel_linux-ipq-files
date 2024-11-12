@@ -42,18 +42,26 @@
 			phy-reset-gpio = <&tlmm 60 GPIO_ACTIVE_LOW>;
 			status = "okay";
 
-			phy0: ethernet-phy@0 {
-				reg = <16>;
+			ethernet-phy-package@0 {
+				compatible = "qcom,qca8075-package";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0x10>;
+				qcom,package-mode = "psgmii";
+				phy0: ethernet-phy@10 {
+					reg = <0x10>;
+				};
+				phy1: ethernet-phy@11 {
+					reg = <0x11>;
+				};
+				phy2: ethernet-phy@12 {
+					reg = <0x12>;
+				};
+				phy3: ethernet-phy@13 {
+					reg = <0x13>;
+				};
 			};
-			phy1: ethernet-phy@1 {
-				reg = <17>;
-			};
-			phy2: ethernet-phy@2 {
-				reg = <18>;
-			};
-			phy3: ethernet-phy@3 {
-				reg = <19>;
-			};
+
 			phy4: ethernet-phy@4 {
 				compatible ="ethernet-phy-ieee802.3-c45";
 				reg = <8>;
