@@ -267,6 +267,9 @@ inline bool skb_recycler_consume(struct sk_buff *skb)
 		__skb_queue_head(h, skb);
 		skbuff_debugobj_deactivate(skb);
 		skbuff_debugobj_sum_update(ln);
+#ifdef CONFIG_ATHMEMDEBUG
+		ath_update_free(skb);
+#endif
 		local_irq_restore(flags);
 		preempt_enable();
 		mem_debug_update_skb(skb);
@@ -314,7 +317,9 @@ inline bool skb_recycler_consume(struct sk_buff *skb)
 			__skb_queue_head(h, skb);
 			skbuff_debugobj_sum_update(ln);
 			skbuff_debugobj_deactivate(skb);
-
+#ifdef CONFIG_ATHMEMDEBUG
+			ath_update_free(skb);
+#endif
 			local_irq_restore(flags);
 			preempt_enable();
 			mem_debug_update_skb(skb);
@@ -333,6 +338,9 @@ inline bool skb_recycler_consume(struct sk_buff *skb)
 		__skb_queue_head(h, skb);
 		skbuff_debugobj_deactivate(skb);
 		skbuff_debugobj_sum_update(ln);
+#ifdef CONFIG_ATHMEMDEBUG
+		ath_update_free(skb);
+#endif
 		local_irq_restore(flags);
 		preempt_enable();
 		mem_debug_update_skb(skb);
@@ -405,6 +413,9 @@ inline bool skb_recycler_consume_list_fast(struct sk_buff_head *skb_list)
 	if (likely(skb_queue_len(h) < max_skbs)) {
 		mem_debug_update_skb_list(skb_list);
 		mem_leak_free_skb_list(skb_list);
+#ifdef CONFIG_ATHMEMDEBUG
+		ath_update_free_skb_list(skb_list);
+#endif
 		skb_queue_splice(skb_list,h);
 		local_irq_restore(flags);
 		preempt_enable();
