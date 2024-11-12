@@ -237,7 +237,7 @@ static ssize_t tmecomm_store_aes_v2_decrypted_data(struct device *dev,
 	plain_txt = memset(plain_txt, 0, MAX_PLAIN_DATA_SIZE);
 
 	if ((count % AES_BLOCK_SIZE) || count > MAX_PLAIN_DATA_SIZE) {
-		pr_info("Plain text length is more than %lu bytes\n", count);
+		pr_info("Plain text length is more than %zu bytes\n", count);
 		return -EINVAL;
 	}
 
@@ -259,7 +259,7 @@ static ssize_t tmecomm_store_aes_v2_aad_data(struct device *dev,
 	aad = memset(aad, 0, TME_MAX_AAD_LEN);
 
 	if (count > TME_MAX_AAD_LEN) {
-		pr_info("AAD data length is more than %lu bytes\n", count);
+		pr_info("AAD data length is more than %zu bytes\n", count);
 		return -EINVAL;
 	}
 
@@ -306,7 +306,7 @@ static ssize_t tmecomm_store_aes_v2_tag_data(struct device *dev,
 	tag = memset(tag, 0, TME_MAX_TAG_LEN);
 
 	if (count > TME_MAX_TAG_LEN) {
-		pr_info("Tag data length is more than %lu bytes\n", count);
+		pr_info("Tag data length is more than %zu bytes\n", count);
 		return -EINVAL;
 	}
 
