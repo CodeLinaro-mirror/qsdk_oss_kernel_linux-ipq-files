@@ -319,6 +319,12 @@
 			reg = <0x0 0x8a600000 0x0 0x200000>;
 			no-map;
 		};
+#else
+		secure_upgrade: secure_upgrade@0 {
+			reg = <0x0 0x8a300000 0x0 0x500000>;
+			no-map;
+			status = "disabled";
+		};
 #endif
 		smem@8a800000 {
 			compatible = "qcom,smem";
