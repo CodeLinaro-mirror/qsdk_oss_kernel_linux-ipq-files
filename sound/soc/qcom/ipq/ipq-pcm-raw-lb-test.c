@@ -48,7 +48,7 @@
  * of how much passed and failed is displayed.
  */
 
-static void pcm_start_test(int pcm_index);
+static void pcm_start_test(int pcm_index, unsigned long int pcm_cfg);
 static void ipq_pcm_fill_data(uint32_t *tx_buff, uint32_t size,
 						int pcm_index);
 
@@ -130,11 +130,13 @@ static ssize_t pcmlb_SEC_show(struct device_driver *driver,
 static ssize_t pcmlb_PRI_store(struct device_driver *driver,
 				const char *buff, size_t count)
 {
-	if (kstrtoul(buff, 0, &ctx[PRIMARY].start)) {
+	unsigned long int config = 0;
+
+	if (kstrtoul(buff, 0, &config)) {
 		pr_err("%s: invalid lb value\n", __func__);
 		return -EINVAL;
 	}
-	pcm_start_test(PRIMARY);
+	pcm_start_test(PRIMARY, config);
 	return count;
 }
 
@@ -142,11 +144,13 @@ static ssize_t pcmlb_PRI_store(struct device_driver *driver,
 static ssize_t pcmlb_SEC_store(struct device_driver *driver,
 				const char *buff, size_t count)
 {
-	if (kstrtoul(buff, 0, &ctx[SECONDARY].start)) {
+	unsigned long int config = 0;
+
+	if (kstrtoul(buff, 0, &config)) {
 		pr_err("%s: invalid lb value\n", __func__);
 		return -EINVAL;
 	}
-	pcm_start_test(SECONDARY);
+	pcm_start_test(SECONDARY, config);
 	return count;
 }
 
@@ -542,30 +546,31 @@ int pcm_test_rw(void *data)
 	return 0;
 }
 
-static void pcm_start_test(int pcm_index)
+static void pcm_start_test(int pcm_index, unsigned long int pcm_cfg)
 {
-	if (!(ctx[pcm_index].start >= 0 && ctx[pcm_index].start <= 9) &&
-		!IS_PCM_LBTEST_RX_TO_TX(ctx[pcm_index].start))
+	if (!(pcm_cfg >= 0 && pcm_cfg <= 9) &&
+			!IS_PCM_LBTEST_RX_TO_TX(pcm_cfg))
 	{
-		pr_notice("%ld is not supported configuration\n",
-				ctx[pcm_index].start);
+		pr_notice("%ld is not supported configuration\n", pcm_cfg);
 		return;
 	}
 	if ((pcm0_status != NULL && !strncmp(pcm0_status, "ok", 2)) &&
 		(pcm1_status != NULL && !strncmp(pcm1_status, "ok", 2)) &&
-		(ctx[pcm_index].start == 7 || ctx[pcm_index].start == 701)) {
+		(pcm_cfg == 7 || pcm_cfg == 701)) {
 		pr_notice("%ld is not supported in dual instanse event\n",
-						ctx[pcm_index].start);
+						pcm_cfg);
 		return;
 	}
-	pr_notice("%s : %ld\n", __func__, ctx[pcm_index].start);
 
-	if (ctx[pcm_index].start) {
+	pr_notice("%s : %ld\n", __func__, pcm_cfg);
+
+	if (pcm_cfg) {
 		if (ctx[pcm_index].running) {
 			pr_notice("%s : Test already running with another "
 						"configuration\n", __func__);
 			return;
 		} else {
+				ctx[pcm_index].start = pcm_cfg;
 				ctx[pcm_index].task = kthread_create(&pcm_test_rw,
 						(unsigned long *)(long)pcm_index,
 						"PCMTest_%d", pcm_index);
