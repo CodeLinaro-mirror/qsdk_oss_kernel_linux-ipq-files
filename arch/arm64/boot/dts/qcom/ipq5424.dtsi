@@ -185,18 +185,21 @@
 		opp-816000000 {
 			opp-hz = /bits/ 64 <816000000>;
 			opp-supported-hw = <0x3>;
+			opp-microvolt = <850000>;
 			clock-latency-ns = <200000>;
 		};
 
 		opp-1416000000 {
 			opp-hz = /bits/ 64 <1416000000>;
 			opp-supported-hw = <0x3>;
+			opp-microvolt = <850000>;
 			clock-latency-ns = <200000>;
 		};
 
 		opp-1800000000 {
 			opp-hz = /bits/ 64 <1800000000>;
 			opp-supported-hw = <0x1>;
+			opp-microvolt = <1000000>;
 			clock-latency-ns = <200000>;
 		};
 	};
