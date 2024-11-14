@@ -122,8 +122,22 @@ static int qtidbg_register_qsee_log_buf(struct device *dev)
 	return 0;
 }
 
+static ssize_t tmecomm_show_aes_key(struct device *dev,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	u32 len;
+
+	memset(message, 0, MESSAGE_LEN);
+	snprintf(message, MESSAGE_LEN, "%lu\n", (unsigned long)*tmel_key_handle);
+	len = strlen(message) + 1;
+	memcpy(buf, message, len);
+
+	return len;
+}
+
 static ssize_t
-tmecomm_store_aes_v2_derive_key(struct device *dev, struct device_attribute *attr,
+tmecomm_store_aes_key(struct device *dev, struct device_attribute *attr,
 				const char *buf, size_t count)
 {
 	unsigned int val;
@@ -140,6 +154,101 @@ tmecomm_store_aes_v2_derive_key(struct device *dev, struct device_attribute *att
 
 	return count;
 }
+
+static ssize_t tmecomm_show_aes_generate_key(struct device *dev,
+						struct device_attribute *attr,
+						char *buf)
+{
+	struct tme_key_policy policy;
+	u32 key_id;
+	u32 len;
+	int ret;
+
+	memset(message, 0, MESSAGE_LEN);
+
+	key_id = TME_KID_ALLOC;
+	if (tmel_aes_v2_mode == TME_KAL_AES256_ECB) {
+		policy.low = 0xc204c20;
+		policy.high = 0x84040;
+	} else { //TME_KAL_AES256_CBC
+		policy.low = 0xc214c20;
+		policy.high = 0x84040;
+	}
+
+	ret = tmel_aes_v2_generate_key(key_id, &policy, tmel_key_handle);
+	if (ret) {
+		pr_info("Error: Failed to generate key\n");
+		snprintf(message, MESSAGE_LEN, "AES generate key failed\n");
+	} else {
+		pr_info("aes key handle: %lu\n", (unsigned long)*tmel_key_handle);
+		snprintf(message, MESSAGE_LEN, "%lu\n", (unsigned long)*tmel_key_handle);
+	}
+
+	len = strlen(message) + 1;
+	memcpy(buf, message, len);
+
+	return len;
+}
+
+static ssize_t tmecomm_store_pt_key(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t count)
+{
+	memset(pt_key, 0, KEY_SIZE);
+	tmel_aes_v2_pt_key_len = 0;
+
+	if (count != KEY_SIZE) {
+		pr_info("Invalid input\n");
+		pr_info("Key length is %lu bytes\n", (unsigned long)count);
+		pr_info("Key length must be %u bytes\n", (unsigned int)KEY_SIZE);
+		return -EINVAL;
+	}
+
+	tmel_aes_v2_pt_key_len = count;
+	memcpy(pt_key, buf, tmel_aes_v2_pt_key_len);
+
+	return count;
+}
+
+static ssize_t tmecomm_show_aes_import_key(struct device *dev,
+						struct device_attribute *attr,
+						char *buf)
+{
+	struct tmel_plain_text_key key_material;
+	struct tme_key_policy policy;
+	u32 key_id;
+	u32 len;
+	int ret;
+
+	memset(message, 0, MESSAGE_LEN);
+
+	key_material.buf = dma_pt_key;
+	key_material.buf_len = tmel_aes_v2_pt_key_len;
+	key_id = TME_KID_ALLOC;
+	if (tmel_aes_v2_mode == TME_KAL_AES256_ECB) {
+		policy.low = 0xc104c20;
+		policy.high = 0x84040;
+	} else { //TME_KAL_AES256_CBC
+		policy.low = 0xc114c20;
+		policy.high = 0x84040;
+	}
+
+	ret = tmel_aes_v2_import_key(key_id, &policy, &key_material,
+				     tmel_key_handle);
+	if (ret) {
+		pr_info("Error: Failed to import key\n");
+		snprintf(message, MESSAGE_LEN, "AES import key failed\n");
+	} else {
+		pr_info("aes key handle: %lu\n", (unsigned long)*tmel_key_handle);
+		snprintf(message, MESSAGE_LEN, "%lu\n", (unsigned long)*tmel_key_handle);
+	}
+
+	len = strlen(message) + 1;
+	memcpy(buf, message, len);
+
+	return len;
+}
+
 
 static ssize_t tmecomm_show_aes_v2_derive_key(struct device *dev,
 					      struct device_attribute *attr,
@@ -2634,9 +2743,12 @@ static int tmel_aes_init(struct device *dev)
 	buf_sw_context = dma_alloc_coherent(dev, dma_buf_size, &dma_sw_context, GFP_KERNEL);
 	dma_buf_size = PAGE_SIZE * (1 << get_order(TME_KDF_SALT_LABEL_BYTES_MAX));
 	buf_salt_label = dma_alloc_coherent(dev, dma_buf_size, &dma_salt_label, GFP_KERNEL);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(KEY_SIZE));
+	buf_pt_key = dma_alloc_coherent(dev, dma_buf_size, &dma_pt_key, GFP_KERNEL);
 
 	if (!tmel_key_handle || !buf_aad || !buf_plain_txt ||
-	    !buf_ivd || !buf_tag || !buf_cipher_txt) {
+	    !buf_ivd || !buf_tag || !buf_cipher_txt || !buf_sw_context ||
+	    !buf_salt_label || !buf_pt_key) {
 		if (tmel_key_handle) {
 			dma_buf_size = PAGE_SIZE *
 					(1 << get_order(MAX_KEY_HANDLE_SIZE));
@@ -2693,6 +2805,13 @@ static int tmel_aes_init(struct device *dev)
 					  buf_sw_context, dma_sw_context);
 		}
 
+		if (buf_pt_key) {
+			dma_buf_size = PAGE_SIZE *
+					(1 << get_order(KEY_SIZE));
+			dma_free_coherent(dev, dma_buf_size,
+					  buf_pt_key, dma_pt_key);
+		}
+
 		sysfs_remove_group(sec_kobj, &sec_key_tmel_attr_grp);
 		kobject_put(sec_kobj);
 		sec_kobj = NULL;
@@ -2707,6 +2826,7 @@ static int tmel_aes_init(struct device *dev)
 	cipher_txt = (uint8_t *) buf_cipher_txt;
 	sw_context = (uint8_t *) buf_sw_context;
 	salt_label = (uint8_t *) buf_salt_label;
+	pt_key = (uint8_t *) buf_pt_key;
 
 	return 0;
 }
@@ -4962,6 +5082,13 @@ static int __exit qseecom_remove(struct platform_device *pdev)
 						(1 << get_order(TME_KDF_SALT_LABEL_BYTES_MAX));
 				dma_free_coherent(dev, dma_buf_size,
 						  buf_salt_label, dma_salt_label);
+			}
+
+			if (buf_pt_key) {
+				dma_buf_size = PAGE_SIZE *
+						(1 << get_order(KEY_SIZE));
+				dma_free_coherent(dev, dma_buf_size,
+						  buf_pt_key, dma_pt_key);
 			}
 
 			sysfs_remove_group(sec_kobj, &sec_key_tmel_attr_grp);
