@@ -1543,6 +1543,16 @@
 						<0x00005238 0x44410>,	/* PPE Type LUT lower bits */
 						<0x00005208 0x100>;	/* PPE Main control low */
 			};
+
+			nss_llcc {
+				prop-name = "llcc_cache";
+				/* denotes the data to be written into respective Cache Registers */
+				cache_val = <0x83e02>,		/* RxDesc Cache registers value */
+						<0x1f>,		/* TxCmpl Cache registers value */
+						<0x20000a5>,	/* Cache Index LUT register value */
+						<0x222ff>,	/* AxCache Overide register value */
+						<0x789f>;	/* Axiw Ctrl register value */
+			};
                 };
 
 		nss-ppe {
