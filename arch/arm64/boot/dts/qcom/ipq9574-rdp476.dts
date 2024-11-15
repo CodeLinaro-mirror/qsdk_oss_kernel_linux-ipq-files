@@ -369,6 +369,10 @@
 				   <0 353 4>,			/* Rx desc ring id #22 IRQ info */
 				   <0 354 4>,			/* Rx desc ring id #23 IRQ info */
 				   <0 499 4>,			/* Misc error IRQ info */
+				   <0 359 4>,			/* RxFill ring id #4 IRQ info */
+				   <0 360 4>,			/* RxFill ring id #5 IRQ info */
+				   <0 361 4>,			/* RxFill ring id #6 IRQ info */
+				   <0 362 4>,			/* RxFill ring id #7 IRQ info */
 				   <0 364 4>,			/* PPEDS Node #1(TxComp ring id #1) TxComplete IRQ info */
 				   <0 332 4>,			/* PPEDS Node #1(Rx Desc ring id #1) Rx Desc IRQ info */
 				   <0 356 4>,			/* PPEDS Node #1(RxFill Desc ring id #1) Rx Fill IRQ info */
