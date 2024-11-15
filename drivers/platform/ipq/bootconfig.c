@@ -53,6 +53,7 @@
 #define ROOTFS_PARTITION	"rootfs"
 #define MAX_MMC_DEVICE		2
 #define MAX_PART_NAME_LEN	25
+#define CURRENT_BOOTCONFIG	0x86000D0
 
 static struct proc_dir_entry *bc1_partname_dir[CONFIG_NUM_ALT_PARTITION];
 static struct proc_dir_entry *bc2_partname_dir[CONFIG_NUM_ALT_PARTITION];
@@ -343,6 +344,8 @@ struct sbl_if_dualboot_info_type_v2 *read_bootconfig_emmc(struct block_device *b
 
 	if (bootconfig_emmc &&
 	    bootconfig_emmc->magic_start != SMEM_DUAL_BOOTINFO_MAGIC_START &&
+	    bootconfig_emmc->magic_start != SMEM_DUAL_BOOTINFO_MAGIC_START_TRYMODE_FAILSAFE &&
+	    bootconfig_emmc->magic_start != SMEM_DUAL_BOOTINFO_MAGIC_START_FAILSAFE &&
 	    bootconfig_emmc->magic_start != SMEM_DUAL_BOOTINFO_MAGIC_START_TRYMODE) {
 		pr_alert("Magic not found\n");
 		kfree(bootconfig_emmc);
@@ -663,11 +666,71 @@ static int restore_bootconfig_partition(u8 which_bc)
 	struct sbl_if_dualboot_info_type_v2 *smem_bootconfig;
 	size_t len;
 	int ret = 0;
+	u32 start_magic;
+
+	start_magic = which_bc ? bootconfig1->magic_start : bootconfig2->magic_start;
+
+	if (start_magic & FAILSAFE_ENABLED) {
+		u32 current_bootconfig = 0;
+		void __iomem *addr;
+
+		addr = ioremap(CURRENT_BOOTCONFIG, sizeof(u32));
+		if (!addr) {
+			pr_err("Failed to ioremap %x\n", CURRENT_BOOTCONFIG);
+			return -ENOMEM;
+		}
+
+		current_bootconfig = readl(addr);
+		pr_debug("%s is currently active\n", (current_bootconfig - 1) ? "0:BOOTCONFIG" :
+										"0:BOOTCONFIG1");
+
+		iounmap(addr);
+
+		/*
+		 * SMEM_WHICH_BOOTCONFIG entry provides
+		 * the currently choosed BOOCONFIG partition to boot,
+		 *
+		 * if it returns
+		 *	1 - 0:BOOTCONFIG is used
+		 *	2 - 0:BOOTCONFIG1 is used
+		 */
+
+		if ((current_bootconfig - 1) != which_bc) {
+			struct sbl_if_dualboot_info_type_v2 *valid_bootconfig = which_bc ?
+									bootconfig1 : bootconfig2;
+			struct sbl_if_dualboot_info_type_v2 *invalid_bootconfig = which_bc ?
+									bootconfig2 : bootconfig1;
+			u8 part_itr = 0;
+			u32 size = 0;
+
+			memcpy(invalid_bootconfig, valid_bootconfig, sizeof(struct
+								sbl_if_dualboot_info_type_v2));
+
+			invalid_bootconfig->age = valid_bootconfig->age - 1;
+
+			for (part_itr = 0; part_itr < valid_bootconfig->numaltpart ; part_itr++)
+				invalid_bootconfig->per_part_entry[part_itr].primaryboot =
+					!valid_bootconfig->per_part_entry[part_itr].primaryboot;
+
+			if (invalid_bootconfig->magic_end != SMEM_DUAL_BOOTINFO_MAGIC_END) {
+				size = sizeof(struct sbl_if_dualboot_info_type_v2) -
+					sizeof(bootconfig1->magic_end);
+				invalid_bootconfig->magic_end = crc32_be(0, (char *)
+									invalid_bootconfig, size);
+			}
+
+			ret = write_to_flash(invalid_bootconfig, which_bc ? BOOTCONFIG_PARTITION1 :
+									BOOTCONFIG_PARTITION);
+
+			goto exit;
+		}
+	}
 
 	smem_bootconfig = qcom_smem_get(QCOM_SMEM_HOST_ANY, SMEM_BOOT_DUALPARTINFO, &len);
 	if(smem_bootconfig && ((smem_bootconfig->magic_start == SMEM_DUAL_BOOTINFO_MAGIC_START) ||
-				(smem_bootconfig->magic_start == SMEM_DUAL_BOOTINFO_MAGIC_START_TRYMODE)))
-	{
+		(smem_bootconfig->magic_start == SMEM_DUAL_BOOTINFO_MAGIC_START_TRYMODE_FAILSAFE) ||
+		(smem_bootconfig->magic_start == SMEM_DUAL_BOOTINFO_MAGIC_START_FAILSAFE) ||
+		(smem_bootconfig->magic_start == SMEM_DUAL_BOOTINFO_MAGIC_START_TRYMODE))) {
 		if(0 == which_bc) {
 			memcpy(bootconfig1, smem_bootconfig, sizeof(struct sbl_if_dualboot_info_type_v2));
 			ret = write_to_flash(bootconfig1, BOOTCONFIG_PARTITION);
@@ -680,7 +743,7 @@ static int restore_bootconfig_partition(u8 which_bc)
 	} else {
 		return -1;
 	}
-
+exit:
 	return ret;
 }
 
@@ -698,6 +761,7 @@ static int __init bootconfig_partition_init(void)
 	struct mtd_info *mtd;
 	size_t len;
 	u32 size = 0;
+	u32 tcsr_val = qcom_read_dload_reg();
 
 	/*
 	 * In case of NOR\NAND boot, there is a chance that emmc
@@ -797,11 +861,13 @@ static int __init bootconfig_partition_init(void)
 		bootconfig1_crc = crc32_be(0, (char *)bootconfig1, size);
 		bootconfig2_crc = crc32_be(0, (char *)bootconfig2, size);
 
-		is_bc1_fault = (bootconfig1_crc != bootconfig1->magic_end) &&
-			(SMEM_DUAL_BOOTINFO_MAGIC_END != bootconfig1->magic_end);
+		is_bc1_fault = ((bootconfig1_crc != bootconfig1->magic_end) &&
+			(bootconfig1->magic_end != SMEM_DUAL_BOOTINFO_MAGIC_END)) ||
+			(!bootconfig1->magic_end);
 
-		is_bc2_fault = (bootconfig2_crc != bootconfig2->magic_end) &&
-			(SMEM_DUAL_BOOTINFO_MAGIC_END != bootconfig2->magic_end);
+		is_bc2_fault = ((bootconfig2_crc != bootconfig2->magic_end) &&
+			(bootconfig2->magic_end != SMEM_DUAL_BOOTINFO_MAGIC_END)) ||
+			(!bootconfig2->magic_end);
 
 		if(is_bc1_fault && is_bc2_fault)
 		{
@@ -824,6 +890,14 @@ static int __init bootconfig_partition_init(void)
 			}
 		}
 
+	}
+
+	if ((bootconfig1->magic_start & FAILSAFE_ENABLED) || (bootconfig2->magic_start &
+								FAILSAFE_ENABLED)) {
+		if (tcsr_val & BOOTCONFIG_HEALTH)
+			bootconfig1->age = bootconfig2->age - 1;
+		else if (tcsr_val & BOOTCONFIG1_HEALTH)
+			bootconfig2->age = bootconfig1->age - 1;
 	}
 
 	boot_info_dir = proc_mkdir("boot_info",NULL);
@@ -886,10 +960,17 @@ static int __init bootconfig_partition_init(void)
 		}
 	}
 
-	if ((SMEM_DUAL_BOOTINFO_MAGIC_START_TRYMODE == bootconfig1->magic_start) ||
-		(SMEM_DUAL_BOOTINFO_MAGIC_START_TRYMODE == bootconfig2->magic_start)) {
+	if ((bootconfig1->magic_start & TRYMODE_ENABLED) || (bootconfig2->magic_start &
+		TRYMODE_ENABLED) || (bootconfig1->magic_start & FAILSAFE_ENABLED) ||
+		(bootconfig2->magic_start & FAILSAFE_ENABLED)) {
 		try_feature = 1;
-		printk("\nBootconfig: Try feature is enabled\n");
+
+		pr_info("\nBootconfig: Try feature is enabled\n");
+
+		if ((bootconfig1->magic_start & FAILSAFE_ENABLED) || (bootconfig2->magic_start &
+									FAILSAFE_ENABLED))
+			pr_info("\nBootconfig: Failsafe feature is enabled\n");
+
 
 		proc_create_data("trybit", S_IRUGO, upgrade_info_dir,
 				&trybit_ops,&trybit);
