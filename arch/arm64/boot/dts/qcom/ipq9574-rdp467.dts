@@ -747,6 +747,7 @@
 	node_id=<0x0>;
         hw_link_id = <0 0>;
 	hw_link_id = <0 0>;
+	probe-order = <0x1>;
 	status = "okay";
 };
 
@@ -757,6 +758,7 @@
         hw_link_id = <3 0>;
 	node_id=<0x1>;
 	hw_link_id = <3 0>;
+	probe-order = <0x4>;
 	status = "okay";
 };
 
@@ -766,6 +768,7 @@
         hw_link_id = <2 0>;
 	node_id=<0x2>;
 	hw_link_id = <2 0>;
+	probe-order = <0x3>;
 	status = "okay";
 };
 
@@ -775,5 +778,6 @@
         hw_link_id = <1 0>;
 	node_id=<0x3>;
 	hw_link_id = <1 0>;
+	probe-order = <0x2>;
 	status = "okay";
 };
