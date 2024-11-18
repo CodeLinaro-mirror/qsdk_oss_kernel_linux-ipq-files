@@ -138,7 +138,7 @@ static ssize_t tmecomm_show_aes_key(struct device *dev,
 
 static ssize_t
 tmecomm_store_aes_key(struct device *dev, struct device_attribute *attr,
-				const char *buf, size_t count)
+		      const char *buf, size_t count)
 {
 	unsigned int val;
 
@@ -156,8 +156,8 @@ tmecomm_store_aes_key(struct device *dev, struct device_attribute *attr,
 }
 
 static ssize_t tmecomm_show_aes_generate_key(struct device *dev,
-						struct device_attribute *attr,
-						char *buf)
+					     struct device_attribute *attr,
+					     char *buf)
 {
 	struct tme_key_policy policy;
 	u32 key_id;
@@ -167,7 +167,7 @@ static ssize_t tmecomm_show_aes_generate_key(struct device *dev,
 	memset(message, 0, MESSAGE_LEN);
 
 	key_id = TME_KID_ALLOC;
-	if (tmel_aes_v2_mode == TME_KAL_AES256_ECB) {
+	if (tmel_aes_mode == TME_KAL_AES256_ECB) {
 		policy.low = 0xc204c20;
 		policy.high = 0x84040;
 	} else { //TME_KAL_AES256_CBC
@@ -175,7 +175,7 @@ static ssize_t tmecomm_show_aes_generate_key(struct device *dev,
 		policy.high = 0x84040;
 	}
 
-	ret = tmel_aes_v2_generate_key(key_id, &policy, tmel_key_handle);
+	ret = tmelcom_aes_generate_key(key_id, &policy, tmel_key_handle);
 	if (ret) {
 		pr_info("Error: Failed to generate key\n");
 		snprintf(message, MESSAGE_LEN, "AES generate key failed\n");
@@ -191,11 +191,11 @@ static ssize_t tmecomm_show_aes_generate_key(struct device *dev,
 }
 
 static ssize_t tmecomm_store_pt_key(struct device *dev,
-				     struct device_attribute *attr,
-				     const char *buf, size_t count)
+				    struct device_attribute *attr,
+				    const char *buf, size_t count)
 {
 	memset(pt_key, 0, KEY_SIZE);
-	tmel_aes_v2_pt_key_len = 0;
+	tmel_aes_pt_key_len = 0;
 
 	if (count != KEY_SIZE) {
 		pr_info("Invalid input\n");
@@ -204,15 +204,15 @@ static ssize_t tmecomm_store_pt_key(struct device *dev,
 		return -EINVAL;
 	}
 
-	tmel_aes_v2_pt_key_len = count;
-	memcpy(pt_key, buf, tmel_aes_v2_pt_key_len);
+	tmel_aes_pt_key_len = count;
+	memcpy(pt_key, buf, tmel_aes_pt_key_len);
 
 	return count;
 }
 
 static ssize_t tmecomm_show_aes_import_key(struct device *dev,
-						struct device_attribute *attr,
-						char *buf)
+					   struct device_attribute *attr,
+					   char *buf)
 {
 	struct tmel_plain_text_key key_material;
 	struct tme_key_policy policy;
@@ -223,9 +223,9 @@ static ssize_t tmecomm_show_aes_import_key(struct device *dev,
 	memset(message, 0, MESSAGE_LEN);
 
 	key_material.buf = dma_pt_key;
-	key_material.buf_len = tmel_aes_v2_pt_key_len;
+	key_material.buf_len = tmel_aes_pt_key_len;
 	key_id = TME_KID_ALLOC;
-	if (tmel_aes_v2_mode == TME_KAL_AES256_ECB) {
+	if (tmel_aes_mode == TME_KAL_AES256_ECB) {
 		policy.low = 0xc104c20;
 		policy.high = 0x84040;
 	} else { //TME_KAL_AES256_CBC
@@ -233,7 +233,7 @@ static ssize_t tmecomm_show_aes_import_key(struct device *dev,
 		policy.high = 0x84040;
 	}
 
-	ret = tmel_aes_v2_import_key(key_id, &policy, &key_material,
+	ret = tmelcom_aes_import_key(key_id, &policy, &key_material,
 				     tmel_key_handle);
 	if (ret) {
 		pr_info("Error: Failed to import key\n");
@@ -250,9 +250,9 @@ static ssize_t tmecomm_show_aes_import_key(struct device *dev,
 }
 
 
-static ssize_t tmecomm_show_aes_v2_derive_key(struct device *dev,
-					      struct device_attribute *attr,
-					      char *buf)
+static ssize_t tmecomm_show_aes_derive_key(struct device *dev,
+					   struct device_attribute *attr,
+					   char *buf)
 {
 	struct tme_kdf_spec *kdf_spec;
 	int ret = 0;
@@ -275,11 +275,11 @@ static ssize_t tmecomm_show_aes_v2_derive_key(struct device *dev,
 		return -ENOMEM;
 
 	kdf_spec->kdf_algo = TME_KAL_KDF_NIST;
-	kdf_spec->input_key = tmel_aes_v2_input_key;
+	kdf_spec->input_key = tmel_aes_input_key;
 	kdf_spec->mix_key = 0x0;
 	kdf_spec->l2_key = TME_KID_L2_SECURESTRGSVC;
-	if (tmel_aes_v2_mode == TME_KAL_AES256_ECB) {
-		if (tmel_aes_v2_input_key == TME_KID_CHIP_RAND_BASE) {
+	if (tmel_aes_mode == TME_KAL_AES256_ECB) {
+		if (tmel_aes_input_key == TME_KID_CHIP_RAND_BASE) {
 			kdf_spec->policy.low = 0x4c204c20;
 			kdf_spec->policy.high = 0x84040;
 		} else { //TME_KID_OEM_PRODUCT_SEED
@@ -287,7 +287,7 @@ static ssize_t tmecomm_show_aes_v2_derive_key(struct device *dev,
 			kdf_spec->policy.high = 0x84040;
 		}
 	} else { //TME_KAL_AES256_CBC
-		if (tmel_aes_v2_input_key == TME_KID_CHIP_RAND_BASE) {
+		if (tmel_aes_input_key == TME_KID_CHIP_RAND_BASE) {
 			kdf_spec->policy.low = 0x4c214c20;
 			kdf_spec->policy.high = 0x84040;
 		} else { //TME_KID_OEM_PRODUCT_SEED
@@ -295,18 +295,17 @@ static ssize_t tmecomm_show_aes_v2_derive_key(struct device *dev,
 			kdf_spec->policy.high = 0x84040;
 		}
 	}
-	memcpy(kdf_spec->sw_context, sw_context, tmel_aes_v2_sw_context_len);
-	kdf_spec->sw_context_len = tmel_aes_v2_sw_context_len;
+	memcpy(kdf_spec->sw_context, sw_context, tmel_aes_sw_context_len);
+	kdf_spec->sw_context_len = tmel_aes_sw_context_len;
 	kdf_spec->security_context = TME_KSC_SWContext;
-	memcpy(kdf_spec->salt_label, salt_label, tmel_aes_v2_salt_label_len);
-	kdf_spec->salt_label_len = tmel_aes_v2_salt_label_len;
+	memcpy(kdf_spec->salt_label, salt_label, tmel_aes_salt_label_len);
+	kdf_spec->salt_label_len = tmel_aes_salt_label_len;
 	kdf_spec->prf_digest_algo = TME_KAL_SHA512_HMAC;
 
 	kdf_len = sizeof(struct tme_kdf_spec);
 
-	ret = tmelcom_aes_v2_derive_key(key_id, &dma_kdf_spec, kdf_len, tmel_key_handle);
+	ret = tmelcom_aes_derive_key(key_id, &dma_kdf_spec, kdf_len, tmel_key_handle);
 	if (ret) {
-		snprintf(message, 32, "AES Key derive failed\n");
 		pr_info("Error: Failed to derive key\n");
 	} else {
 		snprintf(message, 32, "%lu\n", (unsigned long)*tmel_key_handle);
@@ -319,9 +318,9 @@ static ssize_t tmecomm_show_aes_v2_derive_key(struct device *dev,
 	return ret;
 }
 
-static ssize_t tmecomm_store_aes_v2_clear_key(struct device *dev,
-					      struct device_attribute *attr,
-					      const char *buf, size_t count)
+static ssize_t tmecomm_store_aes_clear_key(struct device *dev,
+					   struct device_attribute *attr,
+					   const char *buf, size_t count)
 {
 	int ret = 0;
 	uint32_t handle;
@@ -329,7 +328,7 @@ static ssize_t tmecomm_store_aes_v2_clear_key(struct device *dev,
 	if (kstrtouint(buf, 0, &handle))
 		return -EINVAL;
 
-	ret = tmelcom_aes_v2_clear_key(handle);
+	ret = tmelcom_aes_clear_key(handle);
 	if (ret) {
 		pr_info("Error: Failed to clear key\n");
 	} else {
@@ -340,9 +339,9 @@ static ssize_t tmecomm_store_aes_v2_clear_key(struct device *dev,
 	return count;
 }
 
-static ssize_t tmecomm_store_aes_v2_decrypted_data(struct device *dev,
-						   struct device_attribute *attr,
-						   const char *buf, size_t count)
+static ssize_t tmecomm_store_aes_decrypted_data(struct device *dev,
+						struct device_attribute *attr,
+						const char *buf, size_t count)
 {
 	if (!plain_txt) {
 		pr_info("could not allocate plain text\n");
@@ -359,15 +358,15 @@ static ssize_t tmecomm_store_aes_v2_decrypted_data(struct device *dev,
 		return -EINVAL;
 	}
 
-	tmel_aes_v2_decrypted_len = count;
-	memcpy(plain_txt, buf, tmel_aes_v2_decrypted_len);
+	tmel_aes_decrypted_len = count;
+	memcpy(plain_txt, buf, tmel_aes_decrypted_len);
 
 	return count;
 }
 
-static ssize_t tmecomm_store_aes_v2_aad_data(struct device *dev,
-					     struct device_attribute *attr,
-					     const char *buf, size_t count)
+static ssize_t tmecomm_store_aes_aad_data(struct device *dev,
+					  struct device_attribute *attr,
+					  const char *buf, size_t count)
 {
 	if (!aad) {
 		pr_info("could not allocate aad data\n");
@@ -381,15 +380,15 @@ static ssize_t tmecomm_store_aes_v2_aad_data(struct device *dev,
 		return -EINVAL;
 	}
 
-	tmel_aes_v2_aad_len = count;
-	memcpy(aad, buf, tmel_aes_v2_aad_len);
+	tmel_aes_aad_len = count;
+	memcpy(aad, buf, tmel_aes_aad_len);
 
 	return count;
 }
 
-static ssize_t
-tmecomm_store_aes_v2_iv_data(struct device *dev, struct device_attribute *attr,
-			     const char *buf, size_t count)
+static ssize_t tmecomm_store_aes_iv_data(struct device *dev,
+					 struct device_attribute *attr,
+					 const char *buf, size_t count)
 {
 	if (!iv) {
 		pr_info("could not allocate iv data\n");
@@ -406,15 +405,15 @@ tmecomm_store_aes_v2_iv_data(struct device *dev, struct device_attribute *attr,
 		return -EINVAL;
 	}
 
-	tmel_aes_v2_iv_len = count;
-	memcpy(iv, buf, tmel_aes_v2_iv_len);
+	tmel_aes_iv_len = count;
+	memcpy(iv, buf, tmel_aes_iv_len);
 
 	return count;
 }
 
-static ssize_t tmecomm_store_aes_v2_tag_data(struct device *dev,
-					     struct device_attribute *attr,
-					     const char *buf, size_t count)
+static ssize_t tmecomm_store_aes_tag_data(struct device *dev,
+					  struct device_attribute *attr,
+					  const char *buf, size_t count)
 {
 	if (!tag) {
 		pr_info("could not allocate tag data\n");
@@ -428,15 +427,15 @@ static ssize_t tmecomm_store_aes_v2_tag_data(struct device *dev,
 		return -EINVAL;
 	}
 
-	tmel_aes_v2_tag_len = count;
-	memcpy(tag, buf, tmel_aes_v2_tag_len);
+	tmel_aes_tag_len = count;
+	memcpy(tag, buf, tmel_aes_tag_len);
 
 	return count;
 }
 
-static ssize_t tmecomm_store_aes_v2_mode(struct device *dev,
-					 struct device_attribute *attr,
-					 const char *buf, size_t count)
+static ssize_t tmecomm_store_aes_mode(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf, size_t count)
 {
 	unsigned int val;
 
@@ -444,18 +443,18 @@ static ssize_t tmecomm_store_aes_v2_mode(struct device *dev,
 		return -EINVAL;
 
 	if (val == 0)
-		tmel_aes_v2_mode = TME_KAL_AES256_ECB;
+		tmel_aes_mode = TME_KAL_AES256_ECB;
 	else if (val == 1)
-		tmel_aes_v2_mode = TME_KAL_AES256_CBC;
+		tmel_aes_mode = TME_KAL_AES256_CBC;
 	else
 		return -EINVAL;
 
 	return count;
 }
 
-static ssize_t tmecomm_aes_v2_store_input_key(struct device *dev,
-					      struct device_attribute *attr,
-					      const char *buf, size_t count)
+static ssize_t tmecomm_aes_store_input_key(struct device *dev,
+					   struct device_attribute *attr,
+					   const char *buf, size_t count)
 {
 	unsigned int val;
 
@@ -463,24 +462,24 @@ static ssize_t tmecomm_aes_v2_store_input_key(struct device *dev,
 		return -EINVAL;
 
 	if (val == 0)
-		tmel_aes_v2_input_key = TME_KID_CHIP_RAND_BASE;
+		tmel_aes_input_key = TME_KID_CHIP_RAND_BASE;
 	else if (val == 1)
-		tmel_aes_v2_input_key = TME_KID_OEM_PRODUCT_SEED;
+		tmel_aes_input_key = TME_KID_OEM_PRODUCT_SEED;
 	else
 		return -EINVAL;
 
 	return count;
 }
 
-static ssize_t tmecomm_show_aes_v2_encrypted_data(struct device *dev,
-						  struct device_attribute *attr,
-						  char *buf)
+static ssize_t tmecomm_show_aes_encrypted_data(struct device *dev,
+					       struct device_attribute *attr,
+					       char *buf)
 {
 	int ret = 0;
-	struct tmel_aes_v2_encrypt_msg msg = {0};
+	struct tmel_aes_encrypt_msg msg = {0};
 
-	if (tmel_aes_v2_decrypted_len <= 0 || tmel_aes_v2_decrypted_len % AES_BLOCK_SIZE) {
-		pr_info("Invalid input %u\n", tmel_aes_v2_decrypted_len);
+	if (tmel_aes_decrypted_len <= 0 || tmel_aes_decrypted_len % AES_BLOCK_SIZE) {
+		pr_info("Invalid input %u\n", tmel_aes_decrypted_len);
 		pr_info("Input data length for encryption should be multiple of AES block size(16)\n");
 		return -EINVAL;
 	}
@@ -493,12 +492,12 @@ static ssize_t tmecomm_show_aes_v2_encrypted_data(struct device *dev,
 	tag = memset(tag, 0, TME_MAX_TAG_LEN);
 	cipher_txt = memset(cipher_txt, 0, MAX_PLAIN_DATA_SIZE);
 
-	msg.req.algo = tmel_aes_v2_mode;
+	msg.req.algo = tmel_aes_mode;
 	msg.req.key_id = *tmel_key_handle;
 	msg.req.in_aad.buf = (u32) dma_aad;
-	msg.req.in_aad.buf_len = tmel_aes_v2_aad_len;
+	msg.req.in_aad.buf_len = tmel_aes_aad_len;
 	msg.req.in_plain_txt.buf = (u32) dma_plain_txt;
-	msg.req.in_plain_txt.buf_len = tmel_aes_v2_decrypted_len;
+	msg.req.in_plain_txt.buf_len = tmel_aes_decrypted_len;
 	msg.resp.out_aad.buf = (u32) dma_aad;
 	msg.resp.out_aad.length = TME_MAX_AAD_LEN;
 	msg.resp.out_aad.length_used = 0;
@@ -512,24 +511,24 @@ static ssize_t tmecomm_show_aes_v2_encrypted_data(struct device *dev,
 	msg.resp.out_cipher_txt.length = MAX_PLAIN_DATA_SIZE;
 	msg.resp.out_cipher_txt.length_used = 0;
 
-	ret = tmel_aes_v2_encrypt(&msg, sizeof(msg));
+	ret = tmelcom_aes_encrypt(&msg, sizeof(msg));
 	if (ret) {
 		pr_info("AES encrypt failed\n");
 		return ret;
 	}
 
-	tmel_aes_v2_encrypted_len = msg.resp.out_cipher_txt.length_used;
-	tmel_aes_v2_iv_len = msg.resp.out_iv.length_used;
-	tmel_aes_v2_tag_len = msg.resp.out_tag.length_used;
+	tmel_aes_encrypted_len = msg.resp.out_cipher_txt.length_used;
+	tmel_aes_iv_len = msg.resp.out_iv.length_used;
+	tmel_aes_tag_len = msg.resp.out_tag.length_used;
 
-	memcpy(buf, cipher_txt, tmel_aes_v2_encrypted_len);
+	memcpy(buf, cipher_txt, tmel_aes_encrypted_len);
 
-	return tmel_aes_v2_encrypted_len;
+	return tmel_aes_encrypted_len;
 }
 
-static ssize_t tmecomm_store_aes_v2_encrypted_data(struct device *dev,
-						   struct device_attribute *attr,
-						   const char *buf, size_t count)
+static ssize_t tmecomm_store_aes_encrypted_data(struct device *dev,
+						struct device_attribute *attr,
+						const char *buf, size_t count)
 {
 	if (!cipher_txt) {
 		pr_info("could not allocate cipher text data\n");
@@ -537,7 +536,7 @@ static ssize_t tmecomm_store_aes_v2_encrypted_data(struct device *dev,
 	}
 
 	memset(cipher_txt, 0, MAX_PLAIN_DATA_SIZE);
-	tmel_aes_v2_encrypted_len = 0;
+	tmel_aes_encrypted_len = 0;
 
 	if ((count % AES_BLOCK_SIZE) || count > MAX_PLAIN_DATA_SIZE) {
 		pr_info("Invalid input\n");
@@ -549,23 +548,23 @@ static ssize_t tmecomm_store_aes_v2_encrypted_data(struct device *dev,
 		return -EINVAL;
 	}
 
-	tmel_aes_v2_encrypted_len = count;
+	tmel_aes_encrypted_len = count;
 	memcpy(cipher_txt, buf, count);
 
 	return count;
 }
 
-static ssize_t tmecomm_show_aes_v2_decrypted_data(struct device *dev,
-						  struct device_attribute *attr,
-						  char *buf)
+static ssize_t tmecomm_show_aes_decrypted_data(struct device *dev,
+					       struct device_attribute *attr,
+					       char *buf)
 {
 	int ret = 0;
-	struct tmel_aes_v2_decrypt_msg msg = {0};
+	struct tmel_aes_decrypt_msg msg = {0};
 
 	plain_txt = memset(plain_txt, 0, MAX_PLAIN_DATA_SIZE);
 
-	if (tmel_aes_v2_encrypted_len <= 0 || tmel_aes_v2_encrypted_len % AES_BLOCK_SIZE) {
-		pr_info("Invalid input %u\n", tmel_aes_v2_encrypted_len);
+	if (tmel_aes_encrypted_len <= 0 || tmel_aes_encrypted_len % AES_BLOCK_SIZE) {
+		pr_info("Invalid input %u\n", tmel_aes_encrypted_len);
 		pr_info("Encrypted data length for decryption should be multiple \
 			 of AES block size(16)\n");
 		return -EINVAL;
@@ -576,16 +575,16 @@ static ssize_t tmecomm_show_aes_v2_decrypted_data(struct device *dev,
 		return -EINVAL;
 	}
 
-	msg.req.algo = tmel_aes_v2_mode;
+	msg.req.algo = tmel_aes_mode;
 	msg.req.key_id = *tmel_key_handle;
 	msg.req.in_aad.buf = (u32) dma_aad;
-	msg.req.in_aad.buf_len = tmel_aes_v2_aad_len;
+	msg.req.in_aad.buf_len = tmel_aes_aad_len;
 	msg.req.in_iv.buf = (u32) dma_ivd;
-	msg.req.in_iv.buf_len = tmel_aes_v2_iv_len;
+	msg.req.in_iv.buf_len = tmel_aes_iv_len;
 	msg.req.in_tag.buf = (u32) dma_tag;
-	msg.req.in_tag.buf_len = tmel_aes_v2_tag_len;
+	msg.req.in_tag.buf_len = tmel_aes_tag_len;
 	msg.req.in_cipher_txt.buf = (u32) dma_cipher_txt;
-	msg.req.in_cipher_txt.buf_len = tmel_aes_v2_encrypted_len;
+	msg.req.in_cipher_txt.buf_len = tmel_aes_encrypted_len;
 	msg.resp.out_aad.buf = (u32) dma_aad;
 	msg.resp.out_aad.length = TME_MAX_AAD_LEN;
 	msg.resp.out_aad.length_used = 0;
@@ -593,23 +592,23 @@ static ssize_t tmecomm_show_aes_v2_decrypted_data(struct device *dev,
 	msg.resp.out_plain_txt.length = MAX_PLAIN_DATA_SIZE;
 	msg.resp.out_plain_txt.length_used = 0;
 
-	ret = tmel_aes_v2_decrypt(&msg, sizeof(msg));
+	ret = tmelcom_aes_decrypt(&msg, sizeof(msg));
 	if (ret) {
 		pr_info("AES decrypt failed\n");
 		return ret;
 	}
 
-	tmel_aes_v2_aad_len = msg.resp.out_aad.length_used;
-	tmel_aes_v2_decrypted_len = msg.resp.out_plain_txt.length_used;
+	tmel_aes_aad_len = msg.resp.out_aad.length_used;
+	tmel_aes_decrypted_len = msg.resp.out_plain_txt.length_used;
 
-	memcpy(buf, plain_txt, tmel_aes_v2_decrypted_len);
+	memcpy(buf, plain_txt, tmel_aes_decrypted_len);
 
-	return tmel_aes_v2_decrypted_len;
+	return tmel_aes_decrypted_len;
 }
 
-static ssize_t tmecomm_aes_v2_store_context_data(struct device *dev,
-						 struct device_attribute *attr,
-						 const char *buf, size_t count)
+static ssize_t tmecomm_aes_store_context_data(struct device *dev,
+					      struct device_attribute *attr,
+					      const char *buf, size_t count)
 {
 	int i = 0;
 	int num_bytes = count / 2 ;
@@ -632,11 +631,11 @@ static ssize_t tmecomm_aes_v2_store_context_data(struct device *dev,
 			 (unsigned long)count);
 		pr_info("Context data length must be less than %d bytes\n",
 			 TME_KDF_SW_CONTEXT_BYTES_MAX);
-		tmel_aes_v2_sw_context_len = 0;
+		tmel_aes_sw_context_len = 0;
 		return -EINVAL;
 	}
 
-	tmel_aes_v2_sw_context_len = num_bytes;
+	tmel_aes_sw_context_len = num_bytes;
 
 	for (i = 0; i < num_bytes; i++) {
 		sscanf(buf, "%2hhx", &sw_context[i]);
@@ -650,9 +649,9 @@ static ssize_t tmecomm_aes_v2_store_context_data(struct device *dev,
 	return count;
 }
 
-static ssize_t tmecomm_aes_v2_store_salt_label_data(struct device *dev,
-						    struct device_attribute *attr,
-						    const char *buf, size_t count)
+static ssize_t tmecomm_aes_store_salt_label_data(struct device *dev,
+						 struct device_attribute *attr,
+						 const char *buf, size_t count)
 {
 	int i = 0;
 
@@ -664,11 +663,11 @@ static ssize_t tmecomm_aes_v2_store_salt_label_data(struct device *dev,
 		pr_info("salt label length is %lu bytes\n", (unsigned long)count);
 		pr_info("salt label length must be less than %d bytes\n",
 			 TME_KDF_SALT_LABEL_BYTES_MAX);
-		tmel_aes_v2_salt_label_len = 0;
+		tmel_aes_salt_label_len = 0;
 		return -EINVAL;
 	}
 
-	tmel_aes_v2_salt_label_len = count;
+	tmel_aes_salt_label_len = count;
 	memcpy(salt_label, buf, count);
 
 	return count;
