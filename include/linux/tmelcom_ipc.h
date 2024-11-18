@@ -166,14 +166,6 @@ struct tmel_get_arb_version {
 	struct tmel_get_arb_version_rsp rsp;
 } __packed;
 
-struct tmel_update_arb_version_rsp {
-	u32 status;
-} __packed;
-
-struct tmel_update_arb_version_req {
-	struct tmel_update_arb_version_rsp rsp;
-} __packed;
-
 struct tmel_response_cbuffer {
 	u32 data;
 	u32 len;
@@ -368,6 +360,19 @@ struct tmel_aes_import_key_msg {
 	struct tmel_aes_import_key_resp resp;
 } __packed;
 
+struct tmel_update_arb_version_sw_id_list_req {
+	struct tmel_cbuffer cbuffer;
+} __packed;
+
+struct tmel_update_arb_version_sw_id_list_rsp {
+	u32 status;
+} __packed;
+
+struct tmel_update_arb_version_sw_id_list {
+	struct tmel_update_arb_version_sw_id_list_req req;
+	struct tmel_update_arb_version_sw_id_list_rsp rsp;
+} __packed;
+
 #ifdef CONFIG_QCOM_TMELCOM
 int tmelcom_probed(void);
 int tmelcom_init_attestation(u32 *key_buf, u32 key_buf_len, u32 *key_buf_size);
@@ -393,7 +398,7 @@ int tmelcom_get_tmel_log(void *buf, u32 max_buf_size, u32 *size);
 int tmelcom_secure_io_read(struct tmel_secure_io *buf, size_t size);
 int tmelcom_secure_io_write(struct tmel_secure_io *buf, size_t size);
 int tmelcomm_secboot_get_arb_version(u32 type, u32 *version);
-int tmelcomm_secboot_update_arb_version(u32 status);
+int tmelcomm_secboot_update_arb_version_list(u32 *sw_id_list, size_t size);
 int tmelcomm_get_ecc_public_key(u32 type, void *buf, u32 size, u32 *rsp_len);
 
 int tmelcom_aes_derive_key(u32 key_id, dma_addr_t *dma_kdf_spec, u32 kdf_len,
@@ -509,7 +514,8 @@ static inline int tmelcomm_secboot_get_arb_version(u32 type, u32 *version)
 	return -EOPNOTSUPP;
 }
 
-static inline int tmelcomm_secboot_update_arb_version(u32 status)
+static inline int tmelcomm_secboot_update_arb_version_list(u32 *sw_id_list,
+							   size_t size)
 {
 	return -EOPNOTSUPP;
 }

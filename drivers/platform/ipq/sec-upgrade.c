@@ -59,12 +59,18 @@ enum sw_types {
 	SW_TYPE_XBL_SC		=	0x36,
 	SW_TYPE_XBL_CFG		=	0x25,
 	SW_TYPE_ATF		=	0x1E,
+	SW_TYPR_ROOTFS		=	0x67,
 	SW_TYPE_Q6_ROOTPD	=	0xD,
 	SW_TYPE_USERPD_WDT	=	0x12,
 	SW_TYPE_USERPD_OEM	=	0x63,
 	SW_TYPE_IU_FW		=	0x2C,
 
 };
+
+u32 sw_id_list[] = {SW_TYPE_TME, SW_TYPE_XBL_SC, SW_TYPE_XBL_CFG,
+		    SW_TYPE_DEVCFG, SW_TYPE_TZ, SW_TYPE_ATF, SW_TYPE_APPSBL,
+		    SW_TYPE_HLOS, SW_TYPR_ROOTFS, SW_TYPE_Q6_ROOTPD,
+		    SW_TYPE_USERPD_WDT, SW_TYPE_USERPD_OEM, SW_TYPE_IU_FW};
 #else
 enum sw_types {
 	SW_TYPE_DEFAULT		=	0xFF,
@@ -76,6 +82,8 @@ enum sw_types {
 	SW_TYPE_DEVCFG		=	0x5,
 	SW_TYPE_APDP		=	0x200,
 };
+
+u32 sw_id_list[] = {};
 #endif
 
 static int gl_version_enable;
@@ -127,6 +135,7 @@ int write_version(struct device *dev, uint32_t type, uint32_t version)
 {
 	int ret;
 	uint32_t qfprom_ret_ptr;
+	u32 *id_list;
 	uint32_t *qfprom_api_status = kzalloc(sizeof(uint32_t), GFP_KERNEL);
 
 	if (!qfprom_api_status)
@@ -141,10 +150,14 @@ int write_version(struct device *dev, uint32_t type, uint32_t version)
 		goto err_write;
 	}
 
-	if (qcom_qfrom_fuse_row_write_available())
+	if (qcom_qfrom_fuse_row_write_available()) {
 		ret = qcom_qfprom_write_version(type, version, qfprom_ret_ptr);
-	else
-		ret = tmelcomm_secboot_update_arb_version(qfprom_ret_ptr);
+	} else {
+		id_list = kzalloc(sizeof(sw_id_list), GFP_KERNEL);
+		memcpy(id_list, sw_id_list, sizeof(sw_id_list));
+		ret = tmelcomm_secboot_update_arb_version_list(id_list,
+							       sizeof(sw_id_list));
+	}
 
 	dma_unmap_single(dev, qfprom_ret_ptr,
 			sizeof(*qfprom_api_status), DMA_FROM_DEVICE);
