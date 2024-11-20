@@ -172,7 +172,7 @@ static int seccrypt_derive_key(struct sec_alg_template *tmpl)
 	kdf_spec->salt_label_len = 64;
 	kdf_spec->prf_digest_algo = TME_KAL_SHA512_HMAC;
 
-	ret = tmelcom_aes_v2_derive_key(key_id, &dma_kdf_spec,
+	ret = tmelcom_aes_derive_key(key_id, &dma_kdf_spec,
 					sizeof(struct tme_kdf_spec),
 					sec->cptr->key_handle);
 	if (ret)
@@ -264,12 +264,12 @@ static int sec_skcipher_setkey(struct crypto_skcipher *tfm, const u8 *key,
 static int seccrypt_ipc_encrypt(struct sec_crypt_device *sec)
 {
 	struct secure_nand_aes_cmd *cptr = sec->cptr;
-	struct tmel_aes_v2_encrypt_msg *msg;
+	struct tmel_aes_encrypt_msg *msg;
 	struct device *dev = sec->dev;
 	dma_addr_t phy_tag;
 	int err;
 
-	msg = kzalloc(sizeof(struct tmel_aes_v2_encrypt_msg), GFP_KERNEL);
+	msg = kzalloc(sizeof(struct tmel_aes_encrypt_msg), GFP_KERNEL);
 	if (!msg) {
 		dev_err(dev, "Cannot allocate memory for IPC msg\n");
 		return -ENOMEM;
@@ -310,7 +310,7 @@ static int seccrypt_ipc_encrypt(struct sec_crypt_device *sec)
 	msg->resp.out_cipher_txt.length = cptr->rsplen;
 	msg->resp.out_cipher_txt.length_used = 0;
 
-	err = tmel_aes_v2_encrypt(msg, sizeof(*msg));
+	err = tmelcom_aes_encrypt(msg, sizeof(*msg));
 	if (err) {
 		dev_err(dev, "AES encrypt failed\n");
 		goto ipc_enc_exit;
@@ -328,12 +328,12 @@ ipc_enc_exit:
 static int seccrypt_ipc_decrypt(struct sec_crypt_device *sec)
 {
 	struct secure_nand_aes_cmd *cptr = sec->cptr;
-	struct tmel_aes_v2_decrypt_msg *msg;
+	struct tmel_aes_decrypt_msg *msg;
 	struct device *dev = sec->dev;
 	dma_addr_t phy_tag;
 	int err;
 
-	msg = kzalloc(sizeof(struct tmel_aes_v2_decrypt_msg), GFP_KERNEL);
+	msg = kzalloc(sizeof(struct tmel_aes_decrypt_msg), GFP_KERNEL);
 	if (!msg) {
 		dev_err(dev, "Cannot allocate memory for IPC msg\n");
 		return -ENOMEM;
@@ -372,7 +372,7 @@ static int seccrypt_ipc_decrypt(struct sec_crypt_device *sec)
 	msg->resp.out_plain_txt.length = cptr->rsplen;
 	msg->resp.out_plain_txt.length_used = 0;
 
-	err = tmel_aes_v2_decrypt(msg, sizeof(*msg));
+	err = tmelcom_aes_decrypt(msg, sizeof(*msg));
 	if (err)
 		dev_err(dev, "AES decrypt failed\n");
 
@@ -612,7 +612,7 @@ static void sec_skcipher_exit(struct crypto_skcipher *tfm)
 
 	 if (sec->cptr->use_tmelcom) {
 		 if (sec->cptr->key_handle && *(sec->cptr->key_handle)) {
-			 ret = tmelcom_aes_v2_clear_key(*(sec->cptr->key_handle));
+			 ret = tmelcom_aes_clear_key(*(sec->cptr->key_handle));
 			 if (ret) {
 				 dev_info(sec->dev, "Failed to clear key\n");
 			 } else {
@@ -768,7 +768,7 @@ static ssize_t tz_fallback_store(struct kobject *kobj,
 	} else {
 		if (sec->cptr->use_tmelcom) {
 			if (sec->cptr->key_handle && *(sec->cptr->key_handle)) {
-				ret = tmelcom_aes_v2_clear_key(*(sec->cptr->key_handle));
+				ret = tmelcom_aes_clear_key(*(sec->cptr->key_handle));
 				if (ret)
 					pr_info("seccrypt: Error: Failed to clear key\n");
 				else {
