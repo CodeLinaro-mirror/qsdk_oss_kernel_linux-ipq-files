@@ -219,7 +219,7 @@ static int handle_upd_in_rpd_crash(void *data)
 	while (1) {
 		if (rpd_rproc->state == RPROC_RUNNING)
 			break;
-		udelay(1);
+		usleep_range(1, 10);
 	}
 
 	for_each_available_child_of_node(rpd_wcss->dev->of_node, upd_np) {
