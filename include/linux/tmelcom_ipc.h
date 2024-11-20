@@ -401,8 +401,11 @@ int tmelcom_aes_v2_derive_key(u32 key_id, dma_addr_t *dma_kdf_spec, u32 kdf_len,
 int tmelcom_aes_v2_clear_key(u32 handle);
 int tmel_aes_v2_encrypt(struct tmel_aes_v2_encrypt_msg *msg, u32 size);
 int tmel_aes_v2_decrypt(struct tmel_aes_v2_decrypt_msg *msg, u32 size);
-int tmel_aes_v2_generate_key(struct tmel_aes_v2_generate_key_msg *msg, u32 size);
-int tmel_aes_v2_import_key(struct tmel_aes_v2_import_key_msg *msg, u32 size);
+int tmel_aes_v2_generate_key(u32 key_id, struct tme_key_policy *policy,
+			     u8 *key_handle);
+int tmel_aes_v2_import_key(u32 key_id, struct tme_key_policy *policy,
+			   struct tmel_plain_text_key *key_material,
+			   u8 *key_handle);
 
 #else
 static inline int tmelcom_probed(void)
@@ -540,14 +543,15 @@ static inline int tmel_aes_v2_decrypt(struct tmel_aes_v2_decrypt_msg *msg,
 	return -EOPNOTSUPP;
 }
 
-static inline int tmel_aes_v2_generate_key(struct tmel_aes_v2_generate_key_msg *msg,
-					   u32 size)
+static int tmel_aes_v2_generate_key(u32 key_id, struct tme_key_policy *policy,
+				    u8 *key_handle)
 {
 	return -EOPNOTSUPP;
 }
 
-static inline int tmel_aes_v2_import_key(struct tmel_aes_v2_import_key_msg *msg,
-					 u32 size)
+static int tmel_aes_v2_import_key(u32 key_id, struct tme_key_policy *policy,
+			   struct tmel_plain_text_key *key_material,
+			   u8 *key_handle)
 {
 	return -EOPNOTSUPP;
 }
