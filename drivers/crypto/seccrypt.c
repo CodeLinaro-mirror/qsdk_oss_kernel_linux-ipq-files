@@ -295,18 +295,18 @@ static int seccrypt_ipc_encrypt(struct sec_crypt_device *sec)
 	msg->req.key_id = *(cptr->key_handle);
 	msg->req.in_aad.buf = 0;
 	msg->req.in_aad.buf_len = 0;
-	msg->req.in_plain_txt.buf = (u64) cptr->req_buf;
+	msg->req.in_plain_txt.buf = (uintptr_t) cptr->req_buf;
 	msg->req.in_plain_txt.buf_len = cptr->reqlen;
 	msg->resp.out_aad.buf = 0;
 	msg->resp.out_aad.length = 0;
 	msg->resp.out_aad.length_used = 0;
-	msg->resp.out_iv.buf = (u64) cptr->iv_buf;
+	msg->resp.out_iv.buf = (uintptr_t) cptr->iv_buf;
 	msg->resp.out_iv.length = AES_BLOCK_SIZE;
 	msg->resp.out_iv.length_used = 0;
-	msg->resp.out_tag.buf = (u64) phy_tag;
+	msg->resp.out_tag.buf = (uintptr_t) phy_tag;
 	msg->resp.out_tag.length = 256;
 	msg->resp.out_tag.length_used = 0;
-	msg->resp.out_cipher_txt.buf = (u64) cptr->rsp_buf;
+	msg->resp.out_cipher_txt.buf = (uintptr_t) cptr->rsp_buf;
 	msg->resp.out_cipher_txt.length = cptr->rsplen;
 	msg->resp.out_cipher_txt.length_used = 0;
 
@@ -359,16 +359,16 @@ static int seccrypt_ipc_decrypt(struct sec_crypt_device *sec)
 	msg->req.key_id = *(cptr->key_handle);
 	msg->req.in_aad.buf = 0;
 	msg->req.in_aad.buf_len = 0;
-	msg->req.in_iv.buf = (u64) cptr->iv_buf;
+	msg->req.in_iv.buf = (uintptr_t) cptr->iv_buf;
 	msg->req.in_iv.buf_len = cptr->ivd_len;
-	msg->req.in_tag.buf = (u64) phy_tag;
+	msg->req.in_tag.buf = (uintptr_t) phy_tag;
 	msg->req.in_tag.buf_len = cptr->tag_len;
-	msg->req.in_cipher_txt.buf = (u64) cptr->req_buf;
+	msg->req.in_cipher_txt.buf = (uintptr_t) cptr->req_buf;
 	msg->req.in_cipher_txt.buf_len = cptr->reqlen;
 	msg->resp.out_aad.buf = 0;
 	msg->resp.out_aad.length = 0;
 	msg->resp.out_aad.length_used = 0;
-	msg->resp.out_plain_txt.buf = (u64) cptr->rsp_buf;
+	msg->resp.out_plain_txt.buf = (uintptr_t) cptr->rsp_buf;
 	msg->resp.out_plain_txt.length = cptr->rsplen;
 	msg->resp.out_plain_txt.length_used = 0;
 
