@@ -898,8 +898,8 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				return -ENOMEM;
 			}
 
+			len = 0;
 			if (!list_empty(&svc->clients_feature_list)) {
-				len = 0;
 				list_for_each_entry_safe(itr, tmp,
 						&svc->clients_feature_list, node) {
 					client_info->info[len].sq_node = itr->sq_node;
@@ -909,9 +909,23 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 						client_info->info[len].list[i] = itr->list[i];
 					len++;
 				}
-
-				client_info->info_len = len;
 			}
+
+			if (!list_empty(&lm_svc->soc_hw_feature_list)) {
+				client_info->info[len].sq_node = 0;
+				client_info->info[len].sq_port = 0;
+				i = 0;
+				list_for_each_entry(feat, &lm_svc->soc_hw_feature_list, node) {
+					if (feat->feature_status == SEC_FEATURE_STATUS_ACTIVE) {
+						client_info->info[len].list[i] = feat->feature_id;
+						i++;
+					}
+				}
+				client_info->info[len].list_len = i;
+				len++;
+			}
+
+			client_info->info_len = len;
 
 			ret = copy_to_user(argp, client_info, sizeof(struct client_target_info));
 			if (ret) {
