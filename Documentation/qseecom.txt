@@ -1,16 +1,16 @@
 qseecom.ko is a loadable kernel module which acts as the QTI secure client
 in the non-secure world. It provides a sample interface for communicating with
-the secure world(QSEE) for various crypto and other miscellaneous operations.
+the secure world(QSEE) and TME-L for various crypto and other miscellaneous operations.
 
 The TZ binary provides support for secure AES, ECC and RSA crypto operations.
+
+TME-L supports AES crypto operations directly from HLOS if IPC support is
+available in the target.
 
 Similar to TZ, customers can develop a custom application(aka TZapp) to be
 used for secure crypto and other functionalities. This custom application will
 be loaded into the tzapp reserved memory region captured in the device tree source.
 Note: All the requests to Tzapp will be routed via TZ.
-
-The qseecom driver can be used for communicating with both TZ and TZapp for various
-crypto and miscellaneous operations.
 
 --------------------------------------------------------------------------------
 
@@ -34,7 +34,7 @@ Note: IPQ53xx platform uses the same qseecom_props structure of IPQ95xx platform
 --------------------------------------------------------
 |Steps for triggering secure RSA crypto operation in TZ|
 --------------------------------------------------------
-Supported targets: IPQ50xx/IPQ60xx/IPQ807x/IPQ95xx/IPQ53xx
+Supported targets: IPQ50xx/IPQ60xx/IPQ807x/IPQ95xx/IPQ53xx/IPQ54xx
 
 RSA API: (qseecom_props function = RSA_SEC_KEY)
 It is used for signing and verifying data based on RSA algorithm with public
@@ -151,7 +151,7 @@ AES Decrypt data:
 Supported targets: IPQ95xx/IPQ53xx
 
 AES 256 V2 TZ API's supported in TME-L based platform can be used as below:
-(qseecom_props function = AES_SEC_KEY aes_v2 = true)
+(qseecom_props function = AES_SEC_KEY aes_v2 = true ipc_support = false)
 
 Below are sample inputs:
 
@@ -210,6 +210,74 @@ To decrypt:
 (12) cat /tmp/enc.txt > /sys/sec_key/aes_decrypt
 (13) cat /sys/sec_key/aes_decrypt > /tmp/pt.txt
 (14) cat /tmp/pt.txt
+
+-------------------------------------------------------------------------------
+
+TME-L IPC operations
+
+In IPC supported targets, the AES operations are implemented via IPC calls
+direcly to TME-L instead of routing via TZ.
+
+------------------------------------------------------
+|Steps for performing AES crypto operation from TME-L|
+------------------------------------------------------
+Supported targets: IPQ54xx
+
+AES 256 API's supported in TME-L based platform can be used as below:
+(qseecom_props function = AES_SEC_KEY aes_v2 = true ipc_support = true)
+
+key handle for AES encrypt/decrypt can be obtained in three ways: (Generate/Import/Derive)
+
+Generate:
+Provide AES256 mode (0->ECB 1->CBC)
+(1) echo 0 > /sys/sec_key/tmel_aes_mode
+Generate key handle
+(2) cat /sys/sec_key/tmel_aes_generate_key > key_handle.txt
+
+Import:
+Provide AES256 mode (0->ECB 1->CBC)
+(1) echo 0 > /sys/sec_key/tmel_aes_mode
+Provide plain text key
+Example:
+(2) echo -n "01234567890123456789012345678901" > pt_key.txt
+(3) cat pt_key.txt > /sys/sec_key/tmel_aes_pt_key
+Import key handle
+(4) cat /sys/sec_key/tmel_aes_import_key > key_handle.txt
+
+Derive:
+Provide AES256 mode (0->ECB 1->CBC)
+(1) echo 0 > /sys/sec_key/tmel_aes_mode
+Provide base key (0->CRBK 1->OEM Product seed)
+(2) echo 0 > /sys/sec_key/tmel_aes_input_key (CRBK)
+Provide context data
+Example:
+(3) echo -n "34613132613738396434316363323738656166343132363635613831643530313461313261373839643431636332373865616634313236363561383164353032" > /sys/sec_key/tmel_aes_context_data
+Derive key handle
+(4) cat /sys/sec_key/tmel_aes_derive_key > key_handle.txt
+
+Once a key handle is obtained via any of the three operations mentioned above,
+it can be used for encrypt/decrypt operations.
+
+To encrypt:
+Provide the key handle to used for enc/dec
+(1) cat key_handle.txt > /sys/sec_key/tmel_aes_key
+Provide the plain text to encrypt. Note: Plain text must be multiple of AES block size (i.e 16 bytes) and less than 2k bytes
+Example:
+(2) echo "Aes Encryption!" > /sys/sec_key/tmel_aes_encrypt
+(3) cat /sys/sec_key/tmel_aes_encrypt > enc.txt
+
+To decrypt:
+(1) cat enc.txt > /sys/sec_key/tmel_aes_decrypt
+(2) cat /sys/sec_key/tmel_aes_decrypt > dec.txt
+(3) cat dec.txt
+
+Clear:
+(1) cat key_handle.txt > /sys/sec_key/tmel_aes_clear_key
+Note: User cannot get more than 4 key handles from TME-L. Trying to get a 5th key
+would result in an error. If the user wants to get a new key handle after 4 successful
+attempts, then the user has to clear an already existing key by passing it's key
+handle to the clear_key sysfs entry. Once a key handle is cleared, the key cannot
+be used for further encryption/decryption of data.
 
 --------------------------------------------------------------------------------
 
@@ -418,7 +486,7 @@ To check the tzlog buff after above operations if required:
 Supported targets: IPQ95xx/IPQ53xx
 
 AES 256 v2 TZAPP API's supported in TME-L based platform can be used as below:
-(qseecom_props function = AES_TZAPP aes_v2 = true)
+(qseecom_props function = AES_TZAPP aes_v2 = true ipc_support = false)
 
 Context data is 64 bytes which can be fed as below:
 (1) echo -n "34613132613738396434316363323738656166343132363635613831643530313461313261373839643431636332373865616634313236363561383164353031" > /sys/firmware/tzapp/aes/context_data_aes
