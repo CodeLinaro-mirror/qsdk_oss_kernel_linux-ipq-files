@@ -1413,11 +1413,13 @@ static ssize_t show_licensed_features(struct kobject *k,
 
 		if (!list_empty(&lm_svc->soc_hw_feature_list)) {
 			list_for_each_entry(feat, &lm_svc->soc_hw_feature_list, node) {
-				if (feat->feature_status == SEC_FEATURE_STATUS_ACTIVE &&
-						feat->HWEnforceStatus) {
+				if (feat->feature_status == SEC_FEATURE_STATUS_ACTIVE) {
+					if (feat->HWEnforceStatus ||
+					    feat->feature_id == DDR_SPACE_LIMIT_FID) {
 					len += scnprintf(buf + len, max_buf_len - len,
 						"%u\n", feat->feature_id);
 					count++;
+					}
 				}
 			}
 		}
