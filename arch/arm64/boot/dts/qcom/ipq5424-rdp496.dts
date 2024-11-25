@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 /*
- * IPQ5424 RDP466-rffe board device tree source
+ * IPQ5424 RDP496 board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
@@ -16,8 +16,8 @@
 #endif
 
 / {
-	model = "Qualcomm Technologies, Inc. IPQ5424 RDP466-rffe-c2";
-	compatible = "qcom,ipq5424-rdp466-rffe-c2", "qcom,ipq5424";
+	model = "Qualcomm Technologies, Inc. IPQ5424 RDP496";
+	compatible = "qcom,ipq5424-rdp496", "qcom,ipq5424";
 
 	soc@0 {
 		qupv3: geniqup@1ac0000 {
