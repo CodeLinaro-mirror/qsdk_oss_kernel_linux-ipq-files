@@ -581,11 +581,12 @@ static int write_to_flash (struct sbl_if_dualboot_info_type_v2 *data,
 	struct erase_info erase;
 	size_t retlen;
 	uint8_t *flash_data;
-	int i, ret = -1;
+	int ret = -1;
 #ifdef CONFIG_MMC
 	struct gendisk *disk = NULL;
 	struct block_device *bdev;
 	unsigned long idx;
+	int i;
 #endif
 
 	printk("Restoring %s\n",partition);
