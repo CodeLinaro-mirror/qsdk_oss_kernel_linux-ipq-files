@@ -543,13 +543,13 @@ static inline int tmelcom_aes_decrypt(struct tmel_aes_decrypt_msg *msg,
 	return -EOPNOTSUPP;
 }
 
-static int tmelcom_aes_generate_key(u32 key_id, struct tme_key_policy *policy,
+static inline int tmelcom_aes_generate_key(u32 key_id, struct tme_key_policy *policy,
 				    u8 *key_handle)
 {
 	return -EOPNOTSUPP;
 }
 
-static int tmelcom_aes_import_key(u32 key_id, struct tme_key_policy *policy,
+static inline int tmelcom_aes_import_key(u32 key_id, struct tme_key_policy *policy,
 				  struct tmel_plain_text_key *key_material,
 				  u8 *key_handle)
 {
