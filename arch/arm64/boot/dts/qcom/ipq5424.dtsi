@@ -2371,7 +2371,7 @@
 			hremote-size = <0x1400000>;
 			pageable-size = <0x700000>;
 			tgt-mem-mode = <0x1>;
-		#else
+		#elif !defined(__IPQ_MEM_PROFILE_256_MB__)
 			/* qcn9224 tgt-mem-mode=0 layout - 50MB
 			 * +=========+==============+=========+
 			 * |  Region | Start Offset |   Size  |
@@ -2649,7 +2649,7 @@
 			hremote-size = <0x1400000>;
 			pageable-size = <0x700000>;
 			tgt-mem-mode = <0x1>;
-		#else
+		#elif !defined(__IPQ_MEM_PROFILE_256_MB__)
 			/* qcn9224 tgt-mem-mode=0 layout - 50MB
 			 * +=========+==============+=========+
 			 * |  Region | Start Offset |   Size  |
@@ -2927,7 +2927,7 @@
 			hremote-size = <0x1400000>;
 			pageable-size = <0x700000>;
 			tgt-mem-mode = <0x1>;
-		#else
+		#elif !defined(__IPQ_MEM_PROFILE_256_MB__)
 			/* qcn9224 tgt-mem-mode=0 layout - 50MB
 			 * +=========+==============+=========+
 			 * |  Region | Start Offset |   Size  |
@@ -3205,7 +3205,7 @@
 			hremote-size = <0x1400000>;
 			pageable-size = <0x700000>;
 			tgt-mem-mode = <0x1>;
-		#else
+		#elif !defined(__IPQ_MEM_PROFILE_256_MB__)
 			/* qcn9224 tgt-mem-mode=0 layout - 50MB
 			 * +=========+==============+=========+
 			 * |  Region | Start Offset |   Size  |
