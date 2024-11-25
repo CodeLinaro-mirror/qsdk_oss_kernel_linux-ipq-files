@@ -24,6 +24,7 @@ struct qseecom_props {
 	bool logging_support_enabled;
 	bool aes_v2;
 	bool ipc_support;
+	int tzapp_log_ver;
 };
 
 const struct qseecom_props qseecom_props_ipq9574 = {
@@ -34,14 +35,17 @@ const struct qseecom_props qseecom_props_ipq9574 = {
 	.logging_support_enabled = true,
 	.aes_v2 = true,
 	.ipc_support = false,
+	.tzapp_log_ver = TZAPP_LOG_VER1,
 };
 
 const struct qseecom_props qseecom_props_ipq5424 = {
-	.function = (AES_SEC_KEY | RSA_SEC_KEY),
+	.function = (MUL | CRYPTO | AES_SEC_KEY | RSA_SEC_KEY | LOG_BITMASK |
+		     FUSE | MISC),
 	.libraries_inbuilt = false,
 	.logging_support_enabled = true,
 	.aes_v2 = true,
 	.ipc_support = true,
+	.tzapp_log_ver = TZAPP_LOG_VER2,
 };
 
 static const struct of_device_id qseecom_of_table[] = {
@@ -87,20 +91,17 @@ static int qtidbg_register_qsee_log_buf(struct device *dev)
 {
 	uint64_t len = 0;
 	int ret = 0;
-	void *buf = NULL;
 	struct qsee_reg_log_buf_req req;
 	struct qseecom_command_scm_resp resp;
-	dma_addr_t dma_log_buf = 0;
 
 	len = QSEE_LOG_BUF_SIZE;
-	buf = dma_alloc_coherent(dev, len, &dma_log_buf, GFP_KERNEL);
-	if (buf == NULL) {
+	q_qsee_log = dma_alloc_coherent(dev, len, &dma_qsee_log_buf, GFP_KERNEL);
+	if (!q_qsee_log) {
 		pr_err("Failed to alloc memory for size %llu\n", len);
 		return -ENOMEM;
 	}
-	g_qsee_log = (struct qtidbg_log_t *)buf;
 
-	req.phy_addr = dma_log_buf;
+	req.phy_addr = dma_qsee_log_buf;
 	req.len = len;
 
 	ret = qti_scm_register_log_buf(dev, &req, sizeof(req),
@@ -108,14 +109,14 @@ static int qtidbg_register_qsee_log_buf(struct device *dev)
 
 	if (ret) {
 		pr_err("SCM Call failed..SCM Call return value = %d\n", ret);
-		dma_free_coherent(dev, len, (void *)g_qsee_log, dma_log_buf);
+		dma_free_coherent(dev, len, q_qsee_log, dma_qsee_log_buf);
 		return ret;
 	}
 
 	if (resp.result) {
 		ret = resp.result;
 		pr_err("Response status failure..return value = %d\n", ret);
-		dma_free_coherent(dev, len, (void *)g_qsee_log, dma_log_buf);
+		dma_free_coherent(dev, len, q_qsee_log, dma_qsee_log_buf);
 		return ret;
 	}
 
@@ -3944,24 +3945,38 @@ store_decrypt_input(struct device *dev, struct device_attribute *attr,
 static int tzapp_log_open(struct inode *inode, struct file *file)
 {
 	ssize_t count = 0;
+	u32 offset;
+	u32 wrap;
+	u32 skip;
+	u8 *log;
 
 	if (!app_state) {
 		pr_err("load app and then view log..\n");
 		return -EINVAL;
 	}
 
-	if (g_qsee_log->log_pos.wrap != 0) {
-		memcpy(tzapp_log, g_qsee_log->log_buf +
-		       g_qsee_log->log_pos.offset, QSEE_LOG_BUF_SIZE -
-		       g_qsee_log->log_pos.offset - 4);
-		count = QSEE_LOG_BUF_SIZE - g_qsee_log->log_pos.offset - 4;
-		memcpy(tzapp_log + count, g_qsee_log->log_buf,
-		       g_qsee_log->log_pos.offset);
-		count = count + g_qsee_log->log_pos.offset;
+	memset(tzapp_log, 0, QSEE_LOG_BUF_SIZE);
+
+	if (props->tzapp_log_ver == TZAPP_LOG_VER1) {
+		wrap = ((struct qtidbg_log_v1_t *) q_qsee_log)->log_pos.wrap;
+		offset = ((struct qtidbg_log_v1_t *) q_qsee_log)->log_pos.offset;
+		log = ((struct qtidbg_log_v1_t *) q_qsee_log)->log_buf;
+		skip = sizeof(struct tzdbg_log_v1_pos_t);
 	} else {
-		memcpy(tzapp_log, g_qsee_log->log_buf,
-		       g_qsee_log->log_pos.offset);
-		count = g_qsee_log->log_pos.offset;
+		wrap = ((struct qtidbg_log_v2_t *) q_qsee_log)->log_pos.wrap;
+		offset = ((struct qtidbg_log_v2_t *) q_qsee_log)->log_pos.offset;
+		log = ((struct qtidbg_log_v2_t *) q_qsee_log)->log_buf;
+		skip = sizeof(struct tzdbg_log_v2_pos_t);
+	}
+
+	if (wrap != 0) {
+		memcpy(tzapp_log, log + offset, QSEE_LOG_BUF_SIZE - offset - skip);
+		count = QSEE_LOG_BUF_SIZE - offset - skip;
+		memcpy(tzapp_log + count, log, offset);
+		count = count + offset;
+	} else {
+		memcpy(tzapp_log, log, offset);
+		count = offset;
 	}
 
 	tzapp_log_len = count;
@@ -3989,7 +4004,6 @@ store_load_start(struct device *dev, struct device_attribute *attr,
 	uint32_t smc_id = 0;
 	uint32_t cmd_id = 0;
 	size_t req_size = 0;
-	struct dentry *ret;
 
 	dev = qdev;
 
@@ -4031,15 +4045,15 @@ store_load_start(struct device *dev, struct device_attribute *attr,
 					pr_info("Loading app failed\n");
 				else {
 					if (props->logging_support_enabled) {
-						ret = debugfs_create_file("tzapp_log",
-									      0444,
-									      NULL,
-									      NULL,
-									      &fops_tzapp_log);
-						if (IS_ERR_OR_NULL(ret)) {
-							pr_err("unable to \
-								create tzapp_log \
-								debugfs\n");
+						tzapp_log_dir = debugfs_create_file("tzapp_log",
+										    0444,
+										    NULL,
+										    NULL,
+										    &fops_tzapp_log);
+						if (IS_ERR_OR_NULL(tzapp_log_dir)) {
+							pr_err("unable to "\
+							       "create tzapp_log "\
+							       "debugfs entry\n");
 							return -EIO;
 						}
 					}
@@ -4065,6 +4079,8 @@ store_load_start(struct device *dev, struct device_attribute *attr,
 		} else {
 			pr_info("App already unloaded...\n");
 		}
+		debugfs_remove(tzapp_log_dir);
+		tzapp_log_dir = NULL;
 	} else {
 		pr_info("Echo 0 to load app libs if its not inbuilt\n");
 		pr_info("Echo 1 to load app if its not already loaded\n");
@@ -5258,6 +5274,13 @@ static int __exit qseecom_remove(struct platform_device *pdev)
 		else
 			app_libs_state = 0;
 	}
+
+	if (q_qsee_log) {
+		dma_free_coherent(dev, QSEE_LOG_BUF_SIZE, q_qsee_log, dma_qsee_log_buf);
+		q_qsee_log = NULL;
+	}
+	debugfs_remove(tzapp_log_dir);
+	tzapp_log_dir = NULL;
 
 	ret = qti_scm_qseecom_remove_xpu();
 	if (ret && (ret != -ENOTSUPP))
