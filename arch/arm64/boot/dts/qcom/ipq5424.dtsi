@@ -1534,6 +1534,7 @@
 				"nss-nssnoc-snoc-1-clk", "nss-nssnoc-snoc-clk", "nss-nssnoc-timeout-ref-clk",
 				"nss-nssnoc-xo-dcd-clk";
 
+#ifdef __CONFIG_IO_COHERENCY__
 			nss_noc {
 				prop-name = "nss_noc";
 				secure-write;
@@ -1553,6 +1554,7 @@
 						<0x222ff>,	/* AxCache Overide register value */
 						<0x789f>;	/* Axiw Ctrl register value */
 			};
+#endif
                 };
 
 		nss-ppe {
