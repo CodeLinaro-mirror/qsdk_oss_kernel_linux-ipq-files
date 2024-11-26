@@ -1146,11 +1146,8 @@ int mhitest_unregister_ramdump(struct mhitest_platform *mplat)
 static u32 mhitest_get_dump_desc_size(struct mhitest_platform *mplat)
 {
 	u32 descriptor_size = 0;
-	u32 segment_len = MHITEST_MHI_SEG_LEN;
+	u32 segment_len = SZ_4K;
 	u32 wlan_sram_size = mplat->mhitest_rdinfo.ramdump_size;
-
-	of_property_read_u32(mplat->pci_dev->dev.of_node, "qti,rddm-seg-len",
-			     &segment_len);
 
 	descriptor_size = (((wlan_sram_size / segment_len) +
 			    MHITEST_DUMP_DESC_TOLERANCE) *
