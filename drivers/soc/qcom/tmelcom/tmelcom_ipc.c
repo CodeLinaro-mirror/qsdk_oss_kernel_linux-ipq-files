@@ -24,7 +24,6 @@ int tmelcom_probed(void)
 	else
 		return 0;
 }
-EXPORT_SYMBOL(tmelcom_probed);
 
 int tmelcom_fuse_list_read(struct tmel_fuse_payload *fuse, size_t size)
 {
