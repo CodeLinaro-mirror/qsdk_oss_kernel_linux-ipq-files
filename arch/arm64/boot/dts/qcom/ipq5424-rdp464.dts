@@ -20,6 +20,8 @@
 	compatible = "qcom,ipq5424-rdp464", "qcom,ipq5424";
 
 	soc@0 {
+		/delete-node/ apc-gpio-regulator;
+
 		qupv3: geniqup@1ac0000 {
 
 			i2c0: i2c@1a88000 {
@@ -368,6 +370,22 @@
 	};
 };
 
+&CPU0 {
+	/delete-property/ cpu-supply;
+};
+
+&CPU1 {
+	/delete-property/ cpu-supply;
+};
+
+&CPU2 {
+	/delete-property/ cpu-supply;
+};
+
+&CPU3 {
+	/delete-property/ cpu-supply;
+};
+
 &qpic_bam {
 	status = "okay";
 };
@@ -556,6 +574,8 @@
 			output-low;
 		};
 	};
+
+	/delete-node/ regulator-gpio;
 
 	qup_i2c0_default: qup-i2c0-default-state {
 		qup_i2c0_scl {
