@@ -48,11 +48,9 @@
 	 * | WLAN   |              |                         |
 	 * |   Q6   |  0x4A900000  |          20MB           |
 	 * +--------+--------------+-------------------------+
-	 * |  QDSS  |  0x4BD00000  |           1MB           |
+	 * |  WKK0  |  0x4BD00000  |          11MB           |
 	 * +--------+--------------+-------------------------+
-	 * |  WKK0  |  0x4BE00000  |          12MB           |
-	 * +--------+--------------+-------------------------+
-	 * |       17 MB not-reserved, used by linux         |
+	 * |       18 MB not-reserved, used by linux         |
 	 * +--------+--------------+-------------------------+
 	 * |  MLO   |  0x4DB00000  |           5MB           |
 	 * +--------+--------------+-------------------------+
@@ -94,19 +92,14 @@
 			status = "disabled";
 		};
 
-		q6_etr_region: q6_etr_dump@1 {
-			no-map;
-			reg = <0x0 0x4bd00000 0x0 0x100000>;
-		};
-
 		q6_caldb_region:q6_caldb_region@1 {
                         no-map;
 			status = "disabled";
                 };
 
-		qcn9224_pcie0: qcn9224_pcie0@4be00000 {
+		qcn9224_pcie0: qcn9224_pcie0@4bd00000 {
 			no-map;
-			reg = <0x0 0x4be00000 0x0 0xc00000>;
+			reg = <0x0 0x4bd00000 0x0 0xb00000>;
 		};
 
 		mlo_global_mem0: mlo_global_mem_0@0x4db00000 {
@@ -551,8 +544,10 @@
 	q6_wcss_pd1: remoteproc_pd1 {
 		memory-region = <&q6_ipq5332_data>,
 				<&m3_dump>,
+#if !defined(__IPQ_MEM_PROFILE_256_MB__)
 				<&q6_etr_region>,
 				<&q6_caldb_region>;
+#endif
 	};
 };
 
@@ -564,8 +559,10 @@
 	qcom,rproc = <&q6v5_wcss>;
 	dump-region = <&q6_ipq5332_data>,
 		<&m3_dump>,
+#if !defined(__IPQ_MEM_PROFILE_256_MB__)
 		<&q6_etr_region>,
 		<&q6_caldb_region>;
+#endif
 #else
 	qcom,rproc = <&q6_wcss_pd1>;
 	qcom,rproc_rpd = <&q6v5_wcss>;
@@ -594,21 +591,18 @@
 &wifi3 {
 	/* QCN9224 radio 5G */
 #if defined(__IPQ_MEM_PROFILE_256_MB__)
-	/* qcn9224 tgt-mem-mode=2 layout - 12MB
+	/* qcn9224 tgt-mem-mode=2 layout - 11MB
 	 * +=========+==============+=========+
 	 * |  Region | Start Offset |   Size  |
 	 * +---------+--------------+---------+
-	 * | HREMOTE |  0x4be00000  |   8MB   |
+	 * | HREMOTE |  0x4bd00000  |   8MB   |
 	 * +---------+--------------+---------+
-	 * |   ETR   |  0x4c600000  |   1MB   |
-	 * +---------+--------------+---------+
-	 * |Pageable |  0x4c700000  |   3MB   |
+	 * |Pageable |  0x4c500000  |   3MB   |
 	 * +==================================+
 	 */
-	base-addr = <0x4be00000>;
+	base-addr = <0x4bd00000>;
 	m3-dump-addr = <0>;
-	etr-addr = <0x4c600000>;
-	pageable-addr = <0x4c700000>;
+	pageable-addr = <0x4c500000>;
 	hremote-size = <0x800000>;
 	pageable-size = <0x300000>;
 	caldb-size = <0>;
