@@ -325,7 +325,7 @@
 			/* qcn9224 tgt-mem-mode=0 layout
 			 * refer ipq9574-qcn9224-default-memory.dtsi
 			 */
-			memory-region = <&qcn9224_pcie2>;
+			memory-region = <&qcn9224_pcie2>, <&mhi_region2>;
 			qcom,board_id = <0x100e>;
 			status = "okay";
 			qcom,wsi = <&wsi>;
@@ -545,6 +545,16 @@
 &qcn9224_pcie2 {
 	status = "okay";
 };
+
+#if defined(__MHI_BUS_RESERVED_DMA_POOL__)
+&mhi_region0 {
+	status = "okay";
+};
+
+&mhi_region2 {
+	status = "okay";
+};
+#endif
 
 /* MLO GLOBAL MEM REGION size is 14MB for RDP with 2 QCN224 radios */
 &mlo_global_mem0 {
