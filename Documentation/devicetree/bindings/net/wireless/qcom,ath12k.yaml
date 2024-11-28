@@ -38,6 +38,13 @@ properties:
                      For chip_idx 1,adjacent chip id should be 2 0 as 2 is
                      immediate adjacent chip not 0 2.
 
+  secure-reg:
+    type: <prop-encoded-array>
+    description:
+      secure registers which need to be write with kernel IPC mechanisum
+      * addr: secure address to write
+      * value : value to write
+
 required:
   - compatible
   - reg

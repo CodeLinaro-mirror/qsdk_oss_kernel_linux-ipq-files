@@ -73,7 +73,13 @@
 		};
 
 		ess-instance {
+#ifdef __CONFIG_IO_COHERENCY__
+			dma-coherent;
+#endif
 			ess-switch@3a000000 {
+#ifdef __CONFIG_IO_COHERENCY__
+				dma-coherent;
+#endif
 				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
 				switch_lan_bmp = <0xc>; /* lan port bitmap */
 				switch_wan_bmp = <0x2>; /* wan port bitmap */
@@ -96,6 +102,9 @@
 			};
 
 			 ess-switch1@1 {
+#ifdef __CONFIG_IO_COHERENCY__
+				dma-coherent;
+#endif
 				link-polling-required = <0>;
 				fdb_sync = "interrupt";
 				link-intr-gpio = <&tlmm 41 GPIO_ACTIVE_HIGH>;
@@ -105,6 +114,9 @@
 		dp1 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
+#ifdef __CONFIG_IO_COHERENCY__
+			dma-coherent;
+#endif
 			qcom,id = <1>;
 			reg = <0x3A500000 0x4000>;
 			qcom,mactype = <1>;
@@ -117,6 +129,9 @@
 		dp2 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
+#ifdef __CONFIG_IO_COHERENCY__
+			dma-coherent;
+#endif
 			qcom,id = <2>;
 			reg = <0x3A504000 0x4000>;
 			qcom,mactype = <1>;
@@ -129,6 +144,9 @@
 		dp3 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
+#ifdef __CONFIG_IO_COHERENCY__
+			dma-coherent;
+#endif
 			qcom,id = <3>;
 			reg = <0x3a001400 0x200>;
 			qcom,mactype = <0>;
@@ -141,6 +159,9 @@
 
 		/* EDMA host driver configuration for the board */
 		edma@3ab00000 {
+#ifdef __CONFIG_IO_COHERENCY__
+			dma-coherent;
+#endif
 			qcom,txdesc-ring-start = <4>;		/* Tx desc ring start ID */
 			qcom,txdesc-rings = <16>;		/* Total number of Tx desc rings to be provisioned */
 			qcom,mht-txdesc-rings = <12>;		/* Extra Tx desc rings to be provisioned for MHT SW ports */

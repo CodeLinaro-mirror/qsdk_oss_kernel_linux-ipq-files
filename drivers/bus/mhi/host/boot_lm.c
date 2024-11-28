@@ -242,6 +242,7 @@ static int mhi_update_scratch_reg(struct mhi_controller *mhi_cntrl, u32 val)
 int mhi_handle_boot_args(struct mhi_controller *mhi_cntrl)
 {
 	struct device *dev = &mhi_cntrl->mhi_dev->dev;
+	dma_addr_t bootargs_dma;
 	int i, cnt, ret;
 	u32 val;
 
@@ -276,9 +277,13 @@ int mhi_handle_boot_args(struct mhi_controller *mhi_cntrl)
 		mhi_cntrl->bootargs_buf[i] = (u8)val;
 	}
 
-	ret = mhi_update_scratch_reg(mhi_cntrl, virt_to_phys(mhi_cntrl->bootargs_buf));
+	bootargs_dma = virt_to_phys(mhi_cntrl->bootargs_buf);
 
-	dev_dbg(dev, "boot-args address copied to PCIE_REG_FOR_BOOT_ARGS\n");
+	dma_sync_single_for_device(mhi_cntrl->cntrl_dev, bootargs_dma, PAGE_SIZE, DMA_TO_DEVICE);
+
+	ret = mhi_update_scratch_reg(mhi_cntrl, bootargs_dma);
+
+	dev_dbg(dev, "boot-args address %pad copied to PCIE_REG_FOR_BOOT_ARGS\n", &bootargs_dma);
 
 	return ret;
 }

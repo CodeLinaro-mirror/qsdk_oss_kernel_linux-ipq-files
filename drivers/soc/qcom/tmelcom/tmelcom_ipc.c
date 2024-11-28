@@ -694,10 +694,10 @@ int tmelcomm_get_ecc_public_key(u32 type, void *buf, u32 size, u32 *rsp_len)
 }
 EXPORT_SYMBOL_GPL(tmelcomm_get_ecc_public_key);
 
-int tmelcom_aes_v2_derive_key(u32 key_id, dma_addr_t *dma_kdf_spec, u32 kdf_len,
-			      u8 *key_handle)
+int tmelcom_aes_derive_key(u32 key_id, dma_addr_t *dma_kdf_spec, u32 kdf_len,
+			   u8 *key_handle)
 {
-	struct tmel_aes_v2_derive_key_msg msg = {0};
+	struct tmel_aes_derive_key_msg msg = {0};
 	struct device *dev = tmelcom_get_device();
 	int ret;
 
@@ -715,11 +715,11 @@ int tmelcom_aes_v2_derive_key(u32 key_id, dma_addr_t *dma_kdf_spec, u32 kdf_len,
 
 	return ret ? ret : msg.resp.status;
 }
-EXPORT_SYMBOL_GPL(tmelcom_aes_v2_derive_key);
+EXPORT_SYMBOL_GPL(tmelcom_aes_derive_key);
 
-int tmelcom_aes_v2_clear_key(u32 handle)
+int tmelcom_aes_clear_key(u32 handle)
 {
-	struct tmel_aes_v2_clear_key_msg msg = {0};
+	struct tmel_aes_clear_key_msg msg = {0};
 	struct device *dev = tmelcom_get_device();
 	int ret;
 
@@ -732,9 +732,9 @@ int tmelcom_aes_v2_clear_key(u32 handle)
 
 	return ret ? ret : msg.resp.status;
 }
-EXPORT_SYMBOL_GPL(tmelcom_aes_v2_clear_key);
+EXPORT_SYMBOL_GPL(tmelcom_aes_clear_key);
 
-int tmel_aes_v2_encrypt(struct tmel_aes_v2_encrypt_msg *msg, u32 size)
+int tmelcom_aes_encrypt(struct tmel_aes_encrypt_msg *msg, u32 size)
 {
 	struct device *dev = tmelcom_get_device();
 	int ret;
@@ -746,9 +746,9 @@ int tmel_aes_v2_encrypt(struct tmel_aes_v2_encrypt_msg *msg, u32 size)
 
 	return ret ? ret : msg->resp.status;
 }
-EXPORT_SYMBOL_GPL(tmel_aes_v2_encrypt);
+EXPORT_SYMBOL_GPL(tmelcom_aes_encrypt);
 
-int tmel_aes_v2_decrypt(struct tmel_aes_v2_decrypt_msg *msg, u32 size)
+int tmelcom_aes_decrypt(struct tmel_aes_decrypt_msg *msg, u32 size)
 {
 	struct device *dev = tmelcom_get_device();
 	int ret;
@@ -760,32 +760,53 @@ int tmel_aes_v2_decrypt(struct tmel_aes_v2_decrypt_msg *msg, u32 size)
 
 	return ret ? ret : msg->resp.status;
 }
-EXPORT_SYMBOL_GPL(tmel_aes_v2_decrypt);
+EXPORT_SYMBOL_GPL(tmelcom_aes_decrypt);
 
-int tmel_aes_v2_generate_key(struct tmel_aes_v2_generate_key_msg *msg, u32 size)
+int tmelcom_aes_generate_key(u32 key_id, struct tme_key_policy *policy,
+			     u8 *key_handle)
 {
+	struct tmel_aes_generate_key_msg msg = {0};
 	struct device *dev = tmelcom_get_device();
 	int ret;
 
-	ret = tmelcom_process_request(TMEL_MSG_UID_KM_GENERATE, msg, size);
-	if (ret || msg->resp.status)
-		dev_err(dev, "%s : IPC Failed. ret: %d msg->resp.status = %x\n",
-			__func__, ret, msg->resp.status);
+	msg.req.key_id = key_id;
+	msg.req.policy.low = policy->low;
+	msg.req.policy.high = policy->high;
+	msg.req.cred_slot = 0;
 
-	return ret ? ret : msg->resp.status;
+	ret = tmelcom_process_request(TMEL_MSG_UID_KM_GENERATE, &msg, sizeof(msg));
+	if (ret || msg.resp.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d msg.resp.status = %x\n",
+			__func__, ret, msg.resp.status);
+	else
+		*key_handle = msg.resp.key_id;
+
+	return ret ? ret : msg.resp.status;
 }
-EXPORT_SYMBOL_GPL(tmel_aes_v2_generate_key);
+EXPORT_SYMBOL_GPL(tmelcom_aes_generate_key);
 
-int tmel_aes_v2_import_key(struct tmel_aes_v2_import_key_msg *msg, u32 size)
+int tmelcom_aes_import_key(u32 key_id, struct tme_key_policy *policy,
+			   struct tmel_plain_text_key *key_material,
+			   u8 *key_handle)
 {
+	struct tmel_aes_import_key_msg msg = {0};
 	struct device *dev = tmelcom_get_device();
 	int ret;
 
-	ret = tmelcom_process_request(TMEL_MSG_UID_KM_IMPORT, msg, size);
-	if (ret || msg->resp.status)
-		dev_err(dev, "%s : IPC Failed. ret: %d msg->resp.status = %x\n",
-			__func__, ret, msg->resp.status);
+	msg.req.key_id = key_id;
+	msg.req.key_policy.low = policy->low;
+	msg.req.key_policy.high = policy->high;
+	msg.req.key_material.buf = key_material->buf;
+	msg.req.key_material.buf_len = key_material->buf_len;
+	msg.req.cred_slot = 0;
 
-	return ret ? ret : msg->resp.status;
+	ret = tmelcom_process_request(TMEL_MSG_UID_KM_IMPORT, &msg, sizeof(msg));
+	if (ret || msg.resp.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d msg->resp.status = %x\n",
+			__func__, ret, msg.resp.status);
+	else
+		*key_handle = msg.resp.key_id;
+
+	return ret ? ret : msg.resp.status;
 }
-EXPORT_SYMBOL_GPL(tmel_aes_v2_import_key);
+EXPORT_SYMBOL_GPL(tmelcom_aes_import_key);

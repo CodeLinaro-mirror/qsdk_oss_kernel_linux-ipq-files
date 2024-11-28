@@ -45,6 +45,7 @@
 #define CBOR_BUFFER_SIZE	4096
 
 #define SMEM_SOFTSKU_INFO	508
+#define DDR_SPACE_LIMIT_FID	3008
 
 struct qmi_lm_feature_list_req_msg_v01 {
 	u32 reserved;
