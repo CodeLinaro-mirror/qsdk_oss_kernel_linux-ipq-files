@@ -862,7 +862,6 @@
 	qcom,multipd_arch;
 	compatible = "qcom,cnss-qcn6432" , "qcom,qcn6432-wifi";
 	interrupt-bmap = <0x100510>;
-	interrupt-names = "umac_reset";
 	msi-parent = <&v2m0>;
 	qcom,rproc = <&q6_wcss_pd2>;
 	qcom,rproc_rpd = <&q6v5_wcss>;
@@ -877,7 +876,11 @@
 	qcom,pci_slot_id = <0>;
 	qcom,wsi = <&wsi>;
 	qcom,wsi_index = <1>;
-	interrupts = <0 33 1>;
+	interrupts = <0 0 0>,
+		<0 0 0>,
+		<0 0 0>,
+		<0 0 0>,
+		<0 33 1>;
 	status = "ok";
 };
 

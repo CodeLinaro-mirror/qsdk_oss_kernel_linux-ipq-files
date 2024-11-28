@@ -705,8 +705,10 @@
 	qcom,wsi = <&wsi>;
 	qcom,wsi_index = <1>;
 	qcom,pci_slot_id = <0>;
-	interrupts = <0 33 1>;
 	status = "ok";
-	interrupts = <GIC_SPI 33 IRQ_TYPE_EDGE_RISING>;
-	interrupt-names = "umac_reset";
+	interrupts = <0 0 0>,
+		<0 0 0>,
+		<0 0 0>,
+		<0 0 0>,
+		<GIC_SPI 33 IRQ_TYPE_EDGE_RISING>;
 };
