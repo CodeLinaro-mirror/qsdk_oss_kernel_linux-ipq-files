@@ -38,7 +38,6 @@ struct upd_ops {
 struct user_pd {
 	struct device *dev;
 	struct rproc *rproc;
-	struct notifier_block rproc_nb;
 	struct notifier_block rproc_atomic_nb;
 	void *ssr_notifier;
 	void *ssr_atomic_notifier;
@@ -167,7 +166,7 @@ static int qcom_q6v5_userpd_start(struct user_pd *upd, int timeout)
 		return upd->start_ack ? 0 : -ERESTARTSYS;
 }
 
-static int q6v5_start_user_pd(struct user_pd *upd)
+static int __q6v5_start_user_pd(struct user_pd *upd)
 {
 	int ret;
 	u32 pasid = (upd->pd_asid << 8) | UPD_SWID;
@@ -220,6 +219,28 @@ static int q6v5_start_user_pd(struct user_pd *upd)
 	return ret;
 }
 
+int q6v5_start_user_pd(struct rproc *rproc)
+{
+	struct user_pd *upd = g_upd;
+	int ret;
+
+	/* check if upd driver is probed, else return success */
+	if (!upd)
+		return 0;
+
+	if (!upd->autostart) {
+		dev_info(upd->dev, "Ignoring start event for rproc: %s",
+			 upd->rproc->name);
+		return 0;
+	}
+
+	ret = __q6v5_start_user_pd(upd);
+	if (ret)
+		dev_err(upd->dev, "Failed to start userpd %d\n", ret);
+
+	return ret;
+}
+
 static int qcom_q6v5_userpd_stop(struct user_pd *upd)
 {
 	int ret;
@@ -249,7 +270,7 @@ static int qcom_q6v5_userpd_stop(struct user_pd *upd)
 		return upd->stop_ack ? 0 : -ERESTARTSYS;
 }
 
-static int q6v5_stop_user_pd(struct user_pd *upd)
+static int __q6v5_stop_user_pd(struct user_pd *upd)
 {
 	int ret;
 	u32 pasid = (upd->pd_asid << 8) | UPD_SWID;
@@ -273,6 +294,17 @@ static int q6v5_stop_user_pd(struct user_pd *upd)
 	dev_info(upd->dev, "stopped userpd!\n");
 
 	return ret;
+}
+
+int q6v5_stop_user_pd(struct rproc *rproc)
+{
+	struct user_pd *upd = g_upd;
+
+	/* check if upd driver is probed, else return success */
+	if (!upd)
+		return 0;
+
+	return __q6v5_stop_user_pd(upd);
 }
 
 irqreturn_t q6v5_upd_fatal_handler(int irq, void *data)
@@ -469,47 +501,6 @@ static int upd_alloc_memory_region(struct user_pd *upd)
 	return 0;
 }
 
-static int q6v5_upd_rproc_notifier_cb(struct notifier_block *nb,
-				      unsigned long action, void *data)
-{
-	struct user_pd *upd = container_of(nb, struct user_pd, rproc_nb);
-	int ret;
-
-	dev_info(upd->dev, "Received event %lu for rproc: %s\n",
-		 action, upd->rproc->name);
-
-	switch (action) {
-	case QCOM_SSR_AFTER_POWERUP:
-		if (!upd->autostart) {
-			dev_info(upd->dev, "Ignoring event %lu for rproc: %s",
-				 action, upd->rproc->name);
-			break;
-		}
-		ret = q6v5_start_user_pd(upd);
-		if (ret) {
-			dev_err(upd->dev, "Failed to start userpd %d\n", ret);
-			break;
-		}
-		return NOTIFY_OK;
-
-	case QCOM_SSR_BEFORE_SHUTDOWN:
-		ret = q6v5_stop_user_pd(upd);
-		if (ret) {
-			dev_err(upd->dev, "Failed to stop userpd %d\n", ret);
-			break;
-		}
-		return NOTIFY_OK;
-
-	case QCOM_SSR_BEFORE_POWERUP:
-		fallthrough;
-	case QCOM_SSR_AFTER_SHUTDOWN:
-		fallthrough;
-	default:
-		return NOTIFY_DONE;
-	}
-	return NOTIFY_DONE;
-}
-
 static int q6v5_upd_rproc_atomic_notifier_cb(struct notifier_block *nb,
 					     unsigned long action, void *data)
 {
@@ -549,11 +540,11 @@ static ssize_t state_store(struct device *dev,
 	int ret = 0;
 
 	if (sysfs_streq(buf, "start")) {
-		ret = q6v5_start_user_pd(upd);
+		ret = __q6v5_start_user_pd(upd);
 		if (ret)
 			dev_err(upd->dev, "Failed to start userpd %d\n", ret);
 	} else if (sysfs_streq(buf, "stop")) {
-		ret = q6v5_stop_user_pd(upd);
+		ret = __q6v5_stop_user_pd(upd);
 		if (ret)
 			dev_err(upd->dev, "Failed to stop userpd %d\n", ret);
 	} else {
@@ -631,19 +622,8 @@ static int q6v5_upd_probe(struct platform_device *pdev)
 	if (!upd->ops)
 		return -EINVAL;
 
-	upd->rproc_nb.notifier_call = q6v5_upd_rproc_notifier_cb;
-	upd->rproc_nb.priority = 1;
-
 	upd->rproc_atomic_nb.notifier_call = q6v5_upd_rproc_atomic_notifier_cb;
 	upd->rproc_atomic_nb.priority = 1;
-
-	upd->ssr_notifier = qcom_register_ssr_notifier(upd->rproc->name,
-						       &upd->rproc_nb);
-
-	if (IS_ERR(upd->ssr_notifier)) {
-		dev_err(upd->dev, "Failed to register SSR notifier\n");
-		return PTR_ERR(upd->ssr_notifier);
-	}
 
 	upd->ssr_atomic_notifier =
 			qcom_register_ssr_atomic_notifier(upd->rproc->name,
@@ -698,7 +678,6 @@ static int q6v5_upd_remove(struct platform_device *pdev)
 
 	qcom_unregister_ssr_atomic_notifier(upd->ssr_atomic_notifier,
 					    &upd->rproc_atomic_nb);
-	qcom_unregister_ssr_notifier(upd->ssr_notifier, &upd->rproc_nb);
 
 	return 0;
 }
