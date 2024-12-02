@@ -108,12 +108,15 @@
 #define TME_KID_ALLOC			0xAAAAAAAA
 #define TME_KID_INVALID			0xFFFFFFFF
 
+#define TZAPP_LOG_VER1		0x1
+#define TZAPP_LOG_VER2		0x2
 
 static int app_state;
 static int app_libs_state;
 struct qseecom_props *props;
 
 char tzapp_log[QSEE_LOG_BUF_SIZE];
+struct dentry *tzapp_log_dir;
 u32 tzapp_log_len;
 
 enum qti_crypto_service_aes_cmd_t {
@@ -653,7 +656,8 @@ struct kobject *qtiapp_aes_kobj;
 struct kobject *qtiapp_rsa_kobj;
 struct kobject *qtiapp_fuse_write_kobj;
 
-static struct qtidbg_log_t *g_qsee_log;
+static void *q_qsee_log;
+static dma_addr_t dma_qsee_log_buf;
 
 static struct device *qdev;
 

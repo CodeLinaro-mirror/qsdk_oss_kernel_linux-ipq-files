@@ -298,6 +298,9 @@
 
 	qseecom: qseecom {
 		compatible = "ipq5424-qseecom";
+#if !defined(__IPQ_MEM_PROFILE_256_MB__)
+		memory-region = <&tzapp>;
+#endif
 	};
 
 	reserved-memory {
