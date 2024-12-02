@@ -589,11 +589,9 @@ static void qdss_bridge_open_work_fn(struct work_struct *work)
 	if (ret)
 		goto err_open;
 
-	if (drvdata->mode == MHI_TRANSFER_TYPE_USB) {
-		ret = qdss_create_buf_tbl(drvdata);
-		if (ret)
-			goto err;
-	}
+	ret = qdss_create_buf_tbl(drvdata);
+	if (ret)
+		goto err;
 
 	drvdata->usb_ch = usb_qdss_open("qdss_mdm", drvdata, usb_notifier);
 	if (IS_ERR_OR_NULL(drvdata->usb_ch)) {
