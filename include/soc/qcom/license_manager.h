@@ -47,6 +47,8 @@
 #define SMEM_SOFTSKU_INFO	508
 #define DDR_SPACE_LIMIT_FID	3008
 
+#define MAX_SOC_HW_FID		12
+
 struct qmi_lm_feature_list_req_msg_v01 {
 	u32 reserved;
 	u8 feature_list_valid;
@@ -125,6 +127,11 @@ struct lm_soc_hw_feat {
 	u32 feature_id; /*featureID*/
 	enum sec_feature_status_type feature_status;
 	bool HWEnforceStatus;
+};
+
+struct sec_enforce_hw_featid{
+	u32 feature_id;
+	bool hw_feat_status;
 };
 
 struct feature_info {

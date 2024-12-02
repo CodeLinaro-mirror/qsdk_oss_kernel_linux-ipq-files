@@ -867,15 +867,17 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	void __user *argp = (void __user *)arg;
 	u32 ecdsa_consumed, ttime_buf_used_len;
 	struct ttime_get_req_params ttime_rp;
+	struct lm_license_check_cbor lm_cbor;
+	struct sec_enforce_hw_featid *fid;
 	struct lm_svc_ctx *svc = lm_svc;
 	struct feature_info *itr, *tmp;
+	struct lm_soc_hw_feat *feat;
+	u32 cbor_resp_used_len = 0;
+	int i, j, len = 0, ret = 0;
 	struct ttime_set ttime_st;
 	struct bindings_resp br;
-	void *cbor_req;
 	void *cbor_resp;
-	struct lm_license_check_cbor lm_cbor;
-	u32 cbor_resp_used_len = 0;
-	int i, len = 0, ret = 0;
+	void *cbor_req;
 
 	switch(cmd) {
 		case LICENSE_RESCAN:
@@ -1042,8 +1044,48 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			}
 
 			ret = tmelcom_ttime_set(ttime_buf, ttime_st.buf_len);
-			if (ret)
+			if (ret) {
 				dev_err(svc->dev, "IOCTL: TTIME set IPC failed: %d\n", ret);
+				goto set_err;
+			}
+
+			if (list_empty(&lm_svc->soc_hw_feature_list)) {
+				dev_err(svc->dev, "SoC HW feature list empty\n");
+				ret = 0;
+				goto set_err;
+			}
+
+			fid = kzalloc(MAX_SOC_HW_FID * sizeof(struct sec_enforce_hw_featid),
+				      GFP_KERNEL);
+			if (!fid) {
+				dev_err(svc->dev, "Cannot allocate memory for HW enforcement\n");
+				ret = 0;
+				goto set_err;
+			}
+
+			i = 0;
+			list_for_each_entry(feat, &lm_svc->soc_hw_feature_list, node) {
+				if (feat->HWEnforceStatus) {
+					fid[i].feature_id = feat->feature_id;
+					fid[i].hw_feat_status = 0;
+					i++;
+				}
+			}
+
+			ret = tmelcomm_qwes_enforce_hw_features(fid, i * sizeof(struct sec_enforce_hw_featid));
+			if (ret) {
+				dev_err(svc->dev, "IOCTL: TTIME set HW \
+					Enforcement IPC failed: %d\n", ret);
+			} else {
+				dev_info(svc->dev, "Enforcement done for SoC HW features\n");
+				for (j = 0; j < i; j++) {
+					if (!fid[j].hw_feat_status)
+						dev_dbg(svc->dev, "HW Enforcement failed for FID %u\n", fid[j].feature_id);
+				}
+			}
+
+			kfree(fid);
+
 		set_err:
 			kfree(ttime_buf);
 
@@ -1386,6 +1428,8 @@ static int populate_soc_hw_features(struct lm_svc_ctx *svc)
 		return PTR_ERR(smem);
 
 	entries = size / sizeof(struct softsku_info_smem);
+	if (entries > MAX_SOC_HW_FID)
+		return -EINVAL;
 
 	for (i = 0; i < entries; i++) {
 		feat = kzalloc(sizeof(*feat), GFP_KERNEL);
@@ -1590,8 +1634,11 @@ static int license_manager_probe(struct platform_device *pdev)
 		dev_info(dev, "License Manager is TME-L Bounded\n");
 		INIT_LIST_HEAD(&svc->soc_hw_feature_list);
 		ret = populate_soc_hw_features(svc);
-		if (ret)
-			return ret;
+		if (ret == -EPROBE_DEFER)
+			goto free_lm_svc;
+		else if (ret)
+			dev_err(dev, "Failed to populate SoC HW features"
+				"from smem with err = %d\n", ret);
 	}
 
 	/* Create IOCTL for userspace */

@@ -32,16 +32,11 @@
 	 * |         |              |                         |
 	 * +---------+--------------+-------------------------+
 	 * |         |              |                         |
-	 * | IPQ5424 |              |                         |
-	 * |  QDSS   |  0x8be00000  |          1MB            |
-	 * |         |              |                         |
-	 * +---------+--------------+-------------------------+
-	 * |         |              |                         |
 	 * |  MLO    |  0x8bf00000  |          5MB            |
 	 * |         |              |                         |
 	 * +---------+--------------+-------------------------+
 	 * |         |              |                         |
-	 * | QCN9224 |  0x8c400000  |          12MB           |
+	 * | QCN9224 |  0x8c400000  |          11MB           |
 	 * | PCIE0   |              |                         |
 	 * |         |              |                         |
 	 * +---------+--------------+-------------------------+
@@ -69,11 +64,6 @@
 			reg = <0x0 0x8a900000 0x0 0x1500000>;
 		};
 
-		q6_etr_region: q6_etr_dump@8be00000 {
-			no-map;
-			reg = <0x0 0x8be00000 0x0 0x100000>;
-		};
-
 		mlo_global_mem0: mlo_global_mem_0@0 {
 			no-map;
 			reg = <0x0 0x8bf00000 0x0 0x500000>;
@@ -81,7 +71,7 @@
 
 		qcn9224_pcie2: qcn9224_pcie2@8c400000 {
 			no-map;
-			reg = <0x0 0x8c400000 0x0 0xc00000>;
+			reg = <0x0 0x8c400000 0x0 0xb00000>;
 		};
 
 		mhi_region2: dma_pool2@0 {
@@ -384,7 +374,6 @@
 &q6v5_wcss {
 #ifdef __IPQ_MEM_PROFILE_256_MB__
 	memory-region = <&q6_region>,
-			<&q6_etr_region>,
 			<&mlo_global_mem0>;
 #endif
 	status = "okay";
@@ -574,20 +563,17 @@
 
 &wifi3 {
 #ifdef __IPQ_MEM_PROFILE_256_MB__
-	/* qcn9224 tgt-mem-mode=2 layout - 12MB
+	/* qcn9224 tgt-mem-mode=2 layout - 11MB
 	 * +=========+==============+=========+
 	 * |  Region | Start Offset |   Size  |
 	 * +---------+--------------+---------+
 	 * | HREMOTE |  0x8c400000  |   8MB   |
 	 * +---------+--------------+---------+
-	 * |   ETR   |  0x8cc00000  |   1MB   |
-	 * +---------+--------------+---------+
-	 * |Pageable |  0x8cd00000  |   3MB   |
+	 * |Pageable |  0x8cc00000  |   3MB   |
 	 * +==================================+
 	 */
 	base-addr = <0x8c400000>;
-	etr-addr = <0x8cc00000>;
-	pageable-addr = <0x8cd00000>;
+	pageable-addr = <0x8cc00000>;
 	hremote-size = <0x800000>;
 	pageable-size = <0x300000>;
 	caldb-size = <0>;

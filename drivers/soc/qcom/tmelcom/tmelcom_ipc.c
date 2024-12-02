@@ -24,7 +24,6 @@ int tmelcom_probed(void)
 	else
 		return 0;
 }
-EXPORT_SYMBOL(tmelcom_probed);
 
 int tmelcom_fuse_list_read(struct tmel_fuse_payload *fuse, size_t size)
 {
@@ -640,22 +639,37 @@ int tmelcomm_secboot_get_arb_version(u32 type, u32 *version)
 }
 EXPORT_SYMBOL_GPL(tmelcomm_secboot_get_arb_version);
 
-int tmelcomm_secboot_update_arb_version(u32 status)
+int tmelcomm_secboot_update_arb_version_list(u32 *sw_id_list, size_t size)
 {
-	struct device *dev = tmelcom_get_device();
-	struct tmel_update_arb_version_req msg = {0};
 	int ret;
+	struct device *dev = tmelcom_get_device();
+	struct tmel_update_arb_version_sw_id_list msg = {0};
+	dma_addr_t dma_addr;
 
-	msg.rsp.status = status;
-	ret = tmelcom_process_request(TMEL_MSG_UID_SECBOOT_UPDATE_ARB_VERSION,
+	if (!dev || !sw_id_list || !size)
+		return -EINVAL;
+
+	dma_addr = dma_map_single(dev, sw_id_list, size,
+				  DMA_TO_DEVICE);
+	ret = dma_mapping_error(dev, dma_addr);
+	if (ret) {
+		dev_err(dev, "DMA Mapping Error : %d\n", ret);
+		return -EINVAL;
+	}
+
+	msg.req.cbuffer.buf = dma_addr;
+	msg.req.cbuffer.buf_len = size;
+
+	ret = tmelcom_process_request(TMEL_MSG_UID_SECBOOT_UPDATE_ARB_VER_SWID_LIST,
 				      &msg, sizeof(msg));
 	if (ret || msg.rsp.status)
 		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = %x\n",
 			__func__, ret, msg.rsp.status);
 
+	dma_unmap_single(dev, dma_addr, size, DMA_TO_DEVICE);
 	return ret ? ret : msg.rsp.status;
 }
-EXPORT_SYMBOL_GPL(tmelcomm_secboot_update_arb_version);
+EXPORT_SYMBOL_GPL(tmelcomm_secboot_update_arb_version_list);
 
 int tmelcomm_get_ecc_public_key(u32 type, void *buf, u32 size, u32 *rsp_len)
 {
@@ -810,3 +824,37 @@ int tmelcom_aes_import_key(u32 key_id, struct tme_key_policy *policy,
 	return ret ? ret : msg.resp.status;
 }
 EXPORT_SYMBOL_GPL(tmelcom_aes_import_key);
+
+int tmelcomm_qwes_enforce_hw_features(void *buf, u32 size)
+{
+	int ret;
+	struct tmel_qwes_enf_hw_feat_msg msg = {0};
+	struct device *dev = tmelcom_get_device();
+	dma_addr_t dma_addr;
+
+	if (!dev)
+		return -EINVAL;
+
+	dma_addr = dma_map_single(dev, buf, size, DMA_TO_DEVICE);
+	ret = dma_mapping_error(dev, dma_addr);
+	if (ret) {
+		pr_err("DMA Mapping Error : %d\n", ret);
+		return -EINVAL;
+	}
+
+	msg.featid_buf.buf = (u32)dma_addr;
+	msg.featid_buf.buf_len = size;
+	msg.featid_buf.out_buf_len = 0;
+	msg.hw_reg_inf_ver = 0;
+
+	ret = tmelcom_process_request(TMEL_MSG_UID_QWES_LICENSING_ENFORCEHWFEATURES,
+				      &msg, sizeof(msg));
+
+	dma_unmap_single(dev, dma_addr, size, DMA_TO_DEVICE);
+
+	if (ret || msg.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = %x\n",
+			__func__, ret, msg.status);
+
+	return ret ? ret : msg.status;
+}

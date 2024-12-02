@@ -107,6 +107,12 @@ struct tmel_ttime_set {
 	struct tmel_msg_param_type_buf_in ttime;
 } __packed;
 
+struct tmel_qwes_enf_hw_feat_msg {
+	u32 status;
+	struct tmel_msg_param_type_buf_in_out featid_buf;
+	u32 hw_reg_inf_ver;
+} __packed;
+
 struct tmel_licensing_install {
 	u32 status;
 	struct tmel_msg_param_type_buf_in license;
@@ -164,14 +170,6 @@ struct tmel_get_arb_version_rsp {
 struct tmel_get_arb_version {
 	struct tmel_get_arb_version_req req;
 	struct tmel_get_arb_version_rsp rsp;
-} __packed;
-
-struct tmel_update_arb_version_rsp {
-	u32 status;
-} __packed;
-
-struct tmel_update_arb_version_req {
-	struct tmel_update_arb_version_rsp rsp;
 } __packed;
 
 struct tmel_response_cbuffer {
@@ -368,6 +366,19 @@ struct tmel_aes_import_key_msg {
 	struct tmel_aes_import_key_resp resp;
 } __packed;
 
+struct tmel_update_arb_version_sw_id_list_req {
+	struct tmel_cbuffer cbuffer;
+} __packed;
+
+struct tmel_update_arb_version_sw_id_list_rsp {
+	u32 status;
+} __packed;
+
+struct tmel_update_arb_version_sw_id_list {
+	struct tmel_update_arb_version_sw_id_list_req req;
+	struct tmel_update_arb_version_sw_id_list_rsp rsp;
+} __packed;
+
 #ifdef CONFIG_QCOM_TMELCOM
 int tmelcom_probed(void);
 int tmelcom_init_attestation(u32 *key_buf, u32 key_buf_len, u32 *key_buf_size);
@@ -384,6 +395,7 @@ int tmelcom_licensing_check(void *cbor_req, u32 req_len, void *cbor_resp,
 			    u32 resp_len, u32 *used_resp_len);
 int tmelcom_ttime_get_req_params(void *params_buf, u32 buf_len, u32 *used_buf_len);
 int tmelcom_ttime_set(void *ttime_buf, u32 buf_len);
+int tmelcomm_qwes_enforce_hw_features(void *buf, u32 size);
 int tmelcom_licensing_install(void *license_buf, u32 license_len, void *ident_buf,
 			      u32 ident_len, u32 *ident_used_len, u32 *flags);
 int tmelcom_licensing_get_toBeDel_licenses(void *toBeDelLic_buf, u32 toBeDelLic_len,
@@ -393,7 +405,7 @@ int tmelcom_get_tmel_log(void *buf, u32 max_buf_size, u32 *size);
 int tmelcom_secure_io_read(struct tmel_secure_io *buf, size_t size);
 int tmelcom_secure_io_write(struct tmel_secure_io *buf, size_t size);
 int tmelcomm_secboot_get_arb_version(u32 type, u32 *version);
-int tmelcomm_secboot_update_arb_version(u32 status);
+int tmelcomm_secboot_update_arb_version_list(u32 *sw_id_list, size_t size);
 int tmelcomm_get_ecc_public_key(u32 type, void *buf, u32 size, u32 *rsp_len);
 
 int tmelcom_aes_derive_key(u32 key_id, dma_addr_t *dma_kdf_spec, u32 kdf_len,
@@ -470,6 +482,11 @@ static inline int tmelcom_ttime_set(void *ttime_buf, u32 buf_len)
 	return -EOPNOTSUPP;
 }
 
+static inline int tmelcomm_qwes_enforce_hw_features(void *buf, u32 size)
+{
+	return -EOPNOTSUPP;
+}
+
 static inline int tmelcom_licensing_install(void *license_buf, u32 license_len,
 					    void *ident_buf, u32 ident_len,
 					    u32 *ident_used_len, u32 *flags)
@@ -509,7 +526,8 @@ static inline int tmelcomm_secboot_get_arb_version(u32 type, u32 *version)
 	return -EOPNOTSUPP;
 }
 
-static inline int tmelcomm_secboot_update_arb_version(u32 status)
+static inline int tmelcomm_secboot_update_arb_version_list(u32 *sw_id_list,
+							   size_t size)
 {
 	return -EOPNOTSUPP;
 }
@@ -543,13 +561,13 @@ static inline int tmelcom_aes_decrypt(struct tmel_aes_decrypt_msg *msg,
 	return -EOPNOTSUPP;
 }
 
-static int tmelcom_aes_generate_key(u32 key_id, struct tme_key_policy *policy,
+static inline int tmelcom_aes_generate_key(u32 key_id, struct tme_key_policy *policy,
 				    u8 *key_handle)
 {
 	return -EOPNOTSUPP;
 }
 
-static int tmelcom_aes_import_key(u32 key_id, struct tme_key_policy *policy,
+static inline int tmelcom_aes_import_key(u32 key_id, struct tme_key_policy *policy,
 				  struct tmel_plain_text_key *key_material,
 				  u8 *key_handle)
 {

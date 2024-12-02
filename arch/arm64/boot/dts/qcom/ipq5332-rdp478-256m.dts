@@ -33,22 +33,22 @@
 	 * |  data   |              |                         |
 	 * +---------+--------------+-------------------------+
 	 * | IPQ5332 |              |                         |
-	 * |  data   |  0x4BD00000  |          15MB           |
+	 * |  data   |  0x4BD00000  |          13MB           |
 	 * +---------+--------------+-------------------------+
 	 * | IPQ5332 |              |                         |
-	 * | M3 Dump |  0x4CC00000  |           1MB           |
+	 * | M3 Dump |  0x4CA00000  |           1MB           |
 	 * +---------+--------------+-------------------------+
-	 * | IPQ5332 |              |                         |
-	 * |  QDSS   |  0x4CD00000  |           1MB           |
-	 * +---------+--------------+-------------------------+
-	 * |QCN6432_1|              |                         |
-	 * |  data   |  0x4CE00000  |          16MB           |
+	 * |         |              |                         |
+	 * |  HOLE   |  0x4CB00000  |           3MB           |
 	 * +---------+--------------+-------------------------+
 	 * |QCN6432_1|              |                         |
-	 * | M3 Dump |  0x4DE00000  |           1MB           |
+	 * |  data   |  0x4CE00000  |          14MB           |
 	 * +---------+--------------+-------------------------+
 	 * |QCN6432_1|              |                         |
-	 * |  QDSS   |  0x4DF00000  |           1MB           |
+	 * | M3 Dump |  0x4DC00000  |           1MB           |
+	 * +---------+--------------+-------------------------+
+	 * |         |              |                         |
+	 * |  HOLE   |  0x4DD00000  |           3MB           |
 	 * +---------+--------------+-------------------------+
 	 * |         |              |                         |
 	 * |   MLO   |  0x4E000000  |           9MB           |
@@ -82,7 +82,7 @@
 
 		q6_mem_regions: q6_mem_regions@4A900000  {
 			no-map;
-			reg = <0x0 0x4a900000 0x0 0x3700000>;
+			reg = <0x0 0x4a900000 0x0 0x2100000>;
 		};
 
 		q6_code_data: q6_code_data@4A900000 {
@@ -92,32 +92,22 @@
 
 		q6_ipq5332_data: q6_ipq5332_data@4BD00000 {
 			no-map;
-			reg = <0x0 0x4BD00000 0x0 0xF00000>;
+			reg = <0x0 0x4BD00000 0x0 0xD00000>;
 		};
 
-		m3_dump: m3_dump@4CC00000 {
+		m3_dump: m3_dump@4CA00000 {
 			no-map;
-			reg = <0x0 0x4CC00000 0x0 0x100000>;
-		};
-
-		q6_etr_region: q6_etr_dump@4CD00000 {
-			no-map;
-			reg = <0x0 0x4CD00000 0x0 0x100000>;
+			reg = <0x0 0x4CA00000 0x0 0x100000>;
 		};
 
 		q6_qcn6432_data_1: q6_qcn6432_data_1@4CE00000 {
 			no-map;
-			reg = <0x0 0x4CE00000 0x0 0x1000000>;
+			reg = <0x0 0x4CE00000 0x0 0xE00000>;
 		};
 
-		m3_dump_qcn6432_1: m3_dump_qcn6432_1@4DE00000 {
+		m3_dump_qcn6432_1: m3_dump_qcn6432_1@4DC00000 {
 			no-map;
-			reg = <0x0 0x4DE00000 0x0 0x100000>;
-		};
-
-		q6_qcn6432_etr_1: q6_qcn6432_etr_1@4DF00000 {
-			no-map;
-			reg = <0x0 0x4DF00000 0x0 0x100000>;
+			reg = <0x0 0x4DC00000 0x0 0x100000>;
 		};
 
 		mlo_global_mem0: mlo_global_mem_0@4E000000 {
@@ -456,13 +446,18 @@
 
 		q6v5_wcss: remoteproc@d100000 {
 			boot-args = <0x1 0x4 0x3 0x1 0x2f 0x2>;
-			memory-region = <&q6_mem_regions>, <&mlo_global_mem0>;
+			memory-region = <&q6_mem_regions>,
+					<&m3_dump>,
+					<&q6_qcn6432_data_1>,
+					<&m3_dump_qcn6432_1>,
+					<&mlo_global_mem0>;
+
 			upd-firmware-names = "IPQ5332/q6_fw1.mdt",
 					     "IPQ5332/q6_fw2.mdt";
 
 			q6_wcss_pd1: remoteproc_pd1 {
 			memory-region = <&q6_ipq5332_data>, <&m3_dump>,
-					<&q6_etr_region>, <&mlo_global_mem0>;
+					<&mlo_global_mem0>;
 				status = "ok";
 			};
 
@@ -487,7 +482,6 @@
 							"spawn";
 				memory-region = <&q6_qcn6432_data_1>,
 						<&m3_dump_qcn6432_1>,
-						<&q6_qcn6432_etr_1>,
 						<&mlo_global_mem0>;
 				status = "ok";
 			};
@@ -648,7 +642,6 @@
 	qcom,rproc_rpd = <&q6v5_wcss>;
 	qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
 	qcom,bdf-addr = <0x4BD00000 0x4BD00000 0x4BD00000 0x0 0x0 0x0>;
-	qcom,caldb-addr = <0x4D400000 0x4D000000 0x0 0x0 0x0 0x0>;
 	qcom,tgt-mem-mode = <0x2>;
 	qcom,board_id = <0x42>;
 	memory-region = <&q6_ipq5332_data>;
@@ -663,7 +656,6 @@
 	qcom,rproc_rpd = <&q6v5_wcss>;
 	qcom,userpd-subsys-name = "q6v5_wcss_userpd2";
 	qcom,bdf-addr = <0x4D900000 0x4D300000 0x4CE00000 0x0 0x0 0x0>;
-	qcom,caldb-addr = <0x4F000000 0x4E500000 0x0 0x0 0x0 0x0>;
 	qcom,umac-irq-reset-addr = <0x18000884>;
 	qcom,tgt-mem-mode = <0x2>;
 	qcom,board_id = <0x053>;
@@ -671,7 +663,10 @@
 	qcom,wsi = <&wsi>;
 	qcom,wsi_index = <1>;
 	qcom,pci_slot_id = <1>;
-	interrupts = <GIC_SPI 410 IRQ_TYPE_EDGE_RISING>;
-	interrupt-names = "umac_reset";
+	interrupts = <0 0 0>,
+		<0 0 0>,
+		<0 0 0>,
+		<0 0 0>,
+		<GIC_SPI 410 IRQ_TYPE_EDGE_RISING>;
 	status = "ok";
 };

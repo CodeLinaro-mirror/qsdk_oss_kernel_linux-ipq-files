@@ -1534,6 +1534,7 @@
 				"nss-nssnoc-snoc-1-clk", "nss-nssnoc-snoc-clk", "nss-nssnoc-timeout-ref-clk",
 				"nss-nssnoc-xo-dcd-clk";
 
+#ifdef __CONFIG_IO_COHERENCY__
 			nss_noc {
 				prop-name = "nss_noc";
 				secure-write;
@@ -1543,6 +1544,17 @@
 						<0x00005238 0x44410>,	/* PPE Type LUT lower bits */
 						<0x00005208 0x100>;	/* PPE Main control low */
 			};
+
+			nss_llcc {
+				prop-name = "llcc_cache";
+				/* denotes the data to be written into respective Cache Registers */
+				cache_val = <0x83e02>,		/* RxDesc Cache registers value */
+						<0x1f>,		/* TxCmpl Cache registers value */
+						<0x20000a5>,	/* Cache Index LUT register value */
+						<0x222ff>,	/* AxCache Overide register value */
+						<0x789f>;	/* Axiw Ctrl register value */
+			};
+#endif
                 };
 
 		nss-ppe {
@@ -2361,7 +2373,7 @@
 			hremote-size = <0x1400000>;
 			pageable-size = <0x700000>;
 			tgt-mem-mode = <0x1>;
-		#else
+		#elif !defined(__IPQ_MEM_PROFILE_256_MB__)
 			/* qcn9224 tgt-mem-mode=0 layout - 50MB
 			 * +=========+==============+=========+
 			 * |  Region | Start Offset |   Size  |
@@ -2639,7 +2651,7 @@
 			hremote-size = <0x1400000>;
 			pageable-size = <0x700000>;
 			tgt-mem-mode = <0x1>;
-		#else
+		#elif !defined(__IPQ_MEM_PROFILE_256_MB__)
 			/* qcn9224 tgt-mem-mode=0 layout - 50MB
 			 * +=========+==============+=========+
 			 * |  Region | Start Offset |   Size  |
@@ -2917,7 +2929,7 @@
 			hremote-size = <0x1400000>;
 			pageable-size = <0x700000>;
 			tgt-mem-mode = <0x1>;
-		#else
+		#elif !defined(__IPQ_MEM_PROFILE_256_MB__)
 			/* qcn9224 tgt-mem-mode=0 layout - 50MB
 			 * +=========+==============+=========+
 			 * |  Region | Start Offset |   Size  |
@@ -3195,7 +3207,7 @@
 			hremote-size = <0x1400000>;
 			pageable-size = <0x700000>;
 			tgt-mem-mode = <0x1>;
-		#else
+		#elif !defined(__IPQ_MEM_PROFILE_256_MB__)
 			/* qcn9224 tgt-mem-mode=0 layout - 50MB
 			 * +=========+==============+=========+
 			 * |  Region | Start Offset |   Size  |

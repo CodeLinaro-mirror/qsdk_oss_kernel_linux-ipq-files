@@ -758,6 +758,8 @@
 			clocks = <&gcc GCC_BLSP1_QUP2_I2C_APPS_CLK>,
 			         <&gcc GCC_BLSP1_AHB_CLK>;
 			clock-names = "core", "iface";
+			assigned-clocks = <&gcc GCC_BLSP1_QUP2_I2C_APPS_CLK>;
+			assigned-clock-rates = <50000000>;
 			dmas = <&blsp_dma 6>, <&blsp_dma 7>;
 			dma-names = "tx", "rx";
 			status = "disabled";
@@ -1150,7 +1152,7 @@
 			hremote-size = <0x1400000>;
 			pageable-size = <0x700000>;
 			tgt-mem-mode = <0x1>;
-#else
+#elif !defined(__IPQ_MEM_PROFILE_256_MB__)
 			/* qcn9224 tgt-mem-mode=0 layout - 50MB
 			 * +=========+==============+=========+
 			 * |  Region | Start Offset |   Size  |
@@ -1421,7 +1423,7 @@
 			hremote-size = <0x1400000>;
 			pageable-size = <0x700000>;
 			tgt-mem-mode = <0x1>;
-#else
+#elif !defined(__IPQ_MEM_PROFILE_256_MB__)
 			/* qcn9224 tgt-mem-mode=0 layout - 50MB
 			 * +=========+==============+=========+
 			 * |  Region | Start Offset |   Size  |

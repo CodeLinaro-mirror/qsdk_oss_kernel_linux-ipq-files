@@ -25,7 +25,7 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	ipq5424-rdp466.dtb \
 	ipq5424-rdp466-c2.dtb \
 	ipq5424-rdp466-rffe.dtb \
-	ipq5424-rdp466-rffe-c2.dtb \
+	ipq5424-rdp496.dtb \
 	ipq5424-rdp485.dtb \
 	ipq5424-rdp485-c2.dtb \
 	ipq5424-rdp485-rffe.dtb \
