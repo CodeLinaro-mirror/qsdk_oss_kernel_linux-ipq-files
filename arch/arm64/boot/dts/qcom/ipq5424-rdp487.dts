@@ -127,6 +127,17 @@
 				reg = <12>;
 				compatible ="ethernet-phy-ieee802.3-c45";
 			};
+
+			switch0@10 {
+				ports {
+					port@0 {
+						reg = <0>;
+						label = "cpu";
+						ethernet = <&gmac2>;
+						dsa-tag-protocol = "qca_4b";
+					};
+				};
+			};
 		};
 
 		ess-instance {
@@ -583,17 +594,4 @@
 	board_id = <0x33>;
 	hw_link_id = <1 0>;
 	status = "okay";
-};
-
-&mdio {
-	switch0@10 {
-		ports {
-			port@0 {
-				reg = <0>;
-				label = "cpu";
-				ethernet = <&gmac2>;
-				dsa-tag-protocol = "qca_4b";
-			};
-		};
-	};
 };
