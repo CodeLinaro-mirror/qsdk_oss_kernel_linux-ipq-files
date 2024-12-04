@@ -155,9 +155,15 @@ wait_for_start:
 
 	if (!ret && wcss->textpd_fw) {
 		ret = qcom_scm_pas_auth_and_reset(wcss->textpd_pasid);
-		if (ret)
+		if (ret) {
 			dev_err(wcss->dev, "Failed to start textpd fw : %d\n", ret);
+			return ret;
+		}
 	}
+
+	ret = q6v5_start_user_pd(rproc);
+	if (ret)
+		dev_err(wcss->dev, "Failed to start userpd %d\n", ret);
 
 	return ret;
 }
@@ -171,6 +177,10 @@ static int q6v5_wcss_sec_stop(struct rproc *rproc)
 
 	if (!desc)
 		return -EINVAL;
+
+	ret = q6v5_stop_user_pd(rproc);
+	if (ret)
+		dev_err(wcss->dev, "Failed to stop userpd %d\n", ret);
 
 	if (wcss->textpd_fw) {
 		ret = qcom_scm_pas_shutdown(wcss->textpd_pasid);
