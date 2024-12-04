@@ -49,7 +49,9 @@ View the selected RSA pad scheme as shown below
 Generate or Import the key blob to be used for encrypt/decrypt
 
 RSA Generate Key blob:
-(1) cat /sys/rsa_sec_key/rsa_generate > key_blob.txt
+Choose the key size for RSA generate operation (0->2k, 1->4k)
+(1) eg: echo 0 > /sys/rsa_sec_key/rsa_keysize
+(2) cat /sys/rsa_sec_key/rsa_generate > key_blob.txt
 
 RSA Import Key blob:
 (1) cat hex.dat > /sys/rsa_sec_key/rsa_import
