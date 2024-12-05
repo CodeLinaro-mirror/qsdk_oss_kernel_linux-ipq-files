@@ -992,15 +992,6 @@ static ssize_t tmecomm_store_aes_decrypted_data(struct device *dev,
 static ssize_t tmecomm_show_aes_encrypted_data(struct device *dev,
 					       struct device_attribute *attr,
 					       char *buf);
-static ssize_t tmecomm_store_aes_aad_data(struct device *dev,
-					  struct device_attribute *attr,
-					  const char *buf, size_t count);
-static ssize_t tmecomm_store_aes_iv_data(struct device *dev,
-					 struct device_attribute *attr,
-					 const char *buf, size_t count);
-static ssize_t tmecomm_store_aes_tag_data(struct device *dev,
-					  struct device_attribute *attr,
-					  const char *buf, size_t count);
 static ssize_t tmecomm_store_aes_encrypted_data(struct device *dev,
 						struct device_attribute *attr,
 						const char *buf, size_t count);
@@ -1103,9 +1094,6 @@ static DEVICE_ATTR(tmel_aes_key, 0644, tmecomm_show_aes_key, tmecomm_store_aes_k
 static DEVICE_ATTR(tmel_aes_derive_key, 0644, tmecomm_show_aes_derive_key,
 		   tmecomm_store_aes_key);
 static DEVICE_ATTR(tmel_aes_clear_key, 0644, NULL, tmecomm_store_aes_clear_key);
-static DEVICE_ATTR(tmel_aes_aad_data, 0644, NULL, tmecomm_store_aes_aad_data);
-static DEVICE_ATTR(tmel_aes_iv_data, 0644, NULL, tmecomm_store_aes_iv_data);
-static DEVICE_ATTR(tmel_aes_tag_data, 0644, NULL, tmecomm_store_aes_tag_data);
 static DEVICE_ATTR(tmel_aes_encrypt, 0644, tmecomm_show_aes_encrypted_data,
 		   tmecomm_store_aes_decrypted_data);
 static DEVICE_ATTR(tmel_aes_decrypt, 0644, tmecomm_show_aes_decrypted_data,
@@ -1210,9 +1198,6 @@ static struct attribute *sec_key_tmel_aes_attrs[] = {
 	&dev_attr_tmel_aes_key.attr,
 	&dev_attr_tmel_aes_derive_key.attr,
 	&dev_attr_tmel_aes_clear_key.attr,
-	&dev_attr_tmel_aes_aad_data.attr,
-	&dev_attr_tmel_aes_iv_data.attr,
-	&dev_attr_tmel_aes_tag_data.attr,
 	&dev_attr_tmel_aes_encrypt.attr,
 	&dev_attr_tmel_aes_decrypt.attr,
 	&dev_attr_tmel_aes_context_data.attr,
