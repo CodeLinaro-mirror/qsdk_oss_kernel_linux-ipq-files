@@ -229,12 +229,14 @@ AES 256 API's supported in TME-L based platform can be used as below:
 key handle for AES encrypt/decrypt can be obtained in three ways: (Generate/Import/Derive)
 
 Generate:
+Key will be generated using PRNG
 Provide AES256 mode (0->ECB 1->CBC)
 (1) echo 0 > /sys/sec_key/tmel_aes_mode
 Generate key handle
 (2) cat /sys/sec_key/tmel_aes_generate_key > key_handle.txt
 
 Import:
+Key will be generated using the plain text key provided by user
 Provide AES256 mode (0->ECB 1->CBC)
 (1) echo 0 > /sys/sec_key/tmel_aes_mode
 Provide plain text key
@@ -245,18 +247,25 @@ Import key handle
 (4) cat /sys/sec_key/tmel_aes_import_key > key_handle.txt
 
 Derive:
+CRBK or OEM product seed stored in the chip will be used to derive a key
 Provide AES256 mode (0->ECB 1->CBC)
 (1) echo 0 > /sys/sec_key/tmel_aes_mode
 Provide base key (0->CRBK 1->OEM Product seed)
-(2) echo 0 > /sys/sec_key/tmel_aes_input_key (CRBK)
-Provide context data
+(2) echo 0 > /sys/sec_key/tmel_aes_input_key
+Context data is 64 or 128 bytes which can be fed as below:
 Example:
 (3) echo -n "34613132613738396434316363323738656166343132363635613831643530313461313261373839643431636332373865616634313236363561383164353032" > /sys/sec_key/tmel_aes_context_data
+salt label can be 64 bytes at max and can be fed as below:
+Example:
+(4) echo -n "0123456789012345678901234567890123456789012345678901234567890123" > /sys/sec_key/tmel_aes_salt_label_data
 Derive key handle
-(4) cat /sys/sec_key/tmel_aes_derive_key > key_handle.txt
+(5) cat /sys/sec_key/tmel_aes_derive_key > key_handle.txt
 
 Once a key handle is obtained via any of the three operations mentioned above,
 it can be used for encrypt/decrypt operations.
+
+Note: TME-L will generate IV internally for AES encryption and does not accept IV
+from user.
 
 To encrypt:
 Provide the key handle to used for enc/dec

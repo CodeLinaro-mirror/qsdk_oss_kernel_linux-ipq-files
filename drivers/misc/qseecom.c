@@ -258,14 +258,14 @@ static ssize_t tmecomm_show_aes_derive_key(struct device *dev,
 	struct tme_kdf_spec *kdf_spec;
 	int ret = 0;
 	u32 key_id;
+	u32 len;
 	size_t dma_buf_size = 0;
 	dma_addr_t dma_kdf_spec;
 	size_t req_size = 0;
 	uint32_t kdf_len;
-	char message[32] = {0};
 
 	dev = qdev;
-
+	memset(message, 0, MESSAGE_LEN);
 	key_id = TME_KID_ALLOC;
 
 	req_size = sizeof(struct tme_kdf_spec);
@@ -309,14 +309,15 @@ static ssize_t tmecomm_show_aes_derive_key(struct device *dev,
 	if (ret) {
 		pr_info("Error: Failed to derive key\n");
 	} else {
-		snprintf(message, 32, "%lu\n", (unsigned long)*tmel_key_handle);
+		snprintf(message, MESSAGE_LEN, "%lu\n", (unsigned long)*tmel_key_handle);
 		pr_info("aes key handle: %lu\n", (unsigned long)*tmel_key_handle);
 	}
 
-	memcpy(buf, message, strlen(message) + 1);
+	len = strlen(message) + 1;
+	memcpy(buf, message, len);
 
 	dma_free_coherent(dev, dma_buf_size, kdf_spec, dma_kdf_spec);
-	return ret;
+	return len;
 }
 
 static ssize_t tmecomm_store_aes_clear_key(struct device *dev,
@@ -361,75 +362,6 @@ static ssize_t tmecomm_store_aes_decrypted_data(struct device *dev,
 
 	tmel_aes_decrypted_len = count;
 	memcpy(plain_txt, buf, tmel_aes_decrypted_len);
-
-	return count;
-}
-
-static ssize_t tmecomm_store_aes_aad_data(struct device *dev,
-					  struct device_attribute *attr,
-					  const char *buf, size_t count)
-{
-	if (!aad) {
-		pr_info("could not allocate aad data\n");
-		return -EINVAL;
-	}
-
-	aad = memset(aad, 0, TME_MAX_AAD_LEN);
-
-	if (count > TME_MAX_AAD_LEN) {
-		pr_info("AAD data length is more than %zu bytes\n", count);
-		return -EINVAL;
-	}
-
-	tmel_aes_aad_len = count;
-	memcpy(aad, buf, tmel_aes_aad_len);
-
-	return count;
-}
-
-static ssize_t tmecomm_store_aes_iv_data(struct device *dev,
-					 struct device_attribute *attr,
-					 const char *buf, size_t count)
-{
-	if (!iv) {
-		pr_info("could not allocate iv data\n");
-		return -EINVAL;
-	}
-
-	iv = memset(iv, 0, AES_BLOCK_SIZE);
-
-	if (count != AES_BLOCK_SIZE) {
-		pr_info("Invalid input\n");
-		pr_info("IV data length is %lu bytes\n", (unsigned long)count);
-		pr_info("IV data length must be equal to AES block size \
-			 (16) bytes\n");
-		return -EINVAL;
-	}
-
-	tmel_aes_iv_len = count;
-	memcpy(iv, buf, tmel_aes_iv_len);
-
-	return count;
-}
-
-static ssize_t tmecomm_store_aes_tag_data(struct device *dev,
-					  struct device_attribute *attr,
-					  const char *buf, size_t count)
-{
-	if (!tag) {
-		pr_info("could not allocate tag data\n");
-		return -EINVAL;
-	}
-
-	tag = memset(tag, 0, TME_MAX_TAG_LEN);
-
-	if (count > TME_MAX_TAG_LEN) {
-		pr_info("Tag data length is more than %zu bytes\n", count);
-		return -EINVAL;
-	}
-
-	tmel_aes_tag_len = count;
-	memcpy(tag, buf, tmel_aes_tag_len);
 
 	return count;
 }
