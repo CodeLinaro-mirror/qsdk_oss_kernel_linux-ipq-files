@@ -422,7 +422,6 @@
 			assigned-clock-rates = <100000000>,
 					       <100000000>;
 			status = "okay";
-			ubi_core_enable;
 		};
 
 		pcie0_phy: phy@84000 {
