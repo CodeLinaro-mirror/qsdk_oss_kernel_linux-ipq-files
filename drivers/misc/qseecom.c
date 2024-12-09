@@ -1883,6 +1883,23 @@ end:
 	return unseal_len;
 }
 
+static ssize_t store_rsa_keysize(struct device *dev, struct device_attribute *attr,
+				 const char *buf, size_t count)
+{
+	uint32_t val;
+
+	if (kstrtouint(buf, 10, &val))
+		return -EINVAL;
+
+	if (val == 0)
+		rsa_keysize = RSA_2K_MODULUS_LEN;
+	else if (val == 1)
+		rsa_keysize = RSA_4K_MODULUS_LEN;
+	else
+		return -EINVAL;
+
+	return count;
+}
 static ssize_t
 generate_rsa_key_blob(struct device *dev, struct device_attribute *attr,
 		     char *buf)
@@ -1919,7 +1936,7 @@ generate_rsa_key_blob(struct device *dev, struct device_attribute *attr,
 
 	req_ptr->key_blob.key_material = (u64)dma_rsa_key_blob;
 	req_ptr->cmd_id = QTI_STOR_SVC_RSA_GENERATE_KEY;
-	req_ptr->rsa_params.modulus_size = RSA_MODULUS_LEN;
+	req_ptr->rsa_params.modulus_size = rsa_keysize;
 	req_ptr->rsa_params.public_exponent = RSA_PUBLIC_EXPONENT;
 	pr_info("rsa pad scheme used = %u\n",cur_rsa_pad_scheme);
 	req_ptr->rsa_params.pad_algo = cur_rsa_pad_scheme;

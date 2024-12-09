@@ -92,7 +92,8 @@
 #define RSA_KEY_SIZE_MAX	((528) * sizeof(uint8_t))
 #define RSA_IV_LENGTH		(16 * sizeof(uint8_t))
 #define RSA_HMAC_LENGTH		(32 * sizeof(uint8_t))
-#define RSA_MODULUS_LEN		(2048 * sizeof(uint8_t))
+#define RSA_2K_MODULUS_LEN	(2048 * sizeof(uint8_t))
+#define RSA_4K_MODULUS_LEN	(4096 * sizeof(uint8_t))
 #define RSA_PUBLIC_EXPONENT	(0x10001)
 #define RSA_PUB_EXP_SIZE_MAX	(5 * sizeof(uint8_t))
 #define RSA_KEY_MATERIAL_SIZE	((528 + 2 + 5 + 1 + 528 + 2) * sizeof(uint8_t))
@@ -483,6 +484,7 @@ static dma_addr_t __aligned(sizeof(dma_addr_t) * 8) aes_bindings_data;
 static uint64_t aes_ivdata_len;
 static uint64_t aes_type;
 static uint64_t aes_mode;
+static uint32_t rsa_keysize;
 static uint8_t *rsa_unsealed_buf;
 static uint8_t *rsa_sealed_buf;
 static uint64_t rsa_decrypted_len;
@@ -778,6 +780,10 @@ static ssize_t store_decrypted_data(struct device *dev,
 
 static ssize_t show_decrypted_data(struct device *dev,
 				struct device_attribute *attr, char *buf);
+
+static ssize_t store_rsa_keysize(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t count);
 
 static ssize_t generate_rsa_key_blob(struct device *dev,
 				    struct device_attribute *attr,
@@ -1079,6 +1085,7 @@ static DEVICE_ATTR(bindings_data, 0644, NULL, store_bindings_data);
 static DEVICE_ATTR(aes_type, 0644, NULL, store_aes_type);
 static DEVICE_ATTR(aes_mode, 0644, NULL, store_aes_mode);
 
+static DEVICE_ATTR(rsa_keysize, 0644, NULL, store_rsa_keysize);
 static DEVICE_ATTR(rsa_generate, 0644, generate_rsa_key_blob, NULL);
 static DEVICE_ATTR(rsa_key_blob, 0644, NULL, store_rsa_key_blob);
 static DEVICE_ATTR(rsa_import, 0644, import_rsa_key_blob, store_rsa_key);
@@ -1133,6 +1140,7 @@ static struct attribute *sec_key_aesv2_attrs[] = {
 };
 
 static struct attribute *rsa_sec_key_attrs[] = {
+	&dev_attr_rsa_keysize.attr,
 	&dev_attr_rsa_generate.attr,
 	&dev_attr_rsa_key_blob.attr,
 	&dev_attr_rsa_import.attr,
