@@ -197,6 +197,7 @@
 
 	ctx_save: ctx-save {
 		compatible = "qti,ctxt-save-ipq5332";
+		memory-region = <&minidump_mem>;
 	};
 
 	pmu {
@@ -268,6 +269,10 @@
 			no-map;
 
 			hwlocks = <&tcsr_mutex 3>;
+		};
+
+		minidump_mem: minidump_mem@0 {
+			no-map;
 		};
 	};
 

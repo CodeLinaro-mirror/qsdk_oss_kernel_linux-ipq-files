@@ -206,6 +206,7 @@
 
 	ctx-save {
 		compatible = "qti,ctxt-save-ipq5424";
+		memory-region = <&minidump_mem>;
 	};
 
 	firmware {
@@ -349,6 +350,10 @@
 		tmc_etr_region: tmc_etr_dump@0 {
 			no-map;
 			status = "disabled";
+		};
+
+		minidump_mem: minidump_mem@0 {
+			no-map;
 		};
 	};
 
