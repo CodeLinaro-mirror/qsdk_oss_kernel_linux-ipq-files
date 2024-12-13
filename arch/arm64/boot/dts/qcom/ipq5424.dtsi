@@ -765,7 +765,8 @@
 				 <&pcie30_phy1_pipe_clk>,
 				 <&pcie30_phy2_pipe_clk>,
 				 <&pcie30_phy3_pipe_clk>,
-				 <&usb_pcie_wrapper_pipe_clk>;
+				 <&usb_pcie_wrapper_pipe_clk>,
+				 <&cmn_pll_nss_clk_375m>;
 			#clock-cells = <1>;
 			#reset-cells = <1>;
 			#power-domain-cells = <1>;
