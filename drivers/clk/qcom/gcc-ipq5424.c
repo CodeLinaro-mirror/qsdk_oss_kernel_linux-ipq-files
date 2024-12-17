@@ -1195,24 +1195,6 @@ static struct clk_branch gcc_adss_pwm_clk = {
 	},
 };
 
-static struct clk_branch gcc_apss_dbg_clk = {
-	.halt_reg = 0x2402c,
-	.halt_check = BRANCH_HALT_VOTED,
-	.clkr = {
-		.enable_reg = 0x2402c,
-		.enable_mask = BIT(0),
-		.hw.init = &(const struct clk_init_data) {
-			.name = "gcc_apss_dbg_clk",
-			.parent_hws = (const struct clk_hw*[]) {
-				&gcc_qdss_dap_sync_clk_src.hw
-			},
-			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT,
-			.ops = &clk_branch2_ops,
-		},
-	},
-};
-
 static struct clk_branch gcc_cnoc_pcie0_1lane_s_clk = {
 	.halt_reg = 0x31088,
 	.halt_check = BRANCH_HALT,
@@ -1405,7 +1387,7 @@ static struct clk_branch gcc_nssnoc_nsscc_clk = {
 				&gcc_pcnoc_bfdcd_clk_src.clkr.hw,
 			},
 			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT,
+			.flags = CLK_SET_RATE_PARENT | CLK_IGNORE_UNUSED,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -1459,7 +1441,7 @@ static struct clk_branch gcc_nssnoc_snoc_1_clk = {
 				&gcc_system_noc_bfdcd_clk_src.clkr.hw
 			},
 			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT,
+			.flags = CLK_SET_RATE_PARENT | CLK_IGNORE_UNUSED,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -1477,7 +1459,7 @@ static struct clk_branch gcc_nssnoc_snoc_clk = {
 				&gcc_system_noc_bfdcd_clk_src.clkr.hw
 			},
 			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT,
+			.flags = CLK_SET_RATE_PARENT | CLK_IGNORE_UNUSED,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -3092,7 +3074,6 @@ static struct clk_branch gcc_nssnoc_memnoc_1_clk = {
 static struct clk_regmap *gcc_ipq5424_clocks[] = {
 	[GCC_ADSS_PWM_CLK] = &gcc_adss_pwm_clk.clkr,
 	[GCC_ADSS_PWM_CLK_SRC] = &gcc_adss_pwm_clk_src.clkr,
-	[GCC_APSS_DBG_CLK] = &gcc_apss_dbg_clk.clkr,
 	[GCC_CNOC_PCIE0_1LANE_S_CLK] = &gcc_cnoc_pcie0_1lane_s_clk.clkr,
 	[GCC_CNOC_PCIE1_1LANE_S_CLK] = &gcc_cnoc_pcie1_1lane_s_clk.clkr,
 	[GCC_CNOC_PCIE2_2LANE_S_CLK] = &gcc_cnoc_pcie2_2lane_s_clk.clkr,
@@ -3456,7 +3437,6 @@ static struct clk_regmap *gcc_ipq5424_dummy_clks[] = {
 	[GCC_USB1_MOCK_UTMI_CLK] = DEFINE_DUMMY_CLK(gcc_usb1_mock_utmi_clk),
 	[GCC_USB1_SLEEP_CLK] = DEFINE_DUMMY_CLK(gcc_usb1_sleep_clk),
 	[GCC_USB1_PHY_CFG_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_usb1_phy_cfg_ahb_clk),
-	[GCC_APSS_DBG_CLK] = DEFINE_DUMMY_CLK(gcc_apss_dbg_clk),
 	[GCC_QUPV3_I2C0_DIV_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_qupv3_i2c0_div_clk_src),
 	[GCC_QUPV3_I2C1_DIV_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_qupv3_i2c1_div_clk_src),
 	[GCC_CNOC_LPASS_CFG_CLK] = DEFINE_DUMMY_CLK(gcc_cnoc_lpass_cfg_clk),
