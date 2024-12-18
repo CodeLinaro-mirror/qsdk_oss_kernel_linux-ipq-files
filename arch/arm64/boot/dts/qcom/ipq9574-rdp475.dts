@@ -707,6 +707,7 @@
 &wifi5 {
 	hremote_node = <&qcn9224_pcie1>;
 	board_id = <0x01>;
+	hw_link_id = <0 0>;
 	node_id = <1>;
 	status = "okay";
 };
@@ -714,6 +715,7 @@
 &wifi6 {
 	hremote_node = <&qcn9224_pcie2>;
 	board_id = <0x04>;
+	hw_link_id = <1 0>;
 	node_id = <2>;
 	status = "okay";
 };
@@ -721,6 +723,7 @@
 &wifi7 {
 	hremote_node = <&qcn9224_pcie3>;
 	board_id = <0x02>;
+	hw_link_id = <2 0>;
 	node_id = <3>;
 	status = "okay";
 };
