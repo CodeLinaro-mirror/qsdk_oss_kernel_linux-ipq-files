@@ -533,6 +533,10 @@
 	qcom,wsi = <&wsi>;
 	qcom,wsi_index  = <1>;
 	qcom,pci_slot_id = <1>;
-	interrupts = <0 410 1>;
+	interrupts = <0 0 0>,
+		<0 0 0>,
+		<0 0 0>,
+		<0 0 0>,
+		<0 410 1>;
 	status = "ok";
 };

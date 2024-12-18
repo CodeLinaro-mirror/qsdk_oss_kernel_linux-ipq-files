@@ -760,5 +760,10 @@
     memory-region = <&q6_qcn6432_data_1>, <&q6_mem_regions>;
     qcom,wsi = <&wsi>;
     qcom,wsi_index = <1>;
+    interrupts = <0 0 0>,
+		<0 0 0>,
+		<0 0 0>,
+		<0 0 0>,
+		<0 410 1>;
     status = "ok";
 };
