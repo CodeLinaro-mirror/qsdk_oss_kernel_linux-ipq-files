@@ -46,6 +46,7 @@
 #define TZBSP_NONCE_LEN 12
 #define TZBSP_TAG_LEN 16
 #define TZBSP_ENCRYPTION_HEADERS_SIZE 0x400
+#define TZBSP_ENTIRE_LOG_SEG_REQUESTED_ID 0x1
 
 static unsigned int paniconaccessviolation = 0;
 module_param(paniconaccessviolation, uint, 0644);
@@ -112,6 +113,7 @@ struct tz_hvc_log_struct {
 	bool is_diag_id;
 	bool is_encrypted;
 	bool version;
+	int seg_id;
 };
 
 struct tzbsp_encr_log_t {
@@ -225,13 +227,14 @@ int parse_encrypted_log(char *ker_buf, uint32_t buf_len, char *copy_buf,
 
 }
 
-static int get_encrypted_tz_log(char *ker_buf, uint32_t buf_len, char *copy_buf)
+static int get_encrypted_tz_log(char *ker_buf, uint32_t buf_len,
+				char *copy_buf, int seg_id)
 {
 	int ret;
 
 	/* SCM call to TZ to get encrypted tz log */
 	ret = qti_scm_get_encrypted_tz_log(ker_buf, buf_len,
-					QTI_TZ_DIAG_LOG_ENCR_ID);
+					QTI_TZ_DIAG_LOG_ENCR_ID, seg_id);
 	if (ret == QTI_TZ_LOG_NO_UPDATE) {
 		pr_err("No TZ log updation from last read\n");
 		return QTI_TZ_LOG_NO_UPDATE;
@@ -281,7 +284,8 @@ static int tz_hvc_log_open(struct inode *inode, struct file *file)
 		} else {
 			if (tz_hvc_log->is_encrypted) {
 				ret = get_encrypted_tz_log(ker_buf, buf_len,
-							    copy_buf);
+							   copy_buf,
+							   tz_hvc_log->seg_id);
 				if (ret == -1)
 					goto out_err;
 				else if (ret == QTI_TZ_LOG_NO_UPDATE)
@@ -430,6 +434,7 @@ static int qti_tzlog_probe(struct platform_device *pdev)
 
 	if(of_device_is_compatible(np, "qti,tzlog-ipq54xx")) {
 		tz_hvc_log->version = TZ_LOG_VER_2;
+		tz_hvc_log->seg_id = TZBSP_ENTIRE_LOG_SEG_REQUESTED_ID;
 	}
 	tz_hvc_log->is_diag_id = !(of_device_is_compatible(np, "qti,tzlog-ipq5332") ||
 				   of_device_is_compatible(np, "qti,tzlog-ipq54xx") ||
