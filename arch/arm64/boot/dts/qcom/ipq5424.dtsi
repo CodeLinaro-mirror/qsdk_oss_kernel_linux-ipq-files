@@ -1592,6 +1592,8 @@
 			clock-names = "eip_clk", "eip_nocclk";
 			clock-frequency = /bits/ 64 <375000000 375000000>;
 			status = "ok";
+			nvmem-cells = <&nss_disable>;
+
 			interrupts = <GIC_SPI 230 IRQ_TYPE_LEVEL_HIGH>,
 				   <GIC_SPI 231 IRQ_TYPE_LEVEL_HIGH>,
 				   <GIC_SPI 232 IRQ_TYPE_LEVEL_HIGH>,
