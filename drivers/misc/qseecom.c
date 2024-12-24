@@ -40,7 +40,7 @@ const struct qseecom_props qseecom_props_ipq9574 = {
 
 const struct qseecom_props qseecom_props_ipq5424 = {
 	.function = (MUL | CRYPTO | AES_SEC_KEY | RSA_SEC_KEY | LOG_BITMASK |
-		     FUSE | MISC),
+		     FUSE | MISC | AES_TZAPP | RSA_TZAPP | FUSE_WRITE),
 	.libraries_inbuilt = false,
 	.logging_support_enabled = true,
 	.aes_v2 = true,
@@ -760,17 +760,19 @@ static ssize_t show_aes_derive_128_byte_key(struct device *dev,
 static ssize_t store_aes_clear_key(struct device *dev, struct device_attribute *attr, const char* buf, size_t count)
 {
 	int rc = 0;
-	uint32_t key_handle;
+	u32 val;
 
-	if (kstrtouint(buf, 10, &key_handle))
+	if (kstrtouint(buf, 10, &val))
 		return -EINVAL;
 
-	rc = qti_scm_aes_clear_key_handle(key_handle, QTI_CMD_AES_CLEAR_KEY);
+	rc = qti_scm_aes_clear_key_handle(val, QTI_CMD_AES_CLEAR_KEY);
 
-	if (!rc)
-		pr_info("AES key = %u cleared successfully\n",key_handle);
-	else
+	if (!rc) {
+		pr_info("AES key = %u cleared successfully\n", val);
+		*key_handle = 0;
+	} else {
 		pr_info("AES key clear failed\n");
+	}
 
 	return count;
 }
@@ -2835,12 +2837,9 @@ static int __init sec_key_init(struct device *dev)
 	dma_buf_size = PAGE_SIZE * (1 << get_order(MAX_KEY_HANDLE_SIZE));
 	key_handle = dma_alloc_coherent(dev, dma_buf_size,
 					&dma_key_handle, GFP_KERNEL);
-	dma_buf_size = PAGE_SIZE * (1 << get_order(MAX_KEY_HANDLE_SIZE));
-	aes_key_handle = dma_alloc_coherent(dev, dma_buf_size,
-					&dma_aes_key_handle, GFP_KERNEL);
 
 	if (!buf_key || !buf_key_blob || !buf_sealed_buf ||
-	    !buf_unsealed_buf || !buf_iv || !key_handle || !aes_key_handle) {
+	    !buf_unsealed_buf || !buf_iv || !key_handle) {
 		pr_err("Cannot allocate memory for secure-key ops\n");
 
 		if (buf_key) {
@@ -2886,13 +2885,6 @@ static int __init sec_key_init(struct device *dev)
 					(1 << get_order(MAX_KEY_HANDLE_SIZE));
 			dma_free_coherent(dev, dma_buf_size,
 					key_handle, dma_key_handle);
-		}
-
-		if (aes_key_handle) {
-			dma_buf_size = PAGE_SIZE *
-					(1 << get_order(MAX_KEY_HANDLE_SIZE));
-			dma_free_coherent(dev, dma_buf_size, aes_key_handle,
-					 dma_aes_key_handle);
 		}
 
 		sysfs_remove_group(sec_kobj, &sec_key_attr_grp);
@@ -3363,17 +3355,19 @@ static ssize_t store_aes_clear_key_qtiapp(struct device *dev, struct device_attr
 					const char *buf, size_t count)
 {
 	uint32_t rc = 0;
-	uint32_t key_handle;
+	u32 val;
 
-	if (kstrtouint(buf, 10, &key_handle))
+	if (kstrtouint(buf, 10, &val))
 		return -EINVAL;
 
-	rc = qtiapp_test(dev, &key_handle, NULL, 0, QTI_APP_CLEAR_KEY);
+	rc = qtiapp_test(dev, &val, NULL, 0, QTI_APP_CLEAR_KEY);
 
-	if (!rc)
-		pr_info("AES key =  %u cleared successfully\n",key_handle);
-	else
+	if (!rc) {
+		pr_info("AES key =  %u cleared successfully\n", val);
+		*aes_key_handle = 0;
+	} else {
 		pr_info("AES key clear failed\n");
+	}
 
 	return rc ? rc : count;
 }
@@ -3460,7 +3454,7 @@ show_aes_decrypted_data_qtiapp(struct device *dev, struct device_attribute *attr
 	uint64_t output_len = 0;
 	dma_addr_t dma_req_addr = 0;
 
-	if (props->aes_v2 && !props->ipc_support) {
+	if (props->aes_v2) {
 		rc = show_aes_v2_decrypted_data_qtiapp(dev, attr, buf);
 		return rc;
 	}
@@ -3613,7 +3607,7 @@ show_aes_encrypted_data_qtiapp(struct device *dev, struct device_attribute *attr
 	uint64_t output_len = 0;
 	dma_addr_t dma_req_addr = 0;
 
-	if (props->aes_v2 && !props->ipc_support) {
+	if (props->aes_v2) {
 		rc = show_aes_v2_encrypted_data_qtiapp(dev, attr, buf);
 		return rc;
 	}
@@ -4637,6 +4631,9 @@ static int __init qtiapp_init(struct device *dev)
 	}
 
 	if (props->function & AES_TZAPP) {
+		dma_buf_size = PAGE_SIZE * (1 << get_order(MAX_KEY_HANDLE_SIZE));
+		aes_key_handle = dma_alloc_coherent(dev, dma_buf_size,
+				&dma_aes_key_handle, GFP_KERNEL);
 
 		dma_buf_size = PAGE_SIZE *
 				(1 << get_order(MAX_PLAIN_DATA_SIZE));
@@ -4653,8 +4650,16 @@ static int __init qtiapp_init(struct device *dev)
 		buf_aes_iv = dma_alloc_coherent(dev, dma_buf_size,
 					&dma_aes_ivdata, GFP_KERNEL);
 
-		if (!buf_aes_sealed_buf || !buf_aes_unsealed_buf || !buf_aes_iv) {
+		if (!buf_aes_sealed_buf || !buf_aes_unsealed_buf ||
+		    !buf_aes_iv || !aes_key_handle) {
 			pr_err("Cannot allocate memory for aes crypt ops\n");
+
+			if (aes_key_handle) {
+				dma_buf_size = PAGE_SIZE *
+					       (1 << get_order(MAX_KEY_HANDLE_SIZE));
+				dma_free_coherent(dev, dma_buf_size, aes_key_handle,
+						  dma_aes_key_handle);
+			}
 
 			if (buf_aes_sealed_buf) {
 				dma_buf_size = PAGE_SIZE *
@@ -4694,7 +4699,7 @@ static int __init qtiapp_init(struct device *dev)
 				kobject_put(qtiapp_aes_kobj);
 			}
 
-			if (props->aes_v2 && !props->ipc_support) {
+			if (props->aes_v2) {
 				err = sysfs_create_group(qtiapp_aes_kobj, &qtiapp_aesv2_attr_grp);
 				if (err)
 					pr_debug("TZapp AES v2 sysfs creation failed with error %d\n",err);
@@ -5115,6 +5120,12 @@ static int __exit qseecom_remove(struct platform_device *pdev)
 	}
 
 	if (props->function & AES_TZAPP) {
+		if (aes_key_handle) {
+			dma_buf_size = PAGE_SIZE *
+				       (1 << get_order(MAX_KEY_HANDLE_SIZE));
+			dma_free_coherent(dev, dma_buf_size, aes_key_handle,
+					  dma_aes_key_handle);
+		}
 
 		if (buf_aes_sealed_buf) {
 			dma_buf_size = PAGE_SIZE *
@@ -5141,7 +5152,7 @@ static int __exit qseecom_remove(struct platform_device *pdev)
 		}
 
 		sysfs_remove_group(qtiapp_aes_kobj, &qtiapp_aes_attr_grp);
-		if (props->aes_v2 && !props->ipc_support)
+		if (props->aes_v2)
 			sysfs_remove_group(qtiapp_aes_kobj, &qtiapp_aesv2_attr_grp);
 		kobject_put(qtiapp_aes_kobj);
 

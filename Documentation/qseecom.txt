@@ -18,7 +18,7 @@ TZ operations
 
 TZ supports both AES and RSA crypto operations.
 The AES operations can be performed in two ways:
-AESv1 -> Supported via a crypto library in TZ (Supported chipsets:IPQ50xx/IPQ60xx/IPQ807x/IPQ95xx/IPQ53xx)
+AESv1 -> Supported via a crypto library in TZ (Supported chipsets:IPQ95xx/IPQ53xx)
          A key blob will be generated, containing the actual AES key, but encrypted
          with a device-unique key not visible to non-secure code, and returned
          to user, which can be used for encrypt/decrypt operations.
@@ -34,7 +34,7 @@ Note: IPQ53xx platform uses the same qseecom_props structure of IPQ95xx platform
 --------------------------------------------------------
 |Steps for triggering secure RSA crypto operation in TZ|
 --------------------------------------------------------
-Supported targets: IPQ50xx/IPQ60xx/IPQ807x/IPQ95xx/IPQ53xx/IPQ54xx
+Supported targets: IPQ95xx/IPQ53xx/IPQ54xx
 
 RSA API: (qseecom_props function = RSA_SEC_KEY)
 It is used for signing and verifying data based on RSA algorithm with public
@@ -79,22 +79,17 @@ RSA Sign data:
     or
     cat import_key_blob.txt > /sys/rsa_sec_key/rsa_key_blob
 (2) echo -n "data.txt" > /sys/rsa_sec_key/rsa_sign
-    (Note: data.txt is the input file that can contains plain data.
-     8k plain data size is supported only in IPQ807x platform.
-     For other platforms the plain data max size is 2k bytes.)
+    (Note: data.txt is the input file that contains plain data.
+     The plain data max size is 2k bytes.)
 (3) cat /sys/rsa_sec_key/rsa_sign > signed_data.txt
 
 RSA Verification of Signature:
 (1) cat key_blob.txt > /sys/rsa_sec_key/rsa_key_blob
     or
     cat import_key_blob.txt > /sys/rsa_sec_key/rsa_key_blob
-(2) echo -n "data.txt" > /sys/rsa_sec_key/rsa_sign
-    (Note: data.txt is the input file that can contains plain data.
-     8k plain data size is supported only in IPQ807x platform.
-     For other platforms the plain data max size is 2k bytes.)
-(3) cat signed_data.txt > /sys/rsa_sec_key/rsa_verify
-(4) cat /sys/rsa_sec_key/rsa_verify > verification_result.txt
-(5) cat verification_result.txt
+(2) cat signed_data.txt > /sys/rsa_sec_key/rsa_verify
+(3) cat /sys/rsa_sec_key/rsa_verify > verification_result.txt
+(4) cat verification_result.txt
 
 RSA Update key blob:
 Use these steps to update the padding scheme present in a key blob
@@ -103,7 +98,9 @@ Use these steps to update the padding scheme present in a key blob
     cat import_key_blob.txt > /sys/rsa_sec_key/rsa_key_blob
     Note: Users can also input an externally saved key blob which was not created
           using Generate/Import commands
-(2) cat /sys/rsa_sec_key/rsa_update_keyblob > updated_key_blob.txt
+Select the padding type (1 -> PKCS, 2 -> PSS)
+(2) eg: echo 2 > /sys/rsa_sec_key/rsa_pad_scheme
+(3) cat /sys/rsa_sec_key/rsa_update_keyblob > updated_key_blob.txt
 
 Note:
 RSA generate functionality can take random amount of time to execute. This is
@@ -119,7 +116,7 @@ Note: For IPQ95xx/IPQ53xx targets, this will be taken care by TME-L.
 ----------------------------------------------------------
 |Steps for triggering secure AESv1 crypto operation in TZ|
 ----------------------------------------------------------
-Supported targets: IPQ50xx/IPQ60xx/IPQ807x/IPQ95xx/IPQ53xx
+Supported targets: IPQ95xx/IPQ53xx
 
 AES TZ API: (qseecom_props function = AES_SEC_KEY)
 This is used for performing AES encrypt/decrypt operations in TZ.
@@ -391,19 +388,18 @@ The sampleapp supports below operations:
 (1) Basic multiplication test
 (2) Sample crypto test
 (3) RSA crypto
-(4) AESv1 crypto
-(5) AESv2 crypto
-(6) Fuse read
-(7) Fuse write
-(8) Logbitmask
-(9) Misc
+(4) AESv2 crypto
+(5) Fuse read
+(6) Fuse write
+(7) Logbitmask
+(8) Misc
 
 Description and steps for each of these operations are mentioned below.
 
 -------------------------------------------------------------------
 |Steps for triggerring basic multiplication operation in sampleapp|
 -------------------------------------------------------------------
-Supported targets: IPQ50xx/IPQ60xx/IPQ807x/IPQ95xx/IPQ53xx
+Supported targets: IPQ95xx/IPQ53xx/IPQ54xx
 
 The following multiplication operation can be tested in all the platforms: (qseecom_props function = MUL)
 It multiplies the provided input by 10.
@@ -417,7 +413,7 @@ cat /sys/firmware/tzapp/basic_data
 ----------------------------------------------------
 |Steps for triggering crypto operation in sampleapp|
 ----------------------------------------------------
-Supported targets: IPQ50xx/IPQ60xx/IPQ807x/IPQ95xx/IPQ53xx
+Supported targets: IPQ95xx/IPQ53xx/IPQ54xx
 
 The "crypto" sysfs entry triggers the sample test encryption and decryption routines
 inside secure app and displays the result if the test has passed or failed.
@@ -430,7 +426,7 @@ Results can be viewed in /sys/kernel/debug/tzapp_log
 --------------------------------------------------------
 |Steps for triggering RSA crypto operation in sampleapp|
 --------------------------------------------------------
-Supported targets: IPQ50xx/IPQ807x/IPQ95xx/IPQ53xx
+Supported targets: IPQ95xx/IPQ53xx/IPQ54xx
 
 RSA TZAPP API: (qseecom_props function = RSA_TZAPP)
 It is used for encrypting/decrypting data based on RSA algorithm in TZapp.
@@ -460,41 +456,9 @@ Decrypt RSA:
 (13) cat sam1.txt
 
 ----------------------------------------------------------
-|Steps for triggering AESv1 crypto operation in sampleapp|
-----------------------------------------------------------
-Supported targets: IPQ807x
-
-AES TZAPP API: (qseecom_props function = AES_TZAPP)
-This is used for performing AES encrypt/decrypt operations in TZapp.
-
-Note:
-By default AES TZapp encrypt/decrypt is disabled in IPQ807x platform, update "OEM_crypto_service_enable" flag to 1 in
-"trustzone_images/core/secureMSM/trustzone/qsee/mink/oem/config/ipq8074/oem_config.xml" and flash updated devcfg.mbn
-for enabling AES encrypt/decrypt.
-
-Giving the required aes256 parameters:
-(1) echo 1 > /sys/firmware/tzapp/aes/type_aes
-(2) echo 1 > /sys/firmware/tzapp/aes/mode_aes
-(3) echo -n -e \\x69\\x01\\x50\\x05\\x26\\x35\\x27\\x2c\\xf4\\xe0\\x19\\x1c\\xa9\\x74\\x36\\x45 > /sys/firmware/tzapp/aes/ivdata_aes
-
-To encrypt:
-(4) echo "Aes Encryption!" > /sys/firmware/tzapp/aes/encrypt_aes
-Note: Input plain text must be less than 2K bytes and a multiple of AES
-block size which is 16 bytes.
-(5) cat /sys/firmware/tzapp/aes/encrypt_aes > /tmp/enc.txt
-
-To decrypt:
-(6) cat /tmp/enc.txt > /sys/firmware/tzapp/aes/decrypt_aes
-(7) cat /sys/firmware/tzapp/aes/decrypt_aes > /tmp/pt.txt
-(8) cat /tmp/pt.txt
-
-To check the tzlog buff after above operations if required:
-(8) cat /sys/kernel/debug/tzapp_log
-
-----------------------------------------------------------
 |Steps for triggering AESv2 crypto operation in sampleapp|
 ----------------------------------------------------------
-Supported targets: IPQ95xx/IPQ53xx
+Supported targets: IPQ95xx/IPQ53xx/IPQ54xx
 
 AES 256 v2 TZAPP API's supported in TME-L based platform can be used as below:
 (qseecom_props function = AES_TZAPP aes_v2 = true ipc_support = false)
@@ -546,7 +510,7 @@ Decrypt AES:
 --------------------------------------------------
 |Steps for triggering fuse operation in sampleapp|
 --------------------------------------------------
-Supported targets: IPQ50xx/IPQ807x/IPQ95xx/IPQ53xx
+Supported targets: IPQ95xx/IPQ53xx/IPQ54xx
 
 It tests if it can read fuses for the allowed regions from TA (Trusted APPS).
 For example the allowed regions for IPQ53xx platform are shown below.
@@ -562,7 +526,7 @@ QFPROM_RAW_FEC_ENABLES_REGION:
 -------------------------------------------------------
 |Steps for triggering fusewrite operation in sampleapp|
 -------------------------------------------------------
-Supported targets: IPQ50xx/IPQ807x/IPQ95xx/IPQ53xx
+Supported targets: IPQ95xx/IPQ53xx/IPQ54xx
 
 Fusewrite: (qseecom_props function = FUSE_WRITE)
 
@@ -579,7 +543,7 @@ Input the fuse address according to target
 --------------------------------------------------------
 |Steps for triggering Logbitmask operation in sampleapp|
 --------------------------------------------------------
-Supported targets: IPQ50xx/IPQ807x/IPQ95xx/IPQ53xx
+Supported targets: IPQ95xx/IPQ53xx/IPQ54xx
 
 TZapp supports different logging levels. This API will set mask for different log levels and checks if only expected logs are present.
 If expected logs are present then success is returned.
@@ -594,7 +558,7 @@ If the below print is seen in tzapp_log, then it means the logbitmask test has e
 --------------------------------------------------
 |Steps for triggering misc operation in sampleapp|
 --------------------------------------------------
-Supported targets: IPQ50xx/IPQ807x/IPQ95xx/IPQ53xx
+Supported targets: IPQ95xx/IPQ53xx/IPQ54xx
 
 Misc API: (qseecom_props function = MISC)
 
