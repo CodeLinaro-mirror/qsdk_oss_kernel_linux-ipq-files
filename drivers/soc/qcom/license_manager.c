@@ -1625,6 +1625,8 @@ static int license_manager_probe(struct platform_device *pdev)
 
 	svc->tmel_bounded = of_property_read_bool(node, "tmel-bounded");
 
+	INIT_LIST_HEAD(&svc->soc_hw_feature_list);
+
 	if (svc->license_feature) {
 		svc->license_buf = dma_alloc_coherent(dev, LICENSE_BUF_MAX,
 				&svc->license_dma_addr, GFP_KERNEL);
@@ -1646,7 +1648,6 @@ static int license_manager_probe(struct platform_device *pdev)
 			 svc->soc_bounded ? "SoC Bounded" : "Endpoint Bounded");
 	} else if (svc->tmel_bounded) {
 		dev_info(dev, "License Manager is TME-L Bounded\n");
-		INIT_LIST_HEAD(&svc->soc_hw_feature_list);
 		ret = populate_soc_hw_features(svc);
 		if (ret == -EPROBE_DEFER)
 			goto free_lm_svc;
@@ -1732,6 +1733,7 @@ free_lm_svc:
 
 static int license_manager_remove(struct platform_device *pdev)
 {
+	struct lm_soc_hw_feat *hw_feat_iter, *hw_feat_temp;
 	struct device *dev = &pdev->dev;
 	struct lm_svc_ctx *svc = lm_svc;
 	struct feature_info *iter, *temp;
@@ -1743,6 +1745,14 @@ static int license_manager_remove(struct platform_device *pdev)
 								node) {
 			list_del(&iter->node);
 			kfree(iter);
+		}
+	}
+
+	if (!list_empty(&svc->soc_hw_feature_list)) {
+		list_for_each_entry_safe(hw_feat_iter, hw_feat_temp,
+					 &svc->soc_hw_feature_list, node) {
+			list_del(&hw_feat_iter->node);
+			kfree(hw_feat_iter);
 		}
 	}
 
