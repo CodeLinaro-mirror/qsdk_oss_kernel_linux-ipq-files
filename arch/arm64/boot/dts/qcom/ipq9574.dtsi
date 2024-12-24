@@ -3354,7 +3354,8 @@
 		};
 
 		q6v5_wcss: remoteproc@cd00000 {
-			compatible = "qcom,ipq9574-q6-mpd";
+			compatible = "qcom,ipq9574-q6v5-wcss-sec";
+			m3_firmware = "IPQ9574/m3_fw.mdt";
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges;
@@ -3466,11 +3467,6 @@
 				label = "rtr";
 				qcom,remote-pid = <1>;
 				mboxes = <&apcs_glb 8>;
-			};
-
-			q6_wcss_pd1: remoteproc_pd1 {
-				compatible = "qcom,ipq9574-wcss-ahb-mpd";
-				m3_firmware = "IPQ9574/m3_fw.mdt";
 			};
 		};
 
