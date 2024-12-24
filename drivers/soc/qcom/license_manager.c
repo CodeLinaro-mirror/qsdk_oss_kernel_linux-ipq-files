@@ -1094,7 +1094,7 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				dev_info(svc->dev, "Enforcement done for SoC HW features\n");
 				for (j = 0; j < i; j++) {
 					if (!fid[j].hw_feat_status)
-						dev_dbg(svc->dev, "HW Enforcement failed for FID %u\n", fid[j].feature_id);
+						dev_err(svc->dev, "HW Enforcement failed for FID %u\n", fid[j].feature_id);
 				}
 			}
 
