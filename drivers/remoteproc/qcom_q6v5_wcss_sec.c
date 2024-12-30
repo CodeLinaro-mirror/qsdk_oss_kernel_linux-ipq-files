@@ -132,20 +132,19 @@ static int q6v5_wcss_sec_start(struct rproc *rproc)
 		ret = qcom_scm_pas_auth_and_reset(desc->pasid);
 
 	if (ret) {
-		dev_err(wcss->dev, "wcss_reset failed\n");
-		if (desc->tmelcom_support)
-			tmelcom_secboot_teardown(desc->pasid, 0);
-
-		return ret;
+		dev_err(wcss->dev, "wcss_reset failed: %d\n", ret);
+		goto out;
 	}
 
 wait_for_start:
 	ret = qcom_q6v5_wait_for_start(&wcss->q6, msecs_to_jiffies(10000));
 	if (ret == -ETIMEDOUT) {
-		if (debug_wcss)
+		if (debug_wcss) {
 			goto wait_for_start;
-		else
+		} else {
 			dev_err(wcss->dev, "start timed out\n");
+			goto out;
+		}
 	}
 
 	if (lic_param.buf) {
@@ -157,13 +156,17 @@ wait_for_start:
 		ret = qcom_scm_pas_auth_and_reset(wcss->textpd_pasid);
 		if (ret) {
 			dev_err(wcss->dev, "Failed to start textpd fw : %d\n", ret);
-			return ret;
+			goto out;
 		}
 	}
 
 	ret = q6v5_start_user_pd(rproc);
 	if (ret)
 		dev_err(wcss->dev, "Failed to start userpd %d\n", ret);
+
+out:
+	if (ret && desc->tmelcom_support)
+		tmelcom_secboot_teardown(desc->pasid, 0);
 
 	return ret;
 }
