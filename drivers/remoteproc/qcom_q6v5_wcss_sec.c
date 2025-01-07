@@ -427,6 +427,42 @@ static int share_bootargs_to_q6(struct rproc *rproc, struct device *dev)
 	return 0;
 }
 
+static int load_m3_firmware(struct q6v5_wcss_sec *wcss)
+{
+	int ret;
+	const struct firmware *m3_fw;
+	const char *m3_fw_name;
+	struct device_node *np = wcss->dev->of_node;
+
+	ret = of_property_read_string(np, "m3_firmware", &m3_fw_name);
+	if (ret == -EINVAL) {
+		return 0;
+	} else if (ret) {
+		dev_err(wcss->dev, "m3_firmware load failed ret:%d\n", ret);
+		return ret;
+	}
+
+	ret = request_firmware(&m3_fw, m3_fw_name, wcss->dev);
+	if (ret) {
+		dev_err(wcss->dev, "request_firmware failed %s ret:%d\n", m3_fw_name, ret);
+		return 0;
+	}
+
+	ret = qcom_mdt_load_no_init(wcss->dev, m3_fw,
+				    m3_fw_name, 0,
+				    wcss->mem_region, wcss->mem_phys,
+				    wcss->mem_size, &wcss->mem_reloc);
+	release_firmware(m3_fw);
+
+	if (ret) {
+		dev_err(wcss->dev, "can't load %s ret:%d\n", m3_fw_name, ret);
+		return ret;
+	}
+
+	dev_info(wcss->dev, "m3 firmware %s loaded to DDR\n", m3_fw_name);
+	return ret;
+}
+
 static int q6v5_wcss_sec_load(struct rproc *rproc, const struct firmware *fw)
 {
 	struct q6v5_wcss_sec *wcss = rproc->priv;
@@ -489,6 +525,10 @@ static int q6v5_wcss_sec_load(struct rproc *rproc, const struct firmware *fw)
 
 		release_firmware(textpd_fw);
 	}
+
+	ret = load_m3_firmware(wcss);
+	if (ret)
+		return ret;
 
 	return ret;
 }
