@@ -156,6 +156,9 @@ int write_version(struct device *dev, uint32_t type, uint32_t version)
 		ret = qcom_qfprom_write_version(type, version, qfprom_ret_ptr);
 	} else {
 		id_list = kzalloc(sizeof(sw_id_list), GFP_KERNEL);
+		if (!id_list)
+		    return -ENOMEM;
+
 		memcpy(id_list, sw_id_list, sizeof(sw_id_list));
 		ret = tmelcomm_secboot_update_arb_version_list(id_list,
 							       sizeof(sw_id_list));
