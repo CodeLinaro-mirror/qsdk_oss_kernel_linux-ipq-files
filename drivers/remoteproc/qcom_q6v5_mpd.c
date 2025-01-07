@@ -886,27 +886,27 @@ static int share_bootargs_to_q6(struct device *dev)
 
 	ret = of_property_read_u32(np, key, &smem_id);
 	if (ret) {
-		pr_err("failed to get smem id\n");
+		dev_err(dev, "failed to get smem id\n");
 		return ret;
 	}
 
 	ret = qcom_smem_alloc(REMOTE_PID, smem_id, Q6_BOOT_ARGS_SMEM_SIZE);
 	if (ret && ret != -EEXIST) {
-		pr_err("failed to allocate q6 bootargs smem segment\n");
+		dev_err(dev, "failed to allocate q6 bootargs smem segment\n");
 		return ret;
 	}
 
 	boot_args.smem_base_ptr = qcom_smem_get(REMOTE_PID, smem_id, &size);
 	if (IS_ERR(boot_args.smem_base_ptr)) {
-		pr_err("Unable to acquire smp2p item(%d) ret:%ld\n",
-		       smem_id, PTR_ERR(boot_args.smem_base_ptr));
+		dev_err(dev, "Unable to acquire smp2p item(%d) ret:%ld\n",
+			smem_id, PTR_ERR(boot_args.smem_base_ptr));
 		return PTR_ERR(boot_args.smem_base_ptr);
 	}
 	ptr = boot_args.smem_base_ptr;
 
 	/*get physical address*/
-	pr_info("smem phyiscal address:0x%lX\n",
-		(uintptr_t)qcom_smem_virt_to_phys(ptr));
+	dev_info(dev, "smem physical address:0x%lX\n",
+		 (uintptr_t)qcom_smem_virt_to_phys(ptr));
 
 	/*Version*/
 	version = desc->bootargs_version;
@@ -918,7 +918,7 @@ static int share_bootargs_to_q6(struct device *dev)
 	cnt = ret;
 	if (ret < 0) {
 		if (ret == -ENODATA) {
-			pr_err("failed to read boot args ret:%d\n", ret);
+			dev_err(dev, "failed to read boot args ret:%d\n", ret);
 			return ret;
 		}
 		cnt = 0;
@@ -930,14 +930,14 @@ static int share_bootargs_to_q6(struct device *dev)
 
 	bootargs_arr = kzalloc(cnt, GFP_KERNEL);
 	if (!bootargs_arr) {
-		pr_err("failed to allocate memory\n");
+		dev_err(dev, "failed to allocate memory\n");
 		return PTR_ERR(bootargs_arr);
 	}
 
 	for (tmp = 0; tmp < cnt; tmp++) {
 		ret = of_property_read_u32_index(np, "boot-args", tmp, &rd_val);
 		if (ret) {
-			pr_err("failed to read boot args\n");
+			dev_err(dev, "failed to read boot args\n");
 			kfree(bootargs_arr);
 			return ret;
 		}
@@ -954,7 +954,7 @@ static int share_bootargs_to_q6(struct device *dev)
 
 	ret = load_userpd_params_to_bootargs(dev, &boot_args);
 	if (ret < 0) {
-		pr_err("failed to read userpd boot args ret:%d\n", ret);
+		dev_err(dev, "failed to read userpd boot args ret:%d\n", ret);
 		return ret;
 	}
 
