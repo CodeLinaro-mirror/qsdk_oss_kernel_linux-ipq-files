@@ -51,6 +51,7 @@ Generate or Import the key blob to be used for encrypt/decrypt
 RSA Generate Key blob:
 Choose the key size for RSA generate operation (0->2k, 1->4k)
 (1) eg: echo 0 > /sys/rsa_sec_key/rsa_keysize
+Note: Default size is 2k
 (2) cat /sys/rsa_sec_key/rsa_generate > key_blob.txt
 
 RSA Import Key blob:

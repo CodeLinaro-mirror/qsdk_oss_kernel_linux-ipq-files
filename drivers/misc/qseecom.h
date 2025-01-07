@@ -484,7 +484,7 @@ static dma_addr_t __aligned(sizeof(dma_addr_t) * 8) aes_bindings_data;
 static uint64_t aes_ivdata_len;
 static uint64_t aes_type;
 static uint64_t aes_mode;
-static uint32_t rsa_keysize;
+static uint32_t rsa_keysize = RSA_2K_MODULUS_LEN;
 static uint8_t *rsa_unsealed_buf;
 static uint8_t *rsa_sealed_buf;
 static uint64_t rsa_decrypted_len;
