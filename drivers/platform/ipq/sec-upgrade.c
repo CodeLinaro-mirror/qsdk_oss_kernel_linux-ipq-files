@@ -39,7 +39,6 @@
 #include <linux/elf.h>
 #include <linux/decompress/unlzma.h>
 #include <linux/decompress/generic.h>
-#include <linux/soc/qcom/smem.h>
 #include <linux/tmelcom_ipc.h>
 #include <crypto/hash.h>
 #include <crypto/sha2.h>
@@ -48,7 +47,6 @@
 #define QFPROM_IS_AUTHENTICATE_CMD_RSP_SIZE	0x2
 
 #define SW_TYPE_SEC_DATA			0x2B
-#define SMEM_ATF_ENABLE				509
 
 #ifdef CONFIG_QCOM_TMELCOM
 enum sw_types {
@@ -858,33 +856,6 @@ rootfs_auth_flag(struct device *dev, struct device_attribute *sec_attr, char *bu
 	return ret;
 }
 
-static ssize_t
-show_atf_status(struct device *dev, struct device_attribute *sec_attr, char *buf)
-{
-	unsigned int ret;
-	u32 *status;
-	u32 val = 0;
-
-	if (qcom_qfprom_secure_state_cmd_available()) {
-		ret = qcom_scm_is_atf_enabled(&val);
-		if (ret)
-			return ret;
-	} else {
-		status = qcom_smem_get(QCOM_SMEM_HOST_ANY, SMEM_ATF_ENABLE, NULL);
-		if (IS_ERR_OR_NULL(status)) {
-			dev_info(dev, "Failed to get SMEM_ATF_ENABLE status\n");
-			return -EINVAL;
-		}
-		val = *status;
-	}
-
-	if (val)
-		ret = snprintf(buf, sizeof("Enabled"), "%s\n", "Enabled");
-	else
-		ret = snprintf(buf, sizeof("Disabled"), "%s\n", "Disabled");
-	return ret;
-}
-
 static bool elf_has_nand_preamble_magic(void *va_addr)
 {
 	struct nand_codeword *xbl_nand = (struct nand_codeword *)va_addr;
@@ -1524,9 +1495,6 @@ static struct device_attribute list_ipq5424_fuse_attr =
 static struct device_attribute list_ipq9574_fuse_attr =
 	__ATTR(list_ipq9574_fuse, 0444, show_list_ipq9574_fuse, NULL);
 
-static struct device_attribute atf_attr =
-	__ATTR(atf, 0444, show_atf_status, NULL);
-
 static const struct qfprom_node_cfg ipq9574_qfprom_node_cfg = {
 	.fuse_list		=	&list_ipq9574_fuse_attr,
 	.is_rlbk_support	=	true,
@@ -1796,13 +1764,6 @@ static int qfprom_probe(struct platform_device *pdev)
 	if (err) {
 		pr_err("%s: device_create_file(%s)=%d\n",
 			__func__, sec_dat_attr.attr.name, err);
-	}
-
-	/* sysfs entry for checking if ATF is enabled */
-	err = device_create_file(&device_qfprom, &atf_attr);
-	if (err) {
-		pr_err("%s: device_create_file(%s)=%d\n",
-		       __func__, atf_attr.attr.name, err);
 	}
 
 	/* Error values are printed in qfprom_create_files API. Skipping the
