@@ -88,7 +88,6 @@ u32 sw_id_list[] = {};
 
 static int gl_version_enable;
 static int version_commit_enable;
-static int fuse_blow_size_req;
 static int decompress_error;
 struct load_segs_info *ld_seg_buff;
 static int rootfs_auth_enable;
@@ -1353,7 +1352,7 @@ store_sec_dat(struct device *dev, struct device_attribute *attr,
 	struct file *fptr = NULL;
 	struct kstat st;
 	void *ptr = NULL;
-	struct fuse_blow fuse_blow;
+	struct fuse_blow fuse_blow = {0};
 	dma_addr_t dma_req_addr = 0;
 	size_t req_order = 0;
 	struct page *req_page = NULL;
@@ -1421,7 +1420,6 @@ store_sec_dat(struct device *dev, struct device_attribute *attr,
 	}
 	fuse_blow.address = dma_req_addr;
 	fuse_blow.status = &fuse_status;
-	fuse_blow.size = fuse_blow_size_req ? size : 0;
 
 	ret = of_property_read_u32(np, "scm-cmd-id", &scm_cmd_id);
 	if (ret) {
@@ -1437,6 +1435,7 @@ store_sec_dat(struct device *dev, struct device_attribute *attr,
 					    sizeof(fuse_blow));
 	} else if (IS_ELF(*((Elf32_Ehdr *)ptr)) &&
 		   qcom_sec_dat_fuse_available(QCOM_AUTH_FUSE_UIE_KEY_CMD)) {
+		fuse_blow.size = size;
 		ret = qcom_fuseipq_scm_call(QCOM_SCM_SVC_FUSE,
 					    QCOM_AUTH_FUSE_UIE_KEY_CMD,
 					    &fuse_blow,
@@ -1757,7 +1756,6 @@ static int qfprom_probe(struct platform_device *pdev)
 		}
 	}
 
-	of_property_read_u32(np, "fuse-blow-size-required", &fuse_blow_size_req);
 	of_property_read_u32(np, "version-commit-enable", &version_commit_enable);
 	if (version_commit_enable)
 		pr_info("version commit support enabled\n");
