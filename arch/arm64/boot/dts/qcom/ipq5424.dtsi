@@ -1728,6 +1728,36 @@
 			status = "ok";
 		};
 
+		hist_apss_comp {
+			compatible = "qcom,hist-apss-comp-driver";
+			reg = <0xAC0C00 0x1000>, <0xACB800 0x1000>;
+			reg-names = "histprobe-base", "histctrl-base";
+			hist_bin_width = <0x8>;
+			ddr_addr_min_low = <0x80000000>;
+			ddr_addr_min_high = <0x00000000>;
+			ddr_addr_max_low = <0x80000000>;
+			ddr_addr_max_high = <0x00000009>;
+			trace_probe_extid_base = <0x4000>; /* BID=2: PID=0: MID=0 of APSS */
+			trace_probe_extid_mask = <0xff00>;
+			ec_ctl1_base_val = <0x404>;
+			status = "ok";
+		};
+
+		llcc_be_apss_comp {
+			compatible = "qcom,llcc-be-apss-comp-driver";
+			reg = <0x836000 0x2000>, <0x860000 0x2000>, <0x83C000 0x2000>, <0x824000 0x2000>;
+			reg-names = "llcc-perfmon-base", "llcc-beac-base", "llcc-berc-base", "llcc-trp-prof-filter-base";
+			hist_bin_width = <0x8>;
+			ddr_addr_min_low = <0x80000000>;
+			ddr_addr_min_high = <0x00000000>;
+			ddr_addr_max_low = <0x80000000>;
+			ddr_addr_max_high = <0x00000009>;
+			trace_probe_extid_base = <0x4000>; /* BID=2: PID=0: MID=0 of APSS */
+			trace_probe_extid_mask = <0xff00>;
+			ec_ctl1_base_val = <0x404>;
+			status = "ok";
+		};
+
 		timer@f420000 {
 			compatible = "arm,armv7-timer-mem";
 			reg = <0xf420000 0x1000>;
