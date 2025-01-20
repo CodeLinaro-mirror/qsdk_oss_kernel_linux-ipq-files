@@ -902,7 +902,7 @@ int minidump_traverse_metadata_list(const char *name, const unsigned long
 			minidump_meta_info.cur_modinfo_offset = cur_node->modinfo_offset;
 #ifdef CONFIG_QCA_MINIDUMP_DEBUG
 		if (name != NULL) {
-			cur_node->name = kstrndup(name, strlen(name), GFP_KERNEL);
+			cur_node->name = kstrndup(name, strlen(name), GFP_ATOMIC);
 		}
 #endif
 		} else {
@@ -913,7 +913,7 @@ int minidump_traverse_metadata_list(const char *name, const unsigned long
 				*/
 				cur_node->modinfo_offset = minidump_meta_info.cur_modinfo_offset;
 #ifdef CONFIG_QCA_MINIDUMP_DEBUG
-				cur_node->name = kstrndup(name, strlen(name), GFP_KERNEL);
+				cur_node->name = kstrndup(name, strlen(name), GFP_ATOMIC);
 #endif
 			}
 		}
