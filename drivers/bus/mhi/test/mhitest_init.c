@@ -101,14 +101,17 @@ void mhitest_recovery_post_rddm(struct mhitest_platform *mplat)
 	MHITEST_EMERG("Enter\n");
 	msleep(10000); /*Let's wait for some time !*/
 
+	mhitest_pci_soc_reset(mplat);
 	mhitest_pci_set_mhi_state(mplat, MHI_POWER_OFF);
 	mhitest_pci_set_mhi_state(mplat, MHI_DEINIT);
 
-	mhitest_pci_remove_all(mplat);
+	mhitest_global_soc_reset(mplat);
+	msleep(2000);
+	mhitest_reset_mhi_state(mplat);
 
-	ret = mhitest_ss_powerup(mplat->subsys_handle);
+	ret = mhitest_prepare_start_mhi(mplat);
 	if (ret) {
-		MHITEST_ERR("ERRORRRR..ret:%d\n", ret);
+		MHITEST_ERR("Error preapare start mhi  ret:%d\n", ret);
 		return;
 	}
 

@@ -13,8 +13,6 @@
  */
 
 #include <linux/err.h>
-#include <linux/remoteproc.h>
-#include <linux/remoteproc/qcom_rproc.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/dma-direction.h>
@@ -184,10 +182,6 @@ struct mhitest_platform {
 	struct mhitest_msi_config *msi_config;
 	u32 msi_ep_base_data;
 	struct mhi_controller *mhi_ctrl;
-/* subsystem related */
-	char *mhitest_ss_desc_name;
-	phandle rproc_handle;
-	struct rproc *subsys_handle;
 /* ramdump */
 	struct mhitest_ramdump_info mhitest_rdinfo;
 /* event work queue*/
@@ -226,9 +220,7 @@ struct mhitest_driver_event {
 };
 
 int mhitest_pci_register(void);
-int mhitest_subsystem_register(struct mhitest_platform *);
 void mhitest_pci_unregister(void);
-void mhitest_subsystem_unregister(struct mhitest_platform *);
 int mhitest_pci_enable_bus(struct mhitest_platform *);
 struct mhitest_platform *get_mhitest_mplat_by_pcidev(struct pci_dev *pci_dev);
 int mhitest_pci_en_msi(struct mhitest_platform *);
@@ -249,9 +241,9 @@ int mhitest_event_work_init(struct mhitest_platform *);
 void mhitest_event_work_deinit(struct mhitest_platform *);
 int mhitest_pci_start_mhi(struct mhitest_platform *);
 void mhitest_global_soc_reset(struct mhitest_platform *);
-int mhitest_ss_powerup(struct rproc *);
 int mhitest_pci_set_mhi_state(struct mhitest_platform *, enum MHI_STATE);
 void mhitest_pci_disable_bus(struct mhitest_platform *);
 int mhitest_unregister_ramdump(struct mhitest_platform *);
 int mhitest_pci_remove_all(struct mhitest_platform *);
 void mhitest_pci_soc_reset(struct mhitest_platform *mplat);
+void mhitest_reset_mhi_state(struct mhitest_platform *mplat);

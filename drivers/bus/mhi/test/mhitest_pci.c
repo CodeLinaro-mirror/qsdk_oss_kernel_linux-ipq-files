@@ -22,6 +22,9 @@
 #include <linux/of_address.h>
 #include "commonmhitest.h"
 
+#define QCN9000_DEFAULT_FW_FILE_NAME	"qcn9000/amss.bin"
+#define QCN9224_DEFAULT_FW_FILE_NAME	"qcn9224/amss.bin"
+
 #define PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV0	0x3164
 #define PCIE_REG_FOR_QRTR_NODE_INSTANCE_ID	\
 	PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV0
@@ -1081,7 +1084,7 @@ void mhitest_global_soc_reset(struct mhitest_platform *mplat)
 		MHITEST_ERR("link down error during global reset\n");
 }
 
-static void mhitest_reset_mhi_state(struct mhitest_platform *mplat)
+void mhitest_reset_mhi_state(struct mhitest_platform *mplat)
 {
 	u32 val = 0;
 
@@ -1503,9 +1506,22 @@ int mhitest_pci_probe(struct pci_dev *pci_dev, const struct pci_device_id *id)
 
 	mhitest_store_mplat(mplat);
 
-	ret = mhitest_subsystem_register(mplat);
+	if (mplat->device_id == QCN92XX_DEVICE_ID)
+		snprintf(mplat->fw_name, sizeof(mplat->fw_name),
+			 QCN9224_DEFAULT_FW_FILE_NAME);
+	else
+		snprintf(mplat->fw_name, sizeof(mplat->fw_name),
+			 QCN9000_DEFAULT_FW_FILE_NAME);
+
+	ret = mhitest_prepare_pci_mhi_msi(mplat);
 	if (ret) {
-		MHITEST_ERR("Error subsystem register: ret:%d\n", ret);
+		MHITEST_ERR("Error prep. pci_mhi_msi  ret:%d\n", ret);
+		goto pci_deinit;
+	}
+
+	ret = mhitest_prepare_start_mhi(mplat);
+	if (ret) {
+		MHITEST_ERR("Error preapare start mhi  ret:%d\n", ret);
 		goto pci_deinit;
 	}
 
@@ -1526,6 +1542,11 @@ fail_probe:
 
 void mhitest_pci_soc_reset(struct mhitest_platform *mplat)
 {
+	if (mhi_get_exec_env(mplat->mhi_ctrl) == MHI_EE_RDDM) {
+		MHITEST_LOG("MHI SOC_RESET is not required as MHI is already in RDDM state\n");
+		return;
+	}
+
 	init_completion(&mplat->soc_reset_request);
 	mplat->soc_reset_requested = true;
 	mhi_soc_reset(mplat->mhi_ctrl);
@@ -1552,7 +1573,12 @@ void mhitest_pci_remove(struct pci_dev *pci_dev)
 
 	mplat = get_mhitest_mplat_by_pcidev(pci_dev);
 	if (mplat) {
-		mhitest_subsystem_unregister(mplat);
+		MHITEST_VERB("Going for shutdown\n");
+		mhitest_pci_soc_reset(mplat);
+		mhitest_pci_set_mhi_state(mplat, MHI_POWER_OFF);
+		mhitest_pci_set_mhi_state(mplat, MHI_DEINIT);
+		mhitest_pci_remove_all(mplat);
+
 		mhitest_event_work_deinit(mplat);
 		pci_load_and_free_saved_state(pci_dev, &mplat->pci_dev_default_state);
 		mhitest_free_mplat(mplat);
