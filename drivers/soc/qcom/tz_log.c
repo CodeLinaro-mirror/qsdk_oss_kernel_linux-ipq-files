@@ -108,6 +108,7 @@ struct tz_hvc_log_struct {
 	uint32_t hvc_ring_off;
 	uint32_t hvc_log_pos_info_off;
 	int buf_len;
+	int copy_buf_len;
 	struct mutex lock;
 	bool tz_kpss;
 	bool is_diag_id;
@@ -228,7 +229,8 @@ int parse_encrypted_log(char *ker_buf, uint32_t buf_len, char *copy_buf,
 }
 
 static int get_encrypted_tz_log(char *ker_buf, uint32_t buf_len,
-				char *copy_buf, int seg_id)
+				char *copy_buf, int seg_id,
+				uint32_t copy_buf_len)
 {
 	int ret;
 
@@ -242,7 +244,7 @@ static int get_encrypted_tz_log(char *ker_buf, uint32_t buf_len,
 		pr_err("Error in getting encrypted tz log %d\n", ret);
 		return -1;
 	}
-	return parse_encrypted_log(ker_buf, buf_len, copy_buf, QTI_TZ_DIAG_LOG_ENCR_ID);
+	return parse_encrypted_log(ker_buf, copy_buf_len, copy_buf, QTI_TZ_DIAG_LOG_ENCR_ID);
 }
 
 static int tz_hvc_log_open(struct inode *inode, struct file *file)
@@ -285,7 +287,8 @@ static int tz_hvc_log_open(struct inode *inode, struct file *file)
 			if (tz_hvc_log->is_encrypted) {
 				ret = get_encrypted_tz_log(ker_buf, buf_len,
 							   copy_buf,
-							   tz_hvc_log->seg_id);
+							   tz_hvc_log->seg_id,
+							   tz_hvc_log->copy_buf_len);
 				if (ret == -1)
 					goto out_err;
 				else if (ret == QTI_TZ_LOG_NO_UPDATE)
@@ -507,8 +510,13 @@ static int qti_tzlog_probe(struct platform_device *pdev)
 
 	tz_hvc_log->ker_buf = page_address(page_buf);
 
+	if (tz_hvc_log->is_encrypted)
+		tz_hvc_log->copy_buf_len = tz_hvc_log->buf_len * 2;
+	else
+		tz_hvc_log->copy_buf_len = tz_hvc_log->buf_len;
+
 	page_buf = alloc_pages(GFP_KERNEL,
-					get_order(tz_hvc_log->buf_len));
+			       get_order(tz_hvc_log->copy_buf_len));
 	if (page_buf == NULL) {
 		dev_err(&pdev->dev, "unable to get copy buffer memory\n");
 		ret = -ENOMEM;
@@ -595,7 +603,7 @@ remove_debugfs:
 free_mem:
 	if (tz_hvc_log->copy_buf)
 		__free_pages(virt_to_page(tz_hvc_log->copy_buf),
-				get_order(tz_hvc_log->buf_len));
+				get_order(tz_hvc_log->copy_buf_len));
 
 	if (tz_hvc_log->ker_buf)
 		__free_pages(virt_to_page(tz_hvc_log->ker_buf),
@@ -615,7 +623,7 @@ static int qti_tzlog_remove(struct platform_device *pdev)
 
 	if (tz_hvc_log->copy_buf)
 		__free_pages(virt_to_page(tz_hvc_log->copy_buf),
-				get_order(tz_hvc_log->buf_len));
+				get_order(tz_hvc_log->copy_buf_len));
 
 	if (tz_hvc_log->ker_buf)
 		__free_pages(virt_to_page(tz_hvc_log->ker_buf),
