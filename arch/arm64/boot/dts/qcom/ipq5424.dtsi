@@ -1728,6 +1728,66 @@
 			status = "ok";
 		};
 
+		pcie1_lane0_comp {
+			compatible = "qcom,pcie1-lane0-comp-driver";
+			reg = <0x601200 0x1000>,<0x602000 0x1000>, <0x603000 0x1000>;
+			reg-names = "tenureprobe-base", "traceprobe-base", "eventcounter-base";
+			hist_bin_width = <0x8>;
+			ddr_addr_min_low = <0x80000000>;
+			ddr_addr_min_high = <0x00000000>;
+			ddr_addr_max_low = <0x80000000>;
+			ddr_addr_max_high = <0x00000009>;
+			trace_probe_extid_base = <0x4C00>; /* BID=2: PID=0: MID=0 of APSS */
+			trace_probe_extid_mask = <0xff00>;
+			ec_ctl1_base_val = <0x404>;
+			status = "disabled";
+		};
+
+		pcie1_lane1_comp {
+			compatible = "qcom,pcie1-lane1-comp-driver";
+			reg = <0x601400 0x1000>,<0x602000 0x1000>, <0x603000 0x1000>;
+			reg-names = "tenureprobe-base", "traceprobe-base", "eventcounter-base";
+			hist_bin_width = <0x8>;
+			ddr_addr_min_low = <0x80000000>;
+			ddr_addr_min_high = <0x00000000>;
+			ddr_addr_max_low = <0x80000000>;
+			ddr_addr_max_high = <0x00000009>;
+			trace_probe_extid_base = <0x4E00>; /* BID=2: PID=0: MID=0 of APSS */
+			trace_probe_extid_mask = <0xff00>;
+			ec_ctl1_base_val = <0x404>;
+			status = "disabled";
+		};
+
+		pcie2_lane0_comp {
+			compatible = "qcom,pcie2-lane0-comp-driver";
+			reg = <0x601600 0x1000>,<0x602000 0x1000>, <0x603000 0x1000>;
+			reg-names = "tenureprobe-base", "traceprobe-base", "eventcounter-base";
+			hist_bin_width = <0x8>;
+			ddr_addr_min_low = <0x80000000>;
+			ddr_addr_min_high = <0x00000000>;
+			ddr_addr_max_low = <0x80000000>;
+			ddr_addr_max_high = <0x00000009>;
+			trace_probe_extid_base = <0x4D00>; /* BID=2: PID=0: MID=0 of APSS */
+			trace_probe_extid_mask = <0xff00>;
+			ec_ctl1_base_val = <0x404>;
+			status = "ok";
+		};
+
+		pcie2_lane1_comp {
+			compatible = "qcom,pcie2-lane1-comp-driver";
+			reg = <0x601800 0x1000>,<0x602000 0x1000>, <0x603000 0x1000>;
+			reg-names = "tenureprobe-base", "traceprobe-base", "eventcounter-base";
+			hist_bin_width = <0x8>;
+			ddr_addr_min_low = <0x80000000>;
+			ddr_addr_min_high = <0x00000000>;
+			ddr_addr_max_low = <0x80000000>;
+			ddr_addr_max_high = <0x00000009>;
+			trace_probe_extid_base = <0x4F00>; /* BID=2: PID=0: MID=0 of APSS */
+			trace_probe_extid_mask = <0xff00>;
+			ec_ctl1_base_val = <0x404>;
+			status = "ok";
+		};
+
 		hist_apss_comp {
 			compatible = "qcom,hist-apss-comp-driver";
 			reg = <0xAC0C00 0x1000>, <0xACB800 0x1000>;
