@@ -1441,7 +1441,7 @@ show_encrypted_data(struct device *dev, struct device_attribute *attr,
 	uint64_t output_len = 0;
 	dma_addr_t dma_req_addr = 0;
 
-	if (props->aes_v2 && !props->ipc_support) {
+	if (props->aes_v2) {
 		rc = show_aes_v2_encrypted_data(dev, attr, buf);
 		return rc;
 	}
@@ -1611,7 +1611,7 @@ show_decrypted_data(struct device *dev, struct device_attribute *attr, char *buf
 	uint64_t output_len = 0;
 	dma_addr_t dma_req_addr = 0;
 
-	if (props->aes_v2 && !props->ipc_support) {
+	if (props->aes_v2) {
 		rc = show_aes_v2_decrypted_data(dev, attr, buf);
 		return rc;
 	}
@@ -2671,10 +2671,10 @@ static int tmel_aes_init(struct device *dev)
 	int err;
 	size_t dma_buf_size = 0;
 
-	err = sysfs_create_group(sec_kobj, &sec_key_tmel_attr_grp);
+	err = sysfs_create_group(tmel_sec_kobj, &sec_key_tmel_attr_grp);
 	if (err) {
-		kobject_put(sec_kobj);
-		sec_kobj = NULL;
+		kobject_put(tmel_sec_kobj);
+		tmel_sec_kobj = NULL;
 		return err;
 	}
 
@@ -2763,9 +2763,9 @@ static int tmel_aes_init(struct device *dev)
 					  buf_pt_key, dma_pt_key);
 		}
 
-		sysfs_remove_group(sec_kobj, &sec_key_tmel_attr_grp);
-		kobject_put(sec_kobj);
-		sec_kobj = NULL;
+		sysfs_remove_group(tmel_sec_kobj, &sec_key_tmel_attr_grp);
+		kobject_put(tmel_sec_kobj);
+		tmel_sec_kobj = NULL;
 
 		return -ENOMEM;
 	}
@@ -2789,6 +2789,17 @@ static int __init sec_key_init(struct device *dev)
 
 	dev = qdev;
 
+	if (props->ipc_support) {
+		tmel_sec_kobj = kobject_create_and_add("tmel_sec_key", NULL);
+		if (!tmel_sec_kobj) {
+			pr_info("Failed to register tmel_sec_key sysfs\n");
+			return -ENOMEM;
+		}
+
+		err = tmel_aes_init(dev);
+		if (err)
+			return err;
+	}
 
 	sec_kobj = kobject_create_and_add("sec_key", NULL);
 	if (!sec_kobj) {
@@ -2796,22 +2807,24 @@ static int __init sec_key_init(struct device *dev)
 		return -ENOMEM;
 	}
 
-	if (props->aes_v2 && props->ipc_support) {
-		err = tmel_aes_init(dev);
-		return err;
+	if (!props->ipc_support) {
+		err = sysfs_create_group(sec_kobj, &sec_key_attr_grp);
+		if (err) {
+			pr_err("TZ AESv1 sysfs creation failed with error %d\n", err);
+			kobject_put(sec_kobj);
+			sec_kobj = NULL;
+			return err;
+		}
 	}
 
-	err = sysfs_create_group(sec_kobj, &sec_key_attr_grp);
-	if (err) {
-		kobject_put(sec_kobj);
-		sec_kobj = NULL;
-		return err;
-	}
-
-	if (props->aes_v2 && !props->ipc_support) {
+	if (props->aes_v2) {
 		err = sysfs_create_group(sec_kobj, &sec_key_aesv2_attr_grp);
-		if (err)
-			pr_debug("TZ AES v2 sysfs creation failed with error %d\n",err);
+		if (err) {
+			pr_err("TZ AESv2 sysfs creation failed with error %d\n", err);
+			kobject_put(sec_kobj);
+			sec_kobj = NULL;
+			return err;
+		}
 	}
 
 	dma_buf_size = PAGE_SIZE * (1 << get_order(KEY_SIZE));
@@ -2887,8 +2900,15 @@ static int __init sec_key_init(struct device *dev)
 					key_handle, dma_key_handle);
 		}
 
-		sysfs_remove_group(sec_kobj, &sec_key_attr_grp);
-		if (props->aes_v2 && !props->ipc_support)
+		if (props->ipc_support) {
+			sysfs_remove_group(tmel_sec_kobj, &sec_key_tmel_attr_grp);
+			kobject_put(tmel_sec_kobj);
+			tmel_sec_kobj = NULL;
+		}
+
+		if (!props->ipc_support)
+			sysfs_remove_group(sec_kobj, &sec_key_attr_grp);
+		if (props->aes_v2)
 			sysfs_remove_group(sec_kobj, &sec_key_aesv2_attr_grp);
 		kobject_put(sec_kobj);
 		sec_kobj = NULL;
@@ -4992,11 +5012,13 @@ static int __exit qseecom_remove(struct platform_device *pdev)
 					  dma_aes_key_handle);
 		}
 
-		sysfs_remove_group(sec_kobj, &sec_key_attr_grp);
-		if (props->aes_v2 && !props->ipc_support)
+		if (!props->ipc_support)
+			sysfs_remove_group(sec_kobj, &sec_key_attr_grp);
+		if (props->aes_v2)
 			sysfs_remove_group(sec_kobj, &sec_key_aesv2_attr_grp);
+		kobject_put(sec_kobj);
 
-		if (props->aes_v2 && props->ipc_support) {
+		if (props->ipc_support) {
 			if (tmel_key_handle) {
 				dma_buf_size = PAGE_SIZE *
 						(1 << get_order(MAX_KEY_HANDLE_SIZE));
@@ -5060,10 +5082,9 @@ static int __exit qseecom_remove(struct platform_device *pdev)
 						  buf_pt_key, dma_pt_key);
 			}
 
-			sysfs_remove_group(sec_kobj, &sec_key_tmel_attr_grp);
+			sysfs_remove_group(tmel_sec_kobj, &sec_key_tmel_attr_grp);
+			kobject_put(tmel_sec_kobj);
 		}
-
-		kobject_put(sec_kobj);
 	}
 
 	if (props->function & RSA_SEC_KEY) {
