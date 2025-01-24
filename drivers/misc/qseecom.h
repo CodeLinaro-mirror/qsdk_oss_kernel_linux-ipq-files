@@ -596,6 +596,8 @@ dma_addr_t dma_aes_ivdata = 0;
 #define TME_MAX_AAD_LEN			256
 #define TME_MAX_TAG_LEN			256
 
+static struct kobject *tmel_sec_kobj;
+
 static uint8_t *tmel_key_handle;
 dma_addr_t tmel_dma_key_handle;
 
