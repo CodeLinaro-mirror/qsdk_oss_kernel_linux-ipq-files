@@ -5005,13 +5005,6 @@ static int __exit qseecom_remove(struct platform_device *pdev)
 					  key_handle, dma_key_handle);
 		}
 
-		if (aes_key_handle) {
-			dma_buf_size = PAGE_SIZE *
-					(1 << get_order(MAX_KEY_HANDLE_SIZE));
-			dma_free_coherent(dev, dma_buf_size, aes_key_handle,
-					  dma_aes_key_handle);
-		}
-
 		if (!props->ipc_support)
 			sysfs_remove_group(sec_kobj, &sec_key_attr_grp);
 		if (props->aes_v2)
