@@ -320,12 +320,13 @@
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
-
+#if defined(__IPQ_PROFILE_MINENT__)
 		nss@40000000 {
 			no-map;
 			reg = <0x0 0x40000000 0x0 0x02000000>;
-			status = "disabled";
+			status = "okay";
 		};
+#endif
 
 		tzapp:tzapp@49600000 {  /* TZAPPS */
 		#if !defined(__IPQ_MEM_PROFILE_512_MB__)
@@ -437,6 +438,9 @@
 			assigned-clock-rates = <100000000>,
 					       <100000000>;
 			status = "okay";
+#if defined(__IPQ_PROFILE_MINENT__)
+			ubi_core_enable;
+#endif
 		};
 
 		pcie0_phy: phy@84000 {
