@@ -222,10 +222,16 @@ To clear a derived key:
 eg: cat key_handle.txt > /sys/sec_key/clear_key
 
 Giving the required aes256 parameters:
-aes_type determines the seed that was used for key derivation.
-It can be either 1 (OEM product seed) or 2 (CRBK)
+In encrypt/decrypt SCM call, TZ will send distribute IPC to TMEL to distribute
+the derived Key to destination slots in (CE5 for IPQ95xx / TCSR Regs for
+IPQ53xx and IPQ54xx). There are 2 destination slots available & depending on the
+destination index passed via aes_type entry, the keys will be distributed to
+the respective slots and will be used for encrypt/decrypt operations.
+Either of these slots can be specified before encrypt/decrypt calls.
+1 -> destination slot 1
+2 -> destination slot 2
+Example:
 (6) echo 1 > /sys/sec_key/aes_type
-
 aes_mode can be either 0 (ECB) or 1 (CBC)
 (7) echo 1 > /sys/sec_key/aes_mode
 (8) echo -n -e \\x69\\x01\\x50\\x05\\x26\\x35\\x27\\x2c\\xf4\\xe0\\x19\\x1c\\xa9\\x74\\x36\\x45 > /sys/sec_key/aes_ivdata
@@ -533,7 +539,17 @@ To clear a derived key from qtiapp:
 eg: cat key_handle.txt > /sys/firmware/tzapp/aes/clear_key_qtiapp
 
 Giving the required aes parameters:
+In encrypt/decrypt SCM call, TZ will send distribute IPC to TMEL to distribute
+the derived Key to destination slots in (CE5 for IPQ95xx / TCSR Regs for
+IPQ53xx and IPQ54xx). There are 2 destination slots available & depending on the
+destination index passed via type_aes entry, the keys will be distributed to
+the respective slots and will be used for encrypt/decrypt operations.
+Either of these slots can be specified before encrypt/decrypt calls.
+1 -> destination slot 1
+2 -> destination slot 2
+Example:
 (6) echo 1 > /sys/firmware/tzapp/aes/type_aes
+mode_aes can be either 0 (ECB) or 1 (CBC)
 (7) echo 1 > /sys/firmware/tzapp/aes/mode_aes
 (8) echo -n -e \\x69\\x01\\x50\\x05\\x26\\x35\\x27\\x2c\\xf4\\xe0\\x19\\x1c\\xa9\\x74\\x36\\x45 > /sys/firmware/tzapp/aes/ivdata_aes
 
