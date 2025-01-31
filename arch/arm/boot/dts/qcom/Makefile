@@ -22,11 +22,13 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	ipq5424-rdp466.dtb \
 	ipq5424-rdp466-c2.dtb \
 	ipq5424-rdp466-rffe.dtb \
+	ipq5424-rdp466-c3.dtb \
 	ipq5424-rdp496.dtb \
 	ipq5424-rdp485.dtb \
 	ipq5424-rdp485-c2.dtb \
 	ipq5424-rdp485-rffe.dtb \
 	ipq5424-rdp485-rffe-c2.dtb \
+	ipq5424-rdp485-c3.dtb \
 	ipq5424-rdp487.dtb \
 	ipq5424-db-mr01.1.dtb \
 	qcom-ipq4018-ap120c-ac.dtb \
