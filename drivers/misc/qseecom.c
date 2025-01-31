@@ -298,7 +298,7 @@ static ssize_t tmecomm_show_aes_derive_key(struct device *dev,
 	}
 	memcpy(kdf_spec->sw_context, sw_context, tmel_aes_sw_context_len);
 	kdf_spec->sw_context_len = tmel_aes_sw_context_len;
-	kdf_spec->security_context = TME_KSC_SWContext;
+	kdf_spec->security_context = tmel_aes_sec_ctx;
 	memcpy(kdf_spec->salt_label, salt_label, tmel_aes_salt_label_len);
 	kdf_spec->salt_label_len = tmel_aes_salt_label_len;
 	kdf_spec->prf_digest_algo = TME_KAL_SHA512_HMAC;
@@ -602,6 +602,20 @@ static ssize_t tmecomm_aes_store_salt_label_data(struct device *dev,
 
 	tmel_aes_salt_label_len = count;
 	memcpy(salt_label, buf, count);
+
+	return count;
+}
+
+static ssize_t tmecomm_aes_store_security_context(struct device *dev,
+						  struct device_attribute *attr,
+						  const char *buf, size_t count)
+{
+	u32 val;
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	tmel_aes_sec_ctx = val;
 
 	return count;
 }

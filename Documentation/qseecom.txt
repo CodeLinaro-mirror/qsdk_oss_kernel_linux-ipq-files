@@ -288,7 +288,13 @@ Provide base key (0->CRBK 1->OEM Product seed)
 Context data is 64 or 128 bytes which can be fed as below:
 Example:
 (3) echo -n "34613132613738396434316363323738656166343132363635613831643530313461313261373839643431636332373865616634313236363561383164353032" > /sys/tmel_sec_key/tmel_aes_context_data
-salt label can be 64 bytes at max and can be fed as below:
+Provide the security bindings for KDF context. Please refer the Crypto user
+guide for the list of supported values. By default software context is applied.
+The security bindings can be provided as below,
+Example:
+echo 32 > /sys/tmel_sec_key/tmel_aes_sec_ctx
+Note: If software context is used as security bindings, salt/label will be included
+in KDF context. The salt/label can be 64 bytes at max and can be fed as below:
 Example:
 (4) echo -n "0123456789012345678901234567890123456789012345678901234567890123" > /sys/tmel_sec_key/tmel_aes_salt_label_data
 Derive key handle
