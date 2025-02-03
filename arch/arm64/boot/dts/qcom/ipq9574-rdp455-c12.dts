@@ -653,12 +653,16 @@
 	status = "okay";
 };
 
+&m3_dump {
+	status = "okay";
+};
+
 &q6_etr_region {
-status = "okay";
+	status = "okay";
 };
 
 &q6_caldb_region {
-status = "okay";
+	status = "okay";
 };
 
 /* Enable the reserved memory regions of QCN9224 on PCIe1, PCIe2, PCIe3 */
