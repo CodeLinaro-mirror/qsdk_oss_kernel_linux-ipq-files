@@ -1626,6 +1626,16 @@
 				ring-name = "lookaside";
 				ring-id = /bits/ 8 <3>;
 			};
+
+#ifdef __CONFIG_IO_COHERENCY__
+			eip_ioc {
+				prop-name = "eip_ioc";
+				secure-write;
+				reg-base = <0x01D80000>;
+				reg-offset = <0x000051B8 0x44410>,	/* EIP196 Type LUT lower bits */
+						<0x00005188 0x100>;	/* EIP196 Main control low */
+			};
+#endif
 		};
 
 		eip_crypto: eip_crypto {
