@@ -31,6 +31,7 @@
 #include <linux/io.h>
 #include <linux/of_reserved_mem.h>
 
+#define MINIDUMP_WAIT_MSECS      300000
 typedef struct ctx_save_tlv_msg {
 	unsigned char *msg_buffer;
 	unsigned char *cur_msg_buffer_pos;
@@ -104,6 +105,8 @@ static const struct file_operations minidump2mem_ops;
 static const struct file_operations mini_dump_ops;
 static struct class *dump_class;
 int dump_major = 0;
+DECLARE_COMPLETION(minidump_complete);
+DEFINE_MUTEX(g_minidump_lock);
 
 /* struct to store physical address and
  *  size of crashdump segments for live minidump
@@ -384,28 +387,21 @@ static int mini_dump_open(struct inode *inode, struct file *file) {
 */
 static int mini_dump_release(struct inode *inode, struct file *file)
 {
-	int dump_minor_dev = iminor(inode);
-	int dump_major_dev = imajor(inode);
-
 	struct dump_segment *segment, *tmp;
 
 	struct dumpdev *dfp = (struct dumpdev *) file->private_data;
 
+	if (dump_major != imajor(inode)) {
+		pr_err("Minidump: Invalid device id dump_major = %d "
+		       "dump_major_dev = %d\n", dump_major, imajor(inode));
+		return 0;
+	}
 	list_for_each_entry_safe(segment, tmp, &dfp->dump_segments, node) {
 		list_del(&segment->node);
 		kfree(segment);
 	}
 
-	kfree(minidump.hdr.seg_size);
-	kfree(minidump.hdr.phy_addr);
-	kfree(minidump.hdr.type);
-
-	device_destroy(dump_class, MKDEV(dump_major_dev, dump_minor_dev));
-	class_destroy(dump_class);
-	unregister_chrdev(dump_major_dev, "minidump");
-
-	dump_major = 0;
-	dump_class = NULL;
+	complete(&minidump_complete);
 
 	return 0;
 }
@@ -507,82 +503,99 @@ static const struct file_operations mini_dump_ops = {
 */
 int do_minidump(void) {
 
-    int ret = 0;
-    struct device *dump_dev = NULL;
+	int ret = 0;
+	struct device *dump_dev = NULL;
 
 #ifdef CONFIG_QCA_MINIDUMP_DEBUG
-    int count = 0;
-    struct minidump_metadata_list *cur_node;
-    struct list_head *pos;
-    unsigned long flags;
+	int count = 0;
+	struct minidump_metadata_list *cur_node;
+	struct list_head *pos;
+	unsigned long flags;
 #endif
 
-    minidump.hdr.total_size = 0;
-    if (!tlv_msg.msg_buffer) {
-        pr_err("\n Minidump: Crashdump buffer is empty");
-        return NOTIFY_OK;
-    }
+	mutex_lock(&g_minidump_lock);
+	minidump.hdr.total_size = 0;
+	if (!tlv_msg.msg_buffer) {
+		pr_err("\n Minidump: Crashdump buffer is empty");
+		mutex_unlock(&g_minidump_lock);
+		return NOTIFY_OK;
+	}
 
-    /* Add subset of kernel module list to minidump metadata list */
-    ret = minidump_dump_wlan_modules();
-    if (ret)
-        pr_err("Minidump: Error dumping modules: %d", ret);
+	/* Add subset of kernel module list to minidump metadata list */
+	ret = minidump_dump_wlan_modules();
+	if (ret)
+		pr_err("Minidump: Error dumping modules: %d", ret);
 
 #ifdef CONFIG_QCA_MINIDUMP_DEBUG
-    pr_err("\n Minidump: Size of Metadata file = %ld", minidump_meta_info.mod_log_len);
-    pr_err("\n Minidump: Printing out contents of Metadata list");
+	pr_err("\n Minidump: Size of Metadata file = %ld", minidump_meta_info.mod_log_len);
+	pr_err("\n Minidump: Printing out contents of Metadata list");
 
-    spin_lock_irqsave(&tlv_msg.spinlock, flags);
-    list_for_each(pos, &metadata_list.list) {
-        count ++;
-        cur_node = list_entry(pos, struct minidump_metadata_list, list);
- if (cur_node->va != 0) {
-            if (cur_node->name != NULL)
-                pr_info(" %s [%lx] ---> ", cur_node->name, cur_node->va);
-            else
-                pr_info(" un-named [%lx] ---> ", cur_node->va);
-        }
-    }
-    spin_unlock_irqrestore(&tlv_msg.spinlock, flags);
-    pr_err("\n Minidump: # nodes in the Metadata list = %d", count);
-    pr_err("\n Minidump: Size of node in Metadata list = %ld\n",
-    (unsigned long)sizeof(struct minidump_metadata_list));
+	spin_lock_irqsave(&tlv_msg.spinlock, flags);
+	list_for_each(pos, &metadata_list.list) {
+		count++;
+		cur_node = list_entry(pos, struct minidump_metadata_list, list);
+		if (cur_node->va != 0) {
+			if (cur_node->name)
+				pr_info(" %s [%lx] ---> ", cur_node->name,
+					cur_node->va);
+			else
+				pr_info(" un-named [%lx] ---> ", cur_node->va);
+		}
+	}
+	spin_unlock_irqrestore(&tlv_msg.spinlock, flags);
+	pr_err("\n Minidump: # nodes in the Metadata list = %d", count);
+	pr_err("\n Minidump: Size of node in Metadata list = %ld\n",
+		(unsigned long)sizeof(struct minidump_metadata_list));
 #endif
 
-    if (dump_class || dump_major) {
-        device_destroy(dump_class, MKDEV(dump_major, 0));
-        class_destroy(dump_class);
-    }
+	init_completion(&minidump_complete);
+	if (dump_class || dump_major) {
+		pr_err("Already minidump virtual class or device exists\n");
+		mutex_unlock(&g_minidump_lock);
+		return ret;
+	}
 
-    dump_major = register_chrdev(UNNAMED_MAJOR, "minidump", &mini_dump_ops);
-    if (dump_major < 0) {
-        ret = dump_major;
-        pr_err("Unable to allocate a major number err = %d \n", ret);
-        goto reg_failed;
-    }
+	dump_major = register_chrdev(UNNAMED_MAJOR, "minidump", &mini_dump_ops);
+	if (dump_major < 0) {
+		ret = dump_major;
+		pr_err("Unable to allocate a major number err = %d\n", ret);
+		goto reg_failed;
+	}
 
-    dump_class = class_create("minidump");
-    if (IS_ERR(dump_class)) {
-        ret = PTR_ERR(dump_class);
-        pr_err("Unable to create dump class = %d\n", ret);
-        goto class_failed;
-    }
+	dump_class = class_create("minidump");
+	if (IS_ERR(dump_class)) {
+		ret = PTR_ERR(dump_class);
+		pr_err("Unable to create dump class = %d\n", ret);
+		goto class_failed;
+	}
 
-    dump_dev = device_create(dump_class, NULL, MKDEV(dump_major, 0), NULL,
-		    minidump.name);
-    if (IS_ERR(dump_dev)) {
-        ret = PTR_ERR(dump_dev);
-        pr_err("Unable to create a device err = %d\n", ret);
-        goto device_failed;
-    }
+	dump_dev = device_create(dump_class, NULL, MKDEV(dump_major, 0), NULL,
+				 minidump.name);
+	if (IS_ERR(dump_dev)) {
+		ret = PTR_ERR(dump_dev);
+		pr_err("Unable to create a device err = %d\n", ret);
+		goto device_failed;
+	}
 
-    return ret;
+	/* Wait (with a timeout) to let the ramdump complete */
+	ret = wait_for_completion_timeout(&minidump_complete,
+					  msecs_to_jiffies(MINIDUMP_WAIT_MSECS));
+	ret = ret ? 0 : -ETIMEDOUT;
+
+	kfree(minidump.hdr.seg_size);
+	kfree(minidump.hdr.phy_addr);
+	kfree(minidump.hdr.type);
+	device_destroy(dump_class, MKDEV(dump_major, 0));
+
 device_failed:
-    class_destroy(dump_class);
+	class_destroy(dump_class);
 class_failed:
-    unregister_chrdev(dump_major, "minidump");
+	unregister_chrdev(dump_major, "minidump");
 reg_failed:
-    return ret;
+	dump_major = 0;
+	dump_class = NULL;
+	mutex_unlock(&g_minidump_lock);
+	return ret;
 
 }
 EXPORT_SYMBOL(do_minidump);
