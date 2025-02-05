@@ -94,6 +94,7 @@
 			reg = <0x0>;
 			enable-method = "psci";
 			next-level-cache = <&L2_0>;
+			cpu-idle-states = <&LITTLE_CPU_OFF>;
 			clocks = <&apss_clk APSS_SILVER_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
@@ -117,6 +118,7 @@
 			enable-method = "psci";
 			reg = <0x100>;
 			next-level-cache = <&L2_100>;
+			cpu-idle-states = <&LITTLE_CPU_OFF>;
 			clocks = <&apss_clk APSS_SILVER_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
@@ -135,6 +137,7 @@
 			enable-method = "psci";
 			reg = <0x200>;
 			next-level-cache = <&L2_200>;
+			cpu-idle-states = <&LITTLE_CPU_OFF>;
 			clocks = <&apss_clk APSS_SILVER_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
@@ -153,6 +156,7 @@
 			enable-method = "psci";
 			reg = <0x300>;
 			next-level-cache = <&L2_300>;
+			cpu-idle-states = <&LITTLE_CPU_OFF>;
 			clocks = <&apss_clk APSS_SILVER_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
@@ -163,6 +167,20 @@
 				cache-unified;
 				next-level-cache = <&L3_0>;
 			};
+		};
+	};
+
+	idle-states {
+		entry-method = "psci";
+
+		LITTLE_CPU_OFF: silver-c3 {  /* C3 */
+			compatible = "arm,idle-state";
+			idle-state-name = "pc";
+			entry-latency-us = <549>;
+			exit-latency-us = <901>;
+			min-residency-us = <1774>;
+			arm,psci-suspend-param = <0x40000003>;
+			local-timer-stop;
 		};
 	};
 
