@@ -1404,7 +1404,7 @@ int minidump_dump_wlan_modules(void){
 
 	/*Dump list head*/
 	module_tlv_info.start = (uintptr_t)minidump_modules;
-	module_tlv_info.size = sizeof(struct module);
+	module_tlv_info.size = sizeof(struct list_head);
 	ret_val = minidump_fill_segments_internal(module_tlv_info.start,
 		module_tlv_info.size, QCA_WDT_LOG_DUMP_TYPE_WLAN_MOD, "mod_list_head", 0);
 	if (ret_val) {
