@@ -20,7 +20,7 @@ listed in the below table.
         |      Operations      | IPQ95xx | IPQ53xx | IPQ54xx |
 ________|______________________|_________|_________|_________|
 |       |                      |         |         |         |
-|       |         RSA          |    Y    |    Y    |    Y    |
+|       |   RSA(sign/verify)   |    Y    |    Y    |    Y    |
 |       |                      |         |         |         |
 |  TZ   |        AESv1         |    Y    |    Y    |    N    |
 |       |                      |         |         |         |
@@ -34,7 +34,7 @@ ________|______________________|_________|_________|_________|
 |       |                      |         |         |         |
 |       |    Sample Crypto     |    Y    |    Y    |    Y    |
 |       |                      |         |         |         |
-|       |         RSA          |    Y    |    Y    |    Y    |
+|       |     RSA(enc/dec)     |    Y    |    Y    |    Y    |
 |       |                      |         |         |         |
 |       |        AESv2         |    Y    |    Y    |    Y    |
 | TZAPP |                      |         |         |         |
@@ -326,7 +326,7 @@ To decrypt:
 (3) cat dec.txt
 
 Clear:
-(1) cat key_handle.txt > /sys/sec_key/tmel_aes_clear_key
+(1) cat key_handle.txt > /sys/tmel_sec_key/tmel_aes_clear_key
 Note: User cannot get more than 4 key handles from TME-L. Trying to get a 5th key
 would result in an error. If the user wants to get a new key handle after 4 successful
 attempts, then the user has to clear an already existing key by passing it's key
@@ -493,7 +493,8 @@ Specify the key bit length (Number of bits in modulus)
 Specify the hashid to be used
 (Refer qti_storage_service_qsee_hash_id data type in qseecom.h for supported values)
 (6) Eg: echo 2 > /sys/firmware/tzapp/rsa/hashidx
-Specify RSA padding type (0->OAEP, 1->PKCS, 2-> No padding)
+Specify RSA padding type (2-> No padding)
+Note: Currently only no padding is supported
 (7) Eg: echo 2 > /sys/firmware/tzapp/rsa/padding_type
 
 Encrypt RSA:
