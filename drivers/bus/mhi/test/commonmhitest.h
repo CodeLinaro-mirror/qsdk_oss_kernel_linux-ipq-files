@@ -158,6 +158,7 @@ struct mhitest_platform {
 /* klog level for mhitest driver */
 	bool soc_reset_requested;
 	struct completion soc_reset_request;
+	bool running;
 };
 enum MHI_STATE {
 	MHI_INIT,

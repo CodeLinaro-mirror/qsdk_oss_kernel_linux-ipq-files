@@ -94,6 +94,7 @@ void mhitest_recovery_post_rddm(struct mhitest_platform *mplat)
 	mhitest_pci_soc_reset(mplat);
 	mhitest_pci_set_mhi_state(mplat, MHI_POWER_OFF);
 	mhitest_pci_set_mhi_state(mplat, MHI_DEINIT);
+	mplat->running = false;
 
 	mhitest_global_soc_reset(mplat);
 	msleep(2000);
