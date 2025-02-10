@@ -548,17 +548,26 @@ void q6v5_wcss_sec_copy_segment(struct rproc *rproc,
 {
 	struct q6v5_wcss_sec *wcss = rproc->priv;
 	struct device *dev = wcss->dev;
-	void *ptr;
 
-	ptr = devm_ioremap_wc(dev, segment->da, segment->size);
-	if (!ptr) {
+	if (!segment->io_ptr) {
+		segment->io_ptr = devm_ioremap_wc(dev, segment->da, segment->size);
+		dev_dbg(dev, "ioremap region io_ptr:0x%px da:0x%pad size:%zx\n",
+			segment->io_ptr, &segment->da, segment->size);
+	}
+
+	if (!segment->io_ptr) {
 		dev_err(dev, "Failed to ioremap segment %pad size %zx\n",
 			&segment->da, segment->size);
 		return;
 	}
 
-	memcpy(dest, ptr + offset, size);
-	devm_iounmap(dev, ptr);
+	memcpy(dest, segment->io_ptr + offset, size);
+	if (offset + size >= segment->size) {
+		dev_dbg(dev, "iounmap region io_ptr:0x%px da:0x%pad size:%zx\n",
+			segment->io_ptr, &segment->da, segment->size);
+		devm_iounmap(dev, segment->io_ptr);
+		segment->io_ptr = NULL;
+	}
 }
 
 static int q6v5_wcss_sec_dump_segments(struct rproc *rproc,
