@@ -1178,7 +1178,7 @@ static void skb_recycler_init_procfs(void)
 					proc_net_skbrecycler_per_cpu, &proc_skb_max_spare_skbs_per_cpu_fops, icpu.ptr))
 			pr_err("cannot create proc net skb_recycle max_spare_skbs\n");
 #endif
-		if (!proc_create_data("count", S_IWUGO, proc_net_skbrecycler_per_cpu,
+		if (!proc_create_data("count", S_IRUGO, proc_net_skbrecycler_per_cpu,
 					&proc_skb_count_per_cpu_fops, icpu.ptr))
 			pr_err("cannot create proc net skb_recycle held\n");
 	}
