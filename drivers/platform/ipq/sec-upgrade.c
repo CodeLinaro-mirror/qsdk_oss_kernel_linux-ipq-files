@@ -89,7 +89,7 @@ u32 sw_id_list[] = {};
 static int gl_version_enable;
 static int version_commit_enable;
 static int decompress_error;
-struct load_segs_info *ld_seg_buff;
+static struct load_segs_info *ld_seg_buff;
 static int rootfs_auth_enable;
 
 enum qti_sec_img_auth_args {
@@ -1169,6 +1169,7 @@ store_sec_auth(struct device *dev,
 
 free_ld_buff:
 	kfree(ld_seg_buff);
+	ld_seg_buff = NULL;
 un_map:
 	iounmap(file_buf);
 free_np:
@@ -1462,7 +1463,7 @@ store_sec_dat(struct device *dev, struct device_attribute *attr,
 	if (ret) {
 		pr_err("Error in QFPROM write (%d)\n", ret);
 		ret = -EIO;
-		goto free_mem;
+		goto free_ld_buff;
 	}
 	if (fuse_status == FUSEPROV_INVALID_HASH)
 		pr_info("Invalid sec.dat\n");
@@ -1475,6 +1476,9 @@ store_sec_dat(struct device *dev, struct device_attribute *attr,
 
 	ret = count;
 
+free_ld_buff:
+	kfree(ld_seg_buff);
+	ld_seg_buff = NULL;
 free_mem:
 	dma_unmap_single(dev, dma_req_addr, size, DMA_TO_DEVICE);
 free_page:
