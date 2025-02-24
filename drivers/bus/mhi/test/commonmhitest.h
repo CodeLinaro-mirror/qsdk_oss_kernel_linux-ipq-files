@@ -48,46 +48,10 @@
 #define PCIE_SOC_GLOBAL_RESET_VALUE     0x5
 #define MAX_SOC_GLOBAL_RESET_WAIT_CNT   50 /* x 20msec */
 
-/* Add DEBUG related here  */
-enum MHITEST_DEBUG_KLVL{
-	MHITEST_LOG_LVL_VERBOSE,
-	MHITEST_LOG_LVL_INFO,
-	MHITEST_LOG_LVL_ERR,
-};
-extern int debug_lvl;
-
-#define pr_mhitest(msg, ...)  pr_err("[mhitest]: " msg,  ##__VA_ARGS__)
-#define pr_mhitest2(msg, ...) \
-	pr_err("[mhitest]: %s[%d] " msg, __func__, __LINE__,   ##__VA_ARGS__)
-
-#define MHITEST_EMERG(msg, ...) do {\
-		pr_err("[mhitest][A]: [%s] " msg, __func__,   ##__VA_ARGS__);\
-} while (0)
-
-#define MHITEST_ERR(msg, ...) do {\
-	if  (debug_lvl <= MHITEST_LOG_LVL_ERR) \
-		pr_err("[mhitest][E]: [%s] " msg, __func__,   ##__VA_ARGS__);\
-} while (0)
-
-#define MHITEST_VERB(msg, ...) do {\
-	if  (debug_lvl <= MHITEST_LOG_LVL_VERBOSE) \
-		pr_err("[mhitest][D]: [%s][%d] " msg, __func__, __LINE__,   ##__VA_ARGS__);\
-} while (0)
-
-#define MHITEST_LOG(msg, ...) do {\
-	if  (debug_lvl <= MHITEST_LOG_LVL_INFO) \
-		pr_err("[mhitest][I]: [%s] " msg, __func__,   ##__VA_ARGS__);\
-} while (0)
-
-#define VERIFY_ME(val, announce)\
-	do {		\
-		if (val) {	\
-			pr_mhitest2("%s Error val :%d\n", announce, val);\
-		}		\
-		else {		\
-			pr_mhitest2("%s Pass!\n", announce);	\
-		}	\
-	} while (0)
+#ifdef pr_fmt
+#undef pr_fmt
+#endif
+#define pr_fmt(fmt) "[mhitest]: [%s]: " fmt, __func__
 
 #define QTI_PCI_VENDOR_ID		0x17CB
 #define QCN90xx_DEVICE_ID		0x1104
@@ -192,7 +156,6 @@ struct mhitest_platform {
 /* probed device no. 0 to (MAX-1)*/
 	int d_instance;
 /* klog level for mhitest driver */
-	enum MHITEST_DEBUG_KLVL  mhitest_klog_lvl;
 	bool soc_reset_requested;
 	struct completion soc_reset_request;
 };
