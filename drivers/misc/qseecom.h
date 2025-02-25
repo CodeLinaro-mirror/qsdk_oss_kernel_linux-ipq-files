@@ -25,6 +25,7 @@
 #include <linux/slab.h>
 #include <linux/highuid.h>
 #include <linux/sysfs.h>
+#include <linux/sizes.h>
 #include <linux/fs.h>
 #include <linux/device.h>
 #include <linux/kobject.h>
@@ -102,8 +103,6 @@
 #define INVALID_AES_KEY_HANDLE_VAL	117
 #define MESSAGE_LEN			32
 
-#define QSEE_LOG_BUF_SIZE		0x1000
-
 #define KEY_HANDLE_OUT_OF_SLOT		0x12C
 
 #define TME_KID_ALLOC			0xAAAAAAAA
@@ -116,7 +115,8 @@ static int app_state;
 static int app_libs_state;
 struct qseecom_props *props;
 
-char tzapp_log[QSEE_LOG_BUF_SIZE];
+u8 *tzapp_log;
+u32 qsee_log_buf_len = SZ_4K;
 struct dentry *tzapp_log_dir;
 u32 tzapp_log_len;
 
@@ -839,6 +839,9 @@ static ssize_t auth_write(struct file *filp, struct kobject *kobj,
 			 struct bin_attribute *bin_attr,
 			 char *buf, loff_t pos, size_t count);
 
+static ssize_t store_log_size(struct device *dev, struct device_attribute *attr,
+			      const char *buf, size_t count);
+
 static ssize_t store_load_start(struct device *dev,
 			       struct device_attribute *attr,
 			       const char *buf, size_t count);
@@ -1034,6 +1037,7 @@ static ssize_t tmecomm_store_pt_key(struct device *dev,
 
 /* Qti app device attrs starts here....*/
 
+static DEVICE_ATTR(log_size, 0644, NULL, store_log_size);
 static DEVICE_ATTR(load_start, S_IWUSR, NULL, store_load_start);
 static DEVICE_ATTR(basic_data, 0644, show_basic_output, store_basic_input);
 static DEVICE_ATTR(encrypt, 0644, show_encrypt_output, store_encrypt_input);
