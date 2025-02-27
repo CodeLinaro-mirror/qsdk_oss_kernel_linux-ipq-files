@@ -53,20 +53,18 @@ struct minidump_metadata_list {
 	struct list_head list;	/*kernel's list structure*/
 	unsigned long va;		/* Virtual address of TLV. Set to 0 if invalid*/
 	unsigned long pa;       /*Physical address of TLV segment*/
-	unsigned long modinfo_offset; /* Offset associated with the entry for
-				* module information in Metadata text file
-				*/
+	unsigned long modinfo_offset;  /* Offset associated with the entry for
+					* module information in Metadata text file
+					*/
 	unsigned long size; /*size associated with TLV entry */
-	unsigned char *tlv_offset;	/* Offset associated with the TLV entry in
+	unsigned char *tlv_offset;     /* Offset associated with the TLV entry in
 					* the crashdump buffer
 					*/
-	unsigned long mmuinfo_offset; /* Offset associated with the entry for
-				* mmu information in MMU Metadata text file
-				*/
-    unsigned char type;
-#ifdef CONFIG_QCA_MINIDUMP_DEBUG
+	unsigned long mmuinfo_offset;  /* Offset associated with the entry for
+					* mmu information in MMU Metadata text file
+					*/
+	unsigned char type;
 	char *name;  /* Name associated with the TLV */
-#endif
 };
 #endif /* CONFIG_QCA_MINIDUMP */
 
@@ -503,15 +501,11 @@ static const struct file_operations mini_dump_ops = {
 */
 int do_minidump(void) {
 
-	int ret = 0;
+	int ret = 0, count = 0;
 	struct device *dump_dev = NULL;
-
-#ifdef CONFIG_QCA_MINIDUMP_DEBUG
-	int count = 0;
 	struct minidump_metadata_list *cur_node;
 	struct list_head *pos;
 	unsigned long flags;
-#endif
 
 	mutex_lock(&g_minidump_lock);
 	minidump.hdr.total_size = 0;
@@ -526,9 +520,8 @@ int do_minidump(void) {
 	if (ret)
 		pr_err("Minidump: Error dumping modules: %d", ret);
 
-#ifdef CONFIG_QCA_MINIDUMP_DEBUG
-	pr_err("\n Minidump: Size of Metadata file = %ld", minidump_meta_info.mod_log_len);
-	pr_err("\n Minidump: Printing out contents of Metadata list");
+	pr_debug("\n Minidump: Size of Metadata file = %ld", minidump_meta_info.mod_log_len);
+	pr_debug("\n Minidump: Printing out contents of Metadata list");
 
 	spin_lock_irqsave(&tlv_msg.spinlock, flags);
 	list_for_each(pos, &metadata_list.list) {
@@ -536,17 +529,16 @@ int do_minidump(void) {
 		cur_node = list_entry(pos, struct minidump_metadata_list, list);
 		if (cur_node->va != 0) {
 			if (cur_node->name)
-				pr_info(" %s [%lx] ---> ", cur_node->name,
-					cur_node->va);
+				pr_debug("%s [%lx] ---> ", cur_node->name,
+					 cur_node->va);
 			else
-				pr_info(" un-named [%lx] ---> ", cur_node->va);
+				pr_debug(" un-named [%lx] ---> ", cur_node->va);
 		}
 	}
 	spin_unlock_irqrestore(&tlv_msg.spinlock, flags);
-	pr_err("\n Minidump: # nodes in the Metadata list = %d", count);
-	pr_err("\n Minidump: Size of node in Metadata list = %ld\n",
-		(unsigned long)sizeof(struct minidump_metadata_list));
-#endif
+	pr_debug("\n Minidump: # nodes in the Metadata list = %d", count);
+	pr_debug("\n Minidump: Size of node in Metadata list = %ld\n",
+		 (unsigned long)sizeof(struct minidump_metadata_list));
 
 	init_completion(&minidump_complete);
 	if (dump_class || dump_major) {
@@ -747,41 +739,37 @@ int minidump_remove_segments(const uint64_t virt_addr)
 	spin_lock_irqsave(&tlv_msg.spinlock, flags);
 	/* Traverse Metadata list*/
 	list_for_each(pos, &metadata_list.list) {
-	cur_node = list_entry(pos, struct minidump_metadata_list, list);
+		cur_node = list_entry(pos, struct minidump_metadata_list, list);
 		if (cur_node->va == virt_addr) {
 			/* If entry with a matching va is found, invalidate
-			* this entry by setting va to 0
-			*/
+			 * this entry by setting va to 0
+			 */
 			cur_node->va = INVALID;
 			/* Invalidate TLV entry in the crashdump buffer by setting type
-			* ( value pointed to by cur_node->tlv_offset ) to
-			* QCA_WDT_LOG_DUMP_TYPE_EMPTY
-			*/
+			 * ( value pointed to by cur_node->tlv_offset ) to
+			 * QCA_WDT_LOG_DUMP_TYPE_EMPTY
+			 */
 			*(cur_node->tlv_offset) = QCA_WDT_LOG_DUMP_TYPE_EMPTY;
 
-#ifdef CONFIG_QCA_MINIDUMP_DEBUG
-            if (cur_node->name != NULL) {
-		    kfree(cur_node->name);
-		    cur_node->name = NULL;
-            }
-#endif
+			kfree(cur_node->name);
+			cur_node->name = NULL;
 
-            /* If the metadata list node has an entry in the Metadata file,
-            * invalidate that entry.
-            */
-if (cur_node->modinfo_offset != 0)
-                memset((void *)(uintptr_t)cur_node->modinfo_offset, '\0',
-                        METADATA_FILE_ENTRY_LEN);
+			/* If the metadata list node has an entry in the Metadata file,
+			 * invalidate that entry.
+			 */
+			if (cur_node->modinfo_offset)
+				memset((void *)(uintptr_t)cur_node->modinfo_offset, '\0',
+				       METADATA_FILE_ENTRY_LEN);
 
-            /* If the metadata list node has an entry in the MMU Metadata file,
-            * invalidate that entry.
-            */
-            if (cur_node->mmuinfo_offset != 0)
-                memset((void *)(uintptr_t)cur_node->mmuinfo_offset, '\0',
-                        MMU_FILE_ENTRY_LEN);
+			/* If the metadata list node has an entry in the MMU Metadata file,
+			 * invalidate that entry.
+			 */
+			if (cur_node->mmuinfo_offset)
+				memset((void *)(uintptr_t)cur_node->mmuinfo_offset, '\0',
+				       MMU_FILE_ENTRY_LEN);
 
-            minidump.hdr.num_seg--;
-            break;
+			minidump.hdr.num_seg--;
+			break;
 		}
 	}
 	spin_unlock_irqrestore(&tlv_msg.spinlock, flags);
@@ -880,10 +868,8 @@ int minidump_traverse_metadata_list(const char *name, const unsigned long
 		if (list_node->va == virt_addr && list_node->size == size) {
 			spin_unlock_irqrestore(&tlv_msg.spinlock,
 					flags);
-#ifdef CONFIG_QCA_MINIDUMP_DEBUG
-	pr_debug("Minidump: TLV entry with this VA is already present %s %lx\n",
-			name, virt_addr);
-#endif
+		pr_debug("Minidump: TLV entry with this VA is already present %s %lx\n",
+			 name, virt_addr);
 			return -EINVAL;
 		}
 
@@ -913,21 +899,16 @@ int minidump_traverse_metadata_list(const char *name, const unsigned long
 		* value at mod_offset.
 		*/
 			minidump_meta_info.cur_modinfo_offset = cur_node->modinfo_offset;
-#ifdef CONFIG_QCA_MINIDUMP_DEBUG
-		if (name != NULL) {
-			cur_node->name = kstrndup(name, strlen(name), GFP_ATOMIC);
-		}
-#endif
+			if (name)
+				cur_node->name = kstrndup(name, strlen(name), GFP_ATOMIC);
 		} else {
-			if (name != NULL) {
+			if (name) {
 				/* If the metadta list node does not have an entry in the
 				* Metdata file, update metadata file pointer to point
 				* to the end of the metadata file.
 				*/
 				cur_node->modinfo_offset = minidump_meta_info.cur_modinfo_offset;
-#ifdef CONFIG_QCA_MINIDUMP_DEBUG
 				cur_node->name = kstrndup(name, strlen(name), GFP_ATOMIC);
-#endif
 			}
 		}
 
@@ -980,17 +961,13 @@ int minidump_traverse_metadata_list(const char *name, const unsigned long
 		* pointer to the Metadata file
 		*/
 		cur_node->modinfo_offset = minidump_meta_info.cur_modinfo_offset;
-#ifdef CONFIG_QCA_MINIDUMP_DEBUG
 		cur_node->name = kstrndup(name, strlen(name), GFP_KERNEL);
-#endif
 	} else {
 		/* If dump segment does not have a valid name, set name to null and
 		* mod_offset to 0
 		*/
 		cur_node->modinfo_offset = 0;
-#ifdef CONFIG_QCA_MINIDUMP_DEBUG
 		cur_node->name = NULL;
-#endif
 	}
 	/* Update va and offsets to crashdump buffer and MMU Metadata file*/
 	cur_node->va = virt_addr;
@@ -1362,21 +1339,21 @@ static int ctx_save_fill_log_dump_tlv(void)
 
 	minidump_get_linux_buf_info(&linux_banner_info.start, &linux_banner_info.size);
 	ret_val = minidump_fill_segments_internal(linux_banner_info.start, linux_banner_info.size,
-				QCA_WDT_LOG_DUMP_TYPE_WLAN_MOD, NULL, 1);
+				QCA_WDT_LOG_DUMP_TYPE_WLAN_MOD, "linux_banner", 1);
 	if (ret_val) {
 		pr_err("Minidump: Crashdump buffer is full %d \n", ret_val);
 		return ret_val;
 	}
 
 	ret_val = minidump_fill_segments_internal((uint64_t)(uintptr_t)minidump_meta_info.mod_log,(uint64_t)__pa(&minidump_meta_info.mod_log_len),
-				QCA_WDT_LOG_DUMP_TYPE_WLAN_MOD_INFO, NULL, 1);
+				QCA_WDT_LOG_DUMP_TYPE_WLAN_MOD_INFO, "mod_info", 1);
 	if (ret_val) {
 		pr_err("Minidump: Crashdump buffer is full %d \n", ret_val);
 		return ret_val;
 	}
 
 	ret_val = minidump_fill_segments_internal((uint64_t)(uintptr_t)minidump_meta_info.mmu_log,(uint64_t)__pa(&minidump_meta_info.mmu_log_len),
-					QCA_WDT_LOG_DUMP_TYPE_WLAN_MMU_INFO, NULL, 1);
+					QCA_WDT_LOG_DUMP_TYPE_WLAN_MMU_INFO, "mmu_info", 1);
 	if (ret_val) {
 		pr_err("Minidump: Crashdump buffer is full %d \n", ret_val);
 		return ret_val;
@@ -1427,10 +1404,7 @@ int minidump_dump_wlan_modules(void){
 
 	list_for_each_entry_rcu(mod, minidump_modules, list) {
 
-		#ifdef CONFIG_QCA_MINIDUMP_DEBUG
-		pr_info("\n Dumping %s \n",mod->name);
-		#endif
-
+		pr_debug("\n Dumping %s\n", mod->name);
 		if (mod->state != MODULE_STATE_LIVE)
 			continue;
 
@@ -1458,7 +1432,7 @@ int minidump_dump_wlan_modules(void){
 			module_tlv_info.start = (unsigned long)mod->sect_attrs;
 			module_tlv_info.size = (unsigned long)(sizeof(struct module_sect_attrs) + ((sizeof(struct module_sect_attr))*(mod->sect_attrs->nsections)));
 			ret_val = minidump_fill_segments_internal(module_tlv_info.start,
-				module_tlv_info.size, QCA_WDT_LOG_DUMP_TYPE_WLAN_MOD, NULL, 0);
+				module_tlv_info.size, QCA_WDT_LOG_DUMP_TYPE_WLAN_MOD, mod->name, 0);
 			if (ret_val) {
 				pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
 				return ret_val;
@@ -1466,11 +1440,9 @@ int minidump_dump_wlan_modules(void){
 
 			for (i = 0; i < mod->sect_attrs->nsections; i++) {
 				if ((!strcmp(".bss", mod->sect_attrs->attrs[i].battr.attr.name))) {
-#ifdef CONFIG_QCA_MINIDUMP_DEBUG
-					pr_err("\n MINIDUMP VA .bss start=%lx module=%s",
-						(unsigned long)mod->sect_attrs->attrs[i].address,
-						mod->name);
-#endif
+					pr_debug("\n MINIDUMP VA .bss start=%lx module=%s",
+						 (unsigned long)mod->sect_attrs->attrs[i].address,
+						 mod->name);
 					/* Log .bss VA of module in buffer */
 					ret_val = minidump_fill_segments_internal((uint64_t)(uintptr_t)mod->mem[MOD_DATA].base,
 					mod->mem[MOD_DATA].size, QCA_WDT_LOG_DUMP_TYPE_WLAN_MOD,
@@ -1487,7 +1459,7 @@ int minidump_dump_wlan_modules(void){
 			module_tlv_info.start = (unsigned long)mod;
 			module_tlv_info.size = sizeof(mod->list) + sizeof(mod->state) + sizeof(mod->name);
 			ret_val = minidump_fill_segments_internal(module_tlv_info.start,
-				module_tlv_info.size, QCA_WDT_LOG_DUMP_TYPE_WLAN_MOD, NULL, 0);
+				module_tlv_info.size, QCA_WDT_LOG_DUMP_TYPE_WLAN_MOD, mod->name, 0);
 			if (ret_val) {
 				pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
 				return ret_val;
@@ -1504,12 +1476,9 @@ static int wlan_modinfo_panic_handler(struct notifier_block *this,
 				unsigned long event, void *ptr)
 {
 	int ret;
-
-	#ifdef CONFIG_QCA_MINIDUMP_DEBUG
 	int count =0;
 	struct minidump_metadata_list *cur_node;
 	struct list_head *pos;
-	#endif
 
 	if (!tlv_msg.msg_buffer) {
 		pr_err("\n Minidump: Crashdump buffer is empty");
@@ -1520,25 +1489,23 @@ static int wlan_modinfo_panic_handler(struct notifier_block *this,
 	if (ret)
 		pr_err("Minidump: Error dumping modules: %d", ret);
 
-	#ifdef CONFIG_QCA_MINIDUMP_DEBUG
-	pr_err("\n Minidump: Size of Metadata file = %ld",minidump_meta_info.mod_log_len);
-	pr_err("\n Minidump: Printing out contents of Metadata list");
+	pr_debug("\n Minidump: Size of Metadata file = %ld", minidump_meta_info.mod_log_len);
+	pr_debug("\n Minidump: Printing out contents of Metadata list");
 
 	list_for_each(pos, &metadata_list.list) {
 		count ++;
 		cur_node = list_entry(pos, struct minidump_metadata_list, list);
 		if (cur_node->va != 0) {
 			if (cur_node->name != NULL)
-				pr_info(" %s [%lx] ---> ", cur_node->name, cur_node->va);
+				pr_debug(" %s [%lx] ---> ", cur_node->name, cur_node->va);
 			else
-				pr_info(" un-named [%lx] ---> ", cur_node->va);
+				pr_debug(" un-named [%lx] ---> ", cur_node->va);
 		}
 	}
-	pr_err("\n Minidump: # nodes in the Metadata list = %d",count);
-	pr_err("\n Minidump: Size of node in Metadata list = %ld\n",
-		(unsigned long)sizeof(struct minidump_metadata_list));
+	pr_debug("\n Minidump: # nodes in the Metadata list = %d", count);
+	pr_debug("\n Minidump: Size of node in Metadata list = %ld\n",
+		 (unsigned long)sizeof(struct minidump_metadata_list));
 
-	#endif
 	return NOTIFY_DONE;
 }
 
@@ -1569,11 +1536,11 @@ static int wlan_module_notify_exit(struct notifier_block *self, unsigned long va
 					if ((!strcmp(".bss", mod->sect_attrs->attrs[i].battr.attr.name))) {
 						minidump_remove_segments((const uint64_t)
 						(uintptr_t)mod->sect_attrs->attrs[i].address);
-#ifdef CONFIG_QCA_MINIDUMP_DEBUG
-				pr_err("\n Minidump: mod=%s sect=%lx bss=%lx has been removed",
-					mod->name, (unsigned long)(uintptr_t)mod->sect_attrs,
-					(unsigned long)(uintptr_t)mod->sect_attrs->attrs[i].address);
-#endif
+						pr_debug("\n Minidump: mod=%s sect=%lx bss=%lx has been removed",
+							 mod->name,
+							 (unsigned long)(uintptr_t)mod->sect_attrs,
+							 (unsigned long)(uintptr_t)
+							 mod->sect_attrs->attrs[i].address);
 						break;
 					}
 				}
