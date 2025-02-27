@@ -1818,6 +1818,36 @@
 			status = "ok";
 		};
 
+		sysnoc_ce_edpd_comp {
+			compatible = "qcom,sysnoc-ce-edpd-comp-driver";
+			reg = <0x581800 0x1000>,<0x584000 0x1000>, <0x585000 0x1000>;
+			reg-names = "tenureprobe-base", "traceprobe-base", "eventcounter-base";
+			hist_bin_width = <0x3200008>;
+			ddr_addr_min_low = <0x80000000>;
+			ddr_addr_min_high = <0x00000000>;
+			ddr_addr_max_low = <0x80000000>;
+			ddr_addr_max_high = <0x00000009>;
+			trace_probe_extid_base = <0xE000>; /* BID=2: PID=0: MID=0 of APSS */
+			trace_probe_extid_mask = <0xE000>;
+			ec_ctl1_base_val = <0x11>;
+			status = "ok";
+		};
+
+		sysnoc_wcss_comp {
+			compatible = "qcom,sysnoc-wcss-comp-driver";
+			reg = <0x581A00 0x1000>,<0x584000 0x1000>, <0x585000 0x1000>;
+			reg-names = "tenureprobe-base", "traceprobe-base", "eventcounter-base";
+			hist_bin_width = <0x3200008>;
+			ddr_addr_min_low = <0x80000000>;
+			ddr_addr_min_high = <0x00000000>;
+			ddr_addr_max_low = <0x80000000>;
+			ddr_addr_max_high = <0x00000009>;
+			trace_probe_extid_base = <0x8000>; /* BID=2: PID=0: MID=0 of APSS */
+			trace_probe_extid_mask = <0xE000>;
+			ec_ctl1_base_val = <0x11>;
+			status = "ok";
+		};
+
 		timer@f420000 {
 			compatible = "arm,armv7-timer-mem";
 			reg = <0xf420000 0x1000>;
