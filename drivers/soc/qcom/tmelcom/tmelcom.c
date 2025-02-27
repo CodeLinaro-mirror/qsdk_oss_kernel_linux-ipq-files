@@ -281,7 +281,12 @@ static struct platform_driver tmelcom_driver = {
 		.of_match_table = tmelcom_match_tbl,
 	},
 };
-module_platform_driver(tmelcom_driver);
+
+static int __init tmelcom_driver_init(void)
+{
+	return platform_driver_register(&tmelcom_driver);
+}
+subsys_initcall(tmelcom_driver_init);
 
 MODULE_DESCRIPTION("QCOM TME-LCom mailbox protocol client");
 MODULE_LICENSE("GPL");
