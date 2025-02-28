@@ -520,6 +520,14 @@
 			};
 		};
 
+		eud {
+			compatible = "qcom,sc7280-eud","qcom,eud";
+			reg = <0x78000 0x2000>,
+			      <0x7A000 0x1000>;
+			interrupts = <GIC_SPI 54 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
 		tsens: thermal-sensor@4a9000 {
 			compatible = "qcom,ipq5332-tsens";
 			reg = <0x4a9000 0x1000>,
