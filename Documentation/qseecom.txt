@@ -266,6 +266,7 @@ AES 256 API's supported in TME-L based platform can be used as below:
 (qseecom_props function = AES_SEC_KEY ipc_support = true)
 
 key handle for AES encrypt/decrypt can be obtained in three ways: (Generate/Import/Derive)
+There are 4 key handle slots reserved for HLOS in the TME key table (20 21 22 23)
 
 Generate:
 Key will be generated using PRNG
@@ -313,25 +314,94 @@ Note: TME-L will generate IV internally for AES encryption and does not accept I
 from user.
 
 To encrypt:
-Provide the key handle to used for enc/dec
+Provide the key handle to be used for encrypt
 (1) cat key_handle.txt > /sys/tmel_sec_key/tmel_aes_key
-Provide the plain text to encrypt. Note: Plain text must be multiple of AES block size (i.e 16 bytes) and less than 2k bytes
+Provide AES256 mode (0->ECB 1->CBC)
+(2) echo 0 > /sys/tmel_sec_key/tmel_aes_mode
+Note: The same AES mode used while obtaining the key handle has to be
+specified here.
+Provide the plain text to encrypt.
+Note: Plain text must be multiple of AES block size (i.e 16 bytes) and less than 2k bytes
 Example:
-(2) echo "Aes Encryption!" > /sys/tmel_sec_key/tmel_aes_encrypt
-(3) cat /sys/tmel_sec_key/tmel_aes_encrypt > enc.txt
+(3) echo "Aes Encryption!" > /sys/tmel_sec_key/tmel_aes_encrypt
+(4) cat /sys/tmel_sec_key/tmel_aes_encrypt > enc.txt
+(5) cat /sys/tmel_sec_key/tmel_aes_iv_data > iv.txt
 
 To decrypt:
-(1) cat enc.txt > /sys/tmel_sec_key/tmel_aes_decrypt
-(2) cat /sys/tmel_sec_key/tmel_aes_decrypt > dec.txt
-(3) cat dec.txt
+Provide the key handle to be used for decrypt
+(1) cat key_handle.txt > /sys/tmel_sec_key/tmel_aes_key
+Provide AES256 mode (0->ECB 1->CBC)
+(2) echo 0 > /sys/tmel_sec_key/tmel_aes_mode
+Note: The same key handle and AES mode used for encrypting the data has to be
+specified here.
+Provide the IV which was obtained during encrypt IPC
+(3) cat iv.txt > /sys/tmel_sec_key/tmel_aes_iv_data
+(3) cat enc.txt > /sys/tmel_sec_key/tmel_aes_decrypt
+(4) cat /sys/tmel_sec_key/tmel_aes_decrypt > dec.txt
+(5) cat dec.txt
 
 Clear:
+This call can be used to clear a previously obtained key handle from TME.
+Example:
 (1) cat key_handle.txt > /sys/tmel_sec_key/tmel_aes_clear_key
 Note: User cannot get more than 4 key handles from TME-L. Trying to get a 5th key
 would result in an error. If the user wants to get a new key handle after 4 successful
 attempts, then the user has to clear an already existing key by passing it's key
-handle to the clear_key sysfs entry. Once a key handle is cleared, the key cannot
-be used for further encryption/decryption of data.
+handle to the tmel_aes_clear_key sysfs entry. Once a key handle is cleared, the
+key cannot be used for further encryption/decryption of data.
+
+Wrap/Unwrap:
+
+The wrap/unwrap operations can be used to achieve AES keyblob usecases.
+Wrap IPC is an encryption process of converting a plain text into a cipher text
+and unwrap does the converse of it, decrypting the cipher text and storing the
+plain text. Here the plain text is the source key (KSK) and the key used to
+encrypt that is the wrapping key (KWK). TME encrypts the KSK using KWK and returns the
+encrypted key buffer to the client. The AES algorithm used for wrap/unwrap is the
+AES SIV (Advanced Encryption Standard -  Synthetic Initialization Vector)
+
+The keys stored in the TME key table will be cleared after reboot.
+The below steps can be followed to achieve the AES keyblob usecase where a key can be
+wrapped into a keyblob buffer which can be used across reboots for encrypting
+and decrypting plain data.
+
+Steps to wrap a source key,
+
+Import the source key (KSK) to be used for encryption/decryption as per
+the procedure mentioned in the "Import" section into ksk.txt
+(1) cat /sys/tmel_sec_key/tmel_aes_import_key > ksk.txt
+
+Derive the key wrapping key (KWK) to be used for wrapping the KSK using derive IPC
+Select the AES SIV mode
+(2) echo 2 > /sys/tmel_sec_key/tmel_aes_mode
+Note: Here the mode should always be 2 which corresponds to AES SIV algorithm
+Select the input key as CRBK
+Note: Only CRBK input key should be selected for AES keyblob usecase.
+(3) echo 0 > /sys/tmel_sec_key/tmel_aes_input_key
+Provide context, salt and security context if needed and derive the KWK
+(4) cat /sys/tmel_sec_key/tmel_aes_derive_key > kwk.txt
+
+Now wrap the KSK
+(5) cat ksk.txt > /sys/tmel_sec_key/tmel_wrap_key_id
+(6) cat kwk.txt > /sys/tmel_sec_key/tmel_wrapping_key_id
+(7) cat /sys/tmel_sec_key/tmel_wrap_key > keyblob.txt
+
+The keyblob.txt contains the wrapped key buffer. This keyblob can be used across
+reboots by unwrapping it into key handle and using it for AES encryption/decryption.
+
+Steps to unwrap the wrapped key,
+
+Derive the KWK again into kwk.txt using the same derive IPC parameters used while
+wrapping the KSK
+(1) cat kwk.txt > /sys/tmel_sec_key/tmel_wrapping_key_id
+(2) cat keyblob.txt > /sys/tmel_sec_key/tmel_unwrap_key
+Note: If the above operation fails, make sure atleast one destination key slot is
+free. If not, please clear a key and try again.
+(3) cat /sys/tmel_sec_key/tmel_unwrap_key > ksk.txt
+(4) cat ksk.txt
+
+ksk.txt will display the key slot where the keyblob was unwrapped to. Now the
+key slot can be used for AES encryption/decryption.
 
 --------------------------------------------------------------------------------
 

@@ -226,6 +226,11 @@ struct tmel_cbuffer_resp {
 	u32 length_used;
 } __packed;
 
+struct tmel_wrapped_key {
+	u32 key;
+	u32 length;
+} __packed;
+
 struct tmel_plain_text_key {
 	u32 buf;
 	u32 buf_len;
@@ -366,6 +371,41 @@ struct tmel_aes_import_key_msg {
 	struct tmel_aes_import_key_resp resp;
 } __packed;
 
+struct tmel_wrap_key_req {
+	u32 key_id; /* ID of the key to be wrapped */
+	u32 kw_key_id; /* The ID of the key wrapping key to be used to wrap the target key */
+	u32 cred_slot;
+} __packed;
+
+struct tmel_wrap_key_resp {
+	struct tmel_wrapped_key wrapped_key;
+	tme_status status;
+	struct tme_sequencer_status_resp seq_status;
+} __packed;
+
+struct tmel_wrap_key_msg {
+	struct tmel_wrap_key_req req;
+	struct tmel_wrap_key_resp resp;
+} __packed;
+
+struct tmel_unwrap_key_req {
+	u32 key_id;
+	u32 kw_key_id; /* The ID of the key to be used to unwrap the key */
+	struct tmel_wrapped_key wrapped_key;
+	u32 cred_slot;
+} __packed;
+
+struct tmel_unwrap_key_resp {
+	u32 key_id;
+	tme_status status;
+	struct tme_sequencer_status_resp seq_status;
+} __packed;
+
+struct tmel_unwrap_key_msg {
+	struct tmel_unwrap_key_req req;
+	struct tmel_unwrap_key_resp resp;
+} __packed;
+
 struct tmel_update_arb_version_sw_id_list_req {
 	struct tmel_cbuffer cbuffer;
 } __packed;
@@ -418,6 +458,8 @@ int tmelcom_aes_generate_key(u32 key_id, struct tme_key_policy *policy,
 int tmelcom_aes_import_key(u32 key_id, struct tme_key_policy *policy,
 			   struct tmel_plain_text_key *key_material,
 			   u8 *key_handle);
+int tmelcom_wrap_key(u32 key_id, u32 kw_key_id, dma_addr_t *key, u32 len);
+int tmelcom_unwrap_key(u32 kw_key_id, dma_addr_t *key, u32 len, u32 *key_id);
 
 #else
 static inline int tmelcom_probed(void)
@@ -570,6 +612,18 @@ static inline int tmelcom_aes_generate_key(u32 key_id, struct tme_key_policy *po
 static inline int tmelcom_aes_import_key(u32 key_id, struct tme_key_policy *policy,
 				  struct tmel_plain_text_key *key_material,
 				  u8 *key_handle)
+{
+	return -EOPNOTSUPP;
+}
+
+static inline int tmelcom_wrap_key(u32 key_id, u32 kw_key_id, dma_addr_t *key,
+				   u32 len)
+{
+	return -EOPNOTSUPP;
+}
+
+static inline int tmelcom_unwrap_key(u32 kw_key_id, dma_addr_t *key, u32 len,
+				     u32 *key_id)
 {
 	return -EOPNOTSUPP;
 }

@@ -825,6 +825,50 @@ int tmelcom_aes_import_key(u32 key_id, struct tme_key_policy *policy,
 }
 EXPORT_SYMBOL_GPL(tmelcom_aes_import_key);
 
+int tmelcom_wrap_key(u32 key_id, u32 kw_key_id, dma_addr_t *key, u32 len)
+{
+	struct device *dev = tmelcom_get_device();
+	struct tmel_wrap_key_msg msg = {0};
+	int ret;
+
+	msg.req.key_id = key_id;
+	msg.req.kw_key_id = kw_key_id;
+	msg.req.cred_slot = 0;
+	msg.resp.wrapped_key.key = *key;
+	msg.resp.wrapped_key.length = len;
+
+	ret = tmelcom_process_request(TMEL_MSG_UID_KM_WRAP, &msg, sizeof(msg));
+	if (ret || msg.resp.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d msg->resp.status = %x\n",
+				__func__, ret, msg.resp.status);
+
+	return ret ? ret : msg.resp.status;
+
+}
+EXPORT_SYMBOL_GPL(tmelcom_wrap_key);
+
+int tmelcom_unwrap_key(u32 kw_key_id, dma_addr_t *key, u32 len, u32 *key_id)
+{
+	struct device *dev = tmelcom_get_device();
+	struct tmel_unwrap_key_msg msg = {0};
+	int ret;
+
+	msg.req.key_id = *key_id;
+	msg.req.kw_key_id = kw_key_id;
+	msg.req.wrapped_key.key = *key;
+	msg.req.wrapped_key.length = len;
+
+	ret = tmelcom_process_request(TMEL_MSG_UID_KM_UNWRAP, &msg, sizeof(msg));
+	if (ret || msg.resp.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d msg->resp.status = %x\n",
+				__func__, ret, msg.resp.status);
+	else
+		*key_id = msg.resp.key_id;
+
+	return ret ? ret : msg.resp.status;
+}
+EXPORT_SYMBOL_GPL(tmelcom_unwrap_key);
+
 int tmelcomm_qwes_enforce_hw_features(void *buf, u32 size)
 {
 	int ret;

@@ -252,10 +252,10 @@ static ssize_t tmecomm_show_aes_import_key(struct device *dev,
 	key_id = TME_KID_ALLOC;
 	if (tmel_aes_mode == TME_KAL_AES256_ECB) {
 		policy.low = 0xc104c20;
-		policy.high = 0x84040;
+		policy.high = 0x84044;
 	} else { //TME_KAL_AES256_CBC
 		policy.low = 0xc114c20;
-		policy.high = 0x84040;
+		policy.high = 0x84044;
 	}
 
 	ret = tmelcom_aes_import_key(key_id, &policy, &key_material,
@@ -306,19 +306,25 @@ static ssize_t tmecomm_show_aes_derive_key(struct device *dev,
 	if (tmel_aes_mode == TME_KAL_AES256_ECB) {
 		if (tmel_aes_input_key == TME_KID_CHIP_RAND_BASE) {
 			kdf_spec->policy.low = 0x4c204c20;
-			kdf_spec->policy.high = 0x84040;
+			kdf_spec->policy.high = 0x84044;
 		} else { //TME_KID_OEM_PRODUCT_SEED
 			kdf_spec->policy.low = 0xc204c20;
-			kdf_spec->policy.high = 0x84040;
+			kdf_spec->policy.high = 0x84048;
 		}
-	} else { //TME_KAL_AES256_CBC
+	} else if (tmel_aes_mode == TME_KAL_AES256_CBC) {
 		if (tmel_aes_input_key == TME_KID_CHIP_RAND_BASE) {
 			kdf_spec->policy.low = 0x4c214c20;
-			kdf_spec->policy.high = 0x84040;
+			kdf_spec->policy.high = 0x84044;
 		} else { //TME_KID_OEM_PRODUCT_SEED
 			kdf_spec->policy.low = 0xc214c20;
-			kdf_spec->policy.high = 0x84040;
+			kdf_spec->policy.high = 0x84048;
 		}
+	} else { //TME_KAL_AES256_SIV
+		if (tmel_aes_input_key == TME_KID_CHIP_RAND_BASE)
+			kdf_spec->policy.low = 0x4c230d38;
+		else //TME_KID_OEM_PRODUCT_SEED
+			kdf_spec->policy.low = 0xc230e38;
+		kdf_spec->policy.high = 0x84040;
 	}
 	memcpy(kdf_spec->sw_context, sw_context, tmel_aes_sw_context_len);
 	kdf_spec->sw_context_len = tmel_aes_sw_context_len;
@@ -403,6 +409,8 @@ static ssize_t tmecomm_store_aes_mode(struct device *dev,
 		tmel_aes_mode = TME_KAL_AES256_ECB;
 	else if (val == 1)
 		tmel_aes_mode = TME_KAL_AES256_CBC;
+	else if (val == 2)
+		tmel_aes_mode = TME_KAL_AES256_SIV;
 	else
 		return -EINVAL;
 
@@ -630,6 +638,37 @@ static ssize_t tmecomm_aes_store_salt_label_data(struct device *dev,
 	return count;
 }
 
+static ssize_t tmecomm_aes_show_iv_data(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	if (!iv) {
+		pr_err("Invalid IV buffer\n");
+		return 0;
+	}
+
+	memcpy(buf, iv, tmel_aes_iv_len);
+
+	return tmel_aes_iv_len;
+}
+
+static ssize_t tmecomm_aes_store_iv_data(struct device *dev,
+					 struct device_attribute *attr,
+					 const char *buf, size_t count)
+{
+
+	if (!iv) {
+		pr_err("Invalid IV buffer\n");
+		return 0;
+	}
+
+	memset(iv, 0, AES_BLOCK_SIZE);
+	memcpy(iv, buf, count);
+	tmel_aes_iv_len = count;
+
+	return count;
+}
+
 static ssize_t tmecomm_aes_store_security_context(struct device *dev,
 						  struct device_attribute *attr,
 						  const char *buf, size_t count)
@@ -642,6 +681,79 @@ static ssize_t tmecomm_aes_store_security_context(struct device *dev,
 	tmel_aes_sec_ctx = val;
 
 	return count;
+}
+
+static ssize_t tmecomm_store_wrap_key_id(struct device *dev,
+					 struct device_attribute *attr,
+					 const char *buf, size_t count)
+{
+	u32 val;
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	tmel_wrap_key_id = val;
+
+	return count;
+}
+
+static ssize_t tmecomm_store_wrapping_key_id(struct device *dev,
+					     struct device_attribute *attr,
+					     const char *buf, size_t count)
+{
+	u32 val;
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	tmel_wrapping_key_id = val;
+
+	return count;
+}
+
+static ssize_t tmecomm_show_wrap_key(struct device *dev,
+				     struct device_attribute *attr,
+				     char *buf)
+{
+	int ret;
+	u32 len = 0;
+
+	ret = tmelcom_wrap_key(tmel_wrap_key_id, tmel_wrapping_key_id,
+			&dma_wrapped_key, TME_WK_CONTEXT_BYTES_MAX);
+	if (ret) {
+		pr_err("Failed to wrap key\n");
+		len = 0;
+	} else {
+		memcpy(buf, wrapped_key, TME_WK_CONTEXT_BYTES_MAX);
+		len = TME_WK_CONTEXT_BYTES_MAX;
+	}
+
+	return len;
+}
+
+static ssize_t tmecomm_store_unwrap_key(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	int ret;
+	u32 key_id = TME_KID_ALLOC;
+
+	memcpy(wrapped_key, buf, count);
+
+	ret = tmelcom_unwrap_key(tmel_wrapping_key_id, &dma_wrapped_key, count, &key_id);
+	if (ret)
+		pr_err("Failed to unwrap key\n");
+	else
+		tmel_wrap_key_id = key_id;
+
+	return count;
+}
+
+static ssize_t tmecomm_show_unwrap_key(struct device *dev,
+				       struct device_attribute *attr,
+				       char *buf)
+{
+	return snprintf(buf, sizeof(u32), "%u\n", tmel_wrap_key_id);
 }
 
 /*
@@ -2734,10 +2846,12 @@ static int tmel_aes_init(struct device *dev)
 	buf_salt_label = dma_alloc_coherent(dev, dma_buf_size, &dma_salt_label, GFP_KERNEL);
 	dma_buf_size = PAGE_SIZE * (1 << get_order(KEY_SIZE));
 	buf_pt_key = dma_alloc_coherent(dev, dma_buf_size, &dma_pt_key, GFP_KERNEL);
+	dma_buf_size = PAGE_SIZE;
+	buf_wrapped_key = dma_alloc_coherent(dev, dma_buf_size, &dma_wrapped_key, GFP_KERNEL);
 
 	if (!tmel_key_handle || !buf_aad || !buf_plain_txt ||
 	    !buf_ivd || !buf_tag || !buf_cipher_txt || !buf_sw_context ||
-	    !buf_salt_label || !buf_pt_key) {
+	    !buf_salt_label || !buf_pt_key || !buf_wrapped_key) {
 		if (tmel_key_handle) {
 			dma_buf_size = PAGE_SIZE *
 					(1 << get_order(MAX_KEY_HANDLE_SIZE));
@@ -2801,6 +2915,12 @@ static int tmel_aes_init(struct device *dev)
 					  buf_pt_key, dma_pt_key);
 		}
 
+		if (buf_wrapped_key) {
+			dma_buf_size = PAGE_SIZE;
+			dma_free_coherent(dev, dma_buf_size, buf_wrapped_key,
+					  dma_wrapped_key);
+		}
+
 		sysfs_remove_group(tmel_sec_kobj, &sec_key_tmel_attr_grp);
 		kobject_put(tmel_sec_kobj);
 		tmel_sec_kobj = NULL;
@@ -2816,6 +2936,7 @@ static int tmel_aes_init(struct device *dev)
 	sw_context = (uint8_t *) buf_sw_context;
 	salt_label = (uint8_t *) buf_salt_label;
 	pt_key = (uint8_t *) buf_pt_key;
+	wrapped_key = (uint8_t *) buf_wrapped_key;
 
 	return 0;
 }
@@ -5132,6 +5253,13 @@ static int __exit qseecom_remove(struct platform_device *pdev)
 				dma_free_coherent(dev, dma_buf_size,
 						  buf_pt_key, dma_pt_key);
 			}
+
+			if (buf_wrapped_key) {
+				dma_buf_size = PAGE_SIZE;
+				dma_free_coherent(dev, dma_buf_size,
+						  buf_wrapped_key, dma_wrapped_key);
+			}
+
 
 			sysfs_remove_group(tmel_sec_kobj, &sec_key_tmel_attr_grp);
 			kobject_put(tmel_sec_kobj);
