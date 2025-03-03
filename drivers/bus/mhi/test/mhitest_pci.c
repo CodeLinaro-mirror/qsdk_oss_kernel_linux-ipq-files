@@ -45,6 +45,10 @@
 DECLARE_COMPLETION(dump_done);
 #define TIMEOUT_SAVE_DUMP_MS 300000
 
+bool autostart = true;
+module_param(autostart, bool, 0);
+MODULE_PARM_DESC(autostart, "Do need to power up mhi during module load?");
+
 /* Ramdump ELF Helpers */
 #define SIZEOF_ELF_STRUCT(__xhdr)					\
 static inline size_t sizeof_elf_##__xhdr(unsigned char class)		\
@@ -1430,6 +1434,9 @@ out1:
 
 int mhitest_prepare_start_mhi(struct mhitest_platform *mplat)
 {
+	if (mplat->running)
+		return 0;
+
 	int ret;
 
 	/*
@@ -1454,12 +1461,73 @@ int mhitest_prepare_start_mhi(struct mhitest_platform *mplat)
 		pr_err("Error ret: %d\n", ret);
 		goto out;
 	}
+	mplat->running = true;
 
 out:
 	return ret;
 }
 
 extern int domain;
+
+static ssize_t state_show(struct device *dev,
+			  struct device_attribute *attr, char *buf)
+{
+	struct mhitest_platform *mplat;
+	struct pci_dev *pci_dev = container_of(dev, struct pci_dev, dev);
+
+	mplat = get_mhitest_mplat_by_pcidev(pci_dev);
+	if (!mplat)
+		return -ENOENT;
+
+	return sysfs_emit(buf, "%s\n", mplat->running ? "started" : "stopped");
+}
+
+static ssize_t state_store(struct device *dev,
+			   struct device_attribute *attr,
+			   const char *buf, size_t count)
+{
+	int ret = 0;
+	struct mhitest_platform *mplat;
+	struct pci_dev *pci_dev = container_of(dev, struct pci_dev, dev);
+
+	mplat = get_mhitest_mplat_by_pcidev(pci_dev);
+	if (!mplat)
+		return -ENOENT;
+
+	if (sysfs_streq(buf, "start")) {
+		ret = mhitest_prepare_start_mhi(mplat);
+		if (ret) {
+			pr_err("Error preapare start mhi  ret:%d\n", ret);
+		}
+	} else if (sysfs_streq(buf, "stop")) {
+		if (mplat->running) {
+			mhitest_pci_soc_reset(mplat);
+			mhitest_pci_set_mhi_state(mplat, MHI_POWER_OFF);
+			mhitest_pci_set_mhi_state(mplat, MHI_DEINIT);
+			mplat->running = false;
+			mhitest_global_soc_reset(mplat);
+			msleep(2000);
+			mhitest_reset_mhi_state(mplat);
+		}
+	} else {
+		pr_err("Unrecognised option\n");
+		ret = -EINVAL;
+	}
+
+	return ret ? ret : count;
+}
+
+static DEVICE_ATTR_RW(state);
+
+static struct attribute *mhitest_attrs[] = {
+	&dev_attr_state.attr,
+	NULL,
+};
+
+static struct attribute_group mhitest_group = {
+	.attrs = mhitest_attrs,
+};
+
 int mhitest_pci_probe(struct pci_dev *pci_dev, const struct pci_device_id *id)
 {
 	struct mhitest_platform *mplat;
@@ -1513,12 +1581,22 @@ int mhitest_pci_probe(struct pci_dev *pci_dev, const struct pci_device_id *id)
 	ret = mhitest_prepare_pci_mhi_msi(mplat);
 	if (ret) {
 		pr_err("Error prep. pci_mhi_msi  ret:%d\n", ret);
-		goto pci_deinit;
+		goto unreg_ramdump;
 	}
 
-	ret = mhitest_prepare_start_mhi(mplat);
+	if (autostart) {
+		ret = mhitest_prepare_start_mhi(mplat);
+		if (ret) {
+			pr_err("Error preapare start mhi  ret:%d\n", ret);
+			goto pci_deinit;
+		}
+	} else {
+		pr_emerg("MHI autostart is disabled");
+	}
+
+	ret = sysfs_create_group(&pci_dev->dev.kobj, &mhitest_group);
 	if (ret) {
-		pr_err("Error preapare start mhi  ret:%d\n", ret);
+		pr_err("Unable to create sysfs group ret:%d\n", ret);
 		goto pci_deinit;
 	}
 
@@ -1527,6 +1605,7 @@ int mhitest_pci_probe(struct pci_dev *pci_dev, const struct pci_device_id *id)
 
 pci_deinit:
 	mhitest_pci_set_mhi_state(mplat, MHI_DEINIT);
+unreg_ramdump:
 	mhitest_pci_remove_all(mplat);
 	pci_load_and_free_saved_state(pci_dev, &mplat->pci_dev_default_state);
 	mhitest_remove_mplat(mplat);
@@ -1539,6 +1618,9 @@ fail_probe:
 
 void mhitest_pci_soc_reset(struct mhitest_platform *mplat)
 {
+	if (!mplat->running)
+		return;
+
 	if (mhi_get_exec_env(mplat->mhi_ctrl) == MHI_EE_RDDM) {
 		pr_info("MHI SOC_RESET is not required as MHI is already in RDDM state\n");
 		return;
@@ -1568,14 +1650,19 @@ void mhitest_pci_remove(struct pci_dev *pci_dev)
 	}
 	pr_info("mhitest PCI removing\n");
 
+	sysfs_remove_group(&pci_dev->dev.kobj, &mhitest_group);
+
 	mplat = get_mhitest_mplat_by_pcidev(pci_dev);
 	if (mplat) {
 		pr_debug("Going for shutdown\n");
-		mhitest_pci_soc_reset(mplat);
-		mhitest_pci_set_mhi_state(mplat, MHI_POWER_OFF);
-		mhitest_pci_set_mhi_state(mplat, MHI_DEINIT);
-		mhitest_pci_remove_all(mplat);
+		if (mplat->running) {
+			mhitest_pci_soc_reset(mplat);
+			mhitest_pci_set_mhi_state(mplat, MHI_POWER_OFF);
+			mhitest_pci_set_mhi_state(mplat, MHI_DEINIT);
+			mplat->running = false;
+		}
 
+		mhitest_pci_remove_all(mplat);
 		mhitest_event_work_deinit(mplat);
 		pci_load_and_free_saved_state(pci_dev, &mplat->pci_dev_default_state);
 		mhitest_free_mplat(mplat);
