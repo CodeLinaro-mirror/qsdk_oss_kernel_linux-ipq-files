@@ -369,7 +369,17 @@ Note: We support only 64 bit sampleapp in ipq platforms.
 Before loading the sample app, the library required by sample app needs to be
 loaded.
 
-(1) To load sample app libraries
+(1) Provide the size to be used for TZApp log buffer. Incase the buffer is
+insufficient to view the entire contents, this size can be increased.
+Note: If the log size is not provided or if the memory allocation fails for
+the provided size, the default size will be taken as 4k bytes.
+Eg: echo 0x8000 > /sys/firmware/tzapp/log_size
+
+If the TZApp log size has to be increased, then unload the qseecom driver and
+load it back. Now provide the updated log size in the above sysfs entry and load
+the sample app libraries.
+
+(2) To load sample app libraries
 
 Concatenate all the seg files into 1 segment file and feed it as
 input to sys/firmware/seg_file and feed the mdt file as input to
@@ -391,7 +401,7 @@ echo 0 > /sys/firmware/tzapp/load_start
 
 You will get a print saying you have successfully loaded app libraries.
 
-(2) To load sample app
+(3) To load sample app
 
 Concatenate all the seg files into 1 segment file and feed it as
 input to sys/firmware/seg_file and feed the mdt file as input to
