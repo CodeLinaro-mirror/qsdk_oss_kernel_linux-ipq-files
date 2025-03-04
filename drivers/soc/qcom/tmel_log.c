@@ -164,7 +164,12 @@ static struct platform_driver tmel_log_driver = {
 		.of_match_table = tmel_log_match_tbl,
 	},
 };
-module_platform_driver(tmel_log_driver);
+
+static int __init tmel_log_driver_init(void)
+{
+	return platform_driver_register(&tmel_log_driver);
+}
+subsys_initcall_sync(tmel_log_driver_init);
 
 module_param_array(log_level, int, &argc, 0000);
 MODULE_PARM_DESC(log_level, "An array of components and log level");
