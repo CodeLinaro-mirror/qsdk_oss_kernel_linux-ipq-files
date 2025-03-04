@@ -322,10 +322,6 @@
 			no-map;
 		};
 
-		tz@0x8a600000 {
-			reg = <0x0 0x8a600000 0x0 0x200000>;
-			no-map;
-		};
 #else
 		secure_upgrade: secure_upgrade@0 {
 			reg = <0x0 0x8a300000 0x0 0x500000>;
@@ -333,6 +329,14 @@
 			status = "disabled";
 		};
 #endif
+		tz@0x8a600000 {
+			reg = <0x0 0x8a600000 0x0 0x200000>;
+			no-map;
+#if defined(__IPQ_MEM_PROFILE_256_MB__)
+			status = "disabled";
+#endif
+		};
+
 		smem@8a800000 {
 			compatible = "qcom,smem";
 			reg = <0x0 0x8a800000 0x0 0x32000>;
