@@ -636,7 +636,11 @@
 					<&q6_etr_region>, <&q6_ipq5332_caldb>,
 #endif
 					<&mlo_global_mem0>;
+#if defined(__RPROC_DISABLE_MPD_SUPPORT__)
+				status = "disabled";
+#else
 				status = "ok";
+#endif
 			};
 
 			q6_wcss_pd2: remoteproc_pd2 {
@@ -664,7 +668,11 @@
 						<&q6_qcn6432_caldb_1>,
 #endif
 						<&mlo_global_mem0>;
+#if defined(__RPROC_DISABLE_MPD_SUPPORT__)
+				status = "disabled";
+#else
 				status = "ok";
+#endif
 			};
 		};
 	};
@@ -839,9 +847,20 @@
 };
 
 &wifi0 {
+#if defined(__RPROC_DISABLE_MPD_SUPPORT__)
+	qcom,rproc = <&q6v5_wcss>;
+	dump-region = <&q6_ipq5332_data>,
+#ifndef __IPQ_MEM_PROFILE_256_MB__
+		<&m3_dump>,
+		<&q6_etr_region>,
+		<&q6_ipq5332_caldb>,
+#endif
+		<&mlo_global_mem0>;
+#else
 	qcom,multipd_arch;
 	qcom,rproc = <&q6_wcss_pd1>;
 	qcom,rproc_rpd = <&q6v5_wcss>;
+#endif
 	qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
 	qcom,bdf-addr = <0x4BD00000 0x4BD00000 0x4BD00000 0x0 0x0 0x0>;
 	qcom,caldb-addr = <0x4D400000 0x4D000000 0x0 0x0 0x0 0x0>;
@@ -855,16 +874,27 @@
 	qcom,caldb-size = <0x500000>;
 #endif
 	qcom,board_id = <0x31>;
-	memory-region = <&q6_ipq5332_data>;
+	memory-region = <&q6_ipq5332_data>, <&q6_mem_regions>;
 	qcom,wsi = <&wsi>;
 	qcom,wsi_index = <0>;
 	status = "ok";
 };
 
 &wifi1 {
+#if defined(__RPROC_DISABLE_MPD_SUPPORT__)
+	qcom,rproc = <&q6v5_wcss>;
+	dump-region = <&q6_qcn6432_data_1>,
+#ifndef __IPQ_MEM_PROFILE_256_MB__
+		<&m3_dump_qcn6432_1>,
+		<&q6_qcn6432_etr_1>,
+		<&q6_qcn6432_caldb_1>,
+#endif
+		<&mlo_global_mem0>;
+#else
 	qcom,multipd_arch;
 	qcom,rproc = <&q6_wcss_pd2>;
 	qcom,rproc_rpd = <&q6v5_wcss>;
+#endif
 	qcom,userpd-subsys-name = "q6v5_wcss_userpd2";
 	qcom,bdf-addr = <0x4D900000 0x4D300000 0x4CE00000 0x0 0x0 0x0>;
 	qcom,caldb-addr = <0x4F000000 0x4E500000 0x0 0x0 0x0 0x0>;
@@ -879,7 +909,7 @@
 	qcom,caldb-size = <0x500000>;
 #endif
 	qcom,board_id = <0x061>;
-	memory-region = <&q6_qcn6432_data_1>;
+	memory-region = <&q6_qcn6432_data_1>, <&q6_mem_regions>;
 	qcom,wsi = <&wsi>;
 	qcom,wsi_index = <1>;
 	qcom,pci_slot_id = <1>;
