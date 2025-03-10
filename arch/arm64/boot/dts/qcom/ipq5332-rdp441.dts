@@ -67,7 +67,6 @@
 	reserved-memory {
 		/delete-node/ bootloader@4a300000;
 		/delete-node/ sbl@4a500000;
-		/delete-node/ tz@4a600000;
 
 		smem@4a800000 {
 			compatible = "qcom,smem";

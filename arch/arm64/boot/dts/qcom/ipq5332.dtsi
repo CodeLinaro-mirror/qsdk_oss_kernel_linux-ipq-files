@@ -261,6 +261,9 @@
 		tz_mem: tz@4a600000 {
 			reg = <0x0 0x4a600000 0x0 0x200000>;
 			no-map;
+#if defined(__IPQ_MEM_PROFILE_256_MB__)
+			status = "disabled";
+#endif
 		};
 
 		smem@4a800000 {

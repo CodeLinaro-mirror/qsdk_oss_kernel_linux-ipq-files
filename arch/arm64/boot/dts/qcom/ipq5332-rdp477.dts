@@ -53,6 +53,10 @@
 		#size-cells = <2>;
 		ranges;
 
+		tz@4a600000 {
+			status = "okay";
+		};
+
 		q6_mem_regions: q6_mem_regions@4A900000  {
 			no-map;
 			reg = <0x0 0x4a900000 0x0 0x2B00000>;
