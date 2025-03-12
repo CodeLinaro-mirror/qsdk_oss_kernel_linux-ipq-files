@@ -1200,7 +1200,7 @@ static ssize_t
 show_list_ipq5322_fuse(struct device *dev, struct device_attribute *attr,
 		       char *buf)
 {
-	int ret = 0;
+	int ret = 0, n = 0;
 	int index, next = 0;
 	unsigned long base_addr = 0xA00E8;
 	struct fuse_payload *fuse = NULL;
@@ -1223,33 +1223,33 @@ show_list_ipq5322_fuse(struct device *dev, struct device_attribute *attr,
 		goto fuse_alloc_err;
 	}
 
-	pr_info("Fuse Name\tAddress\t\tValue\n");
-	pr_info("------------------------------------------------\n");
+	n += scnprintf(buf + n, PAGE_SIZE - n, "Fuse Name\tAddress\t\tValue\n");
+	n += scnprintf(buf + n, PAGE_SIZE - n, "------------------------------------------------\n");
 
-	pr_info("TME_AUTH_EN\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
+	n += scnprintf(buf + n, PAGE_SIZE - n, "TME_AUTH_EN\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
 			fuse[0].lsb_val & 0x41);
-	pr_info("TME_OEM_ID\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
+	n += scnprintf(buf + n, PAGE_SIZE - n, "TME_OEM_ID\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
 			fuse[0].lsb_val & 0xFFFF0000);
-	pr_info("TME_PRODUCT_ID\t0x%08X\t0x%08X\n", fuse[0].fuse_addr + 0x4,
+	n += scnprintf(buf + n, PAGE_SIZE - n, "TME_PRODUCT_ID\t0x%08X\t0x%08X\n", fuse[0].fuse_addr + 0x4,
 			fuse[0].msb_val & 0xFFFF);
 
 	for (index = 1; index < MAX_FUSE_ADDR_SIZE; index++) {
-		pr_info("TME_MRC_HASH\t0x%08X\t0x%08X\n",
+		n += scnprintf(buf + n, PAGE_SIZE - n, "TME_MRC_HASH\t0x%08X\t0x%08X\n",
 				fuse[index].fuse_addr, fuse[index].lsb_val);
-		pr_info("TME_MRC_HASH\t0x%08X\t0x%08X\n",
+		n += scnprintf(buf + n, PAGE_SIZE - n, "TME_MRC_HASH\t0x%08X\t0x%08X\n",
 				fuse[index].fuse_addr + 0x4, fuse[index].msb_val);
 	}
 
 fuse_alloc_err:
 	kfree(fuse);
-	return ret;
+	return ret ? ret : n;
 }
 
 static ssize_t
 show_list_ipq5424_fuse(struct device *dev, struct device_attribute *attr,
 		       char *buf)
 {
-	int ret = 0;
+	int ret = 0, n = 0;
 	int index, next = 0;
 	unsigned long base_addr = 0xA00F8;
 	struct fuse_payload *fuse = NULL;
@@ -1272,33 +1272,33 @@ show_list_ipq5424_fuse(struct device *dev, struct device_attribute *attr,
 		goto fuse_alloc_err;
 	}
 
-	pr_info("Fuse Name\tAddress\t\tValue\n");
-	pr_info("------------------------------------------------\n");
+	n += scnprintf(buf + n, PAGE_SIZE - n, "Fuse Name\tAddress\t\tValue\n");
+	n += scnprintf(buf + n, PAGE_SIZE - n, "------------------------------------------------\n");
 
-	pr_info("TME_AUTH_EN\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
+	n += scnprintf(buf + n, PAGE_SIZE - n, "TME_AUTH_EN\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
 			fuse[0].lsb_val & 0x82);
-	pr_info("TME_OEM_ID\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
+	n += scnprintf(buf + n, PAGE_SIZE - n, "TME_OEM_ID\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
 			fuse[0].lsb_val & 0xFFFF0000);
-	pr_info("TME_PRODUCT_ID\t0x%08X\t0x%08X\n", fuse[0].fuse_addr + 0x4,
+	n += scnprintf(buf + n, PAGE_SIZE - n, "TME_PRODUCT_ID\t0x%08X\t0x%08X\n", fuse[0].fuse_addr + 0x4,
 			fuse[0].msb_val & 0xFFFF);
 
 	for (index = 1; index < MAX_FUSE_ADDR_SIZE; index++) {
-		pr_info("TME_MRC_HASH\t0x%08X\t0x%08X\n",
+		n += scnprintf(buf + n, PAGE_SIZE - n, "TME_MRC_HASH\t0x%08X\t0x%08X\n",
 				fuse[index].fuse_addr, fuse[index].lsb_val);
-		pr_info("TME_MRC_HASH\t0x%08X\t0x%08X\n",
+		n += scnprintf(buf + n, PAGE_SIZE - n, "TME_MRC_HASH\t0x%08X\t0x%08X\n",
 				fuse[index].fuse_addr + 0x4, fuse[index].msb_val);
 	}
 
 fuse_alloc_err:
 	kfree(fuse);
-	return ret;
+	return ret ? ret : n;
 }
 
 static ssize_t
 show_list_ipq9574_fuse(struct device *dev, struct device_attribute *attr,
 		       char *buf)
 {
-	int ret = 0;
+	int ret = 0, n = 0;
 	int index = 0, next = 0;
 	unsigned long base_addr = 0xA00D8;
 	struct fuse_payload_ipq9574 *fuse = NULL;
@@ -1323,24 +1323,24 @@ show_list_ipq9574_fuse(struct device *dev, struct device_attribute *attr,
 		goto fuse_alloc_err;
 	}
 
-	pr_info("Fuse Name\tAddress\t\tValue\n");
-	pr_info("------------------------------------------------\n");
+	n += scnprintf(buf + n, PAGE_SIZE - n, "Fuse Name\tAddress\t\tValue\n");
+	n += scnprintf(buf + n, PAGE_SIZE - n, "------------------------------------------------\n");
 
-	pr_info("TME_AUTH_EN\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
+	n += scnprintf(buf + n, PAGE_SIZE - n, "TME_AUTH_EN\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
 			fuse[0].val & 0x80);
-	pr_info("TME_OEM_ID\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
+	n += scnprintf(buf + n, PAGE_SIZE - n, "TME_OEM_ID\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
 			fuse[0].val & 0xFFFF0000);
-	pr_info("TME_PRODUCT_ID\t0x%08X\t0x%08X\n", fuse[1].fuse_addr,
+	n += scnprintf(buf + n, PAGE_SIZE - n, "TME_PRODUCT_ID\t0x%08X\t0x%08X\n", fuse[1].fuse_addr,
 			fuse[1].val & 0xFFFF);
 
 	for (index = 2; index < IPQ9574_MAX_FUSE_ADDR_SIZE; index++) {
-		pr_info("TME_MRC_HASH\t0x%08X\t0x%08X\n",
+		n += scnprintf(buf + n, PAGE_SIZE - n, "TME_MRC_HASH\t0x%08X\t0x%08X\n",
 				fuse[index].fuse_addr, fuse[index].val);
 	}
 
 fuse_alloc_err:
 	kfree(fuse);
-	return ret;
+	return ret ? ret : n;
 }
 
 static ssize_t
