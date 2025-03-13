@@ -388,6 +388,8 @@
 
 &pcie0 {
 	perst-gpio = <&tlmm 25 GPIO_ACTIVE_LOW>;
+	link_retries_count = <400>;
+	status = "okay";
 
 	pcie0_rp {
 		reg = <0 0 0 0 0>;
