@@ -24,12 +24,14 @@
 
 #define QCN9000_DEFAULT_FW_FILE_NAME	"qcn9000/amss.bin"
 #define QCN9224_DEFAULT_FW_FILE_NAME	"qcn9224/amss.bin"
+#define QCN9625_DEFAULT_FW_FILE_NAME	"qcn9625/amss.bin"
 
 #define PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV0	0x3164
 #define PCIE_REG_FOR_QRTR_NODE_INSTANCE_ID	\
 	PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV0
 #define QCN90XX_QRTR_INSTANCE_ID_BASE		0x20
 #define QCN92XX_QRTR_INSTANCE_ID_BASE		0x30
+#define QCN96XX_QRTR_INSTANCE_ID_BASE		0x40
 
 #define MHITEST_MHI_SEG_LEN			SZ_512K
 #define MHITEST_DUMP_DESC_TOLERANCE		64
@@ -1396,26 +1398,38 @@ int mhitest_pci_start_mhi(struct mhitest_platform *mplat)
 	 * exchange. According to qrtr spec, every node should
 	 * have unique qrtr node id
 	 */
-	if (mplat->device_id == QCN90xx_DEVICE_ID || mplat->device_id == QCN92XX_DEVICE_ID) {
-		u32 val;
-		u32 qrtr_id;
+	u32 val;
+	u32 qrtr_id;
 
-		qrtr_id = (mplat->device_id == QCN90xx_DEVICE_ID)? QCN90XX_QRTR_INSTANCE_ID_BASE:QCN92XX_QRTR_INSTANCE_ID_BASE;
-		qrtr_id += mplat->d_instance;
+	switch (mplat->device_id) {
+	case QCN90XX_DEVICE_ID:
+		qrtr_id = QCN90XX_QRTR_INSTANCE_ID_BASE;
+		break;
+	case QCN92XX_DEVICE_ID:
+		qrtr_id = QCN92XX_QRTR_INSTANCE_ID_BASE;
+		break;
+	case QCN96XX_DEVICE_ID:
+		qrtr_id = QCN96XX_QRTR_INSTANCE_ID_BASE;
+		break;
+	default:
+		pr_err("Invalid device_id: 0x%lx", mplat->device_id);
+		goto out1;
+	}
 
-		pr_debug("write 0x%x to PCIE_REG_FOR_QRTR_NODE_INSTANCE_ID\n", qrtr_id);
-		writel(qrtr_id, mplat->bar + PCIE_REG_FOR_QRTR_NODE_INSTANCE_ID);
-		if (ret) {
-			pr_err("Failed to write register offset 0x%x, err = %d\n",
-			       PCIE_REG_FOR_QRTR_NODE_INSTANCE_ID, ret);
-			goto out1;
-		}
-		val = readl(mplat->bar + PCIE_REG_FOR_QRTR_NODE_INSTANCE_ID);
+	qrtr_id += mplat->d_instance;
 
-		if (val != qrtr_id) {
-			pr_err("qrtr node id write to register doesn't match with readout value 0x%x", val);
-			goto out1;
-		}
+	pr_debug("write 0x%x to PCIE_REG_FOR_QRTR_NODE_INSTANCE_ID\n", qrtr_id);
+	writel(qrtr_id, mplat->bar + PCIE_REG_FOR_QRTR_NODE_INSTANCE_ID);
+	if (ret) {
+		pr_err("Failed to write register offset 0x%x, err = %d\n",
+		       PCIE_REG_FOR_QRTR_NODE_INSTANCE_ID, ret);
+		goto out1;
+	}
+	val = readl(mplat->bar + PCIE_REG_FOR_QRTR_NODE_INSTANCE_ID);
+
+	if (val != qrtr_id) {
+		pr_err("qrtr node id write to register doesn't match with readout value 0x%x", val);
+		goto out1;
 	}
 
 	ret = mhitest_pci_set_mhi_state(mplat, MHI_POWER_ON);
@@ -1574,6 +1588,9 @@ int mhitest_pci_probe(struct pci_dev *pci_dev, const struct pci_device_id *id)
 	if (mplat->device_id == QCN92XX_DEVICE_ID)
 		snprintf(mplat->fw_name, sizeof(mplat->fw_name),
 			 QCN9224_DEFAULT_FW_FILE_NAME);
+	else if (mplat->device_id == QCN96XX_DEVICE_ID)
+		snprintf(mplat->fw_name, sizeof(mplat->fw_name),
+			 QCN9625_DEFAULT_FW_FILE_NAME);
 	else
 		snprintf(mplat->fw_name, sizeof(mplat->fw_name),
 			 QCN9000_DEFAULT_FW_FILE_NAME);
@@ -1670,8 +1687,9 @@ void mhitest_pci_remove(struct pci_dev *pci_dev)
 }
 
 static const struct pci_device_id mhitest_pci_id_table[] = {
-	{QTI_PCI_VENDOR_ID, QCN90xx_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
+	{QTI_PCI_VENDOR_ID, QCN90XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
 	{QTI_PCI_VENDOR_ID, QCN92XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
+	{QTI_PCI_VENDOR_ID, QCN96XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
 };
 
 struct pci_driver mhitest_pci_driver = {
