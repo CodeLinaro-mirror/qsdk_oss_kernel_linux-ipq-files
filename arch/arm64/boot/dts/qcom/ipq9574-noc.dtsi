@@ -89,7 +89,7 @@ pcie_G3X2_0_tprobe: pcie1 {
 			    reg-names = "base-addr";
 			    subnoc-phy-base-addr = <0x601400>;
 			    hist_bin_width = <0x14>;
-			    status = "ok";
+			    status = "disabled";
 		    };
 
 pcie_G3X1_1_tprobe: pcie2 {
