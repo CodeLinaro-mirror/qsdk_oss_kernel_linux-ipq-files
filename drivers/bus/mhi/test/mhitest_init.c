@@ -296,7 +296,7 @@ int mhitest_pci_remove_all(struct mhitest_platform *mplat)
 }
 
 static const struct platform_device_id test_platform_id_table[] = {
-	{ .name = "qcn90xx", .driver_data = QCN90xx_DEVICE_ID, },
+	{ .name = "qcn90xx", .driver_data = QCN90XX_DEVICE_ID, },
 };
 
 static const struct of_device_id test_of_match_table[] = {
