@@ -528,6 +528,8 @@
 			reg = <0x78000 0x2000>,
 			      <0x7A000 0x1000>;
 			interrupts = <GIC_SPI 54 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&gcc GCC_USB0_PHY_CFG_AHB_CLK>;
+			clock-names = "eud_ahb2phy_clk";
 			status = "disabled";
 		};
 
