@@ -386,6 +386,10 @@
 	status = "disabled";
 };
 
+&pcie0_phy {
+	status = "okay";
+};
+
 &pcie0 {
 	perst-gpio = <&tlmm 25 GPIO_ACTIVE_LOW>;
 	link_retries_count = <400>;
@@ -393,91 +397,55 @@
 
 	pcie0_rp {
 		reg = <0 0 0 0 0>;
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9224_pcie1>, <&mhi_region1>;
+
+		};
 	};
 };
 
 &pcie1_phy {
-	status = "okay";
+	status = "disabled";
 };
 
 &pcie1 {
-	status = "okay";
+	status = "disabled";
 	perst-gpio = <&tlmm 28 GPIO_ACTIVE_LOW>;
 
 	pcie1_rp {
 		reg = <0 0 0 0 0>;
-
-		qcom,mhi@1 {
-			reg = <0 0 0 0 0>;
-			boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
-					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
-					0x6 0x4 0x30 0x7 0x0 0x0  /* WSI0, GPIO48, Drive strength 16mA */
-					0x7 0x4 0x31 0x7 0x0 0x0  /* WSI1, GPIO49, Drive strength 16mA */
-					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
-			memory-region = <&qcn9224_pcie1>, <&mhi_region1>;
-			qcom,board_id = <0x21>;
-			qcom,wsi = <&wsi>;
-			qcom,wsi_index = <2>;
-		};
 	};
 };
 
 &pcie2_phy {
-	status = "okay";
+	status = "disabled";
 };
 
 &pcie2 {
-	status = "okay";
+	status = "disabled";
 	perst-gpio = <&tlmm 31 GPIO_ACTIVE_LOW>;
 
 	pcie2_rp {
 		reg = <0 0 0 0 0>;
-
-		qcom,mhi@2 {
-			reg = <0 0 0 0 0>;
-			boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
-					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
-					0x6 0x4 0x30 0x7 0x0 0x0  /* WSI0, GPIO48, Drive strength 16mA */
-					0x7 0x4 0x31 0x7 0x0 0x0  /* WSI1, GPIO49, Drive strength 16mA */
-					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
-			memory-region = <&qcn9224_pcie2>, <&mhi_region2>;
-			qcom,board_id = <0x26>;
-			qcom,wsi = <&wsi>;
-			qcom,wsi_index = <3>;
-		};
 	};
 };
 
 &pcie3_phy {
-	status = "okay";
+	status = "disabled";
 };
 
 &pcie3 {
-	status = "okay";
+	status = "disabled";
 	perst-gpio = <&tlmm 34 GPIO_ACTIVE_LOW>;
 
 	pcie3_rp {
 		reg = <0 0 0 0 0>;
-
-		qcom,mhi@3 {
-			reg = <0 0 0 0 0>;
-			boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
-					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
-					0x6 0x4 0x30 0x7 0x0 0x0  /* WSI0, GPIO48, Drive strength 16mA */
-					0x7 0x4 0x31 0x7 0x0 0x0  /* WSI1, GPIO49, Drive strength 16mA */
-					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
-			memory-region = <&qcn9224_pcie3>, <&mhi_region3>;
-			qcom,board_id = <0x22>;
-			qcom,wsi = <&wsi>;
-			qcom,wsi_index = <1>;
-		};
 	};
 };
 
 &reg_update {
-	secure-reg = <0x00610908 0x80>, /* aggr_noc_pcie1 */
-		     <0x00610a08 0x80>, /* aggr_noc_pcie2 */
-		     <0x00610b08 0x80>; /* aggr_noc_pcie3 */
+	secure-reg = <0x00610808 0x80>; /* aggr_noc_pcie0 */
 };
 
 &qusb_phy_1 {
@@ -501,12 +469,12 @@
 };
 
 &q6v5_wcss {
-	status = "okay";
+	status = "disabled";
 };
 
 #if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
 &userpd_1 {
-	status = "okay";
+	status = "disabled";
 };
 #endif
 
@@ -750,33 +718,12 @@
 &qcn9224_pcie1 {
 	status = "okay";
 };
-
-&qcn9224_pcie2 {
-	status = "okay";
-};
-
-&qcn9224_pcie3 {
-	status = "okay";
-};
-
 #if defined(__MHI_BUS_RESERVED_DMA_POOL__)
 &mhi_region1 {
 	status = "okay";
 };
 
-&mhi_region2 {
-	status = "okay";
-};
-
-&mhi_region3 {
-	status = "okay";
-};
 #endif
-
-&mlo_global_mem0 {
-	reg = <0x0 0x9b300000 0x0 0x1800000>;
-	status = "okay";
-};
 
 /* 2G radio */
 &wifi0 {
@@ -789,7 +736,7 @@
 	hw_link_id = <0 0>;
 	led-gpio = <&tlmm 41 GPIO_ACTIVE_HIGH>;
 	probe-order = <1>;
-	status = "okay";
+	status = "disabled";
 };
 
 /* 5GL radio */
@@ -798,7 +745,7 @@
 	board_id = <0x21>;
 	hw_link_id = <2 0>;
 	probe-order = <3>;
-	status = "okay";
+	status = "disabled";
 };
 
 /* 6G radio */
@@ -807,7 +754,7 @@
 	board_id = <0x26>;
 	hw_link_id = <3 0>;
 	probe-order = <4>;
-	status = "okay";
+	status = "disabled";
 };
 
 /* 5GH radio */
@@ -816,7 +763,7 @@
 	board_id = <0x22>;
 	hw_link_id = <1 0>;
 	probe-order = <2>;
-	status = "okay";
+	status = "disabled";
 };
 
 &mdio {

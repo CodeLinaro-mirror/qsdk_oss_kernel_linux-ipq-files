@@ -56,7 +56,7 @@
 #define QTI_PCI_VENDOR_ID		0x17CB
 #define QCN90XX_DEVICE_ID		0x1104
 #define QCN92XX_DEVICE_ID		0x1109
-#define QCN96XX_DEVICE_ID		0x110A
+#define QCN96XX_DEVICE_ID		0x1113
 
 #define PCI_LINK_DOWN                   0
 
