@@ -1470,6 +1470,8 @@
 				 <&gcc GCC_SDCC1_ICE_CORE_CLK>;
 			clock-names = "iface", "core", "xo", "ice";
 
+			assigned-clocks = <&gcc GCC_SDCC1_ICE_CORE_CLK>;
+			assigned-clock-rates = <300000000>;
 			pinctrl-0 = <&sdc_default_state>;
 			pinctrl-names = "default";
 			supports-cqe;
