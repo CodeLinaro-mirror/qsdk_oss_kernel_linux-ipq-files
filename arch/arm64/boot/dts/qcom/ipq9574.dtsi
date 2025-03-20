@@ -2601,6 +2601,8 @@
 				 <&xo>,
 				 <&gcc GCC_SDCC1_ICE_CORE_CLK>;
 			clock-names = "iface", "core", "xo", "ice";
+			assigned-clocks = <&gcc GCC_SDCC1_ICE_CORE_CLK>;
+			assigned-clock-rates = <300000000>;
 			non-removable;
 			supports-cqe;
 			status = "disabled";
