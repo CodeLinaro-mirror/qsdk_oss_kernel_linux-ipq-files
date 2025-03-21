@@ -13,6 +13,7 @@
 #include <linux/platform_device.h>
 #include <linux/sysfs.h>
 #include <linux/tmelcom_ipc.h>
+#include <linux/firmware/qcom/qcom_scm.h>
 
 #define MAX_COMPONENT		30
 #define MAX_ARG_SIZE		MAX_COMPONENT * 2
@@ -25,6 +26,11 @@
 static int log_level[MAX_ARG_SIZE] = {-1};
 static int argc = 0;
 struct kobject *tmelcom_kobj;
+
+struct tmellog_data {
+	bool tmelcom_support;
+	u32 version;
+};
 
 static ssize_t tmel_log_read(struct file *fp, char __user *user_buffer,
 				size_t count, loff_t *position)
@@ -95,12 +101,92 @@ out:
 static struct device_attribute tmel_attr =
 	__ATTR(get_ecc_public_key, 0200, NULL, store_tmel_get_ecc_public_key);
 
+static void dump_fuse_v1(unsigned int addr)
+{
+	struct fuse_payload_ipq9574 *fuse __free(kfree);
+	int ret;
+
+	fuse = kzalloc(sizeof(struct fuse_payload_ipq9574), GFP_KERNEL);
+	if (!fuse)
+		return;
+
+	fuse->fuse_addr = addr;
+	ret = qcom_scm_get_ipq_fuse_list(fuse,
+					 sizeof(struct fuse_payload_ipq9574));
+	if (ret) {
+		pr_err("Fuse list SCM call failed, ret = %d\n", ret);
+		return;
+	}
+
+	pr_info("TMEL_FUSE_ADDR: 0x%08X\tVALUE: 0x%08X\n", fuse->fuse_addr,
+		fuse->val);
+}
+
+static void dump_fuse_v2(unsigned int addr)
+{
+	struct fuse_payload *fuse __free(kfree);
+	int ret;
+
+	fuse = kzalloc(sizeof(struct fuse_payload), GFP_KERNEL);
+	if (!fuse)
+		return;
+
+	fuse->fuse_addr = addr;
+	ret = qcom_scm_get_ipq_fuse_list(fuse,
+					 sizeof(struct fuse_payload));
+	if (ret) {
+		pr_err("Fuse list SCM call failed, ret = %d\n", ret);
+		return;
+	}
+
+	pr_info("TMEL_FUSE_ADDR: 0x%08X\tVALUE: 0x%08X%08X\n",
+		fuse->fuse_addr, fuse->msb_val, fuse->lsb_val);
+}
+
+static ssize_t dump_fuse_store(struct device *dev,
+			       struct device_attribute *attr,
+			       const char *buf, size_t count)
+{
+	const struct tmellog_data *data;
+	unsigned int addr;
+
+	if (kstrtouint(buf, 0, &addr))
+		return -EINVAL;
+
+	data = of_device_get_match_data(dev);
+	if (!data)
+		return -EINVAL;
+
+	if (data->version == 0x1)
+		dump_fuse_v1(addr);
+	else if (data->version == 0x2)
+		dump_fuse_v2(addr);
+
+	return count;
+}
+
+static DEVICE_ATTR_WO(dump_fuse);
+
+static struct attribute *tmel_log_attrs[] = {
+	&dev_attr_dump_fuse.attr,
+	NULL,
+};
+ATTRIBUTE_GROUPS(tmel_log);
+
 static int tmel_log_probe(struct platform_device *pdev)
 {
 	struct tmel_log_config *log_config;
+	const struct tmellog_data *data;
 	struct dentry *file;
 	uint32_t count = 0;
 	int i, ret = 0;
+
+	data = of_device_get_match_data(&pdev->dev);
+	if (!data)
+		return -EINVAL;
+
+	if (!data->tmelcom_support)
+		return 0;
 
 	tmelcom_kobj = kobject_create_and_add("tmelcom", NULL);
 	if (!tmelcom_kobj)
@@ -151,8 +237,31 @@ static int tmel_log_probe(struct platform_device *pdev)
 	return ret;
 }
 
+static const struct tmellog_data tmellog_ipq5332_data = {
+	.tmelcom_support = false,
+	.version = 0x2,
+};
+
+static const struct tmellog_data tmellog_ipq5424_data = {
+	.tmelcom_support = true,
+	.version = 0x2,
+};
+
+static const struct tmellog_data tmellog_ipq9574_data = {
+	.tmelcom_support = false,
+	.version = 0x1,
+};
+
 static const struct of_device_id tmel_log_match_tbl[] = {
-	{.compatible = "qcom,tmel-log"},
+	{.compatible = "qcom,tmel-log-ipq5332",
+	 .data = &tmellog_ipq5332_data,
+	},
+	{.compatible = "qcom,tmel-log-ipq5424",
+	 .data = &tmellog_ipq5424_data,
+	},
+	{.compatible = "qcom,tmel-log-ipq9574",
+	 .data = &tmellog_ipq9574_data,
+	},
 	{},
 };
 MODULE_DEVICE_TABLE(of, tmel_log_match_tbl);
@@ -162,6 +271,7 @@ static struct platform_driver tmel_log_driver = {
 	.driver	= {
 		.name = "tmel-log",
 		.of_match_table = tmel_log_match_tbl,
+		.dev_groups = tmel_log_groups,
 	},
 };
 
