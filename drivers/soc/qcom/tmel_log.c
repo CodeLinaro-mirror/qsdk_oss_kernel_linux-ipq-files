@@ -25,7 +25,6 @@
 
 static int log_level[MAX_ARG_SIZE] = {-1};
 static int argc = 0;
-struct kobject *tmelcom_kobj;
 
 struct tmellog_data {
 	unsigned long base_addr;
@@ -62,15 +61,18 @@ static const struct file_operations tmel_log_fops = {
 	.read = tmel_log_read,
 };
 
-static ssize_t
-store_tmel_get_ecc_public_key(struct device *dev,
-			      struct device_attribute *attr,
-			      const char *buf, size_t count)
+static ssize_t get_ecc_public_key_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
 {
 	int ret, index;
 	u32 type, len;
 	void *resp_buf;
 	char key_buf[TMEL_ECC_MAX_KEY_LEN] = {0};
+	const struct tmellog_data *data = dev_get_drvdata(dev);
+
+	if (!data->tmelcom_support)
+		return -EOPNOTSUPP;
 
 	if (kstrtouint(buf, 0, &type))
 		return -EINVAL;
@@ -101,9 +103,6 @@ out:
 	kfree(resp_buf);
 	return count;
 }
-
-static struct device_attribute tmel_attr =
-	__ATTR(get_ecc_public_key, 0200, NULL, store_tmel_get_ecc_public_key);
 
 static void dump_fuse_v1(unsigned int addr)
 {
@@ -278,10 +277,12 @@ static ssize_t list_fuse_show(struct device *dev,
 
 static DEVICE_ATTR_WO(dump_fuse);
 static DEVICE_ATTR_RO(list_fuse);
+static DEVICE_ATTR_WO(get_ecc_public_key);
 
 static struct attribute *tmel_log_attrs[] = {
 	&dev_attr_dump_fuse.attr,
 	&dev_attr_list_fuse.attr,
+	&dev_attr_get_ecc_public_key.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(tmel_log);
@@ -302,14 +303,6 @@ static int tmel_log_probe(struct platform_device *pdev)
 
 	if (!data->tmelcom_support)
 		return 0;
-
-	tmelcom_kobj = kobject_create_and_add("tmelcom", NULL);
-	if (!tmelcom_kobj)
-		dev_err(&pdev->dev, "Failed to register tmelcom sysfs\n");
-
-	ret = sysfs_create_file(tmelcom_kobj, &tmel_attr.attr);
-	if (ret)
-		dev_err(&pdev->dev, "Failed to register get_ecc_public_key sysfs\n");
 
 	file  = debugfs_create_file("tmel_log", 0444, NULL,
 					NULL, &tmel_log_fops);
