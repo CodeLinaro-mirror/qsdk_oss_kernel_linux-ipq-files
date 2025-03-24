@@ -281,7 +281,7 @@
 			qcom,txcmpl_point_offload_ring = <0>;		/* Txcmpl point offlaod ring */
 			qcom,rxfill_point_offload_ring = <0>;		/* Rxfill point offlaod ring */
 			qcom,rxdesc_point_offload_ring = <0>;		/* Rxdesc point offlaod ring */
-			qcom,edma_loopback_ring;
+			qcom,loopback_ext_ddr_upstream;
 			qcom,num_loopback_rings = <1>;
 			qcom,txdesc_loopback_ring_id = <0>;
 			qcom,txcmpl_loopback_ring_id = <0>;
