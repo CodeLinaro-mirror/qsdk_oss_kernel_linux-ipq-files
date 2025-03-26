@@ -279,10 +279,6 @@
 	status = "okay";
 };
 
-&tmel_log {
-	status = "okay";
-};
-
 &q6v5_wcss {
 	pinctrl-0 = <&wsi_default_state>;
 	pinctrl-names = "default";

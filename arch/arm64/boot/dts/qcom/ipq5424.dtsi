@@ -1710,11 +1710,6 @@
 			status = "disabled";
 		};
 
-		tmel_log: tmel-log {
-			compatible = "qcom,tmel-log";
-			status = "disabled";
-		};
-
 		watchdog: watchdog@f410000 {
 			compatible = "qcom,apss-wdt-ipq5424", "qcom,kpss-wdt";
 			reg = <0xf410000 0x1000>;
@@ -4242,6 +4237,10 @@
 			     <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
 			     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
 			     <GIC_PPI 12 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>;
+	};
+
+	tmel-log {
+		compatible = "qcom,tmel-log-ipq5424";
 	};
 
 	qcom,test@0 {
