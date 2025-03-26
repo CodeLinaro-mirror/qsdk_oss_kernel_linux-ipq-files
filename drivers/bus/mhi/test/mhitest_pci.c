@@ -26,9 +26,8 @@
 #define QCN9224_DEFAULT_FW_FILE_NAME	"qcn9224/amss.bin"
 #define QCN9625_DEFAULT_FW_FILE_NAME	"qcn9625/amss.bin"
 
-#define PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV0	0x3164
-#define PCIE_REG_FOR_QRTR_NODE_INSTANCE_ID	\
-	PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV0
+#define PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV0		0x3164
+#define QCN9625_PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV0	0x3300
 #define QCN90XX_QRTR_INSTANCE_ID_BASE		0x20
 #define QCN92XX_QRTR_INSTANCE_ID_BASE		0x30
 #define QCN96XX_QRTR_INSTANCE_ID_BASE		0x40
@@ -1369,6 +1368,7 @@ extern int timeout_ms;
 int mhitest_pci_start_mhi(struct mhitest_platform *mplat)
 {
 	int ret;
+	int qrtr_instance_id_reg = PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV0;
 
 	pr_debug("Enter\n");
 
@@ -1410,6 +1410,8 @@ int mhitest_pci_start_mhi(struct mhitest_platform *mplat)
 		break;
 	case QCN96XX_DEVICE_ID:
 		qrtr_id = QCN96XX_QRTR_INSTANCE_ID_BASE;
+		qrtr_instance_id_reg =
+				QCN9625_PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV0;
 		break;
 	default:
 		pr_err("Invalid device_id: 0x%lx", mplat->device_id);
@@ -1418,14 +1420,14 @@ int mhitest_pci_start_mhi(struct mhitest_platform *mplat)
 
 	qrtr_id += mplat->d_instance;
 
-	pr_debug("write 0x%x to PCIE_REG_FOR_QRTR_NODE_INSTANCE_ID\n", qrtr_id);
-	writel(qrtr_id, mplat->bar + PCIE_REG_FOR_QRTR_NODE_INSTANCE_ID);
+	pr_debug("write 0x%x to qrtr_instance_id_reg\n", qrtr_id);
+	writel(qrtr_id, mplat->bar + qrtr_instance_id_reg);
 	if (ret) {
 		pr_err("Failed to write register offset 0x%x, err = %d\n",
-		       PCIE_REG_FOR_QRTR_NODE_INSTANCE_ID, ret);
+		       qrtr_instance_id_reg, ret);
 		goto out1;
 	}
-	val = readl(mplat->bar + PCIE_REG_FOR_QRTR_NODE_INSTANCE_ID);
+	val = readl(mplat->bar + qrtr_instance_id_reg);
 
 	if (val != qrtr_id) {
 		pr_err("qrtr node id write to register doesn't match with readout value 0x%x", val);
