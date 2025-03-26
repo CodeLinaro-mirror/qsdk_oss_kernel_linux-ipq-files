@@ -28,6 +28,10 @@ static int argc = 0;
 struct kobject *tmelcom_kobj;
 
 struct tmellog_data {
+	unsigned long base_addr;
+	u32 fuse_addr;
+	u32 fuse_addr_size;
+	u32 tme_auth_en_mask;
 	bool tmelcom_support;
 	u32 version;
 };
@@ -147,13 +151,12 @@ static ssize_t dump_fuse_store(struct device *dev,
 			       struct device_attribute *attr,
 			       const char *buf, size_t count)
 {
-	const struct tmellog_data *data;
+	const struct tmellog_data *data = dev_get_drvdata(dev);
 	unsigned int addr;
 
 	if (kstrtouint(buf, 0, &addr))
 		return -EINVAL;
 
-	data = of_device_get_match_data(dev);
 	if (!data)
 		return -EINVAL;
 
@@ -165,10 +168,120 @@ static ssize_t dump_fuse_store(struct device *dev,
 	return count;
 }
 
+static int list_fuse_v1(const struct tmellog_data *data, char *buf)
+{
+	struct fuse_payload_ipq9574 *fuse __free(kfree);
+	unsigned long base_addr = data->base_addr;
+	int index = 0, next = 0;
+	int ret, n;
+
+	fuse = kzalloc((sizeof(struct fuse_payload_ipq9574) *
+			data->fuse_addr_size), GFP_KERNEL);
+	if (!fuse)
+		return -ENOMEM;
+
+	fuse[index++].fuse_addr = data->fuse_addr;
+	fuse[index].fuse_addr = data->fuse_addr + 0x4;
+
+	for (index = 2; index < data->fuse_addr_size; index++) {
+		fuse[index].fuse_addr = base_addr + next;
+		next += 0x4;
+	}
+
+	ret = qcom_scm_get_ipq_fuse_list(fuse,
+					 sizeof(struct fuse_payload_ipq9574) *
+					 data->fuse_addr_size);
+	if (ret) {
+		pr_err("Fuse list SCM call failed, ret = %d\n", ret);
+		return ret;
+	}
+
+	n += scnprintf(buf + n, PAGE_SIZE - n, "Fuse Name\tAddress\t\tValue\n");
+	n += scnprintf(buf + n, PAGE_SIZE - n, "------------------------------------------------\n");
+
+	n += scnprintf(buf + n, PAGE_SIZE - n, "TME_AUTH_EN\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
+		       fuse[0].val & data->tme_auth_en_mask);
+	n += scnprintf(buf + n, PAGE_SIZE - n, "TME_OEM_ID\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
+		       fuse[0].val & 0xFFFF0000);
+	n += scnprintf(buf + n, PAGE_SIZE - n, "TME_PRODUCT_ID\t0x%08X\t0x%08X\n",
+		       fuse[1].fuse_addr, fuse[1].val & 0xFFFF);
+
+	for (index = 2; index < data->fuse_addr_size; index++) {
+		n += scnprintf(buf + n, PAGE_SIZE - n, "TME_MRC_HASH\t0x%08X\t0x%08X\n",
+			       fuse[index].fuse_addr, fuse[index].val);
+	}
+
+	return n;
+}
+
+static int list_fuse_v2(const struct tmellog_data *data, char *buf)
+{
+	struct fuse_payload *fuse __free(kfree);
+	unsigned long base_addr = data->base_addr;
+	int index = 0, next = 0;
+	int ret, n;
+
+	fuse = kzalloc((sizeof(struct fuse_payload) * data->fuse_addr_size),
+			GFP_KERNEL);
+
+	if (!fuse)
+		return -ENOMEM;
+
+	fuse[0].fuse_addr = data->fuse_addr;
+	for (index = 1; index < data->fuse_addr_size; index++) {
+		fuse[index].fuse_addr = base_addr + next;
+		next += 0x8;
+	}
+
+	ret = qcom_scm_get_ipq_fuse_list(fuse, sizeof(struct fuse_payload ) *
+					 data->fuse_addr_size);
+	if (ret) {
+		pr_err("Fuse list SCM call failed, ret = %d\n", ret);
+		return ret;
+	}
+
+	n += scnprintf(buf + n, PAGE_SIZE - n, "Fuse Name\tAddress\t\tValue\n");
+	n += scnprintf(buf + n, PAGE_SIZE - n, "------------------------------------------------\n");
+
+	n += scnprintf(buf + n, PAGE_SIZE - n, "TME_AUTH_EN\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
+		       fuse[0].lsb_val & data->tme_auth_en_mask);
+	n += scnprintf(buf + n, PAGE_SIZE - n, "TME_OEM_ID\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
+		       fuse[0].lsb_val & 0xFFFF0000);
+	n += scnprintf(buf + n, PAGE_SIZE - n, "TME_PRODUCT_ID\t0x%08X\t0x%08X\n",
+		       fuse[0].fuse_addr + 0x4, fuse[0].msb_val & 0xFFFF);
+
+	for (index = 1; index < data->fuse_addr_size; index++) {
+		n += scnprintf(buf + n, PAGE_SIZE - n, "TME_MRC_HASH\t0x%08X\t0x%08X\n",
+			       fuse[index].fuse_addr, fuse[index].lsb_val);
+		n += scnprintf(buf + n, PAGE_SIZE - n, "TME_MRC_HASH\t0x%08X\t0x%08X\n",
+			       fuse[index].fuse_addr + 0x4, fuse[index].msb_val);
+	}
+
+	return n;
+}
+
+static ssize_t list_fuse_show(struct device *dev,
+			      struct device_attribute *attr, char *buf)
+{
+	const struct tmellog_data *data = dev_get_drvdata(dev);
+
+	if (!data)
+		return -EINVAL;
+
+	if (data->version == 0x1)
+		return list_fuse_v1(data, buf);
+	else if (data->version == 0x2)
+		return list_fuse_v2(data, buf);
+
+	return -EINVAL;
+}
+
 static DEVICE_ATTR_WO(dump_fuse);
+static DEVICE_ATTR_RO(list_fuse);
 
 static struct attribute *tmel_log_attrs[] = {
 	&dev_attr_dump_fuse.attr,
+	&dev_attr_list_fuse.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(tmel_log);
@@ -184,6 +297,8 @@ static int tmel_log_probe(struct platform_device *pdev)
 	data = of_device_get_match_data(&pdev->dev);
 	if (!data)
 		return -EINVAL;
+
+	platform_set_drvdata(pdev, (void*)data);
 
 	if (!data->tmelcom_support)
 		return 0;
@@ -238,16 +353,28 @@ static int tmel_log_probe(struct platform_device *pdev)
 }
 
 static const struct tmellog_data tmellog_ipq5332_data = {
+	.base_addr = 0xA00E8,
+	.fuse_addr = 0xA00D0,
+	.fuse_addr_size = 0x8,
+	.tme_auth_en_mask = 0x41,
 	.tmelcom_support = false,
 	.version = 0x2,
 };
 
 static const struct tmellog_data tmellog_ipq5424_data = {
+	.base_addr = 0xA00F8,
+	.fuse_addr = 0xA00E0,
+	.fuse_addr_size = 0x8,
+	.tme_auth_en_mask = 0x82,
 	.tmelcom_support = true,
 	.version = 0x2,
 };
 
 static const struct tmellog_data tmellog_ipq9574_data = {
+	.base_addr = 0xA00D8,
+	.fuse_addr = 0xA00C0,
+	.fuse_addr_size = 0x16,
+	.tme_auth_en_mask = 0x80,
 	.tmelcom_support = false,
 	.version = 0x1,
 };
