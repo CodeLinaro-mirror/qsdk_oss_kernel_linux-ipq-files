@@ -467,6 +467,12 @@ static inline int tmelcom_probed(void)
 	return -EOPNOTSUPP;
 }
 
+static inline int tmelcomm_get_ecc_public_key(u32 type, void *buf, u32 size,
+					      u32 *rsp_len)
+{
+	return -EOPNOTSUPP;
+}
+
 static inline int tmelcom_fuse_list_read(struct tmel_fuse_payload *fuse,
 					 size_t size)
 {
