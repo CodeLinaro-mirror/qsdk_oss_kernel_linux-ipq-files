@@ -10,12 +10,9 @@
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
 #include <linux/proc_fs.h>
+#include <linux/regmap.h>
 
-#define MODULENAME			"qcom-fpga-pci"
-#define PCIE_MEM_ACCESS_BASE_ADDR_REG	0x4
-
-#define QTI_FPGA_PON_VENDOR_ID		0x10EE
-#define QTI_FPGA_PON_DEVICE_ID		0x9021
+#include <linux/qcom-fpga-pci.h>
 
 struct qcom_fpga_pci_priv {
 	void __iomem *mmio_addr_base;
@@ -46,17 +43,25 @@ void qcom_program_window(u32 reg)
 	qcom_fpga_pci->last_prog_reg = reg;
 }
 
+/**
+ * qcom_fpga_mem_read() - Read the value from the FPGA register through PCI
+ *
+ * @reg : FPGA register value
+ *
+ * The read value will be returned on success, a negative errno will be
+ * returned in error cases.
+ */
 u32 qcom_fpga_mem_read(u32 reg)
 {
-	u32 base_addr_val, new_addr, val;
+	u32 base_addr, new_addr, val;
 	unsigned long flags;
 
 	spin_lock_irqsave(&pci_lock, flags);
 
-	new_addr = (reg & 0xfffff) | 0x100000;
-	base_addr_val = (reg & 0xfff00000) | 1;
+	new_addr = QCOM_GET_NEW_ADDR(reg);
+	base_addr = QCOM_GET_BASE_ADDR(reg);
 
-	qcom_program_window(base_addr_val);
+	qcom_program_window(base_addr);
 
 	val = readl(qcom_fpga_pci->mmio_addr_base + new_addr);
 
@@ -66,23 +71,118 @@ u32 qcom_fpga_mem_read(u32 reg)
 }
 EXPORT_SYMBOL(qcom_fpga_mem_read);
 
+/**
+ * qcom_fpga_mem_write() - Write the value to the FPGA register through PCI
+ *
+ * @reg : FPGA register value
+ * @val : Value to be written in FPGA register
+ *
+ */
 void qcom_fpga_mem_write(u32 reg, u32 val)
 {
-	u32 base_addr_val, new_addr;
+	u32 base_addr, new_addr;
 	unsigned long flags;
 
 	spin_lock_irqsave(&pci_lock, flags);
 
-	new_addr = (reg & 0xfffff) | 0x100000;
-	base_addr_val = (reg & 0xfff00000) | 1;
+	new_addr = QCOM_GET_NEW_ADDR(reg);
+	base_addr = QCOM_GET_BASE_ADDR(reg);
 
-	qcom_program_window(base_addr_val);
+	qcom_program_window(base_addr);
 
 	writel(val, qcom_fpga_pci->mmio_addr_base + new_addr);
 
 	spin_unlock_irqrestore(&pci_lock, flags);
 }
 EXPORT_SYMBOL(qcom_fpga_mem_write);
+
+/**
+ * qcom_fpga_bulk_reg_write() - Sequentially write the bulk values to the
+ *                              FPGA registers through PCI
+ *
+ * @reg : Start of the FPGA register value for the sequential write
+ * @val : Array of values to be written in FPGA register
+ * @val_count : Number of values to be written
+ *
+ */
+int qcom_fpga_bulk_reg_write(u32 reg, const u32 *val,
+			     size_t val_count)
+{
+	int i;
+
+	for (i = 0; i < val_count; i++) {
+		qcom_fpga_mem_write(reg, val[i]);
+		reg += 4;
+	}
+
+	return val_count;
+}
+EXPORT_SYMBOL(qcom_fpga_bulk_reg_write);
+
+/**
+ * qcom_fpga_bulk_reg_read() - Sequentially read the bulk values from the
+ *                             FPGA registers through PCI
+ *
+ * @reg : Start of the FPGA register value for the sequential read
+ * @val : Array of values to be read from the FPGA register
+ * @val_count : Number of values to be read
+ *
+ */
+int qcom_fpga_bulk_reg_read(u32 reg, u32 *val, size_t val_count)
+{
+	int i;
+
+	for (i = 0; i < val_count; i++) {
+		val[i] = qcom_fpga_mem_read(reg);
+		reg += 4;
+	}
+
+	return val_count;
+}
+EXPORT_SYMBOL(qcom_fpga_bulk_reg_read);
+
+/**
+ * qcom_fpga_multi_reg_write() - Write the multiple FPGA registers through PCI
+ *
+ * @regs : Array of structures containing register,value to be written
+ * @num_regs : Number of registers to write
+ *
+ */
+int qcom_fpga_multi_reg_write(const struct reg_sequence *regs,
+			      int num_regs)
+{
+	int i;
+
+	for (i = 0; i < num_regs; i++) {
+		qcom_fpga_mem_write(regs[i].reg, regs[i].def);
+		if (regs[i].delay_us)
+			udelay(regs[i].delay_us);
+	}
+
+	return num_regs;
+}
+EXPORT_SYMBOL(qcom_fpga_multi_reg_write);
+
+/**
+ * qcom_fpga_multi_reg_read() - Read the multiple FPGA registers through PCI
+ *
+ * @regs : Array of structures containing register,value to be read
+ * @num_regs : Number of registers to read
+ *
+ */
+int qcom_fpga_multi_reg_read(struct reg_sequence *regs, int num_regs)
+{
+	int i;
+
+	for (i = 0; i < num_regs; i++) {
+		regs[i].def = qcom_fpga_mem_read(regs[i].reg);
+		if (regs[i].delay_us)
+			udelay(regs[i].delay_us);
+	}
+
+	return num_regs;
+}
+EXPORT_SYMBOL(qcom_fpga_multi_reg_read);
 
 static ssize_t fpga_reg_write_store(struct device *device,
 				    struct device_attribute *attr,
