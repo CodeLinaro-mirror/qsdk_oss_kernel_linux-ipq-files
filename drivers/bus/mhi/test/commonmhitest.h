@@ -60,6 +60,11 @@
 
 #define PCI_LINK_DOWN                   0
 
+#define DEVICE_RDDM_COOKIE		0xCAFECACE
+#define MHITEST_IN_MISSION_MODE(ee)	(ee == MHI_EE_AMSS  || \
+					 ee == MHI_EE_WFW || \
+					 ee == MHI_EE_FP)
+
 /*
  *Structure specific to mhitest module
  */
@@ -160,6 +165,7 @@ struct mhitest_platform {
 	bool soc_reset_requested;
 	struct completion soc_reset_request;
 	bool running;
+	struct timer_list boot_debug_timer;
 };
 enum MHI_STATE {
 	MHI_INIT,
@@ -212,3 +218,4 @@ int mhitest_unregister_ramdump(struct mhitest_platform *);
 int mhitest_pci_remove_all(struct mhitest_platform *);
 void mhitest_pci_soc_reset(struct mhitest_platform *mplat);
 void mhitest_reset_mhi_state(struct mhitest_platform *mplat);
+void mhitest_pci_dump_bl_sram_mem(struct mhitest_platform *mplat);
