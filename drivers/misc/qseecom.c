@@ -194,10 +194,10 @@ static ssize_t tmecomm_show_aes_generate_key(struct device *dev,
 	key_id = TME_KID_ALLOC;
 	if (tmel_aes_mode == TME_KAL_AES256_ECB) {
 		policy.low = 0xc204c20;
-		policy.high = 0x84040;
+		policy.high = 0x84044;
 	} else if (tmel_aes_mode == TME_KAL_AES256_CBC) {
 		policy.low = 0xc214c20;
-		policy.high = 0x84040;
+		policy.high = 0x84044;
 	} else if (tmel_aes_mode == TME_KAL_AES256_GCM) {
 		policy.low = 0xc260c20;
 		policy.high = 0x84044;
