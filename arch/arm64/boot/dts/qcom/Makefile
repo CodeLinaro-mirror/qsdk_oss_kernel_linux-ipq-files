@@ -5,6 +5,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= apq8039-t2.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= apq8094-sony-xperia-kitakami-karin_windy.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= apq8096-db820c.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= apq8096-ifc6640.dtb
+dtb-$(CONFIG_ARCH_QCOM)	+= ipq5200-emulation.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq5424-rdp464.dtb
 dtb-$(CONFIG_ARCH_QCOM) += ipq5424-rdp464-c2.dtb
 dtb-$(CONFIG_ARCH_QCOM) += ipq5424-rdp464-c3.dtb
