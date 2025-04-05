@@ -586,6 +586,7 @@ dma_addr_t dma_aes_ivdata = 0;
 #define TME_KID_OEM_PRODUCT_SEED	0xC
 #define TME_KID_L2_KEYWRAPSVC		0x6
 #define TME_KID_L2_SECURESTRGSVC	0x7
+#define TME_KAL_AES256_GCM		0x2
 #define TME_KAL_AES256_CBC		0x8
 #define TME_KAL_AES256_ECB		0xC
 #define TME_KAL_AES256_SIV		0x30000
@@ -597,7 +598,7 @@ dma_addr_t dma_aes_ivdata = 0;
 #define TME_KDF_SALT_LABEL_BYTES_MAX	64
 
 #define TME_MAX_AAD_LEN			256
-#define TME_MAX_TAG_LEN			256
+#define TME_MAX_TAG_LEN			16
 
 static struct kobject *tmel_sec_kobj;
 static uint8_t *tmel_key_handle;
@@ -1033,6 +1034,18 @@ static ssize_t tmecomm_aes_show_iv_data(struct device *dev,
 static ssize_t tmecomm_aes_store_iv_data(struct device *dev,
 					 struct device_attribute *attr,
 					 const char *buf, size_t count);
+static ssize_t tmecomm_aes_show_aad_data(struct device *dev,
+					 struct device_attribute *attr,
+					 char *buf);
+static ssize_t tmecomm_aes_store_aad_data(struct device *dev,
+					  struct device_attribute *attr,
+					  const char *buf, size_t count);
+static ssize_t tmecomm_aes_show_tag_data(struct device *dev,
+					 struct device_attribute *attr,
+					 char *buf);
+static ssize_t tmecomm_aes_store_tag_data(struct device *dev,
+					  struct device_attribute *attr,
+					  const char *buf, size_t count);
 static ssize_t tmecomm_store_aes_mode(struct device *dev,
 				      struct device_attribute *attr,
 				      const char *buf, size_t count);
@@ -1149,6 +1162,10 @@ static DEVICE_ATTR(tmel_aes_context_data, 0644, NULL, tmecomm_aes_store_context_
 static DEVICE_ATTR(tmel_aes_salt_label_data, 0644, NULL, tmecomm_aes_store_salt_label_data);
 static DEVICE_ATTR(tmel_aes_iv_data, 0644, tmecomm_aes_show_iv_data,
 		   tmecomm_aes_store_iv_data);
+static DEVICE_ATTR(tmel_aes_aad_data, 0644, tmecomm_aes_show_aad_data,
+		   tmecomm_aes_store_aad_data);
+static DEVICE_ATTR(tmel_aes_tag_data, 0644, tmecomm_aes_show_tag_data,
+		   tmecomm_aes_store_tag_data);
 static DEVICE_ATTR(tmel_aes_sec_ctx, 0644, NULL, tmecomm_aes_store_security_context);
 static DEVICE_ATTR(tmel_aes_input_key, 0644, NULL, tmecomm_aes_store_input_key);
 static DEVICE_ATTR(tmel_aes_generate_key, 0644, tmecomm_show_aes_generate_key,
@@ -1257,6 +1274,8 @@ static struct attribute *sec_key_tmel_aes_attrs[] = {
 	&dev_attr_tmel_aes_context_data.attr,
 	&dev_attr_tmel_aes_salt_label_data.attr,
 	&dev_attr_tmel_aes_iv_data.attr,
+	&dev_attr_tmel_aes_aad_data.attr,
+	&dev_attr_tmel_aes_tag_data.attr,
 	&dev_attr_tmel_aes_sec_ctx.attr,
 	&dev_attr_tmel_aes_mode.attr,
 	&dev_attr_tmel_aes_input_key.attr,

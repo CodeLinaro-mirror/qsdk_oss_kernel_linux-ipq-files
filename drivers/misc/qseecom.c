@@ -195,9 +195,15 @@ static ssize_t tmecomm_show_aes_generate_key(struct device *dev,
 	if (tmel_aes_mode == TME_KAL_AES256_ECB) {
 		policy.low = 0xc204c20;
 		policy.high = 0x84040;
-	} else { //TME_KAL_AES256_CBC
+	} else if (tmel_aes_mode == TME_KAL_AES256_CBC) {
 		policy.low = 0xc214c20;
 		policy.high = 0x84040;
+	} else if (tmel_aes_mode == TME_KAL_AES256_GCM) {
+		policy.low = 0xc260c20;
+		policy.high = 0x84044;
+	} else {
+		pr_err("Invalid AES mode\n");
+		return -EINVAL;
 	}
 
 	ret = tmelcom_aes_generate_key(key_id, &policy, tmel_key_handle);
@@ -253,9 +259,15 @@ static ssize_t tmecomm_show_aes_import_key(struct device *dev,
 	if (tmel_aes_mode == TME_KAL_AES256_ECB) {
 		policy.low = 0xc104c20;
 		policy.high = 0x84044;
-	} else { //TME_KAL_AES256_CBC
+	} else if (tmel_aes_mode == TME_KAL_AES256_CBC) {
 		policy.low = 0xc114c20;
 		policy.high = 0x84044;
+	} else if (tmel_aes_mode == TME_KAL_AES256_GCM) {
+		policy.low = 0xc160c20;
+		policy.high = 0x84044;
+	} else {
+		pr_err("Invalid AES mode\n");
+		return -EINVAL;
 	}
 
 	ret = tmelcom_aes_import_key(key_id, &policy, &key_material,
@@ -319,12 +331,23 @@ static ssize_t tmecomm_show_aes_derive_key(struct device *dev,
 			kdf_spec->policy.low = 0xc214c20;
 			kdf_spec->policy.high = 0x84048;
 		}
-	} else { //TME_KAL_AES256_SIV
+	} else if (tmel_aes_mode == TME_KAL_AES256_GCM) {
+		if (tmel_aes_input_key == TME_KID_CHIP_RAND_BASE) {
+			kdf_spec->policy.low = 0x4c260c20;
+			kdf_spec->policy.high = 0x84044;
+		} else { //TME_KID_OEM_PRODUCT_SEED
+			kdf_spec->policy.low = 0xc260c20;
+			kdf_spec->policy.high = 0x84048;
+		}
+	} else if (tmel_aes_mode == TME_KAL_AES256_SIV) {
 		if (tmel_aes_input_key == TME_KID_CHIP_RAND_BASE)
 			kdf_spec->policy.low = 0x4c230d38;
 		else //TME_KID_OEM_PRODUCT_SEED
 			kdf_spec->policy.low = 0xc230e38;
 		kdf_spec->policy.high = 0x84040;
+	} else {
+		pr_err("Invalid AES mode\n");
+		return -EINVAL;
 	}
 	memcpy(kdf_spec->sw_context, sw_context, tmel_aes_sw_context_len);
 	kdf_spec->sw_context_len = tmel_aes_sw_context_len;
@@ -410,6 +433,8 @@ static ssize_t tmecomm_store_aes_mode(struct device *dev,
 	else if (val == 1)
 		tmel_aes_mode = TME_KAL_AES256_CBC;
 	else if (val == 2)
+		tmel_aes_mode = TME_KAL_AES256_GCM;
+	else if (val == 3)
 		tmel_aes_mode = TME_KAL_AES256_SIV;
 	else
 		return -EINVAL;
@@ -682,6 +707,77 @@ static ssize_t tmecomm_aes_store_security_context(struct device *dev,
 
 	return count;
 }
+
+static ssize_t tmecomm_aes_show_aad_data(struct device *dev,
+					 struct device_attribute *attr,
+					 char *buf)
+{
+	if (!aad) {
+		pr_err("Invalid AAD buffer\n");
+		return 0;
+	}
+
+	memcpy(buf, aad, tmel_aes_aad_len);
+
+	return tmel_aes_aad_len;
+}
+
+static ssize_t tmecomm_aes_store_aad_data(struct device *dev,
+					  struct device_attribute *attr,
+					  const char *buf, size_t count)
+{
+	if (!aad) {
+		pr_err("Invalid AAD buffer\n");
+		return 0;
+	}
+
+	if (count > TME_MAX_AAD_LEN) {
+		pr_err("AAD size should be less than %u bytes\n", TME_MAX_AAD_LEN);
+		return -EINVAL;
+	}
+
+	memset(aad, 0, TME_MAX_AAD_LEN);
+	memcpy(aad, buf, count);
+	tmel_aes_aad_len = count;
+
+	return count;
+}
+
+static ssize_t tmecomm_aes_show_tag_data(struct device *dev,
+					 struct device_attribute *attr,
+					 char *buf)
+{
+	if (!tag) {
+		pr_err("Invalid Tag buffer\n");
+		return 0;
+	}
+
+	memcpy(buf, tag, tmel_aes_tag_len);
+
+	return tmel_aes_tag_len;
+}
+
+static ssize_t tmecomm_aes_store_tag_data(struct device *dev,
+					  struct device_attribute *attr,
+					  const char *buf, size_t count)
+{
+	if (!tag) {
+		pr_err("Invalid Tag buffer\n");
+		return 0;
+	}
+
+	if (count > TME_MAX_TAG_LEN) {
+		pr_err("Tag size should be less than %u bytes\n", TME_MAX_TAG_LEN);
+		return -EINVAL;
+	}
+
+	memset(tag, 0, TME_MAX_TAG_LEN);
+	memcpy(tag, buf, count);
+	tmel_aes_tag_len = count;
+
+	return count;
+}
+
 
 static ssize_t tmecomm_store_wrap_key_id(struct device *dev,
 					 struct device_attribute *attr,
