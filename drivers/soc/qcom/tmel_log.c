@@ -404,5 +404,5 @@ subsys_initcall_sync(tmel_log_driver_init);
 module_param_array(log_level, int, &argc, 0000);
 MODULE_PARM_DESC(log_level, "An array of components and log level");
 
-MODULE_DESCRIPTION("Collect TMEL LOG using component and log level id's");
+MODULE_DESCRIPTION("Provides multiple debugging features for TME-L");
 MODULE_LICENSE("GPL");
