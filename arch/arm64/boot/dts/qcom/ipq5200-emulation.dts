@@ -1,0 +1,95 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * IPQ5200 Emulation board device tree source
+ *
+ * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ */
+
+/dts-v1/;
+
+#include "ipq5200.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. IPQ5200-EMULATION";
+	compatible = "qcom,ipq5200-emulation", "qcom,ipq5200";
+
+	/*Timer freq for rumi = timer freq / 100*/
+	clocks {
+		sleep_clk: sleep-clk {
+			clock-frequency = <320>;
+		};
+
+		xo: xo {
+			clock-frequency = <240000>;
+		};
+	};
+
+	chosen {
+		linux,initrd-end = <0x47000000>;
+		linux,initrd-start = <0x45000000>;
+		bootargs = "root=/dev/ram0 rw init=/init nosmp clk_ignore_unused";
+		stdout-path = "serial0";
+	};
+
+	cpus: cpus {
+		CPU0: cpu@0 {
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc0>;
+		};
+
+		CPU1: cpu@1 {
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc1>;
+		};
+
+		CPU2: cpu@2 {
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc2>;
+		};
+
+		CPU3: cpu@3 {
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc3>;
+		};
+	};
+
+	memory@40000000 {
+		reg = <0x0 0x40000000 0x0 0x40000000>;
+	};
+
+	soc@0 {
+		acc0: clock-controller@f188000 {
+			compatible = "qcom,arm-cortex-acc";
+			reg = <0xf188000 0x1000>;
+		};
+
+		acc1: clock-controller@f198000 {
+			compatible = "qcom,arm-cortex-acc";
+			reg = <0xf198000 0x1000>;
+		};
+
+		acc2:clock-controller@f1a8000 {
+			compatible = "qcom,arm-cortex-acc";
+			reg = <0xf1a8000 0x1000>;
+		};
+
+		acc3:clock-controller@f1b8000 {
+			compatible = "qcom,arm-cortex-acc";
+			reg = <0xf1b8000 0x1000>;
+		};
+
+		/*Timer freq for rumi = timer freq / 100*/
+		timer {
+			clock-frequency = <240000>;
+		};
+
+		timer@f120000 {
+			clock-frequency = <240000>;
+		};
+	};
+
+	psci {
+		status = "disabled";
+	};
+};
