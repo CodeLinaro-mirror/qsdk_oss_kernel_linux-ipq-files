@@ -340,36 +340,15 @@
 	};
 };
 
-&pcie1_phy {
-	status = "okay";
-};
-
-&pcie1_x1 {
-	perst-gpios = <&tlmm 26 GPIO_ACTIVE_LOW>;
-	status = "okay";
-	pcie1_rp: pcie1_rp {
-		reg = <0 0 0 0 0>;
-	};
-};
-
-&pcie2_phy {
-	status = "okay";
-};
-
-&pcie2_x2 {
-	perst-gpios = <&tlmm 29 GPIO_ACTIVE_LOW>;
-	status = "okay";
-	pcie2_rp: pcie2_rp {
-		reg = <0 0 0 0 0>;
-	};
-};
-
 &pcie3_phy {
+	serdes-reg-update = <0x10 0x0>;
 	status = "okay";
 };
 
 &pcie3_x2 {
 	perst-gpios = <&tlmm 32 GPIO_ACTIVE_LOW>;
+	max-link-speed = <2>;
+	link_retries_count = <400>;
 	status = "okay";
 	pcie3_rp: pcie3_rp {
 		reg = <0 0 0 0 0>;
@@ -714,34 +693,4 @@
        npu-supply = <&npu_vreg>;
        mx-supply = <&ipq9574_s4>;
        status = "okay";
-};
-
-&qcn9224_pcie1 {
-	status = "okay";
-};
-
-&qcn9224_pcie2 {
-	status = "okay";
-};
-
-&qcn9224_pcie3 {
-	status = "okay";
-};
-
-#if defined(__MHI_BUS_RESERVED_DMA_POOL__)
-&mhi_region1 {
-	status = "okay";
-};
-
-&mhi_region2 {
-	status = "okay";
-};
-
-&mhi_region3 {
-	status = "okay";
-};
-#endif
-
-&mlo_global_mem0 {
-	status = "okay";
 };
