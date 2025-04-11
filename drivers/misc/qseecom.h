@@ -693,13 +693,18 @@ dma_addr_t dma_aes_ivdata = 0;
 #define TME_KID_OEM_PRODUCT_SEED	0xC
 #define TME_KID_L2_KEYWRAPSVC		0x6
 #define TME_KID_L2_SECURESTRGSVC	0x7
+#define TME_KAL_ECC_ALGO_ECDSA		0x0
+#define TME_KAL_ECC_ALGO_ECDH		0x4000
+#define TME_KAL_SHA256_HMAC		0x48000
 #define TME_KAL_AES256_GCM		0x2
 #define TME_KAL_AES256_CBC		0x8
 #define TME_KAL_AES256_ECB		0xC
 #define TME_KAL_AES256_SIV		0x30000
 #define TME_KSC_SWContext		0x00000020
+#define TME_KSC_MixingKey		0x00000080
 #define TME_KAL_SHA512_HMAC		0x58000
 #define TME_WK_CONTEXT_BYTES_MAX        0x64
+#define TME_MAX_KEY_LEN			48
 
 #define TME_KDF_SW_CONTEXT_BYTES_MAX	128
 #define TME_KDF_SALT_LABEL_BYTES_MAX	64
@@ -719,12 +724,26 @@ static uint32_t tmel_aes_decrypted_len;
 static uint32_t tmel_aes_aad_len;
 static uint32_t tmel_aes_iv_len;
 static uint32_t tmel_aes_tag_len;
-static uint32_t tmel_aes_salt_label_len;
-static uint32_t tmel_aes_sw_context_len;
-static uint32_t tmel_aes_sec_ctx = TME_KSC_SWContext;
-static uint32_t tmel_aes_mode;
-static uint32_t tmel_aes_input_key;
-static uint32_t tmel_aes_pt_key_len;
+static uint32_t tmel_salt_label_len;
+static uint32_t tmel_sw_context_len;
+static uint32_t tmel_sec_ctx = TME_KSC_SWContext;
+static uint32_t tmel_algo;
+static uint32_t tmel_input_key;
+static uint32_t tmel_pt_key_len;
+static uint32_t tmel_curve_id;
+static uint32_t tmel_prv_key_id;
+static uint32_t tmel_prv_key2_id;
+static uint32_t tmel_pub_key_len;
+static uint32_t tmel_pub_key2_len;
+static uint32_t tmel_ecc_sign_msg_len;
+static uint32_t tmel_ecc_plain_txt_len;
+static uint32_t tmel_hash_algo_id;
+static uint32_t tmel_ecc_algo;
+static uint32_t tmel_shared_key_id;
+static uint32_t tmel_mix_key_id;
+static uint32_t tmel_hmac_sha_key_id;
+static uint32_t tmel_hmac_sha_input_len;
+static uint32_t tmel_hmac_sha_digest_len;
 
 void *buf_aad;
 void *buf_plain_txt;
@@ -735,6 +754,12 @@ void *buf_salt_label;
 void *buf_sw_context;
 void *buf_pt_key;
 void *buf_wrapped_key;
+void *buf_pub_key;
+void *buf_pub_key2;
+void *buf_ecc_msg;
+void *buf_ecc_signature;
+void *buf_hmac_sha_input;
+void *buf_hmac_sha_digest;
 
 static uint8_t *aad;
 static uint8_t *plain_txt;
@@ -745,6 +770,12 @@ static uint8_t *salt_label;
 static uint8_t *sw_context;
 static uint8_t *pt_key;
 static uint8_t *wrapped_key;
+static uint8_t *pub_key;
+static uint8_t *pub_key2;
+static uint8_t *ecc_msg;
+static uint8_t *ecc_signature;
+static uint8_t *hmac_sha_input;
+static uint8_t *hmac_sha_digest;
 
 dma_addr_t dma_aad;
 dma_addr_t dma_plain_txt;
@@ -755,6 +786,12 @@ dma_addr_t dma_salt_label;
 dma_addr_t dma_sw_context;
 dma_addr_t dma_pt_key;
 dma_addr_t dma_wrapped_key;
+dma_addr_t dma_pub_key;
+dma_addr_t dma_pub_key2;
+dma_addr_t dma_ecc_msg;
+dma_addr_t dma_ecc_signature;
+dma_addr_t dma_hmac_sha_input;
+dma_addr_t dma_hmac_sha_digest;
 /* TMEL AES_v2 relevant variables end */
 
 void *buf_rsa_unsealed_buf = NULL;
@@ -1110,18 +1147,18 @@ static ssize_t store_blow_fuse_write_qtiapp(struct device *dev,
 					const char *buf, size_t count);
 
 /* TMEL AES v2 */
-static ssize_t tmecomm_show_aes_derive_key(struct device *dev,
-					   struct device_attribute *attr,
-					   char *buf);
-static ssize_t tmecomm_show_aes_key(struct device *dev,
-				    struct device_attribute *attr,
-				    char *buf);
-static ssize_t tmecomm_store_aes_key(struct device *dev,
-				     struct device_attribute *attr,
-				     const char *buf, size_t count);
-static ssize_t tmecomm_store_aes_clear_key(struct device *dev,
-					   struct device_attribute *attr,
-					   const char *buf, size_t count);
+static ssize_t tmecomm_show_derive_key(struct device *dev,
+				       struct device_attribute *attr,
+				       char *buf);
+static ssize_t tmecomm_show_key(struct device *dev,
+				struct device_attribute *attr,
+				char *buf);
+static ssize_t tmecomm_store_key(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t count);
+static ssize_t tmecomm_store_clear_key(struct device *dev,
+				       struct device_attribute *attr,
+				       const char *buf, size_t count);
 static ssize_t tmecomm_store_aes_decrypted_data(struct device *dev,
 						struct device_attribute *attr,
 						const char *buf, size_t count);
@@ -1134,15 +1171,15 @@ static ssize_t tmecomm_store_aes_encrypted_data(struct device *dev,
 static ssize_t tmecomm_show_aes_decrypted_data(struct device *dev,
 					       struct device_attribute *attr,
 					       char *buf);
-static ssize_t tmecomm_aes_store_context_data(struct device *dev,
+static ssize_t tmecomm_store_context_data(struct device *dev,
+					  struct device_attribute *attr,
+					  const char *buf, size_t count);
+static ssize_t tmecomm_store_salt_label_data(struct device *dev,
+					     struct device_attribute *attr,
+					     const char *buf, size_t count);
+static ssize_t tmecomm_store_security_context(struct device *dev,
 					      struct device_attribute *attr,
 					      const char *buf, size_t count);
-static ssize_t tmecomm_aes_store_salt_label_data(struct device *dev,
-						 struct device_attribute *attr,
-						 const char *buf, size_t count);
-static ssize_t tmecomm_aes_store_security_context(struct device *dev,
-						  struct device_attribute *attr,
-						  const char *buf, size_t count);
 static ssize_t tmecomm_aes_show_iv_data(struct device *dev,
 					struct device_attribute *attr,
 					char *buf);
@@ -1161,18 +1198,18 @@ static ssize_t tmecomm_aes_show_tag_data(struct device *dev,
 static ssize_t tmecomm_aes_store_tag_data(struct device *dev,
 					  struct device_attribute *attr,
 					  const char *buf, size_t count);
-static ssize_t tmecomm_store_aes_mode(struct device *dev,
+static ssize_t tmecomm_store_algo(struct device *dev,
 				      struct device_attribute *attr,
 				      const char *buf, size_t count);
-static ssize_t tmecomm_aes_store_input_key(struct device *dev,
-					   struct device_attribute *attr,
-					   const char *buf, size_t count);
-static ssize_t tmecomm_show_aes_generate_key(struct device *dev,
-					     struct device_attribute *attr,
-					     char *buf);
-static ssize_t tmecomm_show_aes_import_key(struct device *dev,
-					   struct device_attribute *attr,
-					   char *buf);
+static ssize_t tmecomm_store_input_key(struct device *dev,
+				       struct device_attribute *attr,
+				       const char *buf, size_t count);
+static ssize_t tmecomm_show_generate_key(struct device *dev,
+					 struct device_attribute *attr,
+					 char *buf);
+static ssize_t tmecomm_show_import_key(struct device *dev,
+				       struct device_attribute *attr,
+				       char *buf);
 static ssize_t tmecomm_store_pt_key(struct device *dev,
 				    struct device_attribute *attr,
 				    const char *buf, size_t count);
@@ -1191,6 +1228,57 @@ static ssize_t tmecomm_store_unwrap_key(struct device *dev,
 static ssize_t tmecomm_show_unwrap_key(struct device *dev,
 				       struct device_attribute *attr,
 				       char *buf);
+static ssize_t tmecomm_store_ecc_curve_id(struct device *dev,
+					  struct device_attribute *attr,
+					  const char *buf, size_t count);
+static ssize_t tmecomm_store_ecc_prv_key_id(struct device *dev,
+					    struct device_attribute *attr,
+					    const char *buf, size_t count);
+static ssize_t tmecomm_store_hash_algo(struct device *dev,
+				       struct device_attribute *attr,
+				       const char *buf, size_t count);
+static ssize_t tmecomm_show_ecc_pub_key(struct device *dev,
+					struct device_attribute *attr,
+					char *buf);
+static ssize_t tmecomm_store_ecc_pub_key(struct device *dev,
+					 struct device_attribute *attr,
+					 const char *buf, size_t count);
+static ssize_t tmecomm_store_ecc_input_buf(struct device *dev,
+					   struct device_attribute *attr,
+					   const char *buf, size_t count);
+static ssize_t tmecomm_show_ecc_sign_msg(struct device *dev,
+					 struct device_attribute *attr,
+					 char *buf);
+static ssize_t tmecomm_store_ecc_signature(struct device *dev,
+					   struct device_attribute *attr,
+					   const char *buf, size_t count);
+static ssize_t tmecomm_show_ecc_verify_msg(struct device *dev,
+					   struct device_attribute *attr,
+					   char *buf);
+static ssize_t tmecomm_show_ecc_pub_key2(struct device *dev,
+					struct device_attribute *attr,
+					char *buf);
+static ssize_t tmecomm_store_ecc_pub_key2(struct device *dev,
+					  struct device_attribute *attr,
+					  const char *buf, size_t count);
+static ssize_t tmecomm_store_ecc_prv_key_id2(struct device *dev,
+					     struct device_attribute *attr,
+					     const char *buf, size_t count);
+static ssize_t tmecomm_show_ecdh_shared_secret(struct device *dev,
+					       struct device_attribute *attr,
+					       char *buf);
+static ssize_t tmecomm_store_mix_key_id(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count);
+static ssize_t tmecomm_store_hmac_sha_key_id(struct device *dev,
+					     struct device_attribute *attr,
+					     const char *buf, size_t count);
+static ssize_t tmecomm_show_hmac_sha(struct device *dev,
+				     struct device_attribute *attr,
+				     char *buf);
+static ssize_t tmecomm_store_hmac_sha(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf, size_t count);
 
 /* Qti app device attrs starts here....*/
 
@@ -1264,34 +1352,45 @@ static DEVICE_ATTR(rsa_pad_scheme, 0644, show_rsa_pad_scheme, store_rsa_pad_sche
 static DEVICE_ATTR(rsa_update_keyblob, 0644, show_rsa_update_keyblob, NULL);
 
 /* TMEL AES device attrs */
-static DEVICE_ATTR(tmel_aes_key, 0644, tmecomm_show_aes_key, tmecomm_store_aes_key);
-static DEVICE_ATTR(tmel_aes_derive_key, 0644, tmecomm_show_aes_derive_key,
-		   tmecomm_store_aes_key);
-static DEVICE_ATTR(tmel_aes_clear_key, 0644, NULL, tmecomm_store_aes_clear_key);
+static DEVICE_ATTR(tmel_key, 0644, tmecomm_show_key, tmecomm_store_key);
+static DEVICE_ATTR(tmel_derive_key, 0644, tmecomm_show_derive_key, NULL);
+static DEVICE_ATTR(tmel_clear_key, 0644, NULL, tmecomm_store_clear_key);
 static DEVICE_ATTR(tmel_aes_encrypt, 0644, tmecomm_show_aes_encrypted_data,
 		   tmecomm_store_aes_decrypted_data);
 static DEVICE_ATTR(tmel_aes_decrypt, 0644, tmecomm_show_aes_decrypted_data,
 		   tmecomm_store_aes_encrypted_data);
-static DEVICE_ATTR(tmel_aes_mode, 0644, NULL, tmecomm_store_aes_mode);
-static DEVICE_ATTR(tmel_aes_context_data, 0644, NULL, tmecomm_aes_store_context_data);
-static DEVICE_ATTR(tmel_aes_salt_label_data, 0644, NULL, tmecomm_aes_store_salt_label_data);
+static DEVICE_ATTR(tmel_algo, 0644, NULL, tmecomm_store_algo);
+static DEVICE_ATTR(tmel_context_data, 0644, NULL, tmecomm_store_context_data);
+static DEVICE_ATTR(tmel_salt_label_data, 0644, NULL, tmecomm_store_salt_label_data);
 static DEVICE_ATTR(tmel_aes_iv_data, 0644, tmecomm_aes_show_iv_data,
 		   tmecomm_aes_store_iv_data);
 static DEVICE_ATTR(tmel_aes_aad_data, 0644, tmecomm_aes_show_aad_data,
 		   tmecomm_aes_store_aad_data);
 static DEVICE_ATTR(tmel_aes_tag_data, 0644, tmecomm_aes_show_tag_data,
 		   tmecomm_aes_store_tag_data);
-static DEVICE_ATTR(tmel_aes_sec_ctx, 0644, NULL, tmecomm_aes_store_security_context);
-static DEVICE_ATTR(tmel_aes_input_key, 0644, NULL, tmecomm_aes_store_input_key);
-static DEVICE_ATTR(tmel_aes_generate_key, 0644, tmecomm_show_aes_generate_key,
-		   tmecomm_store_aes_key);
-static DEVICE_ATTR(tmel_aes_import_key, 0644, tmecomm_show_aes_import_key,
-		   tmecomm_store_aes_key);
-static DEVICE_ATTR(tmel_aes_pt_key, 0644, NULL, tmecomm_store_pt_key);
+static DEVICE_ATTR(tmel_sec_ctx, 0644, NULL, tmecomm_store_security_context);
+static DEVICE_ATTR(tmel_input_key, 0644, NULL, tmecomm_store_input_key);
+static DEVICE_ATTR(tmel_generate_key, 0644, tmecomm_show_generate_key, NULL);
+static DEVICE_ATTR(tmel_import_key, 0644, tmecomm_show_import_key, NULL);
+static DEVICE_ATTR(tmel_pt_key, 0644, NULL, tmecomm_store_pt_key);
 static DEVICE_ATTR(tmel_wrap_key_id, 0644, NULL, tmecomm_store_wrap_key_id);
 static DEVICE_ATTR(tmel_wrapping_key_id, 0644, NULL, tmecomm_store_wrapping_key_id);
 static DEVICE_ATTR(tmel_wrap_key, 0644, tmecomm_show_wrap_key, NULL);
 static DEVICE_ATTR(tmel_unwrap_key, 0644, tmecomm_show_unwrap_key, tmecomm_store_unwrap_key);
+static DEVICE_ATTR(tmel_hash_algo, 0644, NULL, tmecomm_store_hash_algo);
+static DEVICE_ATTR(tmel_ecc_curve_id, 0644, NULL, tmecomm_store_ecc_curve_id);
+static DEVICE_ATTR(tmel_ecc_prv_key_id, 0644, NULL, tmecomm_store_ecc_prv_key_id);
+static DEVICE_ATTR(tmel_ecc_prv_key_id2, 0644, NULL, tmecomm_store_ecc_prv_key_id2);
+static DEVICE_ATTR(tmel_ecc_pub_key, 0644, tmecomm_show_ecc_pub_key, tmecomm_store_ecc_pub_key);
+static DEVICE_ATTR(tmel_ecc_pub_key2, 0644, tmecomm_show_ecc_pub_key2, tmecomm_store_ecc_pub_key2);
+static DEVICE_ATTR(tmel_ecc_input_buf, 0644, NULL, tmecomm_store_ecc_input_buf);
+static DEVICE_ATTR(tmel_ecc_sign_msg, 0644, tmecomm_show_ecc_sign_msg, NULL);
+static DEVICE_ATTR(tmel_ecc_signature, 0644, NULL, tmecomm_store_ecc_signature);
+static DEVICE_ATTR(tmel_ecc_verify_msg, 0644, tmecomm_show_ecc_verify_msg, NULL);
+static DEVICE_ATTR(tmel_ecdh_shared_secret, 0644, tmecomm_show_ecdh_shared_secret, NULL);
+static DEVICE_ATTR(tmel_mix_key_id, 0644, NULL, tmecomm_store_mix_key_id);
+static DEVICE_ATTR(tmel_hmac_sha_key_id, 0644, NULL, tmecomm_store_hmac_sha_key_id);
+static DEVICE_ATTR(tmel_hmac_sha, 0644, tmecomm_show_hmac_sha, tmecomm_store_hmac_sha);
 
 static struct attribute *sec_key_attrs[] = {
 	&dev_attr_generate.attr,
@@ -1381,26 +1480,40 @@ static struct attribute_group sec_key_aesv2_attr_grp = {
 };
 
 static struct attribute *sec_key_tmel_aes_attrs[] = {
-	&dev_attr_tmel_aes_key.attr,
-	&dev_attr_tmel_aes_derive_key.attr,
-	&dev_attr_tmel_aes_clear_key.attr,
+	&dev_attr_tmel_key.attr,
+	&dev_attr_tmel_derive_key.attr,
+	&dev_attr_tmel_clear_key.attr,
 	&dev_attr_tmel_aes_encrypt.attr,
 	&dev_attr_tmel_aes_decrypt.attr,
-	&dev_attr_tmel_aes_context_data.attr,
-	&dev_attr_tmel_aes_salt_label_data.attr,
+	&dev_attr_tmel_context_data.attr,
+	&dev_attr_tmel_salt_label_data.attr,
 	&dev_attr_tmel_aes_iv_data.attr,
 	&dev_attr_tmel_aes_aad_data.attr,
 	&dev_attr_tmel_aes_tag_data.attr,
-	&dev_attr_tmel_aes_sec_ctx.attr,
-	&dev_attr_tmel_aes_mode.attr,
-	&dev_attr_tmel_aes_input_key.attr,
-	&dev_attr_tmel_aes_generate_key.attr,
-	&dev_attr_tmel_aes_import_key.attr,
-	&dev_attr_tmel_aes_pt_key.attr,
+	&dev_attr_tmel_sec_ctx.attr,
+	&dev_attr_tmel_algo.attr,
+	&dev_attr_tmel_input_key.attr,
+	&dev_attr_tmel_generate_key.attr,
+	&dev_attr_tmel_import_key.attr,
+	&dev_attr_tmel_pt_key.attr,
 	&dev_attr_tmel_wrap_key_id.attr,
 	&dev_attr_tmel_wrapping_key_id.attr,
 	&dev_attr_tmel_wrap_key.attr,
 	&dev_attr_tmel_unwrap_key.attr,
+	&dev_attr_tmel_ecc_curve_id.attr,
+	&dev_attr_tmel_ecc_prv_key_id.attr,
+	&dev_attr_tmel_ecc_prv_key_id2.attr,
+	&dev_attr_tmel_hash_algo.attr,
+	&dev_attr_tmel_ecc_pub_key.attr,
+	&dev_attr_tmel_ecc_pub_key2.attr,
+	&dev_attr_tmel_ecc_input_buf.attr,
+	&dev_attr_tmel_ecc_sign_msg.attr,
+	&dev_attr_tmel_ecc_signature.attr,
+	&dev_attr_tmel_ecc_verify_msg.attr,
+	&dev_attr_tmel_ecdh_shared_secret.attr,
+	&dev_attr_tmel_mix_key_id.attr,
+	&dev_attr_tmel_hmac_sha_key_id.attr,
+	&dev_attr_tmel_hmac_sha.attr,
 	NULL,
 };
 
