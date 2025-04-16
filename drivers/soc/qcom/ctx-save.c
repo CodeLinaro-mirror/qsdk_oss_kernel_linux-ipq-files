@@ -912,17 +912,15 @@ int minidump_traverse_metadata_list(const char *name, const unsigned long
 			}
 		}
 
-		if (cur_node->mmuinfo_offset != 0) {
 		/* If the metadata list node has an entry in the MMU Metadata file,
 		* invalidate that entry and update the MMU metadata file pointer with the
-		* value at mmu_offset.
+		* value at mmu_offset else update the current mode mmu_offset
+		* as current MMU metadata file pointer.
 		*/
+		if (cur_node->mmuinfo_offset != 0)
 			minidump_meta_info.cur_mmuinfo_offset = cur_node->mmuinfo_offset;
-		} else {
-			if (IS_ENABLED(CONFIG_ARM64) || ((unsigned long)virt_addr < PAGE_OFFSET
-				|| (unsigned long)virt_addr >= (unsigned long)high_memory))
-				cur_node->mmuinfo_offset = minidump_meta_info.cur_mmuinfo_offset;
-		}
+		else
+			cur_node->mmuinfo_offset = minidump_meta_info.cur_mmuinfo_offset;
 
 		spin_unlock_irqrestore(&tlv_msg.spinlock,
 				flags);
@@ -975,12 +973,7 @@ int minidump_traverse_metadata_list(const char *name, const unsigned long
 	cur_node->pa = phy_addr;
 	cur_node->type = type;
 	cur_node->tlv_offset = tlv_msg.cur_msg_buffer_pos;
-	if ( IS_ENABLED(CONFIG_ARM64) || ( (unsigned long)virt_addr < PAGE_OFFSET
-		|| (unsigned long)virt_addr >= (unsigned long)high_memory) ) {
-		cur_node->mmuinfo_offset = minidump_meta_info.cur_mmuinfo_offset;
-	} else {
-		cur_node->mmuinfo_offset = 0;
-	}
+	cur_node->mmuinfo_offset = minidump_meta_info.cur_mmuinfo_offset;
 	minidump.hdr.num_seg++;
 	spin_lock_irqsave(&tlv_msg.spinlock, flags);
 	list_add_tail(&(cur_node->list), &(metadata_list.list));
