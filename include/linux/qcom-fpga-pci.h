@@ -7,11 +7,13 @@
 #ifndef _QCOM_FPGA_PCI_H
 #define _QCOM_FPGA_PCI_H
 
+#include <linux/regmap.h>
+
 #define MODULENAME			"qcom-fpga-pci"
 #define PCIE_MEM_ACCESS_BASE_ADDR_REG	0x4
 
 #define QTI_FPGA_PON_VENDOR_ID		0x10EE
-#define QTI_FPGA_PON_DEVICE_ID		0x9021
+#define QTI_FPGA_PON_DEVICE_ID		0x9022
 
 #define QCOM_GET_NEW_ADDR(reg)		(((reg) & 0xfffff) | 0x100000)
 #define QCOM_GET_BASE_ADDR(reg)		(((reg) & 0xfff00000) | 1)

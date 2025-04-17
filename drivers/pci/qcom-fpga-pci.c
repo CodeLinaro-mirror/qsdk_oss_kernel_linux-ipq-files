@@ -10,7 +10,6 @@
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
 #include <linux/proc_fs.h>
-#include <linux/regmap.h>
 
 #include <linux/qcom-fpga-pci.h>
 
