@@ -1498,7 +1498,7 @@ static int qfprom_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	struct device *dev = &pdev->dev;
 	const struct qfprom_node_cfg *cfg;
-	u32 scm_cmd_id;
+	u32 scm_cmd_id, rootfs_auth_flg;
 	struct resource *res;
 	void __iomem *secure_boot = NULL;
 	u32 value = 0;
@@ -1583,6 +1583,10 @@ static int qfprom_probe(struct platform_device *pdev)
 		}
 
 		if (!err) {
+			err = of_property_read_u32(np, "rootfs_auth_enable", &rootfs_auth_flg);
+			if (err)
+				rootfs_auth_flg = 0;
+
 			res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 			secure_boot = devm_ioremap_resource(&pdev->dev, res);
 			if (IS_ERR(secure_boot)) {
@@ -1591,10 +1595,10 @@ static int qfprom_probe(struct platform_device *pdev)
 				value = readl(secure_boot);
 
 				/*
-				 * Bit5 of the fuse <SECURE_BOOTn> indicates
-				 * if rootfs auth is enabled or not
+				 * Bit5 of the fuse <SECURE_BOOTn> or dts property rootfs_auth_enable,
+				 * indicates if rootfs auth is enabled or not
 				 */
-				if (value & BIT(5))
+				if (value & BIT(5) || rootfs_auth_flg)
 					rootfs_auth_enable = 1;
 			}
 		}
