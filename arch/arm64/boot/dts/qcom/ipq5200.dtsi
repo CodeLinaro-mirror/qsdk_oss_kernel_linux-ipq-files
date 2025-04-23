@@ -3,9 +3,11 @@
  * IPQ5200 device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
+#include <dt-bindings/clock/qcom,ipq5200-gcc.h>
+#include <dt-bindings/reset/qcom,ipq5200-gcc.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 
 / {
@@ -161,8 +163,15 @@
 			};
 		};
 
-		gcc: gcc@1800000 {
-			gcc-use-dummy;
+		gcc: clock-controller@1800000 {
+			compatible = "qcom,ipq5200-gcc";
+			reg = <0x01800000 0x40000>;
+
+			clocks = <&xo>,
+				 <&sleep_clk>;
+			#clock-cells = <1>;
+			#reset-cells = <1>;
+			#power-domain-cells = <1>;
 		};
 	};
 
