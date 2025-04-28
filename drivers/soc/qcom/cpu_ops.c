@@ -36,6 +36,7 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 extern void a55ss_unclamp_cpu(void __iomem *reg);
+extern void a53ss_unclamp_cpu(void __iomem *reg);
 
 static DEFINE_SPINLOCK(boot_lock);
 static DEFINE_PER_CPU(int, cold_boot_done);
@@ -94,6 +95,43 @@ err_cpu_node:
 
 }
 
+static int a53ss_release_secondary(unsigned int cpu)
+{
+	int ret = 0;
+	struct device_node *cpu_node, *acc_node;
+	void __iomem *reg;
+
+	cpu_node = of_get_cpu_node(cpu, NULL);
+	if (!cpu_node)
+		return -ENODEV;
+
+	acc_node = of_parse_phandle(cpu_node, "qcom,acc", 0);
+	if (!acc_node) {
+		ret = -ENODEV;
+		goto out_acc;
+	}
+
+	reg = of_iomap(acc_node, 0);
+	if (!reg) {
+		ret = -ENOMEM;
+		goto out_acc_reg;
+	}
+
+	a53ss_unclamp_cpu(reg);
+
+	per_cpu(cold_boot_done, cpu) = true;
+
+	/* Secondary CPU-N is now alive */
+	iounmap(reg);
+
+out_acc_reg:
+	of_node_put(acc_node);
+out_acc:
+	of_node_put(cpu_node);
+
+	return ret;
+}
+
 static void qti_wake_cpu(unsigned int cpu)
 {
 	spin_lock(&boot_lock);
@@ -131,16 +169,22 @@ static int a55ss_cpu_boot(unsigned int cpu)
 	return qti_boot_cpu(cpu, a55ss_release_secondary);
 }
 
+static int a53ss_cpu_boot(unsigned int cpu)
+{
+	return qti_boot_cpu(cpu, a53ss_release_secondary);
+}
+
 void qti_cpu_postboot(void)
 {
 
 }
 
 #ifdef CONFIG_HOTPLUG_CPU
-static void a55ss_wfi_cpu_die(unsigned int cpu)
+static void qti_wfi_cpu_die(unsigned int cpu)
 {
 
 }
+
 #endif
 
 struct cpu_operations smp_a55ss_ops = {
@@ -150,9 +194,21 @@ struct cpu_operations smp_a55ss_ops = {
 	.cpu_boot       = a55ss_cpu_boot,
 	.cpu_postboot   = qti_cpu_postboot,
 #ifdef CONFIG_HOTPLUG_CPU
-	.cpu_die        = a55ss_wfi_cpu_die,
+	.cpu_die        = qti_wfi_cpu_die,
 #endif
 };
 
 CPU_METHOD_OF_DECLARE(qcom_smp_a55ss, "qcom,arm-cortex-acc", &smp_a55ss_ops);
 
+struct cpu_operations smp_a53ss_ops = {
+	.name           = "qcom,a53-cortex-acc",
+	.cpu_init       = qti_cpu_init,
+	.cpu_prepare    = qti_cpu_prepare,
+	.cpu_boot       = a53ss_cpu_boot,
+	.cpu_postboot   = qti_cpu_postboot,
+#ifdef CONFIG_HOTPLUG_CPU
+	.cpu_die        = qti_wfi_cpu_die,
+#endif
+};
+
+CPU_METHOD_OF_DECLARE(qcom_smp_a53ss, "qcom,a53-cortex-acc", &smp_a53ss_ops);
