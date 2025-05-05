@@ -3471,7 +3471,10 @@
 			qcom,smem-state-names = "shutdown",
 						"stop";
 
-			memory-region = <&q6_region>;
+			memory-region = <&q6_region>,
+					<&m3_dump>,
+					<&q6_etr_region>,
+					<&q6_caldb_region>;
 			status = "disabled";
 
 			glink-edge {
