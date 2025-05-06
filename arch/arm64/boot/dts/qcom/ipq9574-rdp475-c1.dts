@@ -251,7 +251,6 @@
 			qcom,rx-page-mode = <0>;		/* Rx fill ring page mode */
 			qcom,tx-map-priority-level = <1>;	/* Tx priority level per port */
 			qcom,rx-map-priority-level = <1>;	/* Rx priority level per core */
-			qcom,ppeds-num = <3>;			/* Number of PPEDS nodes */
 			qcom,ppeds-num = <3>;                   /* Number of PPEDS nodes */
 			/* PPE-DS node format: <Rx-fill Tx-cmpl Rx Tx Queue-base Queue-count> */
 			qcom,ppeds-map = <1 1 1 1 32 8>,	/* PPEDS Node#0 ring and queue map */
