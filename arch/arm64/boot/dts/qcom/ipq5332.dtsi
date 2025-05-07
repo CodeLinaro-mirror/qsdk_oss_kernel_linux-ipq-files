@@ -505,8 +505,8 @@
 			status = "disabled";
 		};
 
-		msm_imem: qcom,msm-imem@8600000 {
-			compatible = "qcom,msm-imem";
+		imem: sram@8600000 {
+			compatible = "qcom,ipq5332-imem", "syscon", "simple-mfd";
 			reg = <0x08600000 0x1000>;
 			ranges = <0x0 0x08600000 0x1000>;
 			#address-cells = <1>;
@@ -891,6 +891,7 @@
 			interrupts = <GIC_SPI 3 IRQ_TYPE_EDGE_RISING>;
 			clocks = <&sleep_clk>;
 			timeout-sec = <30>;
+			qcom,restart-reason = <&imem 0x7a4 0x1>;
 		};
 
 		apcs_glb: mailbox@b111000 {
