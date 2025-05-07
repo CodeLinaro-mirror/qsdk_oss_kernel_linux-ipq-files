@@ -17,7 +17,6 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
-#include <linux/debugfs.h>
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
@@ -316,7 +315,7 @@ static int ipq_debug_register_rproc_notifiers(struct platform_device *pdev,
 static int ipq_debug_probe(struct platform_device *pdev)
 {
 	struct restart_reason *reason;
-	unsigned int *reset_reason, q6_reason;
+	unsigned int reset_reason, q6_reason;
 	void __iomem *imem_base, *q6_base;
 	struct device_node *np;
 	int ret;
@@ -325,21 +324,16 @@ static int ipq_debug_probe(struct platform_device *pdev)
 	if (!np)
 		return 0;
 
-	reset_reason = devm_kzalloc(&pdev->dev, sizeof(unsigned int), GFP_KERNEL);
-	if (!reset_reason)
-		return -ENOMEM;
-
 	imem_base = ipq_debug_parse_address(&pdev->dev,
 				"qcom,msm-imem-restart-reason-buf-addr");
 	if (IS_ERR_OR_NULL(imem_base))
 		return PTR_ERR(imem_base);
 
-	memcpy_fromio(reset_reason, imem_base, 4);
+	memcpy_fromio(&reset_reason, imem_base, 4);
 	iounmap(imem_base);
 
 	if (of_device_is_compatible(np, "qcom,ipq-debug")) {
-		debugfs_create_x32("reset_reason", 0444, NULL, reset_reason);
-		restart_reason_logging(*reset_reason);
+		restart_reason_logging(reset_reason);
 		return 0;
 	}
 
@@ -378,12 +372,7 @@ static int ipq_debug_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	/*
-	 * In debugfs entry we could not able to differentiate b/w
-	 * internal Q6 Fatal and WDT crash.
-	 */
-	debugfs_create_x32("reset_reason", 0444, NULL, reset_reason);
-	restart_reason_logging_ipq5424(*reset_reason, q6_reason);
+	restart_reason_logging_ipq5424(reset_reason, q6_reason);
 
 	platform_set_drvdata(pdev, reason);
 
