@@ -62,6 +62,7 @@ struct restart_reason {
 	struct notifier_block	atomic_ssr_blk;
 	void *cookie;
 	void *atomic_cookie;
+	unsigned int reset_reason;
 };
 
 static int debug_panic_handler(struct notifier_block *nb, unsigned long action,
@@ -315,7 +316,7 @@ static int ipq_debug_register_rproc_notifiers(struct platform_device *pdev,
 static int ipq_debug_probe(struct platform_device *pdev)
 {
 	struct restart_reason *reason;
-	unsigned int reset_reason, q6_reason;
+	unsigned int q6_reason;
 	void __iomem *imem_base, *q6_base;
 	struct device_node *np;
 	int ret;
@@ -324,16 +325,22 @@ static int ipq_debug_probe(struct platform_device *pdev)
 	if (!np)
 		return 0;
 
+	reason = devm_kzalloc(&pdev->dev, sizeof(*reason), GFP_KERNEL);
+	if (!reason)
+		return -ENOMEM;
+
+	dev_set_drvdata(&pdev->dev, reason);
+
 	imem_base = ipq_debug_parse_address(&pdev->dev,
 				"qcom,msm-imem-restart-reason-buf-addr");
 	if (IS_ERR_OR_NULL(imem_base))
 		return PTR_ERR(imem_base);
 
-	memcpy_fromio(&reset_reason, imem_base, 4);
+	memcpy_fromio(&reason->reset_reason, imem_base, 4);
 	iounmap(imem_base);
 
 	if (of_device_is_compatible(np, "qcom,ipq-debug")) {
-		restart_reason_logging(reset_reason);
+		restart_reason_logging(reason->reset_reason);
 		return 0;
 	}
 
@@ -341,10 +348,6 @@ static int ipq_debug_probe(struct platform_device *pdev)
 	 * For ipq5424, kernel needs to write the restart reason in IMEM
 	 * during the kernel panic and Q6 crash.
 	 */
-
-	reason = devm_kzalloc(&pdev->dev, sizeof(*reason), GFP_KERNEL);
-	if (!reason)
-		return -ENOMEM;
 
 	reason->wr_addr = ipq_debug_parse_address(&pdev->dev,
 				"qcom,imem-restart-reason-buf-wr-addr");
@@ -372,16 +375,14 @@ static int ipq_debug_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	restart_reason_logging_ipq5424(reset_reason, q6_reason);
-
-	platform_set_drvdata(pdev, reason);
+	restart_reason_logging_ipq5424(reason->reset_reason, q6_reason);
 
 	return 0;
 }
 
 static int ipq_debug_remove(struct platform_device *pdev)
 {
-	struct restart_reason *reason = platform_get_drvdata(pdev);
+	struct restart_reason *reason = dev_get_drvdata(&pdev->dev);
 
 	if (reason)
 		atomic_notifier_chain_unregister(&panic_notifier_list,
@@ -398,12 +399,32 @@ static int ipq_debug_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static ssize_t reset_reason_show(struct device *dev,
+			      struct device_attribute *attr, char *buf)
+{
+	struct restart_reason *reason = dev_get_drvdata(dev);
+
+	if (!reason)
+		return -EINVAL;
+
+	return sysfs_emit(buf, "%u\n", reason->reset_reason);
+}
+
+static DEVICE_ATTR_RO(reset_reason);
+
+static struct attribute *ipq_debug_attrs[] = {
+	&dev_attr_reset_reason.attr,
+	NULL,
+};
+ATTRIBUTE_GROUPS(ipq_debug);
+
 static struct platform_driver ipq_debug_driver = {
 	.probe	= ipq_debug_probe,
 	.remove	= ipq_debug_remove,
 	.driver	= {
 		.name = "qcom,ipq-debug",
 		.of_match_table = ipq_debug_match_table,
+		.dev_groups = ipq_debug_groups,
 	},
 };
 
