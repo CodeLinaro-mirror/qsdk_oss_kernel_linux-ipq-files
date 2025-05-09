@@ -50,6 +50,12 @@ bool autostart = true;
 module_param(autostart, bool, 0);
 MODULE_PARM_DESC(autostart, "Do need to power up mhi during module load?");
 
+/* Timeout, to print boot debug logs, in seconds */
+int boot_debug_timeout = 7;
+module_param(boot_debug_timeout, int, 0644);
+MODULE_PARM_DESC(boot_debug_timeout, "boot debug logs timeout in seconds");
+#define BOOT_DEBUG_TIMEOUT_MS		(boot_debug_timeout * 1000)
+
 /* Ramdump ELF Helpers */
 #define SIZEOF_ELF_STRUCT(__xhdr)					\
 static inline size_t sizeof_elf_##__xhdr(unsigned char class)		\
@@ -852,6 +858,7 @@ void mhitest_mhi_notify_status(struct mhi_controller *mhi_cntrl,
 		}
 		break;
 	case MHI_CB_EE_MISSION_MODE:
+		del_timer(&temp->boot_debug_timer);
 		pr_debug("MHI_CB_EE_MISSION_MODE\n");
 		return;
 	case MHI_CB_BW_REQ:
@@ -1104,6 +1111,8 @@ void mhitest_pci_disable_bus(struct mhitest_platform *mplat)
 	struct pci_dev *pci_dev = mplat->pci_dev;
 	u32 in_reset = -1, temp = -1, retries = 3;
 
+	del_timer(&mplat->boot_debug_timer);
+
 	mhitest_global_soc_reset(mplat);
 
 	msleep(2000);
@@ -1207,6 +1216,33 @@ int mhitest_register_ramdump(struct mhitest_platform *mplat)
 	return 0;
 }
 
+static void mhitest_boot_debug_timeout_hdlr(struct timer_list *timer)
+{
+	struct mhitest_platform *mplat = from_timer(mplat, timer,
+						    boot_debug_timer);
+
+	if (!mplat)
+		return;
+
+	if (mplat->running)
+		return;
+
+	if (MHITEST_IN_MISSION_MODE(mplat->mhi_ctrl->ee))
+		return;
+
+	if (mhi_scan_rddm_cookie(mplat->mhi_ctrl, DEVICE_RDDM_COOKIE))
+		return;
+
+	pr_debug("Dump MHI/PBL/SBL debug data every %ds during MHI power on\n",
+		    BOOT_DEBUG_TIMEOUT_MS / 1000);
+
+	mhi_debug_reg_dump(mplat->mhi_ctrl);
+	mhitest_pci_dump_bl_sram_mem(mplat);
+
+	mod_timer(&mplat->boot_debug_timer,
+		  jiffies + msecs_to_jiffies(BOOT_DEBUG_TIMEOUT_MS));
+}
+
 int mhitest_prepare_pci_mhi_msi(struct mhitest_platform *temp)
 {
 	int ret;
@@ -1262,6 +1298,9 @@ int mhitest_prepare_pci_mhi_msi(struct mhitest_platform *temp)
 		pr_err("Error not able to suspend pci:%d\n", ret);
 		goto out;
 	}
+
+	timer_setup(&temp->boot_debug_timer,
+		    mhitest_boot_debug_timeout_hdlr, 0);
 
 	mhitest_power_off_device(temp);
 	pr_debug("Exit\n");
@@ -1434,6 +1473,10 @@ int mhitest_pci_start_mhi(struct mhitest_platform *mplat)
 		goto out1;
 	}
 
+	/* Start the timer to dump MHI/PBL/SBL debug data periodically */
+	mod_timer(&mplat->boot_debug_timer,
+		  jiffies + msecs_to_jiffies(BOOT_DEBUG_TIMEOUT_MS));
+
 	ret = mhitest_pci_set_mhi_state(mplat, MHI_POWER_ON);
 	if (ret) {
 		pr_err("Error not able to POWER ON\n");
@@ -1444,6 +1487,11 @@ int mhitest_pci_start_mhi(struct mhitest_platform *mplat)
 	return ret;
 
 out1:
+	if (ret == -ETIMEDOUT) {
+		if (!mhi_scan_rddm_cookie(mplat->mhi_ctrl, DEVICE_RDDM_COOKIE))
+			mhitest_pci_dump_bl_sram_mem(mplat);
+	}
+
 	pr_debug("Exit-Error\n");
 	return ret;
 }
