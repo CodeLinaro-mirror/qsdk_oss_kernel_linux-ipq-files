@@ -1,0 +1,108 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * IPQ9679 Emulation board device tree source
+ *
+ * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ */
+
+/dts-v1/;
+
+#include "ipq9679.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. IPQ9679-EMULATION";
+	compatible = "qcom,ipq9679-emulation", "qcom,ipq9679";
+
+	/* Timer freq for rumi = timer freq / 150 */
+	clocks {
+		/* sleep-clk freq for rumi = sleep-clk freq (32000) / 150 */
+		sleep_clk: sleep-clk {
+			clock-frequency = <213>;
+		};
+
+		/* xo freq for rumi = xo freq (24000000) / 150 */
+		xo: xo {
+			clock-frequency = <160000>;
+		};
+	};
+
+	chosen {
+		linux,initrd-end = <0x97000000>;
+		linux,initrd-start = <0x95000000>;
+		bootargs = "root=/dev/ram0 rw init=/init nosmp clk_ignore_unused";
+		stdout-path = "serial0";
+	};
+
+	cpus: cpus {
+		CPU0: cpu@0 {
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc0>;
+		};
+
+		CPU1: cpu@100 {
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc1>;
+		};
+
+		CPU2: cpu@200 {
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc2>;
+		};
+
+		CPU3: cpu@300 {
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc3>;
+		};
+
+		CPU4: cpu@400 {
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc4>;
+		};
+	};
+
+	memory@80000000 {
+		reg = <0x0 0x80000000 0x0 0x80000000>;
+	};
+
+	psci {
+		status = "disabled";
+	};
+
+	soc@0 {
+		acc0: clock-controller@f800000 {
+			compatible = "qcom,arm-cortex-acc";
+			reg = <0x0f800000 0x10000>;
+		};
+
+		acc1: clock-controller@f810000 {
+			compatible = "qcom,arm-cortex-acc";
+			reg = <0x0f810000 0x10000>;
+		};
+
+		acc2:clock-controller@f820000 {
+			compatible = "qcom,arm-cortex-acc";
+			reg = <0x0f820000 0x10000>;
+		};
+
+		acc3:clock-controller@f830000 {
+			compatible = "qcom,arm-cortex-acc";
+			reg = <0x0f830000 0x10000>;
+		};
+
+		acc4:clock-controller@f840000 {
+			compatible = "qcom,arm-cortex-acc";
+			reg = <0x0f840000 0x10000>;
+		};
+
+		/* Timer freq for rumi = timer freq (24000000) / 150 */
+		timer@f420000 {
+			clock-frequency = <160000>;
+		};
+	};
+
+	/* Timer freq for rumi = timer freq (24000000) / 150 */
+	timer {
+		clock-frequency = <160000>;
+	};
+};
