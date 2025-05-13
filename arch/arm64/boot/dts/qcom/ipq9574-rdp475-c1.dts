@@ -340,6 +340,21 @@
 	};
 };
 
+&pcie2_phy {
+	serdes-reg-update = <0x10 0x0>;
+	status = "okay";
+};
+
+&pcie2_x2 {
+	perst-gpios = <&tlmm 29 GPIO_ACTIVE_LOW>;
+	max-link-speed = <2>;
+	link_retries_count = <400>;
+	status = "okay";
+	pcie2_rp: pcie2_rp {
+		reg = <0 0 0 0 0>;
+	};
+};
+
 &pcie3_phy {
 	serdes-reg-update = <0x10 0x0>;
 	status = "okay";
