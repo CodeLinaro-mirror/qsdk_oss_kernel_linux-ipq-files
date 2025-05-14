@@ -28,42 +28,23 @@
 #include <linux/panic_notifier.h>
 #include <linux/remoteproc/qcom_rproc.h>
 #include <linux/remoteproc.h>
+#include <soc/qcom/ipq-debug.h>
 
-#define NON_SECURE_WATCHDOG             0x1
-#define AHB_TIMEOUT                     0x3
-#define NOC_ERROR                       0x6
-#define SYSTEM_RESET_OR_REBOOT          0x10
-#define POWER_ON_RESET                  0x20
-#define SECURE_WATCHDOG                 0x23
-#define HLOS_PANIC                      0x47
-#define VFSM_RESET                      0x68
-#define TME_L_FATAL_ERROR               0x49
-#define TME_L_WDT_BITE_FATAL_ERROR      0x69
+static struct restart_reason *g_reason;
 
-/* IPQ5424 specific restart reason codes */
-#define IPQ5424_POWER_ON_RESET		0x1
-#define IPQ5424_SYSTEM_RESET_OR_REBOOT	0x2
-#define IPQ5424_TME_L_SECURE_WATCHDOG	0x3
-#define IPQ5424_SECURE_WATCHDOG		0x4
-#define IPQ5424_NON_SECURE_WATCHDOG	0x5
-#define IPQ5424_HLOS_PANIC		0x6
-#define IPQ5424_EXTERNAL_WDT		0x7
-#define IPQ5424_TME_L_FORCE_RESET	0x8
-#define IPQ5424_TSENS_RESET		0x9
-#define IPQ5424_AHB_TIMEOUT		0xA
-#define IPQ5424_INTERNAL_Q6_CRASH	0xB
+int debug_log_reset_reason(unsigned int val)
+{
+	if (!g_reason)
+		return -EOPNOTSUPP;
 
-#define RESET_REASON_MSG_MAX_LEN        100
+	if (val >= IPQ5424_RESET_MAX)
+		return -EINVAL;
 
-struct restart_reason {
-	void __iomem *wr_addr;
-	struct notifier_block panic_blk;
-	struct notifier_block	ssr_blk;
-	struct notifier_block	atomic_ssr_blk;
-	void *cookie;
-	void *atomic_cookie;
-	unsigned int reset_reason;
-};
+	memcpy_toio(g_reason->wr_addr, &val, sizeof(int));
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(debug_log_reset_reason);
 
 static int debug_panic_handler(struct notifier_block *nb, unsigned long action,
 			       void *data)
@@ -203,9 +184,9 @@ static int restart_reason_logging_ipq5424(unsigned int reason, unsigned int q6_r
 			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
 					"%s", "TME-L Force Reset");
 			break;
-		case IPQ5424_TSENS_RESET:
+		case IPQ5424_TSENS_HW_RESET:
 			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
-					"%s", "TSENS Reset");
+					"%s", "TSENS HW Reset");
 			break;
 		case IPQ5424_AHB_TIMEOUT:
 			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
@@ -218,6 +199,10 @@ static int restart_reason_logging_ipq5424(unsigned int reason, unsigned int q6_r
 			else
 				scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
 						"%s", "Internal Q6 WDT error");
+			break;
+		case IPQ5424_TSENS_SW_RESET:
+			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
+					"%s", "TSENS SW Reset");
 			break;
 	}
 
@@ -377,6 +362,8 @@ static int ipq_debug_probe(struct platform_device *pdev)
 
 	restart_reason_logging_ipq5424(reason->reset_reason, q6_reason);
 
+	g_reason = reason;
+
 	return 0;
 }
 
@@ -399,6 +386,22 @@ static int ipq_debug_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static ssize_t reset_reason_store(struct device *device,
+				  struct device_attribute *attr,
+				  const char *buf, size_t count)
+{
+	int ret;
+	unsigned int val;
+
+	ret = kstrtouint(buf, 0, &val);
+	if (ret < 0)
+		return ret;
+
+	ret = debug_log_reset_reason(val);
+
+	return ret < 0 ? ret : count;
+}
+
 static ssize_t reset_reason_show(struct device *dev,
 			      struct device_attribute *attr, char *buf)
 {
@@ -410,7 +413,7 @@ static ssize_t reset_reason_show(struct device *dev,
 	return sysfs_emit(buf, "%u\n", reason->reset_reason);
 }
 
-static DEVICE_ATTR_RO(reset_reason);
+static DEVICE_ATTR_RW(reset_reason);
 
 static struct attribute *ipq_debug_attrs[] = {
 	&dev_attr_reset_reason.attr,
