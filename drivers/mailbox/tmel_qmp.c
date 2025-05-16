@@ -149,6 +149,8 @@ struct qmp_device {
 	struct completion ch_complete;
 	struct delayed_work dwork;
 
+	struct work_struct irq_work;
+
 	bool tx_sent;
 	bool ch_in_use;
 
@@ -161,6 +163,8 @@ enum qmp_log_type {
 	SEND_DATA,
 	SEND_INTR,
 	RX_WORK,
+	RX_INTR,
+	RX_DONE,
 };
 
 struct qmp_log {
@@ -440,8 +444,10 @@ static irqreturn_t qmp_irq_handler(int irq, void *priv)
 	struct qmp_device *mdev = (struct qmp_device *)priv;
 
 	mdev->rx_irq_count++;
+	qmp_log_transaction(mdev, RX_INTR);
 
-	return IRQ_WAKE_THREAD;
+	queue_work(system_unbound_wq, &mdev->irq_work);
+	return IRQ_HANDLED;
 }
 
 /**
@@ -452,10 +458,10 @@ static void __qmp_rx_worker(struct qmp_device *mdev)
 {
 	unsigned long flags;
 
+	qmp_log_transaction(mdev, RX_WORK);
 	/* read remote_desc from mailbox register */
 	mdev->ucore.val = ioread32(mdev->ucore_desc);
 
-	qmp_log_transaction(mdev, RX_WORK);
 	dev_dbg(mdev->dev, "%s: mcore 0x%x ucore 0x%x \n", __func__, mdev->mcore.val, mdev->ucore.val);
 
 	mutex_lock(&mdev->state_lock);
@@ -557,13 +563,11 @@ static void __qmp_rx_worker(struct qmp_device *mdev)
 	mutex_unlock(&mdev->state_lock);
 }
 
-static irqreturn_t qmp_thread_irq_handler(int irq, void *priv)
+static void qmp_irq_work_handler(struct work_struct *work)
 {
-	struct qmp_device *mdev = (struct qmp_device *)priv;
-
+	struct qmp_device *mdev = container_of(work, struct qmp_device, irq_work);
 	__qmp_rx_worker(mdev);
-
-	return IRQ_HANDLED;
+	qmp_log_transaction(mdev, RX_DONE);
 }
 
 /**
@@ -715,14 +719,15 @@ static int qmp_mbox_probe(struct platform_device *pdev)
 	init_completion(&mdev->ch_complete);
 
 	INIT_DELAYED_WORK(&mdev->dwork, qmp_notify_timeout);
+	INIT_WORK(&mdev->irq_work, qmp_irq_work_handler);
 
 	mdev->tx_sent = false;
 	mdev->ch_in_use = false;
 
-	ret = devm_request_threaded_irq(mdev->dev, mdev->rx_irq_line,
-					qmp_irq_handler, qmp_thread_irq_handler,
-					IRQF_TRIGGER_RISING,
-					node->name, (void *)mdev);
+	ret = devm_request_irq(mdev->dev, mdev->rx_irq_line,
+				qmp_irq_handler,
+				IRQF_TRIGGER_RISING,
+				node->name, (void *)mdev);
 	if (ret < 0) {
 		dev_err(mdev->dev, "request threaded irq %d failed, ret %d\n",
 			mdev->rx_irq_line, ret);
