@@ -43,7 +43,6 @@
 
 #define MHISTATUS			0x48
 #define MHICTRL				0x38
-#define MHICTRL_RESET_MASK		0x2
 
 #define PCIE_SOC_GLOBAL_RESET_VALUE     0x5
 #define MAX_SOC_GLOBAL_RESET_WAIT_CNT   50 /* x 20msec */
@@ -150,6 +149,9 @@ struct mhitest_platform {
 	u16 def_link_width;
 	u8 pci_link_state;
 	struct pci_saved_state *pci_dev_default_state;
+#if IS_ENABLED(CONFIG_PCIEAER)
+	struct pci_saved_state *pci_dev_saved_state;
+#endif
 	void __iomem *bar;
 	char fw_name[30];
 /*mhi  msi */
