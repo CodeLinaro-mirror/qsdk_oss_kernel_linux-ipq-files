@@ -119,6 +119,7 @@ struct dump_segment {
     struct list_head node;
     unsigned long addr;
     size_t size;
+    char *name;
 };
 
 /* struct to store metadata info for
@@ -360,6 +361,7 @@ static int mini_dump_open(struct inode *inode, struct file *file) {
 			}
 
 			segment->addr = cur_node->va;
+			segment->name = cur_node->name;
 			list_add_tail(&(segment->node), &(minidump.dump_segments));
 			minidump.hdr.total_size += segment->size;
 			minidump.hdr.seg_size[index] = segment->size;
