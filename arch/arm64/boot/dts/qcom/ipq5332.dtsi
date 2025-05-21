@@ -373,6 +373,8 @@
 			compatible = "ipq,53xx-reg-update";
 			reg = <0x00400000 0x6200>, <0x01d80000 0x4000>;
 			reg-names = "memnoc_53xx", "nssnoc";
+			resets = <&gcc GCC_WCSSAON_ARES>;
+			reset-names = "wcss_aon";
 			status = "okay";
 		};
 
