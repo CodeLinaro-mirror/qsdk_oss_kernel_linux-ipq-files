@@ -888,10 +888,41 @@
     qcom,caldb-size = <0x300000>;
 #endif
     qcom,board_id = <0x43>;
-    memory-region = <&q6_ipq5332_data>, <&q6_mem_regions>;
+#ifdef __IPQ_MEM_PROFILE_256_MB__
+    memory-region = <&q6_ipq5332_data>, <&q6_mem_regions>, <&m3_dump>,
+		    <&mlo_global_mem0>;
+    memory-region-names = "host-ddr-mem", "q6-region", "m3-dump",
+			  "mlo-global-mem";
+#else
+    memory-region = <&q6_ipq5332_data>, <&q6_mem_regions>, <&m3_dump>,
+		    <&mlo_global_mem0>, <&q6_etr_region>;
+    memory-region-names = "host-ddr-mem", "q6-region", "m3-dump",
+			  "mlo-global-mem", "q6-etr-dump";
+#endif
     qcom,wsi = <&wsi>;
     qcom,wsi_index  = <0>;
     status = "okay";
+    qcom,wsi-controller;
+    ports {
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	port@0 {
+		reg = <0>;
+
+		wifi0_wsi_tx: endpoint {
+			remote-endpoint = <&wifi1_wsi_rx>;
+		};
+	};
+
+	port@1 {
+		reg = <1>;
+
+		wifi0_wsi_rx: endpoint {
+			remote-endpoint = <&wifi1_wsi_tx>;
+		};
+	};
+    };
 };
 
 &wifi1 {
@@ -921,7 +952,17 @@
 #endif
     qcom,umac-irq-reset-addr = <0x18000884>;
     qcom,board_id = <0x54>;
-    memory-region = <&q6_qcn6432_data_1>, <&q6_mem_regions>;
+#ifndef __IPQ_MEM_PROFILE_256_MB__
+    memory-region = <&q6_qcn6432_data_1>, <&q6_mem_regions>, <&m3_dump_qcn6432_1>,
+		    <&mlo_global_mem0>, <&q6_qcn6432_etr_1>;
+    memory-region-names = "host-ddr-mem", "q6-region", "m3-dump",
+			  "mlo-global-mem", "q6-etr-dump";
+#else
+    memory-region = <&q6_qcn6432_data_1>, <&q6_mem_regions>, <&m3_dump_qcn6432_1>,
+		    <&mlo_global_mem0>;
+    memory-region-names = "host-ddr-mem", "q6-region", "m3-dump",
+			  "mlo-global-mem";
+#endif
     qcom,pci_slot_id = <1>;
     qcom,wsi = <&wsi>;
     qcom,wsi_index = <1>;
@@ -931,4 +972,24 @@
 		<0 0 0>,
 		<0 0 0>,
 		<GIC_SPI 410 IRQ_TYPE_EDGE_RISING>;
+    ports {
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	port@0 {
+		reg = <0>;
+
+		wifi1_wsi_tx: endpoint {
+			remote-endpoint = <&wifi0_wsi_rx>;
+		};
+	};
+
+	port@1 {
+		reg = <1>;
+
+		wifi1_wsi_rx: endpoint {
+			remote-endpoint = <&wifi0_wsi_tx>;
+		};
+	};
+    };
 };
