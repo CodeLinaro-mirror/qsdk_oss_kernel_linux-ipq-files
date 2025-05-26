@@ -110,7 +110,7 @@ static const struct regmap_config gcc_ipq5200_regmap_config = {
 	.reg_bits       = 32,
 	.reg_stride     = 4,
 	.val_bits       = 32,
-	.max_register   = 0x3f018,
+	.max_register   = 0x3f004,
 	.fast_io        = true,
 };
 

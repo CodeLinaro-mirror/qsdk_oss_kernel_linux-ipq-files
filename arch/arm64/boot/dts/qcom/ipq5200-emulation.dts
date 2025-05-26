@@ -63,24 +63,24 @@
 	};
 
 	soc@0 {
-		acc0: clock-controller@f188000 {
+		acc0: clock-controller@b188000 {
 			compatible = "qcom,arm-cortex-acc";
-			reg = <0xf188000 0x1000>;
+			reg = <0xb188000 0x1000>;
 		};
 
-		acc1: clock-controller@f198000 {
+		acc1: clock-controller@b198000 {
 			compatible = "qcom,arm-cortex-acc";
-			reg = <0xf198000 0x1000>;
+			reg = <0xb198000 0x1000>;
 		};
 
-		acc2:clock-controller@f1a8000 {
+		acc2:clock-controller@b1a8000 {
 			compatible = "qcom,arm-cortex-acc";
-			reg = <0xf1a8000 0x1000>;
+			reg = <0xb1a8000 0x1000>;
 		};
 
-		acc3:clock-controller@f1b8000 {
+		acc3:clock-controller@b1b8000 {
 			compatible = "qcom,arm-cortex-acc";
-			reg = <0xf1b8000 0x1000>;
+			reg = <0xb1b8000 0x1000>;
 		};
 
 		/*Timer freq for rumi = timer freq / 100*/
@@ -88,7 +88,7 @@
 			clock-frequency = <240000>;
 		};
 
-		timer@f120000 {
+		timer@b120000 {
 			clock-frequency = <240000>;
 		};
 
