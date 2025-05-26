@@ -420,6 +420,25 @@
 };
 #endif
 
+&spi1 {
+	pinctrl-0 = <&qup_spi1_default>;
+	pinctrl-names = "default";
+	cs-select = <0>;
+	status = "disabled";
+
+	spi@0 {
+		compatible = "qti,spidev";
+		reg = <0>;
+		spi-max-frequency = <9600000>;
+	};
+};
+
+&pcm {
+	pinctrl-0 = <&audio_pins_pri>;
+	pinctrl-names = "primary";
+	status = "disabled";
+};
+
 &tlmm {
 	gpio_leds_default: gpio-leds-default-state {
 		pins = "gpio42";
@@ -578,6 +597,66 @@
 			function = "sdc_data";
 			drive-strength = <8>;
 			bias-pull-up;
+		};
+	};
+
+	audio_pins_pri: audio_pinmux_pri {
+		mux_1 {
+			pins = "gpio36";
+			function = "audio_pri";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+
+		mux_2 {
+			pins = "gpio37";
+			function = "audio_pri";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+
+		mux_3 {
+			pins = "gpio38";
+			function = "audio_pri";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+
+		mux_4 {
+			pins = "gpio39";
+			function = "audio_pri";
+			drive-strength = <16>;
+			bias-pull-down;
+		};
+	};
+
+	qup_spi1_default: qup-spi1-default-state {
+		qup_spi1_clk {
+			pins = "gpio45";
+			function = "spi10";
+			drive-strength = <8>;
+			bias-disable;
+		};
+
+		qup_spi1_cs {
+			pins = "gpio46";
+			function = "spi1_cs";
+			drive-strength = <8>;
+			bias-disable;
+		};
+
+		qup_spi1_miso {
+			pins = "gpio47";
+			function = "spi10";
+			drive-strength = <8>;
+			bias-disable;
+		};
+
+		qup_spi1_mosi {
+			pins = "gpio48";
+			function = "spi10";
+			drive-strength = <8>;
+			bias-disable;
 		};
 	};
 };
