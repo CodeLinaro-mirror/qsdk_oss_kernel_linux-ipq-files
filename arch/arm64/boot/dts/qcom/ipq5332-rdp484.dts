@@ -428,6 +428,10 @@
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 			memory-region = <&qcn9224_pcie0>, <&mhi_region0>, <&mlo_global_mem0>;
 			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
+#ifdef __PCIE_QCOM_EARLY_CAL_SUPPORT__
+			qcom,early_cal_enabled = "okay";
+#endif
+			qcom,caldata_offset = <0x26800>;
 			qcom,board_id = <0x15>;
 			qcom,wsi = <&wsi>;
 			qcom,wsi_index = <1>;
@@ -475,6 +479,10 @@
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 			memory-region = <&qcn9224_pcie1>, <&mhi_region1>, <&mlo_global_mem0>;
 			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
+#ifdef __PCIE_QCOM_EARLY_CAL_SUPPORT__
+			qcom,early_cal_enabled = "okay";
+#endif
+			qcom,caldata_offset = <0x58800>;
 			qcom,board_id = <0x16>;
 			qcom,wsi = <&wsi>;
 			qcom,wsi_index = <2>;
