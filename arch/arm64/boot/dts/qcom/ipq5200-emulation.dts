@@ -98,6 +98,18 @@
 			uart1: serial@1a84000 {
 				status = "okay";
 			};
+
+			spi0: spi@1a90000 {
+				status = "okay";
+
+				flash@0 {
+					compatible = "spansion,s25fs128s1", "jedec,spi-nor";
+					#address-cells = <1>;
+					#size-cells = <1>;
+					reg = <0>;
+					spi-max-frequency = <50000000>;
+				};
+			};
 		};
 
 		sdhc: mmc@7804000 {

@@ -12,5 +12,6 @@
 #define GCC_QUPV3_UART1_CLK	2
 #define GCC_SDCC1_AHB_CLK	3
 #define GCC_SDCC1_APPS_CLK	4
+#define GCC_QUPV3_SPI0_CLK	5
 
 #endif
