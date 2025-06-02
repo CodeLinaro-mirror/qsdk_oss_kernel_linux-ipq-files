@@ -5170,6 +5170,12 @@ static long qseecom_ioctl(struct file *file, unsigned int cmd, unsigned long arg
 
 	switch (cmd) {
 	case QSEECOM_LOAD_TA_LIB:
+
+		if (app_libs_state) {
+			pr_err("Lib already loaded\n");
+			return -EIO;
+		}
+
 		info_ubuf = kzalloc(sizeof(*info_ubuf), GFP_KERNEL);
 		if (!info_ubuf)
 			return -ENOMEM;
