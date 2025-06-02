@@ -6,6 +6,8 @@
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
+#include <dt-bindings/clock/qcom,ipq9679-gcc.h>
+#include <dt-bindings/reset/qcom,ipq9679-gcc.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 
 / {
@@ -150,6 +152,17 @@
 		#size-cells = <1>;
 		ranges = <0 0 0 0xffffffff>;
 		dma-ranges;
+
+		gcc: clock-controller@1800000 {
+			compatible = "qcom,ipq9679-gcc";
+			reg = <0x01800000 0x40000>;
+
+			clocks = <&xo>,
+				 <&sleep_clk>;
+			#clock-cells = <1>;
+			#reset-cells = <1>;
+			#power-domain-cells = <1>;
+		};
 
 		intc: interrupt-controller@f200000 {
 			compatible = "arm,gic-v3";
