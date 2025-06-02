@@ -95,10 +95,21 @@ static struct clk_regmap *gcc_ipq5200_dummy_clks[] = {
 	[GCC_SDCC1_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_sdcc1_ahb_clk),
 	[GCC_SDCC1_APPS_CLK] = DEFINE_DUMMY_CLK(gcc_sdcc1_apps_clk),
 	[GCC_QUPV3_SPI0_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_spi0_clk),
+	[GCC_USB0_PHY_CFG_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_usb0_phy_cfg_ahb_clk),
+	[GCC_USB0_AUX_CLK] = DEFINE_DUMMY_CLK(gcc_usb0_aux_clk),
+	[GCC_USB0_PIPE_CLK] = DEFINE_DUMMY_CLK(gcc_usb0_pipe_clk),
+	[GCC_USB0_MASTER_CLK] = DEFINE_DUMMY_CLK(gcc_usb0_master_clk),
+	[GCC_USB0_SLEEP_CLK] = DEFINE_DUMMY_CLK(gcc_usb0_sleep_clk),
+	[GCC_USB0_MOCK_UTMI_CLK] = DEFINE_DUMMY_CLK(gcc_usb0_mock_utmi_clk),
+	[GCC_CNOC_USB_CLK] = DEFINE_DUMMY_CLK(gcc_cnoc_usb_clk),
 };
 
 static const struct qcom_reset_map gcc_ipq5200_resets[] = {
 	[GCC_QUPV3_BCR] = { 0x01000, 0 },
+	[GCC_USB_BCR] = { 0x2C000, 0 },
+	[GCC_QUSB2_0_PHY_BCR] = { 0x2C068, 0 },
+	[GCC_USB0_PHY_BCR] = { 0x2C06C, 0 },
+	[GCC_USB3PHY_0_PHY_BCR] = { 0x2C070, 0 },
 };
 
 static const struct of_device_id gcc_ipq5200_match_table[] = {

@@ -8,5 +8,9 @@
 #define _DT_BINDINGS_RESET_IPQ_GCC_IPQ5200_H
 
 #define GCC_QUPV3_BCR				0
+#define GCC_USB_BCR				1
+#define GCC_QUSB2_0_PHY_BCR			2
+#define GCC_USB0_PHY_BCR			3
+#define GCC_USB3PHY_0_PHY_BCR			4
 
 #endif

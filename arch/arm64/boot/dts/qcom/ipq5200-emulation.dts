@@ -124,6 +124,20 @@
 			non-removable;
 			status = "okay";
 		};
+
+		usb3: usb3@8a00000 {
+			qcom,select-utmi-as-pipe-clk;
+			status = "okay";
+
+			dwc3@8a00000 {
+				usb-phy = <>;
+				phys = <>;
+				phy-names = "";
+				snps,quirk-fladj = <0x8c09fca0>;
+				snps,quirk-guctl = <0xc804010>;
+				maximum-speed = "high-speed";
+			};
+		};
 	};
 
 	psci {
