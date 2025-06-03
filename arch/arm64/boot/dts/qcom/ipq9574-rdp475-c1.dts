@@ -349,6 +349,11 @@
 	perst-gpios = <&tlmm 29 GPIO_ACTIVE_LOW>;
 	max-link-speed = <2>;
 	link_retries_count = <400>;
+
+	enable-iatu;
+	iatu-ib0-base-addr-cfg = <0x80000000 0x0 0xFFFFFFFF>;
+	iatu-ib0-target-addr-cfg = <0x40000000 0x0 0xFFFFFFFF>;
+
 	status = "okay";
 	pcie2_rp: pcie2_rp {
 		reg = <0 0 0 0 0>;
@@ -364,6 +369,11 @@
 	perst-gpios = <&tlmm 32 GPIO_ACTIVE_LOW>;
 	max-link-speed = <2>;
 	link_retries_count = <400>;
+
+	enable-iatu;
+	iatu-ib0-base-addr-cfg = <0x80000000 0x0 0xFFFFFFFF>;
+	iatu-ib0-target-addr-cfg = <0x40000000 0x0 0xFFFFFFFF>;
+
 	status = "okay";
 	pcie3_rp: pcie3_rp {
 		reg = <0 0 0 0 0>;
