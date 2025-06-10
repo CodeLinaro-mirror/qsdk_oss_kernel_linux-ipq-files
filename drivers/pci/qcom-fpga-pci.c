@@ -282,6 +282,8 @@ static int fpga_pci_init(struct pci_dev *pdev, const struct pci_device_id *ent)
 		return -ENOMEM;
 	}
 
+	pci_set_master(pdev);
+
 	return 0;
 }
 
