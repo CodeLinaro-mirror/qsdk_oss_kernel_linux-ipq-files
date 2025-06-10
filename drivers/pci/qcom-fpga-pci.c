@@ -16,13 +16,13 @@
 struct qcom_fpga_pci_priv {
 	void __iomem *mmio_addr_base;
 	struct pci_dev *pci_dev;
-	u32 last_prog_reg;
+	u64 last_prog_reg;
 };
 
 static struct qcom_fpga_pci_priv *qcom_fpga_pci;
 static DEFINE_SPINLOCK(pci_lock);
 
-void qcom_program_window(u32 reg)
+void qcom_program_window(u64 reg)
 {
 	int retry = 10;
 
@@ -50,9 +50,9 @@ void qcom_program_window(u32 reg)
  * The read value will be returned on success, a negative errno will be
  * returned in error cases.
  */
-u32 qcom_fpga_mem_read(u32 reg)
+u64 qcom_fpga_mem_read(u64 reg)
 {
-	u32 base_addr, new_addr, val;
+	u64 base_addr, new_addr, val;
 	unsigned long flags;
 
 	spin_lock_irqsave(&pci_lock, flags);
@@ -77,9 +77,9 @@ EXPORT_SYMBOL(qcom_fpga_mem_read);
  * @val : Value to be written in FPGA register
  *
  */
-void qcom_fpga_mem_write(u32 reg, u32 val)
+void qcom_fpga_mem_write(u64 reg, u64 val)
 {
-	u32 base_addr, new_addr;
+	u64 base_addr, new_addr;
 	unsigned long flags;
 
 	spin_lock_irqsave(&pci_lock, flags);
@@ -104,10 +104,10 @@ EXPORT_SYMBOL(qcom_fpga_mem_write);
  * @val_count : Number of values to be written
  *
  */
-int qcom_fpga_bulk_reg_write(u32 reg, const u32 *val,
+u64 qcom_fpga_bulk_reg_write(u64 reg, const u64 *val,
 			     size_t val_count)
 {
-	int i;
+	u64 i;
 
 	for (i = 0; i < val_count; i++) {
 		qcom_fpga_mem_write(reg, val[i]);
@@ -127,9 +127,9 @@ EXPORT_SYMBOL(qcom_fpga_bulk_reg_write);
  * @val_count : Number of values to be read
  *
  */
-int qcom_fpga_bulk_reg_read(u32 reg, u32 *val, size_t val_count)
+u64 qcom_fpga_bulk_reg_read(u64 reg, u64 *val, size_t val_count)
 {
-	int i;
+	u64 i;
 
 	for (i = 0; i < val_count; i++) {
 		val[i] = qcom_fpga_mem_read(reg);
@@ -147,10 +147,10 @@ EXPORT_SYMBOL(qcom_fpga_bulk_reg_read);
  * @num_regs : Number of registers to write
  *
  */
-int qcom_fpga_multi_reg_write(const struct reg_sequence *regs,
-			      int num_regs)
+u64 qcom_fpga_multi_reg_write(const struct reg_sequence *regs,
+			      u64 num_regs)
 {
-	int i;
+	u64 i;
 
 	for (i = 0; i < num_regs; i++) {
 		qcom_fpga_mem_write(regs[i].reg, regs[i].def);
@@ -169,9 +169,9 @@ EXPORT_SYMBOL(qcom_fpga_multi_reg_write);
  * @num_regs : Number of registers to read
  *
  */
-int qcom_fpga_multi_reg_read(struct reg_sequence *regs, int num_regs)
+u64 qcom_fpga_multi_reg_read(struct reg_sequence *regs, u64 num_regs)
 {
-	int i;
+	u64 i;
 
 	for (i = 0; i < num_regs; i++) {
 		regs[i].def = qcom_fpga_mem_read(regs[i].reg);
@@ -187,9 +187,9 @@ static ssize_t fpga_reg_write_store(struct device *device,
 				    struct device_attribute *attr,
 				    const char *buf, size_t count)
 {
-	u32 addr, val;
+	u64 addr, val;
 
-	if (sscanf(buf, "%X %X", &addr, &val) != 2)
+	if (sscanf(buf, "%llX %llX", &addr, &val) != 2)
 		return -EINVAL;
 
 	qcom_fpga_mem_write(addr, val);
@@ -201,14 +201,14 @@ static ssize_t fpga_reg_read_store(struct device *device,
 				   struct device_attribute *attr,
 				   const char *buf, size_t count)
 {
-	u32 addr, val;
+	u64 addr, val;
 
-	if (kstrtouint(buf, 16, &addr))
+	if (kstrtoull(buf, 16, &addr))
 		return -EINVAL;
 
 	val = qcom_fpga_mem_read(addr);
 
-	pr_info("\n0x%X: 0x%X\n", addr, val);
+	pr_info("\n0x%llX: 0x%llX\n", addr, val);
 	return count;
 }
 
