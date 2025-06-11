@@ -122,7 +122,7 @@
 			/* quirk to disable SDR104, SDR50 modes */
 			no-1-8-v;
 			non-removable;
-			status = "okay";
+			status = "disabled";
 		};
 
 		usb3: usb3@8a00000 {
@@ -137,6 +137,14 @@
 				snps,quirk-guctl = <0xc804010>;
 				maximum-speed = "high-speed";
 			};
+		};
+
+		qpic_bam: dma-controller@7984000 {
+			status="okay";
+		};
+
+		qpic_nand: nand@79b0000 {
+			status="okay";
 		};
 	};
 

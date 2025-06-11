@@ -311,6 +311,49 @@
 			};
 		};
 
+		qpic_bam: dma-controller@7984000 {
+			compatible = "qcom,bam-v1.7.0";
+			reg = <0x7984000 0x1c000>;
+			interrupts = <GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&gcc GCC_QPIC_AHB_CLK>;
+			clock-names = "bam_clk";
+			#dma-cells = <1>;
+			qcom,ee = <0>;
+			qcom,bam-lite;
+			status = "disabled";
+		};
+
+		qpic_nand: nand@79b0000 {
+			compatible = "qcom,ipq5200-nand";
+			reg = <0x79b0000 0x10000>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clocks = <&gcc GCC_QPIC_CLK>,
+				 <&gcc GCC_QPIC_AHB_CLK>,
+				 <&gcc GCC_QPIC_IO_MACRO_CLK>;
+			clock-names = "core", "aon", "io_macro";
+
+			dmas = <&qpic_bam 0>,
+			       <&qpic_bam 1>,
+			       <&qpic_bam 2>,
+			       <&qpic_bam 3>;
+			dma-names = "tx", "rx", "cmd", "sts";
+
+			qcom,io_macro_max_clk = <320000000>;
+			qcom,io_macro_clk_rates = <24000000 100000000 200000000 \
+						   320000000>;
+
+			status = "disabled";
+			nandcs@0 {
+				reg = <0>;
+				#address-cells = <1>;
+				#size-cells = <1>;
+
+				nand-ecc-strength = <8>;
+				nand-ecc-step-size = <512>;
+				nand-bus-width = <8>;
+			};
+		};
 	};
 
 	psci {
