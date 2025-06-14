@@ -20,5 +20,8 @@
 #define GCC_USB0_SLEEP_CLK		10
 #define GCC_USB0_MOCK_UTMI_CLK		11
 #define GCC_CNOC_USB_CLK		12
+#define GCC_QPIC_CLK			13
+#define GCC_QPIC_AHB_CLK		14
+#define GCC_QPIC_IO_MACRO_CLK		15
 
 #endif

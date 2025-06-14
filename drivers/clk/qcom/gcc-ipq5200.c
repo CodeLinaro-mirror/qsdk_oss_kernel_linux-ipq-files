@@ -102,6 +102,9 @@ static struct clk_regmap *gcc_ipq5200_dummy_clks[] = {
 	[GCC_USB0_SLEEP_CLK] = DEFINE_DUMMY_CLK(gcc_usb0_sleep_clk),
 	[GCC_USB0_MOCK_UTMI_CLK] = DEFINE_DUMMY_CLK(gcc_usb0_mock_utmi_clk),
 	[GCC_CNOC_USB_CLK] = DEFINE_DUMMY_CLK(gcc_cnoc_usb_clk),
+	[GCC_QPIC_CLK] = DEFINE_DUMMY_CLK(gcc_qpic_clk),
+	[GCC_QPIC_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_qpic_ahb_clk),
+	[GCC_QPIC_IO_MACRO_CLK] = DEFINE_DUMMY_CLK(gcc_qpic_io_macro_clk),
 };
 
 static const struct qcom_reset_map gcc_ipq5200_resets[] = {
