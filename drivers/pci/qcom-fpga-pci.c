@@ -24,7 +24,7 @@ static DEFINE_SPINLOCK(pci_lock);
 
 void qcom_program_window(u64 reg)
 {
-	int retry = 2000;
+	int retry = 100000;
 
 	if (qcom_fpga_pci->last_prog_reg == reg)
 		return;
@@ -33,7 +33,7 @@ void qcom_program_window(u64 reg)
 	       PCIE_MEM_ACCESS_BASE_ADDR_REG);
 
 	while (retry--) {
-		udelay(50);
+		udelay(1);
 		if (readl(qcom_fpga_pci->mmio_addr_base +
 			  PCIE_MEM_ACCESS_BASE_ADDR_REG) == reg)
 			break;
