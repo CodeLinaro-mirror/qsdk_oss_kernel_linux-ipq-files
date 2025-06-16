@@ -106,3 +106,7 @@
 		clock-frequency = <160000>;
 	};
 };
+
+&gcc {
+	gcc-use-dummy;
+};
