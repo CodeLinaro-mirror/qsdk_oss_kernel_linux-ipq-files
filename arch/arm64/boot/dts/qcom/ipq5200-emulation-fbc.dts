@@ -1,0 +1,140 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * IPQ5200 Emulation FBC board device tree source
+ *
+ * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ */
+
+/dts-v1/;
+
+#include "ipq5200.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. IPQ5200-EMULATION-FBC";
+	compatible = "qcom,ipq5200-emulation", "qcom,ipq5200";
+
+	/*Timer freq for rumi = timer freq / 100*/
+	clocks {
+		sleep_clk: sleep-clk {
+			clock-frequency = <320>;
+		};
+
+		xo: xo {
+			clock-frequency = <240000>;
+		};
+	};
+
+	aliases {
+		serial0 = &uart1;
+	};
+
+	chosen {
+		stdout-path = "serial0";
+	};
+
+	soc@0 {
+		/*Timer freq for rumi = timer freq / 100*/
+		timer {
+			clock-frequency = <240000>;
+		};
+
+		timer@b120000 {
+			clock-frequency = <240000>;
+		};
+
+		qupv3: geniqup@1ac0000 {
+			status = "okay";
+
+			uart1: serial@1a84000 {
+				status = "okay";
+			};
+
+			spi0: spi@1a90000 {
+				status = "disabled";
+
+				flash@0 {
+					compatible = "spansion,s25fs128s1", "jedec,spi-nor";
+					#address-cells = <1>;
+					#size-cells = <1>;
+					reg = <0>;
+					spi-max-frequency = <50000000>;
+				};
+			};
+
+			i2c0: i2c@1a88000 {
+				status = "okay";
+			};
+
+			i2c1: i2c@1a8c000 {
+				status = "okay";
+			};
+		};
+
+		sdhc: mmc@7804000 {
+			qcom,emulation;
+			/* over-ride the frequency to 48Mhz for emulation platform */
+			max-frequency = <48000000>;
+			bus-width = <4>;
+			/* Force 3.3V, because only that will support on emulation platform */
+			mmc-ddr-3_3v;
+			/* quirk to disable SDR104, SDR50 modes */
+			no-1-8-v;
+			non-removable;
+			status = "okay";
+		};
+
+		usb3: usb3@8a00000 {
+			qcom,select-utmi-as-pipe-clk;
+			status = "okay";
+
+			dwc3@8a00000 {
+				usb-phy = <>;
+				phys = <>;
+				phy-names = "";
+				snps,quirk-fladj = <0x8c09fca0>;
+				snps,quirk-guctl = <0xc804010>;
+				maximum-speed = "high-speed";
+			};
+		};
+
+		qpic_bam: dma-controller@7984000 {
+			status="okay";
+		};
+
+		qpic_nand: nand@79b0000 {
+			status="disabled";
+		};
+
+		pcie0: pcie@70000000 {
+			max-link-speed = <1>;
+			phys = <>;
+			phy-names = "";
+			perst-gpio = <&tlmm 34 GPIO_ACTIVE_LOW>;
+			status = "okay";
+
+			pcie0_rp {
+				reg = <0 0 0 0 0>;
+				qcom,mhi@0 {
+					reg = <0 0 0 0 0>;
+				};
+			};
+		};
+
+		pcie1: pcie@50000000 {
+			max-link-speed = <1>;
+			phys = <>;
+			phy-names = "";
+			perst-gpio = <&tlmm 35 GPIO_ACTIVE_LOW>;
+			status = "disabled";
+
+			pcie1_rp {
+				reg = <0 0 0 0 0>;
+				qcom,mhi@0 {
+					reg = <0 0 0 0 0>;
+				};
+			};
+		};
+
+	};
+};
