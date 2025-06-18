@@ -1,7 +1,7 @@
 /* QTI Secure Execution Environment Communicator (QSEECOM) driver
  *
  * Copyright (c) 2012, 2015, 2017-2018 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -16,8 +16,10 @@
 #ifndef _qseecom_h
 #define _qseecom_h
 
+#include <linux/cdev.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/ioctl.h>
 #include <linux/module.h>
 #include <linux/syscalls.h>
 #include <linux/fcntl.h>
@@ -28,6 +30,7 @@
 #include <linux/sizes.h>
 #include <linux/fs.h>
 #include <linux/device.h>
+#include <linux/kernel_read_file.h>
 #include <linux/kobject.h>
 #include <linux/firmware/qcom/qcom_scm.h>
 #include <linux/sysfs.h>
@@ -69,6 +72,12 @@
 #define CLIENT_CMD13_RUN_MISC_TEST	13
 #define CLIENT_CMD121_RUN_KEY_DERIVE_TEST	121
 #define CLIENT_CMD122_CLEAR_KEY		122
+
+/* Command IDs for Crypto TA */
+#define CLIENT_CMD0_GET_VERSION		0
+#define CLIENT_CMD1_ECDSA_IMPORT_KEY	1
+#define CLIENT_CMD2_ECDSA_SIGN		2
+#define CLIENT_CMD3_ECDSA_VERIFY	3
 
 #define MAX_INPUT_SIZE			4096
 #define QSEE_64				64
@@ -457,6 +466,104 @@ enum qti_storage_service_qsee_hash_id {
 	QSEE_HASH_IDX_INVALID = 0x7FFFFFFF,
 };
 
+#define FILE_PATH_MAX		100
+
+static uint32_t ecdsa_key_handle;
+
+struct ta_info {
+	char mdt_file[FILE_PATH_MAX];
+	char seg_file[FILE_PATH_MAX];
+};
+
+struct ecdsa_import_key {
+	void *ecdsa_blob;
+	u32 ecdsa_blob_len;
+	u32 key_handle;
+	u32 result;
+};
+
+struct qsee_ecdsa_import_key {
+	u32 ecdsa_blob;
+	u32 ecdsa_blob_len;
+	u32 key_handle;
+	u32 result;
+};
+
+#define MAX_ECC_PUB_KEY_LEN		133
+#define MAX_ECC_ENC_PVT_KEY_LEN		80
+#define MAX_CONTEXT_LEN			128
+#define MAX_IV_SIZE			16
+#define MAX_CMAC_AES_SIZE		16
+
+struct qsee_ecdsa_import_blob {
+	u32 curve_mode;
+	u8 public_key[MAX_ECC_PUB_KEY_LEN];
+	u32 public_key_len;
+	u8 encrypted_private_key[MAX_ECC_ENC_PVT_KEY_LEN];
+	u32 encrypted_private_key_len;
+	u8 context[MAX_CONTEXT_LEN];
+	u32 context_len;
+	u8 iv_data[MAX_IV_SIZE];
+	u32 iv_data_len;
+	u8 cmac[MAX_CMAC_AES_SIZE];
+};
+
+struct ecdsa_points {
+	unsigned char public_key[MAX_ECC_PUB_KEY_LEN];
+	unsigned int public_key_len;
+};
+
+struct ecdsa_points ec_points;
+
+#define ECDSA_SIGNATURE_MAX_LEN	132
+
+struct ecdsa_sign {
+	u32 key_handle;
+	void *data;
+	u32 data_len;
+	void *signature;
+	u32 signature_out_len;
+	u32 result;
+};
+
+struct qsee_ecdsa_sign {
+	u32 key_handle;
+	u32 data;
+	u32 data_len;
+	u32 signature;
+	u32 signature_len;
+	u32 signature_out_len;
+	u32 result;
+};
+
+struct ecdsa_verify {
+	u32 key_handle;
+	void *data;
+	u32 data_len;
+	void *signature;
+	u32 signature_len;
+	u32 result;
+};
+
+struct qsee_ecdsa_verify {
+	u32 key_handle;
+	u32 data;
+	u32 data_len;
+	u32 signature;
+	u32 signature_len;
+	u32 result;
+};
+
+#define QSEECOM_LOAD_TA_LIB             _IOWR('Q', 1, struct ta_info)
+#define QSEECOM_LOAD_TA_APP             _IOWR('Q', 2, struct ta_info)
+#define QSEECOM_UNLOAD_TA_LIB		_IO('Q', 3)
+#define QSEECOM_UNLOAD_TA_APP           _IO('Q', 4)
+#define QSEECOM_ECDSA_IMPORT_KEY	_IOWR('Q', 5, struct ecdsa_import_key)
+#define QSEECOM_SET_KEY_HANDLE		_IOWR('Q', 6, uint32_t)
+#define QSEECOM_ECDSA_SIGN		_IOWR('Q', 7, struct ecdsa_sign)
+#define QSEECOM_ECDSA_VERIFY		_IOWR('Q', 8, struct ecdsa_verify)
+#define QSEECOM_GET_EC_POINTS		_IOWR('Q', 9, struct ecdsa_points)
+
 char message[MESSAGE_LEN];
 
 static uint32_t qsee_app_id;
@@ -467,8 +574,8 @@ static size_t dec_len;
 static int basic_data_len;
 static int context_data_len;
 static int aes_context_data_len;
-static int mdt_size;
-static int seg_size;
+static size_t mdt_size;
+static size_t seg_size;
 static int auth_size;
 static uint8_t *mdt_file;
 static uint8_t *seg_file;
@@ -673,6 +780,10 @@ struct kobject *qtiapp_fuse_write_kobj;
 static void *q_qsee_log;
 static dma_addr_t dma_qsee_log_buf;
 
+static dev_t chr_dev;
+static struct class *dev_class;
+static struct cdev qseecom_cdev;
+
 static struct device *qdev;
 
 /*
@@ -711,7 +822,11 @@ enum qti_app_cmd_ids {
 	QTI_APP_RSA_ENC_DEC_ID,
 	QTI_APP_FUSE_BLOW_ID,
 	QTI_APP_KEY_DERIVE_TEST,
-	QTI_APP_CLEAR_KEY
+	QTI_APP_CLEAR_KEY,
+	QTI_APP_GET_VERSION,
+	QTI_APP_ECDSA_IMPORT_KEY,
+	QTI_APP_ECDSA_SIGN,
+	QTI_APP_ECDSA_VERIFY
 };
 
 static ssize_t generate_key_blob(struct device *dev,

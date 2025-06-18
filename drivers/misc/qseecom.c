@@ -1,7 +1,7 @@
 /* QTI Secure Execution Environment Communicator (QSEECOM) driver
  *
  * Copyright (c) 2012, 2015, 2017-2018, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -3406,6 +3406,23 @@ static int qtiapp_test(struct device *dev, void *input,
 		msgreq->cmd_id = CLIENT_CMD122_CLEAR_KEY;
 		msgreq->data = *((dma_addr_t *)input);
 		break;
+	case QTI_APP_GET_VERSION:
+		break;
+	case QTI_APP_ECDSA_IMPORT_KEY:
+		msgreq->cmd_id = CLIENT_CMD1_ECDSA_IMPORT_KEY;
+		msgreq->data = (dma_addr_t)input;
+		msgreq->len = input_len;
+		break;
+	case QTI_APP_ECDSA_SIGN:
+		msgreq->cmd_id = CLIENT_CMD2_ECDSA_SIGN;
+		msgreq->data = (dma_addr_t)input;
+		msgreq->len = input_len;
+		break;
+	case QTI_APP_ECDSA_VERIFY:
+		msgreq->cmd_id = CLIENT_CMD3_ECDSA_VERIFY;
+		msgreq->data = (dma_addr_t)input;
+		msgreq->len = input_len;
+		break;
 	default:
 		pr_err("Invalid Option\n");
 		goto fn_exit;
@@ -5113,6 +5130,575 @@ static int __init qtiapp_init(struct device *dev)
 	return 0;
 }
 
+static int qseecom_open(struct inode *inode, struct file *file)
+{
+	return 0;
+}
+
+static int qseecom_release(struct inode *inode, struct file *file)
+{
+	return 0;
+}
+
+static long qseecom_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+	void __user *argp = (void __user *)arg;
+	struct qsee_ecdsa_import_blob *blob;
+	struct qsee_ecdsa_import_key *ikey;
+	struct ecdsa_import_key *ikey_ubuf;
+	struct qsee_ecdsa_verify *verify;
+	struct ecdsa_verify *verify_ubuf;
+	struct qsee_ecdsa_sign *sign;
+	struct ecdsa_sign *sign_ubuf;
+	dma_addr_t buf1_dma_addr = 0;
+	dma_addr_t buf2_dma_addr = 0;
+	dma_addr_t buf3_dma_addr = 0;
+	struct ecdsa_points *ec_pnts;
+	size_t buf1_dma_size = 0;
+	size_t buf2_dma_size = 0;
+	size_t buf3_dma_size = 0;
+	size_t buf1_size = 0;
+	size_t req_size = 0;
+	u32 key_handle = 0;
+	u32 smc_id = 0;
+	u32 cmd_id = 0;
+	void *buf2;
+	void *buf3;
+	int ret;
+
+	struct ta_info *info_ubuf;
+
+	switch (cmd) {
+	case QSEECOM_LOAD_TA_LIB:
+		info_ubuf = kzalloc(sizeof(*info_ubuf), GFP_KERNEL);
+		if (!info_ubuf)
+			return -ENOMEM;
+
+		ret = copy_from_user(info_ubuf, argp, sizeof(struct ta_info));
+		if (ret) {
+			pr_err("Failed to copy from user, %d\n", ret);
+			goto lib_info_ubuf_free;
+		}
+
+		ret = kernel_read_file_from_path(info_ubuf->mdt_file, 0,
+						 (void **)&mdt_file, INT_MAX, &mdt_size,
+						 READING_POLICY);
+		if (ret <= 0) {
+			pr_err("File open failed %s, ret %d\n", info_ubuf->mdt_file, ret);
+			goto lib_info_ubuf_free;
+		}
+
+		ret = kernel_read_file_from_path(info_ubuf->seg_file, 0,
+						 (void **)&seg_file, INT_MAX, &seg_size,
+						 READING_POLICY);
+		if (ret <= 0) {
+			pr_err("File open failed %s, ret %d\n", info_ubuf->seg_file, ret);
+			goto lib_mdt_buf_free;
+		}
+
+		smc_id = QTI_SYSCALL_CREATE_SMC_ID(QTI_OWNER_QSEE_OS,
+						   QTI_SVC_APP_MGR,
+						   QTI_CMD_LOAD_LIB);
+		cmd_id = QSEE_LOAD_SERV_IMAGE_COMMAND;
+		req_size = sizeof(struct qseecom_load_lib_ireq);
+
+		ret = load_request(qdev, smc_id, cmd_id, req_size);
+		if (ret) {
+			pr_err("TA LIB load failed\n");
+			goto lib_seg_buf_free;
+		}
+		/* Register for TA log */
+		if (qtidbg_register_qsee_log_buf(qdev)) {
+			pr_err("Registering log buf failed\n");
+			ret = -EIO;
+			goto lib_seg_buf_free;
+		}
+
+		app_libs_state = 1;
+
+lib_seg_buf_free:
+		vfree(seg_file);
+		seg_file = NULL;
+lib_mdt_buf_free:
+		vfree(mdt_file);
+		mdt_file = NULL;
+lib_info_ubuf_free:
+		kfree(info_ubuf);
+	break;
+
+	case QSEECOM_LOAD_TA_APP:
+
+		if (!app_libs_state) {
+			pr_err("TA lib must be loaded first\n");
+			return -EIO;
+		}
+
+		if (app_state) {
+			pr_err("App already loaded\n");
+			return -EIO;
+		}
+
+		info_ubuf = kzalloc(sizeof(*info_ubuf), GFP_KERNEL);
+		if (!info_ubuf)
+			return -ENOMEM;
+
+		ret = copy_from_user(info_ubuf, argp, sizeof(struct ta_info));
+		if (ret) {
+			pr_err("Failed to copy from user, %d\n", ret);
+			goto app_info_ubuf_free;
+		}
+
+		ret = kernel_read_file_from_path(info_ubuf->mdt_file, 0,
+						 (void **)&mdt_file, INT_MAX, &mdt_size,
+						 READING_POLICY);
+		if (ret <= 0) {
+			pr_err("File open failed %s\n", info_ubuf->mdt_file);
+			goto app_info_ubuf_free;
+		}
+
+		ret = kernel_read_file_from_path(info_ubuf->seg_file, 0,
+						 (void **)&seg_file, INT_MAX, &seg_size,
+						 READING_POLICY);
+		if (ret <= 0) {
+			pr_err("File open failed %s\n", info_ubuf->seg_file);
+			goto app_mdt_buf_free;
+		}
+
+		smc_id = QTI_SYSCALL_CREATE_SMC_ID(QTI_OWNER_QSEE_OS,
+						   QTI_SVC_APP_MGR,
+						   QTI_CMD_LOAD_APP_ID);
+		cmd_id = QSEOS_APP_START_COMMAND;
+		req_size = sizeof(struct qseecom_load_app_ireq);
+
+		ret = load_request(qdev, smc_id, cmd_id, req_size);
+		if (ret) {
+			pr_err("TA App load failed\n");
+			goto app_seg_buf_free;
+		}
+
+		/* Create sysfs for TA log */
+		tzapp_log_dir = debugfs_create_file("tzapp_log", 0444, NULL, NULL,
+						    &fops_tzapp_log);
+		if (IS_ERR_OR_NULL(tzapp_log_dir)) {
+			pr_err("unable to create tzapp_log debugfs entry\n");
+			ret = -EIO;
+			goto app_seg_buf_free;
+		}
+
+		app_state = 1;
+
+app_seg_buf_free:
+		vfree(seg_file);
+		seg_file = NULL;
+app_mdt_buf_free:
+		vfree(mdt_file);
+		mdt_file = NULL;
+app_info_ubuf_free:
+		kfree(info_ubuf);
+
+	break;
+
+	case QSEECOM_UNLOAD_TA_LIB:
+
+		if (!app_libs_state) {
+			pr_err("No Lib to unload\n");
+			return -EIO;
+		}
+
+		ret = unload_app_libs();
+		if (ret)
+			pr_err("Lib unload failed\n");
+		else
+			app_libs_state = 0;
+	break;
+
+	case QSEECOM_UNLOAD_TA_APP:
+
+		if (!app_state) {
+			pr_err("No App to unload\n");
+			return -EIO;
+		}
+
+		ret = qseecom_unload_app();
+		if (ret)
+			pr_err("App unload failed\n");
+		else
+			app_state = 0;
+
+		debugfs_remove(tzapp_log_dir);
+		tzapp_log_dir = NULL;
+		memset(tzapp_log, 0, qsee_log_buf_len);
+	break;
+
+	case QSEECOM_ECDSA_IMPORT_KEY:
+
+		ikey_ubuf = kzalloc(sizeof(*ikey_ubuf), GFP_KERNEL);
+		if (!ikey_ubuf)
+			return -ENOMEM;
+
+		ret = copy_from_user(ikey_ubuf, argp, sizeof(struct ecdsa_import_key));
+		if (ret) {
+			pr_err("Failed to copy from user, %d\n", ret);
+			goto ikey_ubuf_free;
+		}
+
+		if (!ikey_ubuf->ecdsa_blob_len) {
+			pr_err("Invalid ecdsa_blob_len from user\n");
+			ret = -EINVAL;
+			goto ikey_ubuf_free;
+		}
+
+		/* Allocate DMA buffers for TA */
+		buf1_size = sizeof(struct qsee_ecdsa_import_key);
+		buf1_dma_size = PAGE_SIZE * (1 << get_order(buf1_size));
+		ikey = dma_alloc_coherent(qdev, buf1_dma_size, &buf1_dma_addr, GFP_KERNEL);
+		if (!ikey) {
+			pr_err("DMA alloc failed\n");
+			ret = -ENOMEM;
+			goto ikey_ubuf_free;
+		}
+
+		buf2_dma_size = PAGE_SIZE * (1 << get_order(ikey_ubuf->ecdsa_blob_len));
+		buf2 = dma_alloc_coherent(qdev, buf2_dma_size, &buf2_dma_addr, GFP_KERNEL);
+		if (!buf2) {
+			ret = -ENOMEM;
+			goto ikey_buf1_free;
+		}
+
+		/* Copy data to DMA buffers for TA */
+		ikey->ecdsa_blob_len = ikey_ubuf->ecdsa_blob_len;
+
+		ret = copy_from_user(buf2, ikey_ubuf->ecdsa_blob, ikey_ubuf->ecdsa_blob_len);
+		if (ret) {
+			pr_err("Failed to copy from user, %d\n", ret);
+			goto ikey_buf2_free;
+		}
+
+		ikey->ecdsa_blob = (u32)buf2_dma_addr;
+
+		ret = qtiapp_test(qdev, (void *)buf1_dma_addr, NULL, buf1_dma_size,
+				  QTI_APP_ECDSA_IMPORT_KEY);
+		if (ret)
+			goto ikey_buf2_free;
+
+		/* Copy TA responses to userspace */
+		ikey_ubuf->key_handle = ikey->key_handle;
+		ikey_ubuf->result = ikey->result;
+
+		/* Copy the ecdsa blob */
+		if (ikey_ubuf->ecdsa_blob_len == sizeof(struct qsee_ecdsa_import_blob)) {
+			blob = (struct qsee_ecdsa_import_blob *)buf2;
+			ec_points.public_key_len = blob->public_key_len;
+			memcpy(ec_points.public_key, blob->public_key, blob->public_key_len);
+		}
+		else {
+			pr_err("Size mismatch. Unable to store the ecdsa_blob\n");
+		}
+
+		ret = copy_to_user(argp, ikey_ubuf, sizeof(struct ecdsa_import_key));
+		if (ret)
+			pr_err("Failed, copy to user, %d\n", ret);
+
+ikey_buf2_free:
+		dma_free_coherent(qdev, buf2_dma_size, buf2, buf2_dma_addr);
+ikey_buf1_free:
+		dma_free_coherent(qdev, buf1_dma_size, ikey, buf1_dma_addr);
+ikey_ubuf_free:
+		kfree(ikey_ubuf);
+
+	break;
+
+	case QSEECOM_ECDSA_SIGN:
+
+		if (!ecdsa_key_handle) {
+			pr_err("key_handle is not set yet\n");
+			return -EINVAL;
+		}
+
+		sign_ubuf = kzalloc(sizeof(*sign_ubuf), GFP_KERNEL);
+		if (!sign_ubuf)
+			return -ENOMEM;
+
+		ret = copy_from_user(sign_ubuf, argp, sizeof(struct ecdsa_sign));
+		if (ret) {
+			pr_err("Failed to copy from user, %d\n", ret);
+			goto sign_ubuf_free;
+		}
+
+		if (!sign_ubuf->data_len) {
+			pr_err("Invalid data length from user\n");
+			ret = -EINVAL;
+			goto sign_ubuf_free;
+		}
+
+		/* Allocate DMA buffers for TA */
+		buf1_size = sizeof(struct qsee_ecdsa_sign);
+		buf1_dma_size = PAGE_SIZE * (1 << get_order(buf1_size));
+		sign = dma_alloc_coherent(qdev, buf1_dma_size, &buf1_dma_addr, GFP_KERNEL);
+		if (!sign) {
+			pr_err("DMA alloc failed\n");
+			ret = -ENOMEM;
+			goto sign_ubuf_free;
+		}
+
+		buf2_dma_size = PAGE_SIZE * (1 << get_order(sign_ubuf->data_len));
+		buf2 = dma_alloc_coherent(qdev, buf2_dma_size, &buf2_dma_addr, GFP_KERNEL);
+		if (!buf2) {
+			ret = -ENOMEM;
+			goto sign_buf1_free;
+		}
+
+		buf3_dma_size = PAGE_SIZE * (1 << get_order(ECDSA_SIGNATURE_MAX_LEN));
+		buf3 = dma_alloc_coherent(qdev, buf3_dma_size, &buf3_dma_addr, GFP_KERNEL);
+		if (!buf3) {
+			ret = -ENOMEM;
+			goto sign_buf2_free;
+		}
+
+		/* Copy data to DMA buffers for TA */
+		ret = copy_from_user(buf2, sign_ubuf->data, sign_ubuf->data_len);
+		if (ret) {
+			pr_err("Failed to copy from user, %d\n", ret);
+			goto sign_buf3_free;
+		}
+
+		/* Always use key_handle via QSEECOM_SET_KEY_HANDLE */
+		sign->key_handle = ecdsa_key_handle;
+		sign->data_len = sign_ubuf->data_len;
+		sign->signature_len = ECDSA_SIGNATURE_MAX_LEN;
+		sign->data = (u32)buf2_dma_addr;
+		sign->signature = (u32)buf3_dma_addr;
+
+		ret = qtiapp_test(qdev, (void *)buf1_dma_addr, NULL, buf1_dma_size,
+				  QTI_APP_ECDSA_SIGN);
+		if (ret)
+			goto sign_buf3_free;
+
+		/* Copy TA responses to userspace */
+		ret = copy_to_user(sign_ubuf->signature, buf3, sign->signature_out_len);
+		if (ret) {
+			pr_err("Failed, copy to user, %d\n", ret);
+			goto sign_buf3_free;
+		}
+
+		sign_ubuf->signature_out_len = sign->signature_out_len;
+		sign_ubuf->result = sign->result;
+
+		ret = copy_to_user(argp, sign_ubuf, sizeof(struct ecdsa_sign));
+		if (ret)
+			pr_err("Failed, copy to user, %d\n", ret);
+
+sign_buf3_free:
+		dma_free_coherent(qdev, buf3_dma_size, buf3, buf3_dma_addr);
+sign_buf2_free:
+		dma_free_coherent(qdev, buf2_dma_size, buf2, buf2_dma_addr);
+sign_buf1_free:
+		dma_free_coherent(qdev, buf1_dma_size, ikey, buf1_dma_addr);
+sign_ubuf_free:
+		kfree(sign_ubuf);
+
+	break;
+
+	case QSEECOM_ECDSA_VERIFY:
+
+		if (!ecdsa_key_handle) {
+			pr_err("key_handle is not set yet\n");
+			return -EINVAL;
+		}
+
+		verify_ubuf = kzalloc(sizeof(*verify_ubuf), GFP_KERNEL);
+		if (!verify_ubuf)
+			return -ENOMEM;
+
+		ret = copy_from_user(verify_ubuf, argp, sizeof(struct ecdsa_verify));
+		if (ret) {
+			pr_err("Failed to copy from user, %d\n", ret);
+			goto verify_ubuf_free;
+		}
+
+		if (!verify_ubuf->data_len && !verify_ubuf->signature_len) {
+			pr_err("Invalid data/signature length from user\n");
+			ret = -EINVAL;
+			goto verify_ubuf_free;
+		}
+
+		/* Allocate DMA buffers for TA */
+		buf1_size = sizeof(struct qsee_ecdsa_verify);
+		buf1_dma_size = PAGE_SIZE * (1 << get_order(buf1_size));
+		verify = dma_alloc_coherent(qdev, buf1_dma_size, &buf1_dma_addr, GFP_KERNEL);
+		if (!verify) {
+			pr_err("DMA alloc failed\n");
+			ret = -ENOMEM;
+			goto verify_ubuf_free;
+		}
+
+		buf2_dma_size = PAGE_SIZE * (1 << get_order(verify_ubuf->data_len));
+		buf2 = dma_alloc_coherent(qdev, buf2_dma_size, &buf2_dma_addr, GFP_KERNEL);
+		if (!buf2) {
+			ret = -ENOMEM;
+			goto verify_buf1_free;
+		}
+
+		buf3_dma_size = PAGE_SIZE * (1 << get_order(verify_ubuf->signature_len));
+		buf3 = dma_alloc_coherent(qdev, buf3_dma_size, &buf3_dma_addr, GFP_KERNEL);
+		if (!buf3) {
+			ret = -ENOMEM;
+			goto verify_buf2_free;
+		}
+
+		/* Copy data to DMA buffers for TA */
+		ret = copy_from_user(buf2, verify_ubuf->data, verify_ubuf->data_len);
+		if (ret) {
+			pr_err("Failed to copy from user, %d\n", ret);
+			goto verify_buf3_free;
+		}
+
+		ret = copy_from_user(buf3, verify_ubuf->signature, verify_ubuf->signature_len);
+		if (ret) {
+			pr_err("Failed to copy from user, %d\n", ret);
+			goto verify_buf3_free;
+		}
+
+		verify->key_handle = ecdsa_key_handle;
+		verify->data = (u32)buf2_dma_addr;
+		verify->data_len = verify_ubuf->data_len;
+		verify->signature = (u32)buf3_dma_addr;
+		verify->signature_len = verify_ubuf->signature_len;
+
+		ret = qtiapp_test(qdev, (void *)buf1_dma_addr, NULL, buf1_dma_size,
+				  QTI_APP_ECDSA_VERIFY);
+		if (ret)
+			goto verify_buf3_free;
+
+		/* Copy TA response to userspace */
+		verify_ubuf->result = verify->result;
+
+		ret = copy_to_user(argp, verify_ubuf, sizeof(struct ecdsa_verify));
+		if (ret)
+			pr_err("Failed, copy to user, %d\n", ret);
+
+verify_buf3_free:
+		dma_free_coherent(qdev, buf3_dma_size, buf3, buf3_dma_addr);
+verify_buf2_free:
+		dma_free_coherent(qdev, buf2_dma_size, buf2, buf2_dma_addr);
+verify_buf1_free:
+		dma_free_coherent(qdev, buf1_dma_size, ikey, buf1_dma_addr);
+verify_ubuf_free:
+		kfree(verify_ubuf);
+
+	break;
+
+	case QSEECOM_SET_KEY_HANDLE:
+		ret = copy_from_user(&key_handle, argp, sizeof(uint32_t));
+		if (ret) {
+			pr_err("Failed to copy from user, %d\n", ret);
+			return -EFAULT;
+		}
+
+		if (!key_handle) {
+			pr_err("Invalid key_handler from user\n");
+			return -EINVAL;
+		}
+
+		ecdsa_key_handle = key_handle;
+
+	break;
+
+	case QSEECOM_GET_EC_POINTS:
+		ec_pnts = kzalloc(sizeof(*ec_pnts), GFP_KERNEL);
+		if (!ec_pnts)
+			return -ENOMEM;
+
+		ret = copy_from_user(ec_pnts, argp, sizeof(struct ecdsa_points));
+		if (ret) {
+			pr_err("Failed to copy from user, %d\n", ret);
+			goto free_ec_pnts;
+		}
+
+		/* Copy EC_Points to userspace from global buffer */
+		ec_pnts->public_key_len = ec_points.public_key_len;
+		memcpy(ec_pnts->public_key, ec_points.public_key, ec_points.public_key_len);
+
+		ret = copy_to_user(argp, ec_pnts, sizeof(struct ecdsa_points));
+		if (ret) {
+			pr_err("Copy to user failed, %d\n", ret);
+			goto free_ec_pnts;
+		}
+free_ec_pnts:
+		kfree(ec_pnts);
+	break;
+
+	default:
+	break;
+	}
+
+	return ret;
+}
+
+static const struct file_operations ioctl_fops = {
+	.owner          = THIS_MODULE,
+	.open           = qseecom_open,
+	.unlocked_ioctl = qseecom_ioctl,
+	.release        = qseecom_release,
+};
+
+static int qseecom_ioctl_init(void)
+{
+	int ret;
+	struct device *device;
+
+	ret = alloc_chrdev_region(&chr_dev, 0, 1, "qseecom_dev");
+	if (ret) {
+		pr_err("IOCTL: Major number allocation failure\n");
+		return ret;
+	}
+
+	/*Creating cdev structure*/
+	cdev_init(&qseecom_cdev, &ioctl_fops);
+
+	/*Adding character device to the system*/
+	ret = cdev_add(&qseecom_cdev, chr_dev, 1);
+	if (ret) {
+		pr_err("IOCTL: adding device failed\n");
+		goto out_chrdev;
+	}
+
+	/* Creating struct class */
+	dev_class = class_create("qseecom_class");
+	if (IS_ERR(dev_class)) {
+		pr_err("IOCTL: struct class creation failed\n");
+		ret = PTR_ERR(dev_class);
+		goto out_cdev;
+	}
+
+	/* Creating device */
+	device = device_create(dev_class, NULL, chr_dev, NULL, "qseecom_device");
+	if (IS_ERR(device)) {
+		pr_err("IOCTL: device creation failed\n");
+		ret = PTR_ERR(device);
+		goto out_class;
+	}
+
+	return 0;
+
+out_class:
+	class_destroy(dev_class);
+out_cdev:
+	cdev_del(&qseecom_cdev);
+out_chrdev:
+	unregister_chrdev_region(chr_dev, 1);
+
+	return ret;
+}
+
+static void qseecom_ioctl_free(void)
+{
+	device_destroy(dev_class, chr_dev);
+	class_destroy(dev_class);
+	cdev_del(&qseecom_cdev);
+	unregister_chrdev_region(chr_dev, 1);
+}
+
 static int __init qseecom_probe(struct platform_device *pdev)
 {
 	struct device_node *of_node = pdev->dev.of_node;
@@ -5170,6 +5756,12 @@ static int __init qseecom_probe(struct platform_device *pdev)
 		(long long unsigned int) notify_app.applications_region_addr +
 		(long long unsigned int) notify_app.applications_region_size);
 
+	ret = qseecom_ioctl_init();
+	if (ret) {
+		pr_info("IOCTL init failed, %d\n", ret);
+		return ret;
+	}
+
 load:
 	props = ((struct qseecom_props *)id->data);
 
@@ -5224,6 +5816,8 @@ static int __exit qseecom_remove(struct platform_device *pdev)
 		else
 			app_state = 0;
 	}
+
+	qseecom_ioctl_free();
 
 	sysfs_remove_bin_file(firmware_kobj, &mdt_attr);
 	sysfs_remove_bin_file(firmware_kobj, &seg_attr);

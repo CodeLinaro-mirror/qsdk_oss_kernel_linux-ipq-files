@@ -46,8 +46,13 @@ ________|______________________|_________|_________|_________|
 |       |                      |         |         |         |
 |       |        Misc          |    Y    |    Y    |    Y    |
 |_______|______________________|_________|_________|_________|
-
---------------------------------------------------------------------------------
+|       |                      |         |         |         |
+|       | ECDSA Import Key     |    Y    |    Y    |    Y    |
+| Crypto|                      |         |         |         |
+|  APP  | ECDSA Sign           |    Y    |    Y    |    Y    |
+|       |                      |         |         |         |
+|       | ECDSA Verify         |    Y    |    Y    |    Y    |
+|_______|______________________|_________|_________|_________|
 
 TZ operations
 
@@ -755,3 +760,40 @@ driver is removed (i.e. during rmmod to remove the qseecom module).
 
 If the user doesn't unload the app, then the app is unloaded when the
 device driver is removed.
+
+--------------------------------------------------------------------------------
+
+CryptoApp operations
+
+CryptoApp requires reserved memory similar to TZApp. If the reserved memory node
+reference is not provided, CryptoApp cannot function.
+
+Support for IOCTLs has been introduced for the CryptoApp, leveraging existing SCM APIs.
+
+Available IOCTLs in the Kernel:
+
+(1) QSEECOM_LOAD_TA_LIB        -> loads the Crypto Library
+(2) QSEECOM_LOAD_TA_APP        -> loads the Crypto Application
+(3) QSEECOM_UNLOAD_TA_LIB      -> unloads the Crypto Library
+(4) QSEECOM_UNLOAD_TA_APP      -> unloads the Crypto Application
+(5) QSEECOM_ECDSA_IMPORT_KEY   -> imports the ECDSA blob into CryptoApp
+(6) QSEECOM_SET_KEY_HANDLE     -> sets the key handle in the kernel
+(7) QSEECOM_ECDSA_SIGN         -> signs the data
+(8) QSEECOM_ECDSA_VERIFY       -> verifys the signed data
+
+For further details, refer to the source code in drivers/misc/qseecom.c and qseecom.h.
+
+A Test Utility is available as part of the QSDK, with the source code located at
+qsdk/qca/src/qca-pkcs11/test/. This utility can be used as a reference for IOCTL usage.
+
+The CryptoApp support is added for the PKCS#11 and enabled by default in the kernel.
+
+LOAD and UNLOAD IOCTLs function similar to the TZapp Sysfs. During LOAD, all the segment
+files must be concatenated into a single binary, which is then passed to the LOAD IOCTL.
+
+Application and Library can be loaded either via IOCTL or Sysfs. Re-loading is
+prevented by the kernel and will result in failure.
+
+CryptoApp log can be viewed in /sys/kernel/debug/tzapp_log
+
+--------------------------------------------------------------------------------
