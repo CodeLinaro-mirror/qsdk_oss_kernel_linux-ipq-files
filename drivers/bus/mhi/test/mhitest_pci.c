@@ -949,6 +949,9 @@ int mhitest_pci_register_mhi(struct mhitest_platform *mplat)
 	mhi_ctrl->seg_len = SZ_512K;
 	mhi_ctrl->fbc_download = true;
 
+	if (mplat->device_id == QCN96XX_DEVICE_ID)
+		mhi_ctrl->standard_elf_image = true;
+
 	ret = mhi_register_controller(mhi_ctrl, &mhitest_mhi_config);
 	if (ret) {
 		pr_err("Failed to register mhi controller ret:%d\n", ret);
