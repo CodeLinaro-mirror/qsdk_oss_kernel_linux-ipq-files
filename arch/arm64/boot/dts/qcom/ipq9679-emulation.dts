@@ -27,6 +27,10 @@
 		};
 	};
 
+	aliases {
+		serial0 = &uart0;
+	};
+
 	chosen {
 		linux,initrd-end = <0x97000000>;
 		linux,initrd-start = <0x95000000>;
@@ -93,6 +97,14 @@
 		acc4:clock-controller@f840000 {
 			compatible = "qcom,arm-cortex-acc";
 			reg = <0x0f840000 0x10000>;
+		};
+
+		qupv3: geniqup@1ac0000 {
+			status = "okay";
+
+			uart0: serial@1a80000 {
+				status = "okay";
+			};
 		};
 
 		/* Timer freq for rumi = timer freq (24000000) / 200 */
