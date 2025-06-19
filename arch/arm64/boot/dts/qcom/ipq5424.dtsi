@@ -225,6 +225,8 @@
 	ctx-save {
 		compatible = "qti,ctxt-save-ipq5424";
 		memory-region = <&minidump_mem>;
+		qcom,imem = <&imem>;
+		minidump-level = <2>;
 	};
 
 	firmware {
