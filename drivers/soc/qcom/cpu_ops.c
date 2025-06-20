@@ -75,6 +75,10 @@ static int a55ss_release_secondary(unsigned int cpu)
 			writel(0xF2A0024, el_mem_base + 0x0);
 			writel(0xF2A0014, el_mem_base + 0x4);
 			writel(0xF2B0080, el_mem_base + 0x8);
+		} else if (cpu == 0x4) { /* update core4 GICR */
+			writel(0xF2C0024, el_mem_base + 0x0);
+			writel(0xF2C0014, el_mem_base + 0x4);
+			writel(0xF2D0080, el_mem_base + 0x8);
 		}
 	}
 
