@@ -411,7 +411,8 @@
 };
 
 &blsp1_i2c3 {
-	clock-frequency = <400000>;
+	compatible = "qcom,i2c-qup-v1.1.1";
+	clock-frequency = <96899>;
 	pinctrl-0 = <&i2c_3_pins>;
 	pinctrl-names = "default";
 	status = "okay";
