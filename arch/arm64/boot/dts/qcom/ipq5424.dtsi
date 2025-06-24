@@ -1959,8 +1959,9 @@
 			       <0x40000f20 0xa8>,
 			       <0x40001000 0x1000>,
 			       <0xf8000 0x3000>,
-			       <0x40100000 0x1000>;
-			reg-names = "dbi", "elbi", "atu", "parf", "config";
+			       <0x40100000 0x1000>,
+			       <0x99300000 0x4>;
+			reg-names = "dbi", "elbi", "atu", "parf", "config", "cal-status";
 			device_type = "pci";
 			linux,pci-domain = <3>;
 			bus-range = <0x00 0xff>;
@@ -2056,8 +2057,9 @@
 			       <0x50000f20 0xa8>,
 			       <0x50001000 0x1000>,
 			       <0xf0000 0x3000>,
-			       <0x50100000 0x1000>;
-			reg-names = "dbi", "elbi", "atu", "parf", "config";
+			       <0x50100000 0x1000>,
+			       <0x96100000 0x4>;
+			reg-names = "dbi", "elbi", "atu", "parf", "config", "cal-status";
 			device_type = "pci";
 			linux,pci-domain = <2>;
 			bus-range = <0x00 0xff>;
@@ -2153,8 +2155,9 @@
 			       <0x60000f20 0xa8>,
 			       <0x60001000 0x1000>,
 			       <0x88000 0x3000>,
-			       <0x60100000 0x1000>;
-			reg-names = "dbi", "elbi", "atu", "parf", "config";
+			       <0x60100000 0x1000>,
+			       <0x92f00000 0x4>;
+			reg-names = "dbi", "elbi", "atu", "parf", "config", "cal-status";
 			device_type = "pci";
 			linux,pci-domain = <1>;
 			bus-range = <0x00 0xff>;
@@ -2250,8 +2253,9 @@
 			       <0x70000f20 0xa8>,
 			       <0x70001000 0x1000>,
 			       <0x80000 0x3000>,
-			       <0x70100000 0x1000>;
-			reg-names = "dbi", "elbi", "atu", "parf", "config";
+			       <0x70100000 0x1000>,
+			       <0x8fd00000 0x4>;
+			reg-names = "dbi", "elbi", "atu", "parf", "config", "cal-status";
 			device_type = "pci";
 			linux,pci-domain = <0>;
 			bus-range = <0x00 0xff>;

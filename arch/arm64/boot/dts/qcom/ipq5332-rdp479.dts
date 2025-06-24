@@ -625,6 +625,10 @@
 			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
 			qcom,wsi = <&wsi>;
 			qcom,wsi_index = <2>;
+#ifdef __PCIE_QCOM_EARLY_CAL_SUPPORT__
+			qcom,early_cal_enabled = "okay";
+#endif
+			qcom,caldata_offset = <0x58800>;
 			qcom,board_id = <0x15>;
 
 			ports {
