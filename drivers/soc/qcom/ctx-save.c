@@ -1752,7 +1752,6 @@ static int ctx_save_probe(struct platform_device *pdev)
 	else
 		dev_err(&pdev->dev, "%s : failed to get smemm size\n", __func__);
 
-	of_node_put(imem_np);
 	of_node_put(smem_np);
 
 	node = of_parse_phandle(of_node, "memory-region", 0);
