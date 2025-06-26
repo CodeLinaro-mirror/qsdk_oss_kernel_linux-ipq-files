@@ -133,3 +133,7 @@
 &gcc {
 	gcc-use-dummy;
 };
+
+&apps_iommu {
+	status = "okay";
+};
