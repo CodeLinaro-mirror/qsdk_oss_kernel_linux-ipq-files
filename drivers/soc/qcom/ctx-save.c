@@ -991,7 +991,7 @@ int minidump_traverse_metadata_list(const char *name, const unsigned long
 		* pointer to the Metadata file
 		*/
 		cur_node->modinfo_offset = minidump_meta_info.cur_modinfo_offset;
-		cur_node->name = kstrndup(name, strlen(name), GFP_KERNEL);
+		cur_node->name = kstrndup(name, strlen(name), GFP_ATOMIC);
 	} else {
 		/* If dump segment does not have a valid name, set name to null and
 		* mod_offset to 0
@@ -1043,7 +1043,7 @@ int minidump_traverse_module_list(const char *mod_name)
 		}
 		index++;
 	}
-	char *addr = kstrndup(mod_name, strlen(mod_name), GFP_KERNEL);
+	char *addr = kstrndup(mod_name, strlen(mod_name), GFP_ATOMIC);
 
 	if (addr) {
 		minidump_module_list[index] = addr;

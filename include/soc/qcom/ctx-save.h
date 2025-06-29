@@ -23,7 +23,7 @@
  * MMU_FILE_SZ based on minidump tlv size.
 */
 
-#define METADATA_FILE_SZ 51210
+#define METADATA_FILE_SZ 51200
 #define METADATA_FILE_ENTRY_LEN 50
 #define NAME_LEN 28
 #define MINIDUMP_MODULE_COUNT 50
