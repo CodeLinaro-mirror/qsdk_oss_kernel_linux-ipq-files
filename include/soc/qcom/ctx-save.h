@@ -85,7 +85,7 @@ int minidump_remove_segments(const uint64_t virtual_address);
 int do_dump_minidump(enum minidump_crash_type crashtype);
 int do_minidump(void);
 int minidump_dump_modules(void);
-void minidump_get_dmesg_read_info(u64 *text_data_tail_lpos_start, u64 *text_data_tail_lpos_len);
+void minidump_get_dmesg_read_info(u64 *dmesg_tail_lpos, u64 *dmesg_tail_len);
 
 struct module_sect_attr {
 	struct bin_attribute battr;
