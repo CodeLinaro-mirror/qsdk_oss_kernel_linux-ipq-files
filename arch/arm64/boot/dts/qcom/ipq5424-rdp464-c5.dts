@@ -16,8 +16,8 @@
 #endif
 
 / {
-	model = "Qualcomm Technologies, Inc. IPQ5424 RDP464-c2";
-	compatible = "qcom,ipq5424-rdp464-c2", "qcom,ipq5424";
+	model = "Qualcomm Technologies, Inc. IPQ5424 RDP464-C5";
+	compatible = "qcom,ipq5424-rdp464-c5", "qcom,ipq5424";
 
 	soc@0 {
 		/delete-node/ apc-gpio-regulator;
@@ -343,9 +343,9 @@
 			id = <0>;
 			num_chip = <4>;
 			chip_info = <0 2 1 3>,
-				    <1 2 0 2>,
+				    <1 2 2 0>,
 				    <2 2 3 1>,
-				    <3 2 2 0>;
+				    <3 2 0 2>;
 			status = "okay";
 		};
 	};
@@ -395,37 +395,38 @@
 };
 
 &pcie1_phy {
-	status = "okay";
+	status = "disabled";
 };
 
 &pcie1 {
-	status = "okay";
-	perst-gpio = <&tlmm 28 GPIO_ACTIVE_LOW>;
+	status = "disabled";
+};
 
-	pcie1_rp {
+&pcie2_phy {
+	status = "okay";
+};
+
+&pcie2 {
+	status = "okay";
+	perst-gpio = <&tlmm 31 GPIO_ACTIVE_LOW>;
+
+	pcie2_rp {
 		reg = <0 0 0 0 0>;
 
-		qcom,mhi@1 {
+		qcom,mhi@2 {
 			reg = <0 0 0 0 0>;
 			boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
 					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
 					0x6 0x4 0x30 0x7 0x0 0x0  /* WSI0, GPIO48, Drive strength 16mA */
 					0x7 0x4 0x31 0x7 0x0 0x0  /* WSI1, GPIO49, Drive strength 16mA */
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
-			memory-region = <&qcn9224_pcie1>, <&mhi_region1>;
-			qcom,board_id = <0x21>;
+			memory-region = <&qcn9224_pcie2>, <&mhi_region2>, <&mlo_global_mem0>;
+			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
+			qcom,board_id = <0x26>;
 			qcom,wsi = <&wsi>;
-			qcom,wsi_index = <2>;
+			qcom,wsi_index = <3>;
 		};
 	};
-};
-
-&pcie2_phy {
-	status = "disabled";
-};
-
-&pcie2 {
-	status = "disabled";
 };
 
 &pcie3_phy {
@@ -717,11 +718,11 @@
 };
 
 &qcn9224_pcie1 {
-	status = "okay";
+	status = "disabled";
 };
 
 &qcn9224_pcie2 {
-	status = "disabled";
+	status = "okay";
 };
 
 &qcn9224_pcie3 {
@@ -734,11 +735,11 @@
 };
 
 &mhi_region1 {
-	status = "okay";
+	status = "disabled";
 };
 
 &mhi_region2 {
-	status = "disabled";
+	status = "okay";
 };
 
 &mhi_region3 {
@@ -755,7 +756,10 @@
 &wifi0 {
 	qcom,rproc = <&q6v5_wcss>;
 	qcom,tgt-mem-mode = <0>;
-	memory-region = <&q6_region>, <&q6_region>;
+	memory-region = <&q6_region>, <&q6_region>, <&q6_ipq5424_data>, <&m3_dump>,
+			<&mlo_global_mem0>, <&q6_etr_region>;
+	memory-region-names = "q6-region", "q6-region-1", "host-ddr-mem", "m3-dump",
+			      "mlo-global-mem", "q6-etr-dump";
 	qcom,wsi = <&wsi>;
 	qcom,wsi_index = <0>;
 	qcom,board_id = <0x10>;
@@ -763,6 +767,7 @@
 	led-gpio = <&tlmm 41 GPIO_ACTIVE_HIGH>;
 	probe-order = <1>;
 	status = "okay";
+	qcom,wsi-controller;
 };
 
 /* 5GL radio */
@@ -771,7 +776,7 @@
 	board_id = <0x21>;
 	hw_link_id = <2 0>;
 	probe-order = <3>;
-	status = "okay";
+	status = "disabled";
 };
 
 /* 6G radio */
@@ -780,7 +785,7 @@
 	board_id = <0x26>;
 	hw_link_id = <3 0>;
 	probe-order = <4>;
-	status = "disabled";
+	status = "okay";
 };
 
 /* 5GH radio */
