@@ -7,10 +7,8 @@
 #ifndef _SOC_QCOM_LLCC_PERFMON_H_
 #define _SOC_QCOM_LLCC_PERFMON_H_
 
-#define LLCC_VER4			(41)
-#define LLCC_VER2			(21)
-#define VER_CHK(v)			(v >= LLCC_VER2) //check LLCC version 2
-#define VER_CHK4(v)			(v >= LLCC_VER4) //check LLCC version 4
+#define VER_CHK(v)			(v >= LLCC_VERSION_2_1)
+#define VER_CHK4(v)			(v >= LLCC_VERSION_4)
 
 /* COMMON */
 #define LLCC_COMMON_HW_INFO(v)		(VER_CHK(v) ? 0x34000 : 0x30000)
@@ -134,6 +132,8 @@
 
 /* COMMON */
 #define BYTE_SCALING			(1024)
+#define BYTE_SCALING_DEF		(512)
+#define MC_PROFTAG_DEF			(2)
 #define BEAT_SCALING			(64)
 #define LB_CNT_SHIFT			(28)
 #define LB_CNT_MASK			GENMASK(LB_CNT_SHIFT + 3, LB_CNT_SHIFT)
@@ -358,9 +358,12 @@
 #define MAJOR_VER_MASK			(0xFF000000)
 #define BRANCH_MASK			(0x00FF0000)
 #define MINOR_MASK			(0x0000FF00)
+#define LLCC_VERSION_0			(0x00000000)
 #define LLCC_VERSION_1			(0x01010200)
 #define LLCC_VERSION_2			(0x02000000)
+#define LLCC_VERSION_2_1		(0x02010000)
 #define LLCC_VERSION_3			(0x03000000)
+#define LLCC_VERSION_3_1		(0x03010000)
 #define LLCC_VERSION_4			(0x04000000)
 #define LLCC_VERSION_5			(0x05000000)
 #define	MAJOR_REV_NO(v)			((v & MAJOR_VER_MASK) >> 24)
