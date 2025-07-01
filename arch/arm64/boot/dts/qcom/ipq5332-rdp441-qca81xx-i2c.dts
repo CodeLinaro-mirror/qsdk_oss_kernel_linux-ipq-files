@@ -30,6 +30,7 @@
 
 	chosen {
 		stdout-path = "serial0";
+		bootargs-append = " clk_ignore_unused";
 	};
 
 #if defined(__IPQ_MEM_PROFILE_256_MB__)
