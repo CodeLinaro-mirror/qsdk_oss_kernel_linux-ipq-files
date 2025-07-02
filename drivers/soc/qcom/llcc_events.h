@@ -18,8 +18,8 @@ enum event_port_select {
 	EVENT_PORT_PMGR,
 	EVENT_PORT_BEAC1,
 	EVENT_PORT_LCP = 8,
-	EVENT_PORT_TENURE,
 	EVENT_PORT_TLAT,
+	EVENT_PORT_TENURE,
 };
 
 enum feac_events {
