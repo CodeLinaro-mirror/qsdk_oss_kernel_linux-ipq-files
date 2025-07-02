@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -1985,11 +1985,13 @@ static bool ewb_event_config(struct llcc_perfmon_private *llcc_priv, unsigned in
 		(BEAT_SCALING << EWB_BEAT_SCALING_FACTOR_1_SHIFT);
 	mask_val = EWB_EVENT_SEL_MASK;
 	cfg_mask = EWB_BEAT_SCALING_FACTOR_0_MASK | EWB_BEAT_SCALING_FACTOR_1_MASK;
+	if (filter_en)
+		cfg_mask |= EWB_BEAT_FILTER_SEL_1_MASK | EWB_BEAT_FILTER_EN_1_MASK |
+			EWB_BEAT_FILTER_SEL_0_MASK | EWB_BEAT_FILTER_EN_0_MASK;
+
 	if (enable) {
-		val = (event_type << EWB_EVENT_SEL_SHIFT) & mask_val;
+		val = (event_type << EWB_EVENT_SEL_SHIFT) & EWB_EVENT_SEL_MASK;
 		if (filter_en) {
-			cfg_mask |= EWB_BEAT_FILTER_SEL_1_MASK | EWB_BEAT_FILTER_EN_1_MASK |
-				EWB_BEAT_FILTER_SEL_0_MASK | EWB_BEAT_FILTER_EN_0_MASK;
 			if (filter_sel == FILTER_1)
 				cfg_val |= (FILTER_1 << EWB_BEAT_FILTER_SEL_1_SHIFT) |
 					EWB_BEAT_FILTER_EN_1_EN;
@@ -1999,16 +2001,19 @@ static bool ewb_event_config(struct llcc_perfmon_private *llcc_priv, unsigned in
 		}
 	}
 
-	if (filter_en) {
-		if (event_type >= DRP2EWB_EVICT && event_type <= DRP2EWB_BEAT_1)
-			offset = DRP2EWB_PROF_BEAT_SCALING_CFG;
-		else if (event_type >= LCP2EWB_EVICT && event_type <= LCP2EWB_BEAT_1)
-			offset = LCP2EWB_PROF_BEAT_SCALING_CFG;
-		else if (event_type >= WB2EWB_DRAMBWR && event_type <= WB2EWB_BEAT_1)
-			offset = WB2EWB_PROF_BEAT_SCALING_CFG;
+	/* Configure BEAT scaling factor and Filter selection */
+	offset = DRP2EWB_PROF_BEAT_SCALING_CFG;
+	llcc_bcast_modify(llcc_priv, offset, cfg_val, cfg_mask);
+	offset = LCP2EWB_PROF_BEAT_SCALING_CFG;
+	llcc_bcast_modify(llcc_priv, offset, cfg_val, cfg_mask);
+	offset = WB2EWB_PROF_BEAT_SCALING_CFG;
+	llcc_bcast_modify(llcc_priv, offset, cfg_val, cfg_mask);
 
-		llcc_bcast_modify(llcc_priv, offset, cfg_val, cfg_mask);
-	}
+	cfg_val = (BEAT_SCALING << EWB2LCP_BEAT_SCALING_FACTOR_SHIFT) |
+		(BEAT_SCALING << EWB2MC_BEAT_SCALING_FACTOR_SHIFT);
+	cfg_mask = EWB2LCP_BEAT_SCALING_FACTOR_MASK | EWB2MC_BEAT_SCALING_FACTOR_MASK;
+	offset = EWB_MISC_PROF_BEAT_SCALING_CFG;
+	llcc_bcast_modify(llcc_priv, offset, cfg_val, cfg_mask);
 
 	offset = EWB_PROF_EVENT_n_CFG(*counter_num);
 	llcc_bcast_modify(llcc_priv, offset, val, mask_val);
