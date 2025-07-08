@@ -74,17 +74,17 @@
 				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
 				switch_lan_bmp = <0x3e>; /* lan port bitmap */
 				switch_wan_bmp = <0x40>; /* wan port bitmap */
-				switch_mac_mode = <0x0>; /* mac mode for uniphy instance0*/
+				switch_mac_mode = <0xd>; /* mac mode for uniphy instance0*/
 				switch_mac_mode1 = <0xf>; /* mac mode for uniphy instance1*/
-				switch_mac_mode2 = <0xf>; /* mac mode for uniphy instance2*/
+				switch_mac_mode2 = <0x18>; /* mac mode for uniphy instance2*/
 				bm_tick_mode = <0>; /* bm tick mode */
 				tm_tick_mode = <2>; /* tm tick mode */
 
 				qcom,port_phyinfo {
 					port@0 {
 						port_id = <1>;
-						forced-speed = <1000>;
-						forced-duplex = <1>;
+						media-type = "sfp"; /* fiber mode */
+						i2c-bus = <&blsp1_i2c3>;
 					};
 					port@1 {
 						port_id = <2>;
@@ -149,10 +149,12 @@
 			device_type = "network";
 			compatible = "qcom,nss-dp";
 			qcom,id = <1>;
-			reg = <0x3a001000 0x200>;
-			qcom,mactype = <0>;
+			reg = <0x3a500000 0x4000>;
+			qcom,mactype = <1>;
+			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
-			phy-mode = "sgmii";
+			i2c-bus = <&blsp1_i2c3>;
+			phy-mode = "usxgmii";
 		};
 
 		dp2 {
@@ -199,10 +201,10 @@
 			device_type = "network";
 			compatible = "qcom,nss-dp";
 			qcom,id = <6>;
-			reg = <0x3a001a00 0x200>;
-			qcom,mactype = <0>;
+			reg = <0x3a508000 0x4000>;
+			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
-			phy-mode = "sgmii";
+			phy-mode = "usxgmii";
 		};
 
 		/* EDMA host driver configuration for the board */
