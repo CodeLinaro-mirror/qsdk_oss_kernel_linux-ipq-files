@@ -25,6 +25,18 @@
 		xo: xo {
 			clock-frequency = <120000>;
 		};
+
+		cmn_pll_nss_clk_462m: cmn-pll-nss-clk-462m {
+			clock-frequency = <462000000>;
+		};
+
+		cmn_pll_nss_clk_750m: cmn-pll-nss-clk-750m {
+			clock-frequency = <750000000>;
+		};
+
+		gcc_gpll0_out_aux: gcc-gpll0-out-aux {
+			clock-frequency = <800000000>;
+		};
 	};
 
 	aliases {

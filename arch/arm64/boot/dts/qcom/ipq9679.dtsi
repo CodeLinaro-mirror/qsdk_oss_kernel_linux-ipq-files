@@ -7,7 +7,9 @@
  */
 
 #include <dt-bindings/clock/qcom,ipq9679-gcc.h>
+#include <dt-bindings/clock/qcom,ipq9679-nsscc.h>
 #include <dt-bindings/reset/qcom,ipq9679-gcc.h>
+#include <dt-bindings/reset/qcom,ipq9679-nsscc.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 
 / {
@@ -22,6 +24,21 @@
 		};
 
 		xo: xo {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+		};
+
+		cmn_pll_nss_clk_462m: cmn-pll-nss-clk-462m {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+		};
+
+		cmn_pll_nss_clk_750m: cmn-pll-nss-clk-750m {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+		};
+
+		gcc_gpll0_out_aux: gcc-gpll0-out-aux {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
 		};
@@ -298,6 +315,34 @@
 			#global-interrupts = <1>;
 
 			status = "disabled";
+		};
+
+		nsscc: clock-controller@29b00000 {
+			compatible = "qcom,ipq9679-nsscc";
+			reg = <0x29b00000 0x100000>;
+			clocks = <&xo>,
+				 <&cmn_pll_nss_clk_750m>,
+				 <&cmn_pll_nss_clk_462m>,
+				 <&gcc_gpll0_out_aux>,
+				 <0>,
+				 <0>,
+				 <0>,
+				 <0>,
+				 <0>,
+				 <0>;
+			clock-names = "xo",
+				      "nss",
+				      "ppe",
+				      "gpll0_out",
+				      "uniphy0_rx",
+				      "uniphy0_tx",
+				      "uniphy1_rx",
+				      "uniphy1_tx",
+				      "uniphy2_rx",
+				      "uniphy2_tx";
+			#clock-cells = <1>;
+			#reset-cells = <1>;
+			#interconnect-cells = <1>;
 		};
 	};
 
