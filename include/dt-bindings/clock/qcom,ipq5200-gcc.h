@@ -23,5 +23,7 @@
 #define GCC_QPIC_CLK			13
 #define GCC_QPIC_AHB_CLK		14
 #define GCC_QPIC_IO_MACRO_CLK		15
+#define GCC_QUPV3_I2C0_CLK		16
+#define GCC_QUPV3_I2C1_CLK		17
 
 #endif

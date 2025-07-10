@@ -205,6 +205,30 @@
 				assigned-clock-rates = <50000000>;
 				status = "disabled";
 			};
+
+			i2c0: i2c@1a88000 {
+				compatible = "qcom,geni-i2c";
+				reg = <0x1a88000 0x4000>;
+				clocks = <&gcc GCC_QUPV3_I2C0_CLK>;
+				clock-names = "se";
+				clock-frequency = <400000>;
+				interrupts = <GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>;
+				assigned-clocks = <&gcc GCC_QUPV3_I2C0_CLK>;
+				assigned-clock-rates = <64000000>;
+				status = "disabled";
+			};
+
+			i2c1: i2c@1a8c000 {
+				compatible = "qcom,geni-i2c";
+				reg = <0x1a8c000 0x4000>;
+				clocks = <&gcc GCC_QUPV3_I2C1_CLK>;
+				clock-names = "se";
+				clock-frequency = <400000>;
+				interrupts = <GIC_SPI 141 IRQ_TYPE_LEVEL_HIGH>;
+				assigned-clocks = <&gcc GCC_QUPV3_I2C1_CLK>;
+				assigned-clock-rates = <64000000>;
+				status = "disabled";
+			};
 		};
 
 		sdhc: mmc@7804000 {
