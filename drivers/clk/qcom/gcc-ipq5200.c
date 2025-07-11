@@ -105,6 +105,8 @@ static struct clk_regmap *gcc_ipq5200_dummy_clks[] = {
 	[GCC_QPIC_CLK] = DEFINE_DUMMY_CLK(gcc_qpic_clk),
 	[GCC_QPIC_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_qpic_ahb_clk),
 	[GCC_QPIC_IO_MACRO_CLK] = DEFINE_DUMMY_CLK(gcc_qpic_io_macro_clk),
+	[GCC_QUPV3_I2C0_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_i2c0_clk),
+	[GCC_QUPV3_I2C1_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_i2c1_clk),
 };
 
 static const struct qcom_reset_map gcc_ipq5200_resets[] = {
