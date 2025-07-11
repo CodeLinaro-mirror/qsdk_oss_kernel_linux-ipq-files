@@ -41,6 +41,12 @@
 #define BEAC_MC_WR_BEAT_FIL0		25
 #define BEAC_MC_RD_BEAT_FIL1		38
 #define BEAC_MC_WR_BEAT_FIL1		39
+#define DRP2EWB_EVICT			0
+#define DRP2EWB_BEAT_1			10
+#define LCP2EWB_EVICT			11
+#define LCP2EWB_BEAT_1			16
+#define WB2EWB_DRAMBWR			17
+#define WB2EWB_BEAT_1			20
 
 #define MCPROF_FEAC_FLTR_0		0
 #define MCPROF_FEAC_FLTR_1		1
@@ -1963,6 +1969,90 @@ static struct event_port_ops beac_port_ops = {
 	.event_filter_config	= beac_event_filter_config,
 };
 
+static bool ewb_event_config(struct llcc_perfmon_private *llcc_priv, unsigned int event_type,
+		unsigned int *counter_num, bool enable)
+{
+	u32 val = 0, mask_val, cfg_val, cfg_mask, offset = 0;
+	u8 filter_en, filter_sel = FILTER_0;
+
+	filter_en = llcc_priv->port_filter_sel[filter_sel] & (1 << EVENT_PORT_EWB);
+	if (llcc_priv->fltr_logic ==  multiple_filtr) {
+		filter_en = llcc_priv->configured[*counter_num].filter_en;
+		filter_sel = llcc_priv->configured[*counter_num].filter_sel;
+	}
+
+	cfg_val = (BEAT_SCALING << EWB_BEAT_SCALING_FACTOR_0_SHIFT) |
+		(BEAT_SCALING << EWB_BEAT_SCALING_FACTOR_1_SHIFT);
+	mask_val = EWB_EVENT_SEL_MASK;
+	cfg_mask = EWB_BEAT_SCALING_FACTOR_0_MASK | EWB_BEAT_SCALING_FACTOR_1_MASK;
+	if (enable) {
+		val = (event_type << EWB_EVENT_SEL_SHIFT) & mask_val;
+		if (filter_en) {
+			cfg_mask |= EWB_BEAT_FILTER_SEL_1_MASK | EWB_BEAT_FILTER_EN_1_MASK |
+				EWB_BEAT_FILTER_SEL_0_MASK | EWB_BEAT_FILTER_EN_0_MASK;
+			if (filter_sel == FILTER_1)
+				cfg_val |= (FILTER_1 << EWB_BEAT_FILTER_SEL_1_SHIFT) |
+					EWB_BEAT_FILTER_EN_1_EN;
+			else
+				cfg_val |= (FILTER_0 << EWB_BEAT_FILTER_SEL_0_SHIFT) |
+					EWB_BEAT_FILTER_EN_0_EN;
+		}
+	}
+
+	if (filter_en) {
+		if (event_type >= DRP2EWB_EVICT && event_type <= DRP2EWB_BEAT_1)
+			offset = DRP2EWB_PROF_BEAT_SCALING_CFG;
+		else if (event_type >= LCP2EWB_EVICT && event_type <= LCP2EWB_BEAT_1)
+			offset = LCP2EWB_PROF_BEAT_SCALING_CFG;
+		else if (event_type >= WB2EWB_DRAMBWR && event_type <= WB2EWB_BEAT_1)
+			offset = WB2EWB_PROF_BEAT_SCALING_CFG;
+
+		llcc_bcast_modify(llcc_priv, offset, cfg_val, cfg_mask);
+	}
+
+	offset = EWB_PROF_EVENT_n_CFG(*counter_num);
+	llcc_bcast_modify(llcc_priv, offset, val, mask_val);
+	perfmon_cntr_config(llcc_priv, EVENT_PORT_EWB, *counter_num, enable);
+
+	return true;
+}
+
+static bool ewb_event_filter_config(struct llcc_perfmon_private *llcc_priv,
+		enum filter_type filter, unsigned long long match,
+		unsigned long long mask, bool enable, u8 filter_sel)
+{
+	u64 val = 0;
+	u32 mask_val, offset;
+
+	switch (filter) {
+	case PROFILING_TAG:
+		mask_val = EWB_PROFTAG_MATCH_MASK | EWB_PROFTAG_MASK_MASK;
+		if (enable)
+			val = (match << EWB_PROFTAG_MATCH_SHIFT) | (mask << EWB_PROFTAG_MASK_SHIFT);
+
+		/* EWB filters being event specific, setting all filter specific CSRs for profiling
+		 * tag, this enables profiling EWB events from DRP, LCP and WB for FILTER0/1.
+		 */
+		offset = filter_sel ? DRP2EWB_PROF_FILTER_1_CFG1 : DRP2EWB_PROF_FILTER_0_CFG1;
+		llcc_bcast_modify(llcc_priv, offset, val, mask_val);
+		offset = filter_sel ? LCP2EWB_PROF_FILTER_1_CFG1 : LCP2EWB_PROF_FILTER_0_CFG1;
+		llcc_bcast_modify(llcc_priv, offset, val, mask_val);
+		offset = filter_sel ? WB2EWB_PROF_FILTER_1_CFG1 : WB2EWB_PROF_FILTER_0_CFG1;
+		break;
+	default:
+		pr_err("unknown filter/not supported\n");
+		return false;
+	}
+
+	llcc_bcast_modify(llcc_priv, offset, val, mask_val);
+
+	return true;
+}
+static struct event_port_ops ewb_port_ops = {
+	.event_config	= ewb_event_config,
+	.event_filter_config	= ewb_event_filter_config,
+};
+
 static bool berc_event_config(struct llcc_perfmon_private *llcc_priv, unsigned int event_type,
 		unsigned int *counter_num, bool enable)
 {
@@ -2424,6 +2514,8 @@ static int llcc_perfmon_probe(struct platform_device *pdev)
 	/* Checking whether LLCC is on Mach 9, as BEAC is not present on Mach 9 */
 	if (llcc_priv->version < LLCC_VERSION_6)
 		llcc_register_event_port(llcc_priv, &beac_port_ops, EVENT_PORT_BEAC);
+	else
+		llcc_register_event_port(llcc_priv, &ewb_port_ops, EVENT_PORT_EWB);
 
 	llcc_register_event_port(llcc_priv, &berc_port_ops, EVENT_PORT_BERC);
 	llcc_register_event_port(llcc_priv, &trp_port_ops, EVENT_PORT_TRP);
