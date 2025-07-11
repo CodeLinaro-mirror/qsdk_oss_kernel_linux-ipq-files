@@ -25,7 +25,7 @@
 
 #define LLCC_PERFMON_NAME		"qcom_llcc_perfmon"
 #define MAX_CNTR			16
-#define MAX_NUMBER_OF_PORTS		8
+#define MAX_NUMBER_OF_PORTS		11
 #define MAX_FILTERS			16
 #define MAX_FILTERS_TYPE		2
 #define NUM_CHANNELS			16
@@ -498,11 +498,13 @@ static ssize_t perfmon_configure_store(struct device *dev, struct device_attribu
 		}
 
 		/* If BEAC is getting configured, then counters equal to number of Memory Controller
-		 * are needed for BEAC configuration. Hence, setting the same.
+		 * are needed for BEAC configuration. Hence, setting the same if LLCC VERSION < 6.
 		 */
 		beac_res_cntrs = 0;
-		if (port_sel == EVENT_PORT_BEAC)
-			beac_res_cntrs = llcc_priv->num_mc;
+		if (llcc_priv->version < LLCC_VERSION_6) {
+			if (port_sel == EVENT_PORT_BEAC)
+				beac_res_cntrs = llcc_priv->num_mc;
+		}
 
 		if (j == (MAX_CNTR - beac_res_cntrs)) {
 			pr_err("All counters already used\n");
@@ -773,7 +775,7 @@ static ssize_t perfmon_filter_config_store(struct device *dev, struct device_att
 		goto filter_config_free;
 	}
 
-	if ((fil_applied == SCID) && (match >= SCID_MAX)) {
+	if (fil_applied == SCID && match >= SCID_MAX(llcc_priv->version)) {
 		pr_err("filter configuration failed, SCID above MAX value\n");
 		goto filter_config_free;
 	}
@@ -926,7 +928,7 @@ static ssize_t perfmon_filter_remove_store(struct device *dev, struct device_att
 		goto filter_remove_free;
 	}
 
-	if (fil_applied == SCID && match >= SCID_MAX) {
+	if (fil_applied == SCID && match >= SCID_MAX(llcc_priv->version)) {
 		pr_err("filter configuration failed, SCID above MAX value\n");
 		goto filter_remove_free;
 	}
@@ -1201,7 +1203,7 @@ static ssize_t perfmon_scid_status_show(struct device *dev, struct device_attrib
 	ssize_t cnt = 0;
 	unsigned long total;
 
-	for (i = 0; i < SCID_MAX; i++) {
+	for (i = 0; i < SCID_MAX(llcc_priv->version); i++) {
 		total = 0;
 		offset = TRP_SCID_n_STATUS(i);
 		for (j = 0; j < llcc_priv->num_banks; j++) {
@@ -1444,7 +1446,77 @@ static void feac_event_enable(struct llcc_perfmon_private *llcc_priv, bool enabl
 		llcc_bcast_modify(llcc_priv, offset, val, mask_val);
 	}
 }
+static bool feac_scid_multiscid_set_remove(struct llcc_perfmon_private *llcc_priv,
+		enum filter_type filter, unsigned long long match, unsigned long long mask,
+		bool enable, u8 filter_sel)
+{
+	uint64_t val = 0, val2 = 0;
+	uint32_t mask_val = 0, mask_val2 = 0, offset;
 
+	switch (filter) {
+	case SCID:
+
+		if (llcc_priv->version == LLCC_VERSION_0) {
+			mask_val = SCID_MATCH_MASK | SCID_MASK_MASK;
+			if (enable)
+				val = (match << SCID_MATCH_SHIFT) | (mask << SCID_MASK_SHIFT);
+		} else if (llcc_priv->version >= LLCC_VERSION_6) {
+			val = SCID_MULTI_MATCH_MASK;
+			mask_val = SCID_MULTI_MATCH_MASK;
+			val2 = SCID_MULTI_MATCH_CFG1_MASK;
+			mask_val2 = SCID_MULTI_MATCH_CFG1_MASK;
+			if (enable) {
+				val = (1ull << match) & mask_val;
+				val2 = ((1ull << match) >> SCID_MAX(LLCC_VERSION_5)) & mask_val2;
+			}
+		} else {
+			val = SCID_MULTI_MATCH_MASK;
+			mask_val = SCID_MULTI_MATCH_MASK;
+			if (enable)
+				val = (1 << match) & mask_val;
+		}
+
+		break;
+	case MULTISCID:
+		if (llcc_priv->version >= LLCC_VERSION_6) {
+			val = SCID_MULTI_MATCH_MASK;
+			mask_val = SCID_MULTI_MATCH_MASK;
+			val2 = SCID_MULTI_MATCH_CFG1_MASK;
+			mask_val2 = SCID_MULTI_MATCH_CFG1_MASK;
+			if (enable) {
+				val = match & mask_val;
+				val2 = (match >> SCID_MAX(LLCC_VERSION_5)) & mask_val2;
+			}
+
+		} else if (llcc_priv->version > LLCC_VERSION_0) {
+			val = SCID_MULTI_MATCH_MASK;
+			mask_val = SCID_MULTI_MATCH_MASK;
+			if (enable)
+				val = match & mask_val;
+		}
+
+		break;
+	default:
+		pr_err("unknown filter/not supported\n");
+		return false;
+	}
+
+	/* LLCC Version 6 uses more than 32 SCIDs. Hence, filter configuration uses multiple
+	 * CSR for configuring the filters.
+	 */
+	if (llcc_priv->version >= LLCC_VERSION_6) {
+		offset = filter_sel ? FEAC_PROF_FILTER_1_SCID_CFG1 : FEAC_PROF_FILTER_0_SCID_CFG1;
+		llcc_bcast_modify(llcc_priv, offset, val2, mask_val2);
+
+		offset = filter_sel ? FEAC_PROF_FILTER_1_SCID_CFG0 : FEAC_PROF_FILTER_0_SCID_CFG0;
+	} else {
+		offset = filter_sel ? FEAC_PROF_FILTER_1_CFG6(llcc_priv->version) :
+			FEAC_PROF_FILTER_0_CFG6(llcc_priv->version);
+	}
+
+	llcc_bcast_modify(llcc_priv, offset, val, mask_val);
+	return true;
+}
 static bool feac_event_filter_config(struct llcc_perfmon_private *llcc_priv,
 		enum filter_type filter, unsigned long long match, unsigned long long mask,
 		bool enable, u8 filter_sel)
@@ -1456,34 +1528,13 @@ static bool feac_event_filter_config(struct llcc_perfmon_private *llcc_priv,
 
 	switch (filter) {
 	case SCID:
-		if (llcc_priv->version == LLCC_VERSION_0) {
-			if (enable)
-				val = (match << SCID_MATCH_SHIFT) | (mask << SCID_MASK_SHIFT);
-
-			mask_val = SCID_MATCH_MASK | SCID_MASK_MASK;
-		} else {
-			val = SCID_MULTI_MATCH_MASK;
-			mask_val = SCID_MULTI_MATCH_MASK;
-			if (enable)
-				val = (1 << match);
-		}
-
-		offset = FEAC_PROF_FILTER_0_CFG6(llcc_priv->version);
-		if (filter_sel)
-			offset = FEAC_PROF_FILTER_1_CFG6(llcc_priv->version);
+		return feac_scid_multiscid_set_remove(llcc_priv, filter, match, mask,
+					enable, filter_sel);
 		break;
-	case MULTISCID:
-		if (llcc_priv->version != LLCC_VERSION_0) {
-			/* Clear register for multi scid filter settings */
-			val = SCID_MULTI_MATCH_MASK;
-			mask_val = SCID_MULTI_MATCH_MASK;
-			if (enable)
-				val = match;
-		}
 
-		offset = FEAC_PROF_FILTER_0_CFG6(llcc_priv->version);
-		if (filter_sel)
-			offset = FEAC_PROF_FILTER_1_CFG6(llcc_priv->version);
+	case MULTISCID:
+		return feac_scid_multiscid_set_remove(llcc_priv, filter, match, mask,
+					enable, filter_sel);
 		break;
 	case MID:
 		if (enable)
@@ -2015,7 +2066,8 @@ static bool trp_event_config(struct llcc_perfmon_private *llcc_priv, unsigned in
 		mask_val |= FILTER_SEL_MASK | FILTER_EN_MASK;
 
 
-	llcc_bcast_modify(llcc_priv, TRP_PROF_EVENT_n_CFG(*counter_num), val, mask_val);
+	llcc_bcast_modify(llcc_priv, TRP_PROF_EVENT_n_CFG(llcc_priv->version, *counter_num), val,
+			mask_val);
 	perfmon_cntr_config(llcc_priv, EVENT_PORT_TRP, *counter_num, enable);
 	return true;
 }
@@ -2023,45 +2075,81 @@ static bool trp_event_config(struct llcc_perfmon_private *llcc_priv, unsigned in
 static bool trp_event_filter_config(struct llcc_perfmon_private *llcc_priv, enum filter_type filter,
 		unsigned long long match, unsigned long long mask, bool enable, u8 filter_sel)
 {
-	uint64_t val = 0;
-	uint32_t mask_val, offset;
+	uint64_t val = 0, val2 = 0;
+	uint32_t mask_val, mask_val2, offset;
 
 	switch (filter) {
 	case SCID:
-		if (llcc_priv->version >= LLCC_VERSION_2) {
+		if (llcc_priv->version >= LLCC_VERSION_6) {
 			val = SCID_MULTI_MATCH_MASK;
-			if (enable)
-				val = (1 << match);
-
 			mask_val = SCID_MULTI_MATCH_MASK;
-			offset = TRP_PROF_FILTER_0_CFG2;
-			if (filter_sel)
-				offset = TRP_PROF_FILTER_1_CFG2;
+			val2 = SCID_MULTI_MATCH_CFG1_MASK;
+			mask_val2 = SCID_MULTI_MATCH_CFG1_MASK;
+			if (enable) {
+				val = (1ull << match) & mask_val;
+				val2 = ((1ull << match) >> SCID_MAX(LLCC_VERSION_5)) & mask_val2;
+			}
+		} else if (llcc_priv->version >= LLCC_VERSION_2) {
+			val = mask_val = SCID_MULTI_MATCH_MASK;
+			if (enable)
+				val = (1 << match) & mask_val;
 		} else {
+			mask_val = TRP_SCID_MATCH_MASK | TRP_SCID_MASK_MASK;
 			if (enable)
 				val = (match << TRP_SCID_MATCH_SHIFT) |
 					(mask << TRP_SCID_MASK_SHIFT);
+		}
 
-			mask_val = TRP_SCID_MATCH_MASK | TRP_SCID_MASK_MASK;
-			offset = TRP_PROF_FILTER_0_CFG1;
-			if (filter_sel)
-				offset = TRP_PROF_FILTER_1_CFG1;
+		/* LLCC Version 6 uses more than 32 SCIDs. Hence, filter configuration uses multiple
+		 * CSR for configuring the filters.
+		 */
+		if (llcc_priv->version >= LLCC_VERSION_6) {
+			offset = filter_sel ? TRP_PROF_FILTER_1_SCID_CFG1 :
+				TRP_PROF_FILTER_0_SCID_CFG1;
+			llcc_bcast_modify(llcc_priv, offset, val2, mask_val2);
+
+			offset = filter_sel ? TRP_PROF_FILTER_1_SCID_CFG0 :
+				TRP_PROF_FILTER_0_SCID_CFG0;
+		} else {
+			offset = filter_sel ? TRP_PROF_FILTER_1_CFG2(llcc_priv->version) :
+				TRP_PROF_FILTER_0_CFG2(llcc_priv->version);
 		}
 
 		break;
 	case MULTISCID:
-		if (llcc_priv->version >= LLCC_VERSION_2) {
+		if (llcc_priv->version >= LLCC_VERSION_6) {
 			val = SCID_MULTI_MATCH_MASK;
-			if (enable)
-				val = match;
-
 			mask_val = SCID_MULTI_MATCH_MASK;
-			offset = TRP_PROF_FILTER_0_CFG2;
-			if (filter_sel)
-				offset = TRP_PROF_FILTER_1_CFG2;
+			val2 = SCID_MULTI_MATCH_CFG1_MASK;
+			mask_val2 = SCID_MULTI_MATCH_CFG1_MASK;
+			if (enable) {
+				val = match & mask_val;
+				val2 = (match >> SCID_MAX(LLCC_VERSION_5)) & mask_val2;
+			}
+
+		} else if (llcc_priv->version >= LLCC_VERSION_2) {
+			val = SCID_MULTI_MATCH_MASK;
+			mask_val = SCID_MULTI_MATCH_MASK;
+			if (enable)
+				val = match & mask_val;
 		} else {
 			pr_err("unknown filter/not supported\n");
 			return false;
+		}
+
+		/* LLCC Version 6 uses more than 32 SCIDs. Hence, filter configuration uses multiple
+		 * CSR for configuring the filters.
+		 */
+		if (llcc_priv->version >= LLCC_VERSION_6) {
+			offset = filter_sel ? TRP_PROF_FILTER_1_SCID_CFG1 :
+				TRP_PROF_FILTER_0_SCID_CFG1;
+			llcc_bcast_modify(llcc_priv, offset, val2, mask_val2);
+
+			offset = filter_sel ? TRP_PROF_FILTER_1_SCID_CFG0 :
+				TRP_PROF_FILTER_0_SCID_CFG0;
+		} else {
+			offset = filter_sel ? TRP_PROF_FILTER_1_CFG2(llcc_priv->version) :
+				TRP_PROF_FILTER_0_CFG2(llcc_priv->version);
 		}
 
 		break;
@@ -2070,18 +2158,18 @@ static bool trp_event_filter_config(struct llcc_perfmon_private *llcc_priv, enum
 			val = (match << TRP_WAY_ID_MATCH_SHIFT) | (mask << TRP_WAY_ID_MASK_SHIFT);
 
 		mask_val = TRP_WAY_ID_MATCH_MASK | TRP_WAY_ID_MASK_MASK;
-		offset = TRP_PROF_FILTER_0_CFG1;
+		offset = TRP_PROF_FILTER_0_CFG1(llcc_priv->version);
 		if (filter_sel)
-			offset = TRP_PROF_FILTER_1_CFG1;
+			offset = TRP_PROF_FILTER_1_CFG1(llcc_priv->version);
 		break;
 	case PROFILING_TAG:
 		if (enable)
 			val = (match << TRP_PROFTAG_MATCH_SHIFT) | (mask << TRP_PROFTAG_MASK_SHIFT);
 
 		mask_val = TRP_PROFTAG_MATCH_MASK | TRP_PROFTAG_MASK_MASK;
-		offset = TRP_PROF_FILTER_0_CFG1;
+		offset = TRP_PROF_FILTER_0_CFG1(llcc_priv->version);
 		if (filter_sel)
-			offset = TRP_PROF_FILTER_1_CFG1;
+			offset = TRP_PROF_FILTER_1_CFG1(llcc_priv->version);
 		break;
 	default:
 		pr_err("unknown filter/not supported\n");
@@ -2333,7 +2421,10 @@ static int llcc_perfmon_probe(struct platform_device *pdev)
 	llcc_register_event_port(llcc_priv, &feac_port_ops, EVENT_PORT_FEAC);
 	llcc_register_event_port(llcc_priv, &ferc_port_ops, EVENT_PORT_FERC);
 	llcc_register_event_port(llcc_priv, &fewc_port_ops, EVENT_PORT_FEWC);
-	llcc_register_event_port(llcc_priv, &beac_port_ops, EVENT_PORT_BEAC);
+	/* Checking whether LLCC is on Mach 9, as BEAC is not present on Mach 9 */
+	if (llcc_priv->version < LLCC_VERSION_6)
+		llcc_register_event_port(llcc_priv, &beac_port_ops, EVENT_PORT_BEAC);
+
 	llcc_register_event_port(llcc_priv, &berc_port_ops, EVENT_PORT_BERC);
 	llcc_register_event_port(llcc_priv, &trp_port_ops, EVENT_PORT_TRP);
 	llcc_register_event_port(llcc_priv, &drp_port_ops, EVENT_PORT_DRP);
