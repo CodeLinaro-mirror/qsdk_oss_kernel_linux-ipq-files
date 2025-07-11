@@ -215,6 +215,17 @@
 			};
 		};
 
+		system-cache-controller@4000000 {
+			compatible = "qcom,ipq9679-llcc";
+			reg = <0x04000000 0x200000>, <0x04000000 0x200000>;
+			reg-names = "llcc_base", "llcc_broadcast_base";
+			interrupts = <GIC_SPI 68 IRQ_TYPE_LEVEL_HIGH>;
+
+			llcc-perfmon {
+				compatible = "qcom,llcc-perfmon";
+			};
+		};
+
 		intc: interrupt-controller@f200000 {
 			compatible = "arm,gic-v3";
 			reg = <0x0f200000 0x10000>, /* GICD */
