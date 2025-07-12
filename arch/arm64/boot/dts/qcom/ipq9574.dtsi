@@ -1446,6 +1446,7 @@
 #endif
 			caldb-size = <0x800000>;
 			qca,extended-intc;
+			early_cal = <&pcie0_x1>;
 			interrupts-extended =
 				<&qcn9224_in0 5 0>,
 				<&qcn9224_in0 6 0>,
@@ -1717,6 +1718,7 @@
 #endif
 			caldb-size = <0x800000>;
 			qca,extended-intc;
+			early_cal = <&pcie1_x1>;
 			interrupts-extended =
 				<&qcn9224_in1 5 0>,
 				<&qcn9224_in1 6 0>,
@@ -1988,6 +1990,7 @@
 #endif
 			caldb-size = <0x800000>;
 			qca,extended-intc;
+			early_cal = <&pcie2_x2>;
 			interrupts-extended =
 				<&qcn9224_in2 5 0>,
 				<&qcn9224_in2 6 0>,
@@ -2259,6 +2262,7 @@
 #endif
 			caldb-size = <0x800000>;
 			qca,extended-intc;
+			early_cal = <&pcie3_x2>;
 			interrupts-extended =
 				<&qcn9224_in3 5 0>,
 				<&qcn9224_in3 6 0>,
