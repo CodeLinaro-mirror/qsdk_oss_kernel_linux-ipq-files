@@ -354,7 +354,7 @@
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 			memory-region = <&qcn9224_pcie2>, <&mhi_region2>, <&mlo_global_mem0>;
 			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
-#if defined(__PCIE_QCOM_EARLY_CAL_SUPPORT__) && !defined(__IPQ_MEM_PROFILE_512_MB__)
+#ifdef __PCIE_QCOM_EARLY_CAL_SUPPORT__
 			qcom,early_cal_enabled = "okay";
 #endif
 			qcom,caldata_offset = <0x12000>;
