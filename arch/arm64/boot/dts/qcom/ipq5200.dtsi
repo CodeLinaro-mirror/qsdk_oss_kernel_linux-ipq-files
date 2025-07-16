@@ -9,6 +9,7 @@
 #include <dt-bindings/clock/qcom,ipq5200-gcc.h>
 #include <dt-bindings/reset/qcom,ipq5200-gcc.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/gpio/gpio.h>
 
 / {
 	#address-cells = <2>;
@@ -83,6 +84,17 @@
 		#size-cells = <1>;
 		ranges = <0 0 0 0xffffffff>;
 		dma-ranges;
+
+		tlmm: pinctrl@1000000 {
+			compatible = "qcom,ipq5200-tlmm";
+			reg = <0x1000000 0x300000>;
+			interrupts = <GIC_SPI 31 IRQ_TYPE_LEVEL_HIGH>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			gpio-ranges = <&tlmm 0 0 54>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+		};
 
 		intc: interrupt-controller@b000000 {
 			compatible = "qcom,msm-qgic2";
