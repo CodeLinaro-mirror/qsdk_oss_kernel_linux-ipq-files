@@ -422,7 +422,7 @@
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 			memory-region = <&qcn9224_pcie2>, <&mhi_region2>, <&mlo_global_mem0>;
 			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
-			qcom,board_id = <0x26>;
+			qcom,board_id = <0x28>;
 			qcom,wsi = <&wsi>;
 			qcom,wsi_index = <3>;
 		};
@@ -782,7 +782,7 @@
 /* 6G radio */
 &wifi3 {
 	hremote_node = <&qcn9224_pcie2>;
-	board_id = <0x26>;
+	board_id = <0x28>;
 	hw_link_id = <3 0>;
 	probe-order = <4>;
 	status = "okay";
