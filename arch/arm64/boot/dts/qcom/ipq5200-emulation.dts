@@ -154,6 +154,36 @@
 		qpic_nand: nand@79b0000 {
 			status="okay";
 		};
+
+		pcie0: pcie@70000000 {
+			max-link-speed = <1>;
+			phys = <>;
+			phy-names = "";
+			perst-gpio = <&tlmm 34 GPIO_ACTIVE_LOW>;
+			status = "okay";
+
+			pcie0_rp {
+				reg = <0 0 0 0 0>;
+				qcom,mhi@0 {
+					reg = <0 0 0 0 0>;
+				};
+			};
+		};
+
+		pcie1: pcie@50000000 {
+			max-link-speed = <1>;
+			phys = <>;
+			phy-names = "";
+			perst-gpio = <&tlmm 35 GPIO_ACTIVE_LOW>;
+			status = "disabled";
+
+			pcie1_rp {
+				reg = <0 0 0 0 0>;
+				qcom,mhi@0 {
+					reg = <0 0 0 0 0>;
+				};
+			};
+		};
 	};
 
 	psci {
