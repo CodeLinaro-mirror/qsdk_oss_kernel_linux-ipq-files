@@ -525,6 +525,11 @@
 				compatible = "qcom,msm-imem-restart-reason-buf-addr";
 				reg = <0x7a4 4>;
 			};
+
+			bootconfig-status-buf-addr@0d0 {
+				compatible = "qcom,msm-imem-bootconfig-status-buf-addr";
+				reg = <0x0d0 4>;
+			};
 		};
 
 		eud {
