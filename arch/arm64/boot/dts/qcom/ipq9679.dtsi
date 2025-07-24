@@ -176,12 +176,12 @@
 
 			status = "disabled";
 
-			uart0: serial@1a80000 {
+			uart0: serial@1a84000 {
 				compatible = "qcom,geni-debug-uart";
-				reg = <0x01a80000 0x4000>;
+				reg = <0x01a84000 0x4000>;
 				clocks = <&gcc GCC_QUPV3_UART0_CLK>;
 				clock-names = "se";
-				interrupts = <GIC_SPI 339 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 340 IRQ_TYPE_LEVEL_HIGH>;
 				status = "disabled";
 			};
 		};
