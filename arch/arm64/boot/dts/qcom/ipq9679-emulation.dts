@@ -113,7 +113,7 @@
 		qupv3: geniqup@1ac0000 {
 			status = "okay";
 
-			uart0: serial@1a80000 {
+			uart0: serial@1a84000 {
 				status = "okay";
 			};
 		};
