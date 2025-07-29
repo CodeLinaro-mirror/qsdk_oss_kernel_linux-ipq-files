@@ -42,14 +42,13 @@ typedef struct ctx_save_tlv_msg {
 	bool is_panic;
 } ctx_save_tlv_msg_t;
 
-#ifdef CONFIG_QCA_MINIDUMP
 struct minidump_tlv_info {
 	uint64_t start;
 	uint64_t size;
 	enum minidump_crash_type crashtype;	/* stores crashtype when the tlv */
 						/*  to be dumped */
 } __packed;
-
+#ifdef CONFIG_QCA_MINIDUMP
 /* Metadata List for bookkeeping and managing entries and invalidation of
 * TLVs into the global crashdump buffer and the Metadata text file
 */
@@ -1421,9 +1420,15 @@ static int ctx_save_fill_log_dump_tlv(void)
 #endif /* CONFIG_QCA_MINIDUMP */
 	uname = utsname();
 
+	struct minidump_tlv_info uname_tlv;
+
+	uname_tlv.start = (uint64_t)(uintptr_t)__pa(uname);
+	uname_tlv.size = sizeof(*uname);
+	uname_tlv.crashtype = MINIDUMP_CRASH_TYPE_DEFAULT;
+
 	ret_val = ctx_save_add_tlv(QCA_WDT_LOG_DUMP_TYPE_UNAME,
-			    sizeof(*uname),
-			    (unsigned char *)uname);
+			    sizeof(uname_tlv),
+			    (unsigned char *)&uname_tlv);
 	if (ret_val)
 		return ret_val;
 
