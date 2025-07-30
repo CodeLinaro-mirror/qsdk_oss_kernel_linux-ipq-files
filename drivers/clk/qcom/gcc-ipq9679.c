@@ -95,10 +95,34 @@ static struct clk_regmap *gcc_ipq9679_dummy_clks[] = {
 	[GCC_QUPV3_UART1_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_uart1),
 	[GCC_SDCC1_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_sdcc1_ahb_clk),
 	[GCC_SDCC1_APPS_CLK] = DEFINE_DUMMY_CLK(gcc_sdcc1_apps_clk),
+	[GCC_CMN_12GPLL_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_cmn_12gpll_ahb),
+	[GCC_CMN_12GPLL_SYS_CLK] = DEFINE_DUMMY_CLK(gcc_cmn_12gpll_sys),
+	[GCC_UNIPHY0_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_uniphy0_ahb),
+	[GCC_UNIPHY1_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_uniphy1_ahb),
+	[GCC_UNIPHY2_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_uniphy2_ahb),
+	[GCC_UNIPHY0_SYS_CLK] = DEFINE_DUMMY_CLK(gcc_uniphy0_sys),
+	[GCC_UNIPHY1_SYS_CLK] = DEFINE_DUMMY_CLK(gcc_uniphy1_sys),
+	[GCC_UNIPHY2_SYS_CLK] = DEFINE_DUMMY_CLK(gcc_uniphy2_sys),
+	[GCC_NSSNOC_NSSCC_CLK] = DEFINE_DUMMY_CLK(gcc_nssnoc_nsscc),
+	[GCC_NSSCC_CLK] = DEFINE_DUMMY_CLK(gcc_nsscc),
+	[GCC_NSSNOC_SNOC_CLK] = DEFINE_DUMMY_CLK(gcc_nssnoc_snoc),
+	[GCC_NSSNOC_SNOC_1_CLK] = DEFINE_DUMMY_CLK(gcc_nssnoc_snoc_1),
 };
 
 static const struct qcom_reset_map gcc_ipq9679_resets[] = {
 	[GCC_QUPV3_BCR] = { 0x01000, 0 },
+	[GCC_UNIPHY0_BCR] = { 0x17044, 0 },
+	[GCC_UNIPHY1_BCR] = { 0x17054, 0 },
+	[GCC_UNIPHY2_BCR] = { 0x17064, 0 },
+	[GCC_UNIPHY0_SYS_ARES] = { 0x17048, 2 },
+	[GCC_UNIPHY0_AHB_ARES] = { 0x1704c, 2 },
+	[GCC_UNIPHY1_SYS_ARES] = { 0x17058, 2 },
+	[GCC_UNIPHY1_AHB_ARES] = { 0x1705c, 2 },
+	[GCC_UNIPHY2_SYS_ARES] = { 0x17068, 2 },
+	[GCC_UNIPHY2_AHB_ARES] = { 0x1706c, 2 },
+	[GCC_UNIPHY0_XPCS_ARES] = { 0x17050, 2 },
+	[GCC_UNIPHY1_XPCS_ARES] = { 0x17060, 2 },
+	[GCC_UNIPHY2_XPCS_ARES] = { 0x17070, 2 },
 };
 
 static const struct of_device_id gcc_ipq9679_match_table[] = {
