@@ -28,8 +28,8 @@
 /* Need to match the order of clocks in DT binding */
 enum {
 	DT_XO,
-	DT_CMN_PLL_NSS_CLK_462M,
 	DT_CMN_PLL_NSS_CLK_750M,
+	DT_CMN_PLL_NSS_CLK_462M,
 	DT_GCC_GPLL0_OUT_AUX,
 	DT_UNIPHY0_NSS_RX_CLK,
 	DT_UNIPHY0_NSS_TX_CLK,
@@ -82,8 +82,8 @@ static const struct parent_map nss_cc_parent_map_1[] = {
 static const struct clk_parent_data gcc_xo_gcc_gpll0_out_aux_uniphy0_gcc_rx_tx_cmn_pll_nss_clk_462m[] = {
 	{ .index = DT_XO },
 	{ .index = DT_GCC_GPLL0_OUT_AUX },
-	{ .index = DT_UNIPHY0_NSS_RX_CLK },
-	{ .index = DT_UNIPHY0_NSS_TX_CLK },
+	{ .fw_name = "uniphy0_gcc_rx_clk" },
+	{ .fw_name = "uniphy0_gcc_tx_clk" },
 	{ .index = DT_CMN_PLL_NSS_CLK_462M },
 };
 
@@ -99,10 +99,10 @@ static const struct parent_map nss_cc_parent_map_2[] = {
 static const struct clk_parent_data gcc_xo_gcc_gpll0_out_aux_uniphy0_uniphy1_gcc_rx_tx[] = {
 	{ .index = DT_XO },
 	{ .index = DT_GCC_GPLL0_OUT_AUX },
-	{ .index = DT_UNIPHY0_NSS_RX_CLK },
-	{ .index = DT_UNIPHY0_NSS_TX_CLK },
-	{ .index = DT_UNIPHY1_NSS_RX_CLK },
-	{ .index = DT_UNIPHY1_NSS_TX_CLK },
+	{ .fw_name = "uniphy0_gcc_rx_clk" },
+	{ .fw_name = "uniphy0_gcc_tx_clk" },
+	{ .fw_name = "uniphy1_gcc_rx_clk" },
+	{ .fw_name = "uniphy1_gcc_tx_clk" },
 };
 
 static const struct parent_map nss_cc_parent_map_3[] = {
@@ -116,8 +116,8 @@ static const struct parent_map nss_cc_parent_map_3[] = {
 static const struct clk_parent_data gcc_xo_gcc_gpll0_out_aux_uniphy2_gcc_rx_tx_cmn_pll_nss_clk_462m[] = {
 	{ .index = DT_XO },
 	{ .index = DT_GCC_GPLL0_OUT_AUX },
-	{ .index = DT_UNIPHY2_NSS_RX_CLK },
-	{ .index = DT_UNIPHY2_NSS_TX_CLK },
+	{ .fw_name = "uniphy2_gcc_rx_clk" },
+	{ .fw_name = "uniphy2_gcc_tx_clk" },
 	{ .index = DT_CMN_PLL_NSS_CLK_462M },
 };
 
