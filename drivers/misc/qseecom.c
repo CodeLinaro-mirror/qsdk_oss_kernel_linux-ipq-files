@@ -5392,7 +5392,7 @@ app_info_ubuf_free:
 		ikey_ubuf->result = ikey->result;
 
 		/* Copy the ecdsa blob */
-		if (ikey_ubuf->ecdsa_blob_len == sizeof(struct qsee_ecdsa_import_blob)) {
+		if (!ikey->result && ikey_ubuf->ecdsa_blob_len == sizeof(struct qsee_ecdsa_import_blob)) {
 			blob = (struct qsee_ecdsa_import_blob *)buf2;
 			ec_points.public_key_len = blob->public_key_len;
 			memcpy(ec_points.public_key, blob->public_key, blob->public_key_len);
