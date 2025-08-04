@@ -2370,6 +2370,97 @@
 		nss-ppe {
 			compatible = "qcom,nss-ppe";
 		};
+
+		eip: eip197@29800000 {
+			compatible = "qcom,eip";
+			reg-names = "eip_pbase";
+			reg = <0x29800000 0x7ffff>;
+			reg-offset = <0x80000>;
+			ranges;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			clocks = <&nsscc NSS_CC_EIP_CLK>,
+			       <&nsscc NSS_CC_NSSNOC_EIP_CLK>,
+			       <&nsscc NSS_CC_EIP_PPE_CLK>;
+			clock-names = "crypto_clk","crypto_nocclk","crypto_ppeclk";
+			clock-frequency = /bits/ 64 <600000000 600000000 300000000>;
+			resets = <&nsscc NSS_CC_EIP_PPE_CLK_ARES>, <&nsscc NSS_CC_EIP_CLK_ARES>, <&nsscc NSS_CC_NSSNOC_EIP_CLK_ARES>;
+			reset-names = "eip_ppe_clk", "eip_clk", "eip_host_clk";
+			qcom,inline-enabled;
+			interrupts = <GIC_SPI 229 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "global_irq";
+			max-ring = /bits/ 8 <8>;
+			status = "okay";
+
+			dma0 {
+				compatible = "qcom,eip-dma";
+				ring-id = /bits/ 8 <0>;
+				interrupts = <GIC_SPI 234 IRQ_TYPE_EDGE_RISING>,
+					   <GIC_SPI 346 IRQ_TYPE_EDGE_RISING>;
+				interrupt-names = "cdr_proc_irq","rdr_proc_irq";
+			};
+
+			dma1 {
+				compatible = "qcom,eip-dma";
+				ring-id = /bits/ 8 <1>;
+				interrupts = <GIC_SPI 235 IRQ_TYPE_EDGE_RISING>,
+					   <GIC_SPI 347 IRQ_TYPE_EDGE_RISING>;
+				interrupt-names = "cdr_proc_irq","rdr_proc_irq";
+			};
+
+			dma2 {
+				compatible = "qcom,eip-dma";
+				ring-id = /bits/ 8 <2>;
+				interrupts = <GIC_SPI 236 IRQ_TYPE_EDGE_RISING>,
+					   <GIC_SPI 348 IRQ_TYPE_EDGE_RISING>;
+				interrupt-names = "cdr_proc_irq","rdr_proc_irq";
+			};
+
+			dma3 {
+				compatible = "qcom,eip-dma";
+				ring-id = /bits/ 8 <3>;
+				interrupts = <GIC_SPI 237 IRQ_TYPE_EDGE_RISING>,
+					   <GIC_SPI 349 IRQ_TYPE_EDGE_RISING>;
+				interrupt-names = "cdr_proc_irq","rdr_proc_irq";
+			};
+
+			dma4 {
+				compatible = "qcom,eip-dma";
+				ring-id = /bits/ 8 <4>;
+				interrupts = <GIC_SPI 238 IRQ_TYPE_EDGE_RISING>,
+					   <GIC_SPI 350 IRQ_TYPE_EDGE_RISING>;
+				interrupt-names = "cdr_proc_irq","rdr_proc_irq";
+			};
+
+			dma5 {
+				compatible = "qcom,eip-dma";
+				ring-id = /bits/ 8 <5>;
+				interrupts = <GIC_SPI 239 IRQ_TYPE_EDGE_RISING>,
+					   <GIC_SPI 351 IRQ_TYPE_EDGE_RISING>;
+				interrupt-names = "cdr_proc_irq","rdr_proc_irq";
+			};
+
+			dma6 {
+				compatible = "qcom,eip-dma";
+				ring-id = /bits/ 8 <6>;
+				interrupts = <GIC_SPI 240 IRQ_TYPE_EDGE_RISING>,
+					   <GIC_SPI 352 IRQ_TYPE_EDGE_RISING>;
+				interrupt-names = "cdr_proc_irq","rdr_proc_irq";
+			};
+
+			dma7 {
+				compatible = "qcom,eip-dma";
+				ring-id = /bits/ 8 <7>;
+				interrupts = <GIC_SPI 241 IRQ_TYPE_EDGE_RISING>,
+					   <GIC_SPI 353 IRQ_TYPE_EDGE_RISING>;
+				interrupt-names = "cdr_proc_irq","rdr_proc_irq";
+			};
+		};
+
+		eip_crypto: eip_crypto {
+			compatible = "qcom,eip_crypto";
+			status = "okay";
+		};
 	};
 
 	timer {
