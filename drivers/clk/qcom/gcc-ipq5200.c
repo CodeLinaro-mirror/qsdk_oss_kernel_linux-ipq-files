@@ -89,6 +89,7 @@ static const struct clk_ops clk_dummy_ops = {
 	 })
 
 static struct clk_regmap *gcc_ipq5200_dummy_clks[] = {
+	[GPLL0] = DEFINE_DUMMY_CLK(gpll0),
 	[GCC_QUPV3_AHB_MST_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_ahb_mst),
 	[GCC_QUPV3_AHB_SLV_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_ahb_slv),
 	[GCC_QUPV3_UART1_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_uart1),
