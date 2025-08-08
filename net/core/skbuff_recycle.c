@@ -70,6 +70,24 @@ do { \
 #endif
 
 /**
+ * skb_recycler_clear_fast_flags - Clear skb flags
+ * @skb: skb pointer
+ *
+ * This API clears the skb recycler flags here to make sure that all fast path
+ * optimization related flags are cleared.
+ *
+ * Return: Void
+ */
+void skb_recycler_clear_fast_flags(struct sk_buff *skb)
+{
+	skb->fast_xmit = 0;
+	skb->is_from_recycler = 0;
+	skb->fast_recycled = 0;
+	skb->recycled_for_ds = 0;
+	skb->fast_qdisc = 0;
+}
+
+/**
  * skb_recycler_clear_flags - Clear skb flags
  * @skb: skb pointer
  *
@@ -80,11 +98,7 @@ do { \
  */
 void skb_recycler_clear_flags(struct sk_buff *skb)
 {
-	skb->fast_xmit = 0;
-	skb->is_from_recycler = 0;
-	skb->fast_recycled = 0;
-	skb->recycled_for_ds = 0;
-	skb->fast_qdisc = 0;
+	skb_recycler_clear_fast_flags(skb);
 	skb->int_pri = 0;
 }
 
