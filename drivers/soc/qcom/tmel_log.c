@@ -336,12 +336,12 @@ static int tmel_log_probe(struct platform_device *pdev)
 	}
 
 	ret = tmelcom_set_tmel_log_config(log_config,
-			(argc / 2) * sizeof(log_config));
-	if (ret) {
+					  (argc / 2) * sizeof(log_config));
+	if (ret)
 		dev_err(&pdev->dev,
 			"failed to set the config, ret = %d\n", ret);
-	}
 
+	kfree(log_config);
 	return ret;
 }
 
