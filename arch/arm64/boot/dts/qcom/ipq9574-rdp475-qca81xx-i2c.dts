@@ -78,6 +78,12 @@
 			};
 		};
 
+		sfp0: sfp@0 {
+			status = "okay";
+			compatible = "qcom,nss-phy";
+			i2c-bus = <&blsp1_i2c3>;
+		};
+
 		ess-instance {
 			num_devices = <0x1>;
 			ess-switch@3a000000 {
