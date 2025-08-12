@@ -137,6 +137,7 @@ struct dump_segment {
  * @param:
  *   total_size - total size of dumps
  *   num_seg - total number of dump segments
+ *   dump_seg - number of segments to dump based on crash
  *   flag - size of dump segment
  *   type - array to store 'type' of dump segments
  *   seg_size - array to store segment size of
@@ -147,6 +148,7 @@ struct dump_segment {
 struct mini_hdr {
     int total_size;
     int num_seg;
+    int dump_seg_num;
     int flag;
     unsigned char *type;
     int *seg_size;
@@ -381,6 +383,7 @@ static int mini_dump_open(struct inode *inode, struct file *file) {
 			minidump.hdr.seg_size[index] = segment->size;
 			minidump.hdr.phy_addr[index] = cur_node->pa;
 			minidump.hdr.type[index] = cur_node->type;
+			minidump.hdr.dump_seg_num++;
 			index++;
 		}
 	}
@@ -480,17 +483,17 @@ static long mini_dump_ioctl(struct file *file, unsigned int ioctl_num,
 		case MINIDUMP_IOCTL_PREPARE_SEG:
 			ret = copy_to_user((void __user *)arg,
 			(const void *)(uintptr_t)((dfp->hdr.seg_size)),
-			(sizeof(int) * minidump.hdr.num_seg));
+			(sizeof(int) * minidump.hdr.dump_seg_num));
 			break;
 		case MINIDUMP_IOCTL_PREPARE_TYP:
 			ret = copy_to_user((void __user *)arg,
 			(const void *)(uintptr_t)((dfp->hdr.type)),
-			(sizeof(unsigned char) * minidump.hdr.num_seg));
+			(sizeof(unsigned char) * minidump.hdr.dump_seg_num));
 			break;
 		case MINIDUMP_IOCTL_PREPARE_PHY:
 			ret = copy_to_user((void __user *)arg,
 			(const void *)(uintptr_t)((dfp->hdr.phy_addr)),
-			(sizeof(unsigned long) * minidump.hdr.num_seg));
+			(sizeof(unsigned long) * minidump.hdr.dump_seg_num));
 			break;
 		default:
 			ret = -EINVAL;
@@ -538,6 +541,7 @@ int do_dump_minidump(enum minidump_crash_type crashtype)
 
 	mutex_lock(&g_minidump_lock);
 	minidump.hdr.total_size = 0;
+	minidump.hdr.dump_seg_num = 0;
 	if (!tlv_msg.msg_buffer) {
 		pr_err("\n Minidump: Crashdump buffer is empty");
 		mutex_unlock(&g_minidump_lock);
