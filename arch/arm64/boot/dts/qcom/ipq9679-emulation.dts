@@ -41,6 +41,12 @@
 
 	aliases {
 		serial0 = &uart0;
+		ethernet0 = "/soc/dp1";
+		ethernet1 = "/soc/dp2";
+		ethernet2 = "/soc/dp3";
+		ethernet3 = "/soc/dp4";
+		ethernet4 = "/soc/dp5";
+		ethernet5 = "/soc/dp6";
 	};
 
 	chosen {
@@ -128,6 +134,160 @@
 			uart0: serial@1a84000 {
 				status = "okay";
 			};
+		};
+
+		dp1 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <1>;
+			reg = <0x2a500000 0x4000>;
+			qcom,mactype = <0>;
+			qcom,link-poll = <1>;
+			local-mac-address = [000000000000];
+			qcom,phy-mdio-addr = <16>;
+			phy-mode = "usxgmii";
+			qcom,ppe-offload-disabled = <1>;
+		};
+
+		dp2 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <2>;
+			reg = <0x2a504000 0x4000>;
+			qcom,mactype = <0>;
+			qcom,link-poll = <1>;
+			local-mac-address = [000000000000];
+			qcom,phy-mdio-addr = <16>;
+			phy-mode = "usxgmii";
+			qcom,ppe-offload-disabled = <1>;
+		};
+
+		dp3 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <3>;
+			reg = <0x2a508000 0x4000>;
+			qcom,mactype = <0>;
+			qcom,link-poll = <1>;
+			local-mac-address = [000000000000];
+			qcom,phy-mdio-addr = <16>;
+			phy-mode = "usxgmii";
+			qcom,ppe-offload-disabled = <1>;
+		};
+
+		dp4 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <4>;
+			reg = <0x2a50c000 0x4000>;
+			qcom,mactype = <0>;
+			qcom,link-poll = <1>;
+			local-mac-address = [000000000000];
+			qcom,phy-mdio-addr = <16>;
+			phy-mode = "usxgmii";
+			qcom,ppe-offload-disabled = <1>;
+		};
+
+		dp5 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <5>;
+			reg = <0x2a510000 0x4000>;
+			qcom,mactype = <0>;
+			qcom,link-poll = <1>;
+			local-mac-address = [000000000000];
+			qcom,phy-mdio-addr = <16>;
+			phy-mode = "usxgmii";
+			qcom,ppe-offload-disabled = <1>;
+		};
+
+		dp6 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <6>;
+			reg = <0x2a514000 0x4000>;
+			qcom,mactype = <0>;
+			qcom,link-poll = <1>;
+			local-mac-address = [000000000000];
+			qcom,phy-mdio-addr = <16>;
+			phy-mode = "usxgmii";
+			qcom,ppe-offload-disabled = <1>;
+		};
+
+		edma@2ad00000{
+			qcom,rxdesc-ring-max = <24>;
+			qcom,rxfill-ring-max = <20>;
+			qcom,txdesc-ring-max = <24>;
+			qcom,txcomp-ring-max = <20>;
+			qcom,rx-page-mode = <0>;
+			qcom,tx-map-priority-level = <1>;
+			qcom,rx-map-priority-level = <1>;
+			qcom,txdesc-fc-grp-map = <1 2 3 4 5 6>;
+			qcom,vp-id = <8>;
+			interrupts = <0 294 4>,                 /* Tx complete ring id #0 IRQ info */
+				   <0 295 4>,                   /* Tx complete ring id #1 IRQ info */
+				   <0 296 4>,                   /* Tx complete ring id #2 IRQ info */
+				   <0 297 4>,                   /* Tx complete ring id #3 IRQ info */
+				   <0 298 4>,                   /* Tx complete ring id #4 IRQ info */
+				   <0 299 4>,                   /* Tx complete ring id #5 IRQ info */
+				   <0 300 4>,                   /* Tx complete ring id #6 IRQ info */
+				   <0 301 4>,                   /* Tx complete ring id #7 IRQ info */
+				   <0 302 4>,                   /* Tx complete ring id #8 IRQ info */
+				   <0 303 4>,                   /* Tx complete ring id #9 IRQ info */
+				   <0 304 4>,                   /* Tx complete ring id #10 IRQ info */
+				   <0 305 4>,                   /* Tx complete ring id #11 IRQ info */
+				   <0 306 4>,                   /* Tx complete ring id #12 IRQ info */
+				   <0 307 4>,                   /* Tx complete ring id #13 IRQ info */
+				   <0 308 4>,                   /* Tx complete ring id #14 IRQ info */
+				   <0 309 4>,                   /* Tx complete ring id #15 IRQ info */
+				   <0 310 4>,                   /* Tx complete ring id #16 IRQ info */
+				   <0 311 4>,                   /* Tx complete ring id #17 IRQ info */
+				   <0 312 4>,                   /* Tx complete ring id #18 IRQ info */
+				   <0 313 4>,                   /* Tx complete ring id #19 IRQ info */
+				   <0 250 4>,                   /* Rx descriptor ring id #0 IRQ info */
+				   <0 251 4>,                   /* Rx descriptor ring id #1 IRQ info */
+				   <0 252 4>,                   /* Rx descriptor ring id #2 IRQ info */
+				   <0 253 4>,                   /* Rx descriptor ring id #3 IRQ info */
+				   <0 254 4>,                   /* Rx descriptor ring id #4 IRQ info */
+				   <0 255 4>,                   /* Rx descriptor ring id #5 IRQ info */
+				   <0 256 4>,                   /* Rx descriptor ring id #6 IRQ info */
+				   <0 257 4>,                   /* Rx descriptor ring id #7 IRQ info */
+				   <0 258 4>,                   /* Rx descriptor ring id #8 IRQ info */
+				   <0 259 4>,                   /* Rx descriptor ring id #9 IRQ info */
+				   <0 260 4>,                   /* Rx descriptor ring id #10 IRQ info */
+				   <0 261 4>,                   /* Rx descriptor ring id #11 IRQ info */
+				   <0 262 4>,			/* Rx descriptor ring id #12 IRQ info */
+				   <0 263 4>,                   /* Rx descriptor ring id #13 IRQ info */
+				   <0 264 4>,                   /* Rx descriptor ring id #14 IRQ info */
+				   <0 265 4>,                   /* Rx descriptor ring id #15 IRQ info */
+				   <0 266 4>,                   /* Rx descriptor ring id #16 IRQ info */
+				   <0 267 4>,                   /* Rx descriptor ring id #17 IRQ info */
+				   <0 268 4>,                   /* Rx descriptor ring id #18 IRQ info */
+				   <0 269 4>,                   /* Rx descriptor ring id #19 IRQ info */
+				   <0 270 4>,                   /* Rx descriptor ring id #20 IRQ info */
+				   <0 271 4>,                   /* Rx descriptor ring id #21 IRQ info */
+				   <0 272 4>,                   /* Rx descriptor ring id #22 IRQ info */
+				   <0 273 4>,                   /* Rx descriptor ring id #23 IRQ info */
+				   <0 274 4>,                   /* Rx fill ring id #0 IRQ info */
+				   <0 275 4>,                   /* Rx fill ring id #1 IRQ info */
+				   <0 276 4>,                   /* Rx fill ring id #2 IRQ info */
+				   <0 277 4>,                   /* Rx fill ring id #3 IRQ info */
+				   <0 278 4>,                   /* Rx fill ring id #4 IRQ info */
+				   <0 279 4>,                   /* Rx fill ring id #5 IRQ info */
+				   <0 280 4>,                   /* Rx fill ring id #6 IRQ info */
+				   <0 281 4>,                   /* Rx fill ring id #7 IRQ info */
+				   <0 282 4>,                   /* Rx fill ring id #8 IRQ info */
+				   <0 283 4>,                   /* Rx fill ring id #9 IRQ info */
+				   <0 284 4>,                   /* Rx fill ring id #10 IRQ info */
+				   <0 285 4>,                   /* Rx fill ring id #11 IRQ info */
+				   <0 286 4>,                   /* Rx fill ring id #12 IRQ info */
+				   <0 287 4>,                   /* Rx fill ring id #13 IRQ info */
+				   <0 288 4>,                   /* Rx fill ring id #14 IRQ info */
+				   <0 289 4>,                   /* Rx fill ring id #15 IRQ info */
+				   <0 290 4>,                   /* Rx fill ring id #16 IRQ info */
+				   <0 291 4>,                   /* Rx fill ring id #17 IRQ info */
+				   <0 292 4>,                   /* Rx fill ring id #18 IRQ info */
+				   <0 293 4>;                   /* Rx fill ring id #19 IRQ info */
 		};
 
 		/* Timer freq for rumi = timer freq (24000000) / 200 */
