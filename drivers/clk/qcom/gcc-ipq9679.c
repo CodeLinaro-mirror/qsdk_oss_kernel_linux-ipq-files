@@ -107,6 +107,15 @@ static struct clk_regmap *gcc_ipq9679_dummy_clks[] = {
 	[GCC_NSSCC_CLK] = DEFINE_DUMMY_CLK(gcc_nsscc),
 	[GCC_NSSNOC_SNOC_CLK] = DEFINE_DUMMY_CLK(gcc_nssnoc_snoc),
 	[GCC_NSSNOC_SNOC_1_CLK] = DEFINE_DUMMY_CLK(gcc_nssnoc_snoc_1),
+	[GCC_PCIE2_AUX_CLK] = DEFINE_DUMMY_CLK(gcc_pcie2_aux_clk),
+	[GCC_PCIE2_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_pcie2_ahb_clk),
+	[GCC_ANOC_PCIE2_2LANE_M_CLK] = DEFINE_DUMMY_CLK(gcc_anoc_pcie2_2lane_m_clk),
+	[GCC_CNOC_PCIE2_2LANE_S_CLK] = DEFINE_DUMMY_CLK(gcc_cnoc_pcie2_2lane_s_clk),
+	[GCC_PCIE2_AXI_M_CLK] = DEFINE_DUMMY_CLK(gcc_pcie2_axi_m_clk),
+	[GCC_PCIE2_AXI_S_CLK] = DEFINE_DUMMY_CLK(gcc_pcie2_axi_s_clk),
+	[GCC_PCIE2_AXI_S_BRIDGE_CLK] = DEFINE_DUMMY_CLK(gcc_pcie2_axi_s_bridge_clk),
+	[GCC_PCIE2_RCHNG_CLK] = DEFINE_DUMMY_CLK(gcc_pcie2_rchng_clk),
+	[GCC_PCIE2_PIPE_CLK] = DEFINE_DUMMY_CLK(gcc_pcie2_pipe_clk),
 };
 
 static const struct qcom_reset_map gcc_ipq9679_resets[] = {
@@ -123,6 +132,16 @@ static const struct qcom_reset_map gcc_ipq9679_resets[] = {
 	[GCC_UNIPHY0_XPCS_ARES] = { 0x17050, 2 },
 	[GCC_UNIPHY1_XPCS_ARES] = { 0x17060, 2 },
 	[GCC_UNIPHY2_XPCS_ARES] = { 0x17070, 2 },
+	[GCC_PCIE2_PHY_BCR] = { 0x2a060, 0 },
+	[GCC_PCIE2PHY_PHY_BCR] = { 0x2a05c, 0 },
+	[GCC_PCIE2_PIPE_ARES] = { 0x2a068, 2 },
+	[GCC_PCIE2_CORE_STICKY_RESET] = { 0x2a058, 1 },
+	[GCC_PCIE2_AXI_S_STICKY_RESET] = { 0x2a058, 2 },
+	[GCC_PCIE2_AXI_M_STICKY_RESET] = { 0x2a058, 4 },
+	[GCC_PCIE2_AXI_M_ARES] = { 0x2a038, 2 },
+	[GCC_PCIE2_AXI_S_ARES] = { 0x2a040, 2 },
+	[GCC_PCIE2_AHB_ARES] = { 0x2a030, 2 },
+	[GCC_PCIE2_AUX_ARES] = { 0x2a078, 2 },
 };
 
 static const struct of_device_id gcc_ipq9679_match_table[] = {
