@@ -894,7 +894,7 @@
     qcom,tgt-mem-mode = <0>;
     qcom,caldb-size = <0x300000>;
 #endif
-    qcom,board_id = <0x43>;
+    qcom,board_id = <0x45>;
 #ifdef __IPQ_MEM_PROFILE_256_MB__
     memory-region = <&q6_ipq5332_data>, <&q6_mem_regions>, <&m3_dump>,
 		    <&mlo_global_mem0>;
@@ -958,7 +958,7 @@
     qcom,caldb-size = <0x500000>;
 #endif
     qcom,umac-irq-reset-addr = <0x18000884>;
-    qcom,board_id = <0x54>;
+    qcom,board_id = <0x52>;
 #ifndef __IPQ_MEM_PROFILE_256_MB__
     memory-region = <&q6_qcn6432_data_1>, <&q6_mem_regions>, <&m3_dump_qcn6432_1>,
 		    <&mlo_global_mem0>, <&q6_qcn6432_etr_1>;
