@@ -200,3 +200,45 @@
 		status = "disabled";
 	};
 };
+
+&ess_switch {
+	switch_lan_bmp = <0x3e>; /* lan port bitmap */
+	switch_wan_bmp = <0x40>; /* wan port bitmap */
+	switch_mac_mode = <0xd>; /* mac mode for uniphy instance0*/
+	switch_mac_mode1 = <0xd>; /* mac mode for uniphy instance1*/
+	switch_mac_mode2 = <0xd>; /* mac mode for uniphy instance2*/
+
+	qcom,port_phyinfo {
+		port@1 {
+			port_id = <1>;
+			forced-speed = <10000>;
+			forced-duplex = <1>;
+		};
+		port@2 {
+			port_id = <2>;
+			forced-speed = <1000>;
+			forced-duplex = <1>;
+		};
+		port@3 {
+			port_id = <3>;
+			forced-speed = <1000>;
+			forced-duplex = <1>;
+		};
+		port@4 {
+			port_id = <4>;
+			forced-speed = <1000>;
+			forced-duplex = <1>;
+		};
+		port@5 {
+			port_id = <5>;
+			forced-speed = <10000>;
+			forced-duplex = <1>;
+		};
+		port@6 {
+			port_id = <6>;
+			forced-speed = <10000>;
+			forced-duplex = <1>;
+		};
+	};
+};
+

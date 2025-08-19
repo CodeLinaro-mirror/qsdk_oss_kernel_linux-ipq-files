@@ -883,6 +883,491 @@
 			status = "ok";
 		};
 
+		ess_instance: ess-instance {
+			compatible = "qcom,ess-instance";
+			num_devices = <0x1>;
+
+			ess_switch: ess-switch@3a000000 {
+				compatible = "qcom,ess-switch-ipq52xx";
+				reg = <0x3a000000 0x1000000>;
+				switch_access_mode = "local bus";
+				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
+				switch_inner_bmp = <0x80>; /*inner port bitmap*/
+				bm_tick_mode = <0>; /* bm tick mode */
+				tm_tick_mode = <0>; /* tm tick mode */
+				clocks = <&gcc GCC_CMN_12GPLL_AHB_CLK>,
+					<&gcc GCC_CMN_12GPLL_SYS_CLK>,
+					<&gcc GCC_UNIPHY0_AHB_CLK>,
+					<&gcc GCC_UNIPHY0_SYS_CLK>,
+					<&gcc GCC_UNIPHY1_AHB_CLK>,
+					<&gcc GCC_UNIPHY1_SYS_CLK>,
+					<&gcc GCC_UNIPHY2_AHB_CLK>,
+					<&gcc GCC_UNIPHY2_SYS_CLK>,
+					<&gcc GCC_NSSNOC_NSSCC_CLK>,
+					<&gcc GCC_NSSCC_CLK>,
+					<&gcc GCC_NSSNOC_SNOC_1_CLK>,
+					<&gcc GCC_NSSNOC_SNOC_CLK>,
+					<&nsscc NSS_CC_PORT1_MAC_CLK>,
+					<&nsscc NSS_CC_PORT2_MAC_CLK>,
+					<&nsscc NSS_CC_PORT3_MAC_CLK>,
+					<&nsscc NSS_CC_PORT4_MAC_CLK>,
+					<&nsscc NSS_CC_PORT5_MAC_CLK>,
+					<&nsscc NSS_CC_PORT6_MAC_CLK>,
+					<&nsscc NSS_CC_PPE_SWITCH_CLK>,
+					<&nsscc NSS_CC_PPE_SWITCH_CFG_CLK>,
+					<&nsscc NSS_CC_NSSNOC_PPE_CLK>,
+					<&nsscc NSS_CC_NSSNOC_PPE_CFG_CLK>,
+					<&nsscc NSS_CC_PPE_EDMA_CLK>,
+					<&nsscc NSS_CC_PPE_EDMA_CFG_CLK>,
+					<&nsscc NSS_CC_PPE_SWITCH_IPE_CLK>,
+					<&nsscc NSS_CC_PPE_SWITCH_BTQ_CLK>,
+					<&nsscc NSS_CC_PORT1_RX_CLK>,
+					<&nsscc NSS_CC_PORT1_TX_CLK>,
+					<&nsscc NSS_CC_PORT2_RX_CLK>,
+					<&nsscc NSS_CC_PORT2_TX_CLK>,
+					<&nsscc NSS_CC_PORT3_RX_CLK>,
+					<&nsscc NSS_CC_PORT3_TX_CLK>,
+					<&nsscc NSS_CC_PORT4_RX_CLK>,
+					<&nsscc NSS_CC_PORT4_TX_CLK>,
+					<&nsscc NSS_CC_PORT5_RX_CLK>,
+					<&nsscc NSS_CC_PORT5_TX_CLK>,
+					<&nsscc NSS_CC_PORT6_RX_CLK>,
+					<&nsscc NSS_CC_PORT6_TX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT1_RX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT1_TX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT2_RX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT2_TX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT3_RX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT3_TX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT4_RX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT4_TX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT5_RX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT5_TX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT6_RX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT6_TX_CLK>;
+				clock-names = "cmn_ahb_clk",
+					"cmn_sys_clk",
+					"uniphy0_ahb_clk",
+					"uniphy0_sys_clk",
+					"uniphy1_ahb_clk",
+					"uniphy1_sys_clk",
+					"uniphy2_ahb_clk",
+					"uniphy2_sys_clk",
+					"gcc_nssnoc_nsscc_clk",
+					"gcc_nsscc_clk",
+					"gcc_nssnoc_snoc_1_clk",
+					"gcc_nssnoc_snoc_clk",
+					"port1_mac_clk",
+					"port2_mac_clk",
+					"port3_mac_clk",
+					"port4_mac_clk",
+					"port5_mac_clk",
+					"port6_mac_clk",
+					"nss_ppe_clk",
+					"nss_ppe_cfg_clk",
+					"nssnoc_ppe_clk",
+					"nssnoc_ppe_cfg_clk",
+					"nss_edma_clk",
+					"nss_edma_cfg_clk",
+					"nss_ppe_ipe_clk",
+					"nss_ppe_btq_clk",
+					"nss_port1_rx_clk",
+					"nss_port1_tx_clk",
+					"nss_port2_rx_clk",
+					"nss_port2_tx_clk",
+					"nss_port3_rx_clk",
+					"nss_port3_tx_clk",
+					"nss_port4_rx_clk",
+					"nss_port4_tx_clk",
+					"nss_port5_rx_clk",
+					"nss_port5_tx_clk",
+					"nss_port6_rx_clk",
+					"nss_port6_tx_clk",
+					"uniphy0_port1_rx_clk",
+					"uniphy0_port1_tx_clk",
+					"uniphy0_port2_rx_clk",
+					"uniphy0_port2_tx_clk",
+					"uniphy0_port3_rx_clk",
+					"uniphy0_port3_tx_clk",
+					"uniphy0_port4_rx_clk",
+					"uniphy0_port4_tx_clk",
+					"uniphy1_port5_rx_clk",
+					"uniphy1_port5_tx_clk",
+					"uniphy2_port6_rx_clk",
+					"uniphy2_port6_tx_clk";
+				resets = <&nsscc NSS_CC_PPE_BCR>,
+					<&gcc GCC_UNIPHY0_BCR>,
+					<&gcc GCC_UNIPHY1_BCR>,
+					<&gcc GCC_UNIPHY2_BCR>,
+					<&gcc GCC_UNIPHY0_AHB_ARES>,
+					<&gcc GCC_UNIPHY1_AHB_ARES>,
+					<&gcc GCC_UNIPHY2_AHB_ARES>,
+					<&gcc GCC_UNIPHY0_SYS_ARES>,
+					<&gcc GCC_UNIPHY1_SYS_ARES>,
+					<&gcc GCC_UNIPHY2_SYS_ARES>,
+					<&gcc GCC_UNIPHY0_XPCS_ARES>,
+					<&gcc GCC_UNIPHY1_XPCS_ARES>,
+					<&gcc GCC_UNIPHY2_XPCS_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT1_RX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT1_TX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT2_RX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT2_TX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT3_RX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT3_TX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT4_RX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT4_TX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT5_RX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT5_TX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT6_RX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT6_TX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT1_RX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT1_TX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT2_RX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT2_TX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT3_RX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT3_TX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT4_RX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT4_TX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT5_RX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT5_TX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT6_RX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT6_TX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT1_MAC_CLK_ARES>,
+					<&nsscc NSS_CC_PORT2_MAC_CLK_ARES>,
+					<&nsscc NSS_CC_PORT3_MAC_CLK_ARES>,
+					<&nsscc NSS_CC_PORT4_MAC_CLK_ARES>,
+					<&nsscc NSS_CC_PORT5_MAC_CLK_ARES>,
+					<&nsscc NSS_CC_PORT6_MAC_CLK_ARES>;
+				reset-names = "ppe_rst",
+					"uniphy0_soft_rst",
+					"uniphy1_soft_rst",
+					"uniphy2_soft_rst",
+					"uniphy0_ahb_rst",
+					"uniphy1_ahb_rst",
+					"uniphy2_ahb_rst",
+					"uniphy0_sys_rst",
+					"uniphy1_sys_rst",
+					"uniphy2_sys_rst",
+					"uniphy0_xpcs_rst",
+					"uniphy1_xpcs_rst",
+					"uniphy2_xpcs_rst",
+					"uniphy_port1_rx_rst",
+					"uniphy_port1_tx_rst",
+					"uniphy_port2_rx_rst",
+					"uniphy_port2_tx_rst",
+					"uniphy_port3_rx_rst",
+					"uniphy_port3_tx_rst",
+					"uniphy_port4_rx_rst",
+					"uniphy_port4_tx_rst",
+					"uniphy_port5_rx_rst",
+					"uniphy_port5_tx_rst",
+					"uniphy_port6_rx_rst",
+					"uniphy_port6_tx_rst",
+					"nss_port1_rx_rst",
+					"nss_port1_tx_rst",
+					"nss_port2_rx_rst",
+					"nss_port2_tx_rst",
+					"nss_port3_rx_rst",
+					"nss_port3_tx_rst",
+					"nss_port4_rx_rst",
+					"nss_port4_tx_rst",
+					"nss_port5_rx_rst",
+					"nss_port5_tx_rst",
+					"nss_port6_rx_rst",
+					"nss_port6_tx_rst",
+					"nss_port1_mac_rst",
+					"nss_port2_mac_rst",
+					"nss_port3_mac_rst",
+					"nss_port4_mac_rst",
+					"nss_port5_mac_rst",
+					"nss_port6_mac_rst";
+
+				port_scheduler_resource {
+					port@0 {
+						port_id = <0>;
+						ucast_queue = <170 254>;
+						mcast_queue = <256 271>;
+						l0sp = <44 56>;
+						l0cdrr = <170 255>;
+						l0edrr = <170 255>;
+						l1cdrr = <44 56>;
+						l1edrr = <44 56>;
+					};
+					port@1 {
+						port_id = <1>;
+						ucast_queue = <0 7>;
+						mcast_queue = <272 275>;
+						l0sp = <0 1>;
+						l0cdrr = <0 7>;
+						l0edrr = <0 7>;
+						l1cdrr = <0 1>;
+						l1edrr = <0 1>;
+					};
+					port@2 {
+						port_id = <2>;
+						ucast_queue = <8 15>;
+						mcast_queue = <276 279>;
+						l0sp = <2 3>;
+						l0cdrr = <8 15>;
+						l0edrr = <8 15>;
+						l1cdrr = <2 3>;
+						l1edrr = <2 3>;
+					};
+					port@3 {
+						port_id = <3>;
+						ucast_queue = <16 23>;
+						mcast_queue = <280 283>;
+						l0sp = <4 5>;
+						l0cdrr = <16 23>;
+						l0edrr = <16 23>;
+						l1cdrr = <4 5>;
+						l1edrr = <4 5>;
+					};
+					port@4 {
+						port_id = <4>;
+						ucast_queue = <24 31>;
+						mcast_queue = <284 287>;
+						l0sp = <6 7>;
+						l0cdrr = <24 31>;
+						l0edrr = <24 31>;
+						l1cdrr = <6 7>;
+						l1edrr = <6 7>;
+					};
+					port@5 {
+						port_id = <5>;
+						ucast_queue = <32 39>;
+						mcast_queue = <288 291>;
+						l0sp = <8 9>;
+						l0cdrr = <32 39>;
+						l0edrr = <32 39>;
+						l1cdrr = <8 9>;
+						l1edrr = <8 9>;
+					};
+					port@6 {
+						port_id = <6>;
+						ucast_queue = <40 159>;
+						mcast_queue = <292 295>;
+						l0sp = <10 41>;
+						l0cdrr = <40 159>;
+						l0edrr = <40 159>;
+						l1cdrr = <10 41>;
+						l1edrr = <10 41>;
+					};
+					port@7 {
+						port_id = <7>;
+						ucast_queue = <160 169>;
+						mcast_queue = <296 299>;
+						l0sp = <42 43>;
+						l0cdrr = <160 169>;
+						l0edrr = <160 169>;
+						l1cdrr = <42 43>;
+						l1edrr = <42 43>;
+					};
+					reserved {
+						ucast_queue = <255 255>;
+						mcast_queue = <0 0>;
+						l0sp = <57 63>;
+						l0cdrr = <0 0>;
+						l0edrr = <0 0>;
+						l1cdrr = <57 63>;
+						l1edrr = <57 63>;
+					};
+				};
+
+				port_scheduler_config {
+					port@0 {
+						port_id = <0>;
+						l1scheduler {
+							group@0 {
+								/* L0 SP */
+								sp = <44>;
+								sp_loop_pri = <13>;
+								sp_max_pri = <1>;
+								/* cpri cdrr epri edrr */
+								cfg = <0 44 0 44>;
+							};
+						};
+						l0scheduler {
+							group@0 {
+								/* 8 x (4 cores + 2 VP) */
+								ucast_queue = <170>;
+								ucast_loop_pri = <48>;
+								ucast_max_pri = <8>;
+								/* multicast queue */
+								mcast_queue = <256>;
+								mcast_loop_pri = <8>;
+								/* sp cpri cdrr epri edrr */
+								cfg = <44 0 170 0 170>;
+							};
+							group@1 {
+								/* 4 GRO + 1x4 SMD */
+								ucast_queue = <218>;
+								ucast_loop_pri = <8>;
+								ucast_max_pri = <4>;
+								mcast_queue = <264>;
+								mcast_loop_pri = <8>;
+								cfg = <50 0 218 0 218>;
+							};
+							group@2 {
+								/* DS */
+								ucast_queue = <226>;
+								ucast_loop_pri = <8>;
+								cfg = <52 0 226 0 226>;
+							};
+
+							group@3 {
+								/* SMD DS */
+								ucast_queue = <234>;
+								ucast_loop_pri = <4>;
+								cfg = <53 0 234 0 234>;
+							};
+
+							group@4 {
+								/* Ingress SRAM for DDRQ */
+								ucast_queue = <238>;
+								ucast_loop_pri = <17>;
+								ucast_max_pri = <8>;
+								cfg = <54 0 238 0 238>;
+							};
+						};
+					};
+					port@1 {
+						port_id = <1>;
+						l1scheduler {
+							group@0 {
+								sp = <0>;
+								cfg = <0 0 0 0>;
+							};
+						};
+						l0scheduler {
+							group@0 {
+								ucast_queue = <0>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <272>;
+								mcast_loop_pri = <4>;
+								cfg = <0 0 0 0 0>;
+							};
+						};
+					};
+					port@2 {
+						port_id = <2>;
+						l1scheduler {
+							group@0 {
+								sp = <2>;
+								cfg = <0 2 0 2>;
+							};
+						};
+						l0scheduler {
+							group@0 {
+								ucast_queue = <8>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <276>;
+								mcast_loop_pri = <4>;
+								cfg = <2 0 8 0 8>;
+							};
+						};
+					};
+					port@3 {
+						port_id = <3>;
+						l1scheduler {
+							group@0 {
+								sp = <4>;
+								cfg = <0 4 0 4>;
+							};
+						};
+						l0scheduler {
+							group@0 {
+								ucast_queue = <16>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <280>;
+								mcast_loop_pri = <4>;
+								cfg = <4 0 16 0 16>;
+							};
+						};
+					};
+					port@4 {
+						port_id = <4>;
+						l1scheduler {
+							group@0 {
+								sp = <6>;
+								cfg = <0 6 0 6>;
+							};
+						};
+						l0scheduler {
+							group@0 {
+								ucast_queue = <24>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <284>;
+								mcast_loop_pri = <4>;
+								cfg = <6 0 24 0 24>;
+							};
+						};
+					};
+					port@5 {
+						port_id = <5>;
+						l1scheduler {
+							group@0 {
+								sp = <8>;
+								cfg = <0 8 0 8>;
+							};
+						};
+						l0scheduler {
+							group@0 {
+								ucast_queue = <32>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <288>;
+								mcast_loop_pri = <4>;
+								cfg = <8 0 32 0 32>;
+							};
+						};
+					};
+
+					port@6 {
+						port_id = <6>;
+						l1scheduler {
+							group@0 {
+								sp = <10>;
+								sp_loop_pri = <15>;
+								sp_max_pri = <1>;
+								cfg = <6 0 10 0 10>;
+							};
+						};
+						l0scheduler {
+							group@0 {
+								ucast_queue = <40>;
+								ucast_loop_pri = <120>;
+								ucast_max_pri = <8>;
+								mcast_queue = <292>;
+								mcast_loop_pri = <4>;
+								cfg = <10 0 40 0 40>;
+							};
+						};
+					};
+
+					port@7 {
+						port_id = <7>;
+						l1scheduler {
+							group@0 {
+								sp = <42>;
+								sp_loop_pri = <2>;
+								sp_max_pri = <1>;
+								cfg = <0 42 0 42>;
+							};
+						};
+						l0scheduler {
+							group@0 {
+								ucast_queue = <160>;
+								ucast_loop_pri = <10>;
+								ucast_max_pri = <8>;
+								mcast_queue = <296>;
+								mcast_loop_pri = <4>;
+								cfg = <42 0 160 0 160>;
+							};
+						};
+					};
+				};
+			};
+		};
 	};
 
 	firmware {
