@@ -330,7 +330,8 @@
 			/* qcn9224 tgt-mem-mode=0 layout
 			 * refer ipq9574-qcn9224-default-memory.dtsi
 			 */
-			memory-region = <&qcn9224_pcie1>, <&mhi_region1>;
+			memory-region = <&qcn9224_pcie1>, <&mhi_region1>, <&mlo_global_mem0>;
+			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
 #ifdef __PCIE_QCOM_EARLY_CAL_SUPPORT__
 			qcom,early_cal_enabled = "okay";
 #endif
@@ -339,6 +340,27 @@
 			qcom,wsi = <&wsi>;
 			qcom,wsi_index = <2>;
 			status = "okay";
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+
+					wifi1_wsi_tx: endpoint {
+						remote-endpoint = <&wifi2_wsi_rx>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+
+					wifi1_wsi_rx: endpoint {
+						remote-endpoint = <&wifi3_wsi_tx>;
+					};
+				};
+			};
 		};
 	};
 };
@@ -364,7 +386,8 @@
 			/* qcn9224 tgt-mem-mode=0 layout
 			 * refer ipq9574-qcn9224-default-memory.dtsi
 			 */
-			memory-region = <&qcn9224_pcie2>, <&mhi_region2>;
+			memory-region = <&qcn9224_pcie2>, <&mhi_region2>, <&mlo_global_mem0>;
+			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
 #ifdef __PCIE_QCOM_EARLY_CAL_SUPPORT__
 			qcom,early_cal_enabled = "okay";
 #endif
@@ -373,6 +396,27 @@
 			qcom,wsi = <&wsi>;
 			qcom,wsi_index = <0>;
 			status = "okay";
+			qcom,wsi-controller;
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+
+					wifi2_wsi_tx: endpoint {
+						remote-endpoint = <&wifi3_wsi_rx>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+
+					wifi2_wsi_rx: endpoint {
+						remote-endpoint = <&wifi1_wsi_tx>;
+					};
+				};
+			};
 		};
 	};
 };
@@ -398,7 +442,8 @@
 			/* qcn9224 tgt-mem-mode=0 layout
 			 * refer ipq9574-qcn9224-default-memory.dtsi
 			 */
-			memory-region = <&qcn9224_pcie3>, <&mhi_region3>;
+			memory-region = <&qcn9224_pcie3>, <&mhi_region3>, <&mlo_global_mem0>;
+			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
 #ifdef __PCIE_QCOM_EARLY_CAL_SUPPORT__
 			qcom,early_cal_enabled = "okay";
 #endif
@@ -407,6 +452,26 @@
 			qcom,wsi = <&wsi>;
 			qcom,wsi_index = <1>;
 			status = "okay";
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+
+					wifi3_wsi_tx: endpoint {
+						remote-endpoint = <&wifi1_wsi_rx>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+					wifi3_wsi_rx: endpoint {
+						remote-endpoint = <&wifi2_wsi_tx>;
+					};
+				};
+			};
 		};
 	};
 };
