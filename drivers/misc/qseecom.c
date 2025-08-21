@@ -250,7 +250,7 @@ static ssize_t tmecomm_store_pt_key(struct device *dev,
 				    struct device_attribute *attr,
 				    const char *buf, size_t count)
 {
-	uint32_t key_size;
+	uint32_t key_size = 0;
 
 	memset(pt_key, 0, TME_MAX_KEY_LEN);
 	tmel_pt_key_len = 0;
@@ -5694,12 +5694,12 @@ static long qseecom_ioctl(struct file *file, unsigned int cmd, unsigned long arg
 {
 	void __user *argp = (void __user *)arg;
 	struct qsee_ecdsa_import_blob *blob;
-	struct qsee_ecdsa_import_key *ikey;
-	struct ecdsa_import_key *ikey_ubuf;
-	struct qsee_ecdsa_verify *verify;
-	struct ecdsa_verify *verify_ubuf;
-	struct qsee_ecdsa_sign *sign;
-	struct ecdsa_sign *sign_ubuf;
+	struct qsee_ecdsa_import_key *ikey = NULL;;
+	struct ecdsa_import_key *ikey_ubuf = NULL;
+	struct qsee_ecdsa_verify *verify = NULL;
+	struct ecdsa_verify *verify_ubuf = NULL;
+	struct qsee_ecdsa_sign *sign = NULL;
+	struct ecdsa_sign *sign_ubuf = NULL;
 	dma_addr_t buf1_dma_addr = 0;
 	dma_addr_t buf2_dma_addr = 0;
 	dma_addr_t buf3_dma_addr = 0;
@@ -5714,7 +5714,7 @@ static long qseecom_ioctl(struct file *file, unsigned int cmd, unsigned long arg
 	u32 cmd_id = 0;
 	void *buf2;
 	void *buf3;
-	int ret;
+	int ret = 0;
 
 	struct ta_info *info_ubuf;
 
@@ -6049,7 +6049,7 @@ sign_buf3_free:
 sign_buf2_free:
 		dma_free_coherent(qdev, buf2_dma_size, buf2, buf2_dma_addr);
 sign_buf1_free:
-		dma_free_coherent(qdev, buf1_dma_size, ikey, buf1_dma_addr);
+		dma_free_coherent(qdev, buf1_dma_size, sign, buf1_dma_addr);
 sign_ubuf_free:
 		kfree(sign_ubuf);
 
@@ -6138,7 +6138,7 @@ verify_buf3_free:
 verify_buf2_free:
 		dma_free_coherent(qdev, buf2_dma_size, buf2, buf2_dma_addr);
 verify_buf1_free:
-		dma_free_coherent(qdev, buf1_dma_size, ikey, buf1_dma_addr);
+		dma_free_coherent(qdev, buf1_dma_size, verify, buf1_dma_addr);
 verify_ubuf_free:
 		kfree(verify_ubuf);
 
