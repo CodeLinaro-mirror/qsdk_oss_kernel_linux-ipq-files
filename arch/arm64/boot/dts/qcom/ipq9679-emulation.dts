@@ -149,3 +149,16 @@
 &apps_iommu {
 	status = "okay";
 };
+
+&sdhc {
+	qcom,emulation;
+	/* override the frequency to 48Mhz for emulation platform */
+	max-frequency = <48000000>;
+	/* Force 3.3V, because only that will support on emulation platform */
+	mmc-ddr-3_3v;
+	/* quirk to disable SDR104, SDR50 modes */
+	no-1-8-v;
+	bus-width = <4>;
+	non-removable;
+	status = "okay";
+};
