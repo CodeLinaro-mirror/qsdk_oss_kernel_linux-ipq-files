@@ -262,6 +262,14 @@
 			interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
+		watchdog: watchdog@f410000 {
+			compatible = "qcom,apss-wdt-ipq9679", "qcom,kpss-wdt";
+			reg = <0x0f410000 0x1000>;
+			interrupts = <GIC_SPI 0 IRQ_TYPE_EDGE_RISING>;
+			clocks = <&sleep_clk>;
+			timeout-sec = <30>;
+		};
+
 		timer@f420000 {
 			compatible = "arm,armv7-timer-mem";
 			reg = <0x0f420000 0x1000>;
