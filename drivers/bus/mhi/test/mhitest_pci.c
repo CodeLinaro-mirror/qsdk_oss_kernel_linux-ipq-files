@@ -56,6 +56,10 @@ module_param(boot_debug_timeout, int, 0644);
 MODULE_PARM_DESC(boot_debug_timeout, "boot debug logs timeout in seconds");
 #define BOOT_DEBUG_TIMEOUT_MS		(boot_debug_timeout * 1000)
 
+int soc_reset_delay_ms = 10;
+module_param(soc_reset_delay_ms, int, 0644);
+MODULE_PARM_DESC(soc_reset_delay_ms, "soc reset delay in milliseconds");
+
 /* Ramdump ELF Helpers */
 #define SIZEOF_ELF_STRUCT(__xhdr)					\
 static inline size_t sizeof_elf_##__xhdr(unsigned char class)		\
@@ -1074,25 +1078,25 @@ out:
 
 void mhitest_global_soc_reset(struct mhitest_platform *mplat)
 {
-	u32 val, delay;
+	u32 val;
 
-	pr_info("Soc Globle Reset issued");
+	pr_info("Issuing SOC Global Reset\n");
 	val = readl_relaxed(mplat->bar + PCIE_SOC_GLOBAL_RESET_ADDRESS);
 
 	val |= PCIE_SOC_GLOBAL_RESET_V;
 
 	writel_relaxed(val, mplat->bar + PCIE_SOC_GLOBAL_RESET_ADDRESS);
 
-	/* TODO: exact time to sleep is uncertain */
-	delay = 10;
-	mdelay(delay);
+	pr_info("SOC Global reset issued, wait for %d ms\n", soc_reset_delay_ms);
+
+	mdelay(soc_reset_delay_ms);
 
 	/* Need to toggle V bit back otherwise stuck in reset status */
 	val &= ~PCIE_SOC_GLOBAL_RESET_V;
 
 	writel_relaxed(val, mplat->bar + PCIE_SOC_GLOBAL_RESET_ADDRESS);
 
-	mdelay(delay);
+	mdelay(soc_reset_delay_ms);
 
 	val = readl_relaxed(mplat->bar + PCIE_SOC_GLOBAL_RESET_ADDRESS);
 	if (val == 0xffffffff)
