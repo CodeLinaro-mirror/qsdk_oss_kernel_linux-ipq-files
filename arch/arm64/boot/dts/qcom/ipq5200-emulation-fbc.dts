@@ -63,11 +63,11 @@
 			};
 
 			i2c0: i2c@1a88000 {
-				status = "okay";
+				status = "disabled";
 			};
 
 			i2c1: i2c@1a8c000 {
-				status = "okay";
+				status = "disabled";
 			};
 		};
 
@@ -86,7 +86,7 @@
 
 		usb3: usb3@8a00000 {
 			qcom,select-utmi-as-pipe-clk;
-			status = "okay";
+			status = "disabled";
 
 			dwc3@8a00000 {
 				usb-phy = <>;
@@ -99,7 +99,7 @@
 		};
 
 		qpic_bam: dma-controller@7984000 {
-			status="okay";
+			status="disabled";
 		};
 
 		qpic_nand: nand@79b0000 {
@@ -111,7 +111,7 @@
 			phys = <>;
 			phy-names = "";
 			perst-gpio = <&tlmm 34 GPIO_ACTIVE_LOW>;
-			status = "okay";
+			status = "disabled";
 
 			pcie0_rp {
 				reg = <0 0 0 0 0>;
