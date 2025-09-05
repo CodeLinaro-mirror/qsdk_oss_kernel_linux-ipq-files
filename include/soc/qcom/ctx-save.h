@@ -17,8 +17,8 @@
  * To support max capacity of entries,please modify
  * METADATA_FILE_SZ based on minidump tlv size.
  *
- * MMU Meta Data File is currently set to 33K size
- * by default, where (33K / 33) = 1024 entries can be supported.
+ * MMU Meta Data File is currently set to 34K size
+ * by default, where (34K / 34) = 1024 entries can be supported.
  * To support max capacity of entries , please modify
  * MMU_FILE_SZ based on minidump tlv size.
 */
@@ -28,8 +28,8 @@
 #define NAME_LEN 28
 #define MINIDUMP_MODULE_COUNT 50
 
-#define MMU_FILE_SZ 33792
-#define MMU_FILE_ENTRY_LEN 33
+#define MMU_FILE_SZ 34816
+#define MMU_FILE_ENTRY_LEN 34
 
 /*
  * Note : This macro will be revoked once dependency host changes get merged
