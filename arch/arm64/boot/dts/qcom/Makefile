@@ -88,6 +88,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-db-al02-c2.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-db-al02-c3.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-rdp475-c1.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9679-emulation.dtb
+dtb-$(CONFIG_ARCH_QCOM)	+= ipq9679-emulation-fbc.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= msm8916-acer-a1-724.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= msm8916-alcatel-idol347.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= msm8916-asus-z00l.dtb
