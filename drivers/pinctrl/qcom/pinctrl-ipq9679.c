@@ -244,10 +244,7 @@ enum ipq9679_functions {
 	msm_mux_qdss_traceclk_a,
 	msm_mux_qdss_tracectl_a,
 	msm_mux_qdss_tracedata_a,
-	msm_mux_qspi0,
-	msm_mux_qspi1,
-	msm_mux_qspi2,
-	msm_mux_qspi3,
+	msm_mux_qspi_data,
 	msm_mux_qspi_clk,
 	msm_mux_qspi_cs_n,
 	msm_mux_qup_se0_l0,
@@ -299,10 +296,7 @@ enum ipq9679_functions {
 	msm_mux_rx_los21,
 	msm_mux_sdc_clk,
 	msm_mux_sdc_cmd,
-	msm_mux_sdc_data0,
-	msm_mux_sdc_data1,
-	msm_mux_sdc_data2,
-	msm_mux_sdc_data3,
+	msm_mux_sdc_data,
 	msm_mux_tsens_max,
 	msm_mux_tsn,
 	msm_mux__,
@@ -614,20 +608,8 @@ static const char *const qdss_tracedata_a_groups[] = {
 	"gpio36", "gpio37", "gpio38", "gpio39",
 };
 
-static const char *const qspi0_groups[] = {
-	"gpio3",
-};
-
-static const char *const qspi1_groups[] = {
-	"gpio2",
-};
-
-static const char *const qspi2_groups[] = {
-	"gpio1",
-};
-
-static const char *const qspi3_groups[] = {
-	"gpio0",
+static const char *const qspi_data_groups[] = {
+	"gpio0", "gpio1", "gpio2", "gpio3",
 };
 
 static const char *const qspi_clk_groups[] = {
@@ -834,20 +816,8 @@ static const char *const sdc_cmd_groups[] = {
 	"gpio4",
 };
 
-static const char *const sdc_data0_groups[] = {
-	"gpio3",
-};
-
-static const char *const sdc_data1_groups[] = {
-	"gpio2",
-};
-
-static const char *const sdc_data2_groups[] = {
-	"gpio1",
-};
-
-static const char *const sdc_data3_groups[] = {
-	"gpio0",
+static const char *const sdc_data_groups[] = {
+	"gpio0", "gpio1", "gpio2", "gpio3",
 };
 
 static const char *const tsens_max_groups[] = {
@@ -933,10 +903,7 @@ static const struct pinfunction ipq9679_functions[] = {
 	MSM_PIN_FUNCTION(qdss_traceclk_a),
 	MSM_PIN_FUNCTION(qdss_tracectl_a),
 	MSM_PIN_FUNCTION(qdss_tracedata_a),
-	MSM_PIN_FUNCTION(qspi0),
-	MSM_PIN_FUNCTION(qspi1),
-	MSM_PIN_FUNCTION(qspi2),
-	MSM_PIN_FUNCTION(qspi3),
+	MSM_PIN_FUNCTION(qspi_data),
 	MSM_PIN_FUNCTION(qspi_clk),
 	MSM_PIN_FUNCTION(qspi_cs_n),
 	MSM_PIN_FUNCTION(qup_se0_l0),
@@ -988,19 +955,16 @@ static const struct pinfunction ipq9679_functions[] = {
 	MSM_PIN_FUNCTION(rx_los21),
 	MSM_PIN_FUNCTION(sdc_clk),
 	MSM_PIN_FUNCTION(sdc_cmd),
-	MSM_PIN_FUNCTION(sdc_data0),
-	MSM_PIN_FUNCTION(sdc_data1),
-	MSM_PIN_FUNCTION(sdc_data2),
-	MSM_PIN_FUNCTION(sdc_data3),
+	MSM_PIN_FUNCTION(sdc_data),
 	MSM_PIN_FUNCTION(tsens_max),
 	MSM_PIN_FUNCTION(tsn),
 };
 
 static const struct msm_pingroup ipq9679_groups[] = {
-	[0] = PINGROUP(0, sdc_data3, qspi3, _, _, _, _, _, _, _, _, _),
-	[1] = PINGROUP(1, sdc_data2, qspi2, _, _, _, _, _, _, _, _, _),
-	[2] = PINGROUP(2, sdc_data1, qspi1, _, _, _, _, _, _, _, _, _),
-	[3] = PINGROUP(3, sdc_data0, qspi0, _, _, _, _, _, _, _, _, _),
+	[0] = PINGROUP(0, sdc_data, qspi_data, _, _, _, _, _, _, _, _, _),
+	[1] = PINGROUP(1, sdc_data, qspi_data, _, _, _, _, _, _, _, _, _),
+	[2] = PINGROUP(2, sdc_data, qspi_data, _, _, _, _, _, _, _, _, _),
+	[3] = PINGROUP(3, sdc_data, qspi_data, _, _, _, _, _, _, _, _, _),
 	[4] = PINGROUP(4, sdc_cmd, qspi_cs_n, _, _, _, _, _, _, _, _, _),
 	[5] = PINGROUP(5, sdc_clk, qspi_clk, _, _, _, _, _, _, _, _, _),
 	[6] = PINGROUP(6, qup_se0_l2, pwm_out51, _, cri_rng0, qdss_tracedata_a, _, _, _, _, _, _),
