@@ -514,11 +514,13 @@ static void skb_recycler_free_skb(struct sk_buff_head *list)
 		skb_release_data(skb, SKB_CONSUMED, false);
 #endif
 		kfree_skbmem(skb);
-		/*
-		 * Update the skb->sum for next due to skb_link operation
-		 */
-		if (next) {
-			skbuff_debugobj_sum_update(next);
+		if (!skb_queue_empty(list)) {
+			/*
+			 * Update the skb->sum for next due to skb_link operation
+			 */
+			if (next) {
+				skbuff_debugobj_sum_update(next);
+			}
 		}
 	}
 	spin_unlock_irqrestore(&list->lock, flags);
