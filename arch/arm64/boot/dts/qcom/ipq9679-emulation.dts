@@ -162,3 +162,18 @@
 	non-removable;
 	status = "okay";
 };
+
+&pcie2 {
+	max-link-speed = <1>;
+	link_retries_count = <400>;
+	phys = <>;
+	phy-names = "";
+
+	pcie2_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
