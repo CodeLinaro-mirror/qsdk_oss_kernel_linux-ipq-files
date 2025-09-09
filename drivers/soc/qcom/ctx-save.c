@@ -1034,7 +1034,7 @@ int minidump_traverse_module_list(const char *mod_name)
 		pr_err("Minidump: Invalid module name passed\n");
 		return -EINVAL;
 	}
-	if (minidump_modules_count > MINIDUMP_MODULE_COUNT) {
+	if (minidump_modules_count >= MINIDUMP_MODULE_COUNT) {
 		pr_err("Minidump: Module buffer is full, failed to add module %s\n", mod_name);
 		return -ENOMEM;
 	}
