@@ -50,7 +50,7 @@
 				status = "okay";
 			};
 
-			spi0: spi@1a90000 {
+			spi0: spi@1a80000 {
 				status = "disabled";
 
 				flash@0 {
