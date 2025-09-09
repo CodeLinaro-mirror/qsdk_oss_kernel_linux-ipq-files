@@ -14,6 +14,8 @@
 	model = "Qualcomm Technologies, Inc. IPQ9679-EMULATION";
 	compatible = "qcom,ipq9679-emulation", "qcom,ipq9679";
 
+	/delete-node/ firmware;
+
 	/* Timer freq for rumi = timer freq / 200 */
 	clocks {
 		/* sleep-clk freq for rumi = sleep-clk freq (32000) / 200 */
