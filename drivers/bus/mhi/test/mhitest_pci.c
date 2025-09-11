@@ -56,7 +56,7 @@ module_param(boot_debug_timeout, int, 0644);
 MODULE_PARM_DESC(boot_debug_timeout, "boot debug logs timeout in seconds");
 #define BOOT_DEBUG_TIMEOUT_MS		(boot_debug_timeout * 1000)
 
-int soc_reset_delay_ms = 10;
+int soc_reset_delay_ms = 200;
 module_param(soc_reset_delay_ms, int, 0644);
 MODULE_PARM_DESC(soc_reset_delay_ms, "soc reset delay in milliseconds");
 
@@ -1704,7 +1704,7 @@ void mhitest_pci_soc_reset(struct mhitest_platform *mplat)
 	mplat->soc_reset_requested = true;
 	mhi_soc_reset(mplat->mhi_ctrl);
 	if (!wait_for_completion_timeout(&mplat->soc_reset_request,
-					 msecs_to_jiffies(200))) {
+					 msecs_to_jiffies(soc_reset_delay_ms))) {
 		pr_err("SOC reset request failed\n");
 		mplat->soc_reset_requested = false;
 		reinit_completion(&mplat->soc_reset_request);
