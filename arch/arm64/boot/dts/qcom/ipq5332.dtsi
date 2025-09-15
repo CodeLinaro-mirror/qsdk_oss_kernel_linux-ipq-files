@@ -1808,7 +1808,7 @@
 				port_scheduler_resource {
 					port@0 {
 						port_id = <0>;
-						ucast_queue = <0 63>;
+						ucast_queue = <0 95>;
 						mcast_queue = <256 263>;
 						l0sp = <0 0>;
 						l0cdrr = <0 7>;
@@ -1837,7 +1837,7 @@
 						l1edrr = <12 15>;
 					};
 					reserved {
-						ucast_queue = <64 143>;
+						ucast_queue = <96 143>;
 						mcast_queue = <264 271>;
 						l0sp = <1 35>;
 						l0cdrr = <8 47>;
@@ -1908,6 +1908,26 @@
 								ucast_queue = <56>;
 								ucast_loop_pri = <8>;
 								mcast_queue = <263>;
+								cfg = <0 0 0 0 0>;
+							};
+							group@8 {
+								ucast_queue = <64>;
+								ucast_loop_pri = <8>;
+								cfg = <0 0 0 0 0>;
+							};
+							group@9 {
+								ucast_queue = <72>;
+								ucast_loop_pri = <8>;
+								cfg = <0 0 0 0 0>;
+							};
+							group@a {
+								ucast_queue = <80>;
+								ucast_loop_pri = <8>;
+								cfg = <0 0 0 0 0>;
+							};
+							group@b {
+								ucast_queue = <88>;
+								ucast_loop_pri = <8>;
 								cfg = <0 0 0 0 0>;
 							};
 						};
