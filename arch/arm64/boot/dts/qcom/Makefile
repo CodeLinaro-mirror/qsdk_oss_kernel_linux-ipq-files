@@ -21,6 +21,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= ipq5424-rdp485.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq5424-rdp485-c2.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq5424-rdp485-rffe.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq5424-rdp485-c3.dtb
+dtb-$(CONFIG_ARCH_QCOM)	+= ipq5424-rdp485-c4.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq5424-rdp487.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq5424-rdp487-c2.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq5424-rdp487-c3.dtb
