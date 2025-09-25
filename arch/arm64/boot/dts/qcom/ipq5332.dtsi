@@ -943,6 +943,7 @@
 		wifi0: wifi@c0000000 {
 			compatible = "qcom,cnss-qca5332", "qcom,ipq5332-wifi";
 			reg = <0xc000000 0x1000000>;
+			qcom,mm_cal_support = "okay";
 #ifdef __IPQ_MEM_PROFILE_256_MB__
 			qcom,tgt-mem-mode = <2>;
 #elif __IPQ_MEM_PROFILE_512_MB__
@@ -1105,6 +1106,7 @@
 		wifi1: wifi1@c0000000 {
 			compatible = "qcom,cnss-qcn6432" , "qcom,qcn6432-wifi";
 			interrupt-bmap = <0x100510>;
+			qcom,mm_cal_support = "okay";
 			msi-parent = <&v2m0>;
 			interrupts-extended = <&wcss_smp2p_in 16 0>,
 					<&wcss_smp2p_in 17 0>,
@@ -1129,6 +1131,7 @@
 		wifi2: wifi2@c0000000 {
 			compatible = "qcom,cnss-qcn6432" , "qcom,qcn6432-wifi";
 			interrupt-bmap = <0x100510>;
+			qcom,mm_cal_support = "okay";
 			msi-parent = <&v2m0>;
 			interrupts-extended = <&wcss_smp2p_in 24 0>,
 					<&wcss_smp2p_in 25 0>,

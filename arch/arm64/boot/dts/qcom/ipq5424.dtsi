@@ -2368,6 +2368,7 @@
 		wifi0: wifi@c0000000 {
 			compatible = "qcom,cnss-qca5424", "qcom,ipq5424-wifi";
 			qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
+			qcom,mm_cal_support = "okay";
 		#ifdef __CONFIG_IO_COHERENCY__
 			dma-coherent;
 		#endif
