@@ -316,7 +316,6 @@ int tmelcom_qwes_device_provision(u32 *req_buf, u32 req_buf_len, u32 *resp_buf,
 		goto dma_unmap_prov_req_buf;
 	}
 
-	msg.status = TMEL_ERROR_GENERIC;
 	msg.req.buf = (u32)dma_prov_req_buf;
 	msg.req.buf_len = req_buf_len;
 	msg.rsp.buf = (u32)dma_prov_rsp_buf;
