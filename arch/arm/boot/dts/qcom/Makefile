@@ -17,8 +17,6 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	qcom-apq8074-dragonboard.dtb \
 	qcom-apq8084-ifc6540.dtb \
 	qcom-apq8084-mtp.dtb \
-	ipq5200-emulation.dtb \
-	ipq5200-emulation-fbc.dtb \
 	ipq5424-rdp464.dtb \
 	ipq5424-rdp464-c2.dtb \
 	ipq5424-rdp464-c3.dtb \
@@ -78,8 +76,6 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	ipq9574-db-al02-c2.dtb \
 	ipq9574-db-al02-c3.dtb \
 	ipq9574-rdp475-c1.dtb \
-	ipq9679-emulation.dtb \
-	ipq9679-emulation-fbc.dtb \
 	ipq5332-rdp441.dtb \
 	ipq5332-rdp441-qca81xx.dtb \
 	ipq5332-rdp441-qca81xx-i2c.dtb \
