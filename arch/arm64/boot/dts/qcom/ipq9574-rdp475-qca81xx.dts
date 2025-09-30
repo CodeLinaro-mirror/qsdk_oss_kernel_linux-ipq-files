@@ -351,7 +351,7 @@
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 			memory-region = <&qcn9224_pcie1>, <&mhi_region1>;
 #ifdef __PCIE_QCOM_EARLY_CAL_SUPPORT__
-			qcom,early_cal_enabled = "okay";
+			qcom,early_cal_enabled = "supported";
 #endif
 			qcom,caldata_offset = <0x58800>;
 			qcom,board_id = <0x01>;
@@ -384,7 +384,7 @@
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 			memory-region = <&qcn9224_pcie2>, <&mhi_region2>;
 #ifdef __PCIE_QCOM_EARLY_CAL_SUPPORT__
-			qcom,early_cal_enabled = "okay";
+			qcom,early_cal_enabled = "supported";
 #endif
 			qcom,caldata_offset = <0x8A800>;
 			qcom,board_id = <0x04>;
@@ -411,7 +411,7 @@
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 			memory-region = <&qcn9224_pcie3>, <&mhi_region3>;
 #ifdef __PCIE_QCOM_EARLY_CAL_SUPPORT__
-			qcom,early_cal_enabled = "okay";
+			qcom,early_cal_enabled = "supported";
 #endif
 			qcom,caldata_offset = <0xBC800>;
 			qcom,board_id = <0x02>;
