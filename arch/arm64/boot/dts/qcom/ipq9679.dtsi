@@ -160,6 +160,17 @@
 		method = "smc";
 	};
 
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		tmc_etr_region: tmc_etr_dump@0 {
+			no-map;
+			status = "disabled";
+		};
+	};
+
 	soc@0 {
 		compatible = "simple-bus";
 		#address-cells = <1>;
@@ -284,6 +295,338 @@
 
 			llcc-perfmon {
 				compatible = "qcom,llcc-perfmon";
+			};
+		};
+
+		stm: stm@6002000 {
+			compatible = "arm,coresight-stm", "arm,primecell";
+			reg = <0x06002000 0x1000>,
+				<0x09000000 0x1000000>;
+			reg-names = "stm-base", "stm-stimulus-base";
+			coresight-name = "coresight-stm";
+			clocks = <&gcc GCC_QDSS_DAP_CLK>,
+				 <&gcc GCC_QDSS_AT_CLK>;
+			clock-names = "apb_pclk", "atclk";
+
+			out-ports {
+				port {
+					stm_out: endpoint {
+						remote-endpoint = <&funnel0_in7>;
+					};
+				};
+			};
+		};
+
+		funnel_in0: funnel@6041000 {
+			compatible = "arm,coresight-dynamic-funnel", "arm,primecell";
+			reg = <0x06041000 0x1000>;
+			reg-names = "funnel-base";
+			coresight-name = "coresight-funnel-in0";
+			clocks = <&gcc GCC_QDSS_DAP_CLK>,
+				 <&gcc GCC_QDSS_AT_CLK>;
+			clock-names = "apb_pclk", "atclk";
+
+			in-ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				/*
+				 * Port 0 - TME
+				 * Port 2 - SNOC
+				 * Port 3 - NSS
+				 * Port 4 - CNOC
+				 * Port 6 - TPDA QDSS
+				 * Port 7 - STM_SS
+				 */
+
+				port@7 {
+					reg = <7>;
+					funnel0_in7: endpoint {
+						remote-endpoint = <&stm_out>;
+					};
+				};
+			};
+
+			out-ports {
+				port {
+					funnel0_out: endpoint {
+						remote-endpoint = <&merge_funnel_in0>;
+					};
+				};
+			};
+		};
+
+		funnel_in1: funnel@6042000 {
+			compatible = "arm,coresight-dynamic-funnel", "arm,primecell";
+			reg = <0x06042000 0x1000>;
+			reg-names = "funnel-base";
+			coresight-name = "coresight-funnel-in1";
+			clocks = <&gcc GCC_QDSS_DAP_CLK>,
+				 <&gcc GCC_QDSS_AT_CLK>;
+			clock-names = "apb_pclk", "atclk";
+
+			in-ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				/*
+				 * Port 0 - AGGRENOC
+				 * Port 1 & 2 - DDRSS
+				 * Port 3 - TPDA QDSS
+				 * Port 4 - APSS
+				 * Port 5 - TURING
+				 */
+
+				port@4 {
+					reg = <4>;
+					funnel1_in2: endpoint {
+						remote-endpoint = <&apss_funnel_out>;
+					};
+				};
+			};
+
+			out-ports {
+				port {
+					funnel1_out: endpoint {
+						remote-endpoint = <&merge_funnel_in1>;
+					};
+				};
+			};
+
+		};
+
+		funnel_merge: funnel@6045000 {
+			compatible = "arm,coresight-dynamic-funnel", "arm,primecell";
+			reg = <0x06045000 0x1000>;
+			reg-names = "funnel-base";
+			coresight-name = "coresight-funnel-merge";
+			clocks = <&gcc GCC_QDSS_DAP_CLK>,
+				 <&gcc GCC_QDSS_AT_CLK>;
+			clock-names = "apb_pclk", "atclk";
+
+			out-ports {
+				port {
+					merge_funnel_out: endpoint {
+						remote-endpoint = <&etf_in>;
+					};
+				};
+			};
+
+			in-ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					merge_funnel_in0: endpoint {
+						remote-endpoint = <&funnel0_out>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+					merge_funnel_in1: endpoint {
+						remote-endpoint = <&funnel1_out>;
+					};
+				};
+			};
+
+		};
+
+		etr_replicator: replicator@6046000 {
+			compatible = "arm,coresight-dynamic-replicator", "arm,primecell";
+			reg = <0x06046000 0x1000>;
+			reg-names = "replicator-base";
+			coresight-name = "coresight-replicator";
+			clocks = <&gcc GCC_QDSS_DAP_CLK>,
+				 <&gcc GCC_QDSS_AT_CLK>;
+			clock-names = "apb_pclk", "atclk";
+
+			out-ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					etr_replicator_out0: endpoint {
+						remote-endpoint = <&etr_in>;
+					};
+				};
+			};
+
+			in-ports {
+				port {
+					etr_replicator_in0: endpoint {
+						remote-endpoint = <&etf_out>;
+					};
+				};
+			};
+		};
+
+		etf@6047000 {
+			compatible = "arm,coresight-tmc", "arm,primecell";
+			reg = <0x06047000 0x1000>;
+			reg-names = "tmc-base";
+			coresight-name = "coresight-tmc-etf";
+			arm,default-sink;
+			clocks = <&gcc GCC_QDSS_DAP_CLK>;
+			clock-names = "apb_pclk";
+
+			out-ports {
+				port {
+					etf_out: endpoint {
+						remote-endpoint = <&etr_replicator_in0>;
+					};
+				};
+			};
+
+			in-ports {
+				port {
+					etf_in: endpoint {
+						remote-endpoint = <&merge_funnel_out>;
+					};
+				};
+			};
+		};
+
+		tmc_etr: tmc@6048000 {
+			compatible = "arm,coresight-tmc", "arm,primecell";
+			reg = <0x06048000 0x1000>;
+			reg-names = "tmc-base";
+			interrupts = <GIC_SPI 403 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "byte-cntr-irq";
+			arm,buffer-size = <0x100000>;
+			arm,scatter-gather;
+			memory-region = <&tmc_etr_region>;
+			coresight-name = "coresight-tmc-etr";
+			clocks = <&gcc GCC_QDSS_DAP_CLK>;
+			clock-names = "apb_pclk";
+
+			in-ports {
+				port {
+					etr_in: endpoint {
+						remote-endpoint = <&etr_replicator_out0>;
+					};
+				};
+			};
+		};
+
+		etm0: etm@6880000 {
+			compatible = "arm,coresight-etm4x", "arm,primecell";
+			reg = <0x06880000 0x1000>;
+			coresight-name = "coresight-etm0";
+			cpu = <&CPU0>;
+			clocks = <&gcc GCC_QDSS_DAP_CLK>;
+			clock-names = "apb_pclk";
+
+			out-ports {
+				port {
+					etm0_out: endpoint {
+						remote-endpoint = <&apss_funnel_in0>;
+					};
+				};
+			};
+		};
+
+		etm1: etm@6980000 {
+			compatible = "arm,coresight-etm4x", "arm,primecell";
+			reg = <0x06980000 0x1000>;
+			coresight-name = "coresight-etm1";
+			cpu = <&CPU1>;
+			clocks = <&gcc GCC_QDSS_DAP_CLK>;
+			clock-names = "apb_pclk";
+
+			out-ports {
+				port {
+					etm1_out: endpoint {
+						remote-endpoint = <&apss_funnel_in1>;
+					};
+				};
+			};
+		};
+
+		etm2: etm@6a80000 {
+			compatible = "arm,coresight-etm4x", "arm,primecell";
+			reg = <0x06a80000 0x1000>;
+			coresight-name = "coresight-etm2";
+			cpu = <&CPU2>;
+			clocks = <&gcc GCC_QDSS_DAP_CLK>;
+			clock-names = "apb_pclk";
+
+			out-ports {
+				port {
+					etm2_out: endpoint {
+						remote-endpoint = <&apss_funnel_in2>;
+					};
+				};
+			};
+		};
+
+		etm3: etm@6b80000 {
+			compatible = "arm,coresight-etm4x", "arm,primecell";
+			reg = <0x06b80000 0x1000>;
+			coresight-name = "coresight-etm3";
+			cpu = <&CPU3>;
+			clocks = <&gcc GCC_QDSS_DAP_CLK>;
+			clock-names = "apb_pclk";
+
+			out-ports {
+				port {
+					etm3_out: endpoint {
+						remote-endpoint = <&apss_funnel_in3>;
+					};
+				};
+			};
+		};
+
+		funnel_apss: funnel@6c81000 {
+			compatible = "arm,coresight-dynamic-funnel", "arm,primecell";
+			reg = <0x06c81000 0x1000>;
+			reg-names = "funnel-base";
+			coresight-name = "coresight-funnel-apss";
+			clocks = <&gcc GCC_QDSS_DAP_CLK>,
+				 <&gcc GCC_QDSS_AT_CLK>;
+			clock-names = "apb_pclk", "atclk";
+
+			out-ports {
+				port {
+					apss_funnel_out: endpoint {
+						remote-endpoint = <&funnel1_in2>;
+					};
+				};
+			};
+
+			in-ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					apss_funnel_in0: endpoint {
+						remote-endpoint = <&etm0_out>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+					apss_funnel_in1: endpoint {
+						remote-endpoint = <&etm1_out>;
+					};
+				};
+
+				port@2 {
+					reg = <2>;
+					apss_funnel_in2: endpoint {
+						remote-endpoint = <&etm2_out>;
+					};
+				};
+
+				port@3 {
+					reg = <3>;
+					apss_funnel_in3: endpoint {
+						remote-endpoint = <&etm3_out>;
+					};
+				};
 			};
 		};
 
