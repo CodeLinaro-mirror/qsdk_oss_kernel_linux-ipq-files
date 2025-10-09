@@ -138,8 +138,10 @@ enum tmelcom_resp tmelcom_process_request(u32 msg_uid, void *msg_buf,
 	tdev->rx_done = false;
 
 	ret = tmelcom_prepare_msg(tdev, msg_uid, msg_buf, msg_size);
-	if (ret)
-		return ret;
+	if (ret) {
+		pr_err("Failed to prepare message: %d\n", ret);
+		goto err_exit;
+	}
 
 	tdev->pkt.size = sizeof(struct tmel_ipc_pkt);
 	tdev->pkt.data = (void *)tdev->ipc_pkt;
