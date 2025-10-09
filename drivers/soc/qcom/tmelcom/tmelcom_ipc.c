@@ -365,6 +365,7 @@ int tmelcom_licensing_check(void *cbor_req, u32 req_len, void *cbor_resp,
 		return ret;
 	}
 
+	msg.status = TMEL_ERROR_GENERIC;
 	msg.request.buf = dma_cbor_req;
 	msg.request.buf_len = req_len;
 	msg.response.buf = dma_cbor_resp;
@@ -1039,6 +1040,7 @@ int tmelcomm_qwes_enforce_hw_features(void *buf, u32 size)
 		return -EINVAL;
 	}
 
+	msg.status = TMEL_ERROR_GENERIC;
 	msg.featid_buf.buf = (u32)dma_addr;
 	msg.featid_buf.buf_len = size;
 	msg.featid_buf.out_buf_len = 0;
