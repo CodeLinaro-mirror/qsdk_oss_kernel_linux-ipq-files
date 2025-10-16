@@ -53,5 +53,6 @@
 #define GCC_NSSCC_CLK			43
 #define GCC_NSSNOC_SNOC_CLK		44
 #define GCC_NSSNOC_SNOC_1_CLK		45
+#define GPLL0				46
 
 #endif

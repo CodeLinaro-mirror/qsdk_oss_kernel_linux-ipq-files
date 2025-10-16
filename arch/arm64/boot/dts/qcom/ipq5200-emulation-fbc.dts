@@ -138,3 +138,11 @@
 
 	};
 };
+
+&qmp_tmel {
+	status = "okay";
+};
+
+&tmelcom {
+	status = "okay";
+};
