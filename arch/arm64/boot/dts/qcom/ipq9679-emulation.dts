@@ -177,3 +177,42 @@
 		};
 	};
 };
+
+&ess_switch {
+	switch_mac_mode = <0x15>; /* mac mode for uniphy instance0*/
+	switch_mac_mode1 = <0x18>; /* mac mode for uniphy instance1*/
+	switch_mac_mode2 = <0x18>; /* mac mode for uniphy instance2*/
+
+	qcom,port_phyinfo {
+		port@1 {
+			port_id = <1>;
+			forced-speed = <2500>;
+			forced-duplex = <1>;
+		};
+		port@2 {
+			port_id = <2>;
+			forced-speed = <2500>;
+			forced-duplex = <1>;
+		};
+		port@3 {
+			port_id = <3>;
+			forced-speed = <2500>;
+			forced-duplex = <1>;
+		};
+		port@4 {
+			port_id = <4>;
+			forced-speed = <2500>;
+			forced-duplex = <1>;
+		};
+		port@5 {
+			port_id = <5>;
+			forced-speed = <25000>;
+			forced-duplex = <1>;
+		};
+		port@6 {
+			port_id = <6>;
+			forced-speed = <25000>;
+			forced-duplex = <1>;
+		};
+	};
+};
