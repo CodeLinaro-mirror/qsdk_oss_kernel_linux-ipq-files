@@ -164,6 +164,7 @@
 };
 
 &pcie2 {
+	qcom,emulation;
 	max-link-speed = <1>;
 	link_retries_count = <400>;
 	phys = <>;
