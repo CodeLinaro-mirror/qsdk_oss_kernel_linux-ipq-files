@@ -138,6 +138,8 @@
 				clocks = <&gcc GCC_QUPV3_SPI1_CLK>;
 				clock-names = "se";
 				clock-frequency = <100000>;
+				assigned-clocks = <&gcc GCC_QUPV3_SPI1_CLK>;
+				assigned-clock-rates = <32000000>;
 				interrupts = <GIC_SPI 344 IRQ_TYPE_LEVEL_HIGH>;
 				pinctrl-0 = <&qup_i2c2_default>;
 				pinctrl-names = "default";
