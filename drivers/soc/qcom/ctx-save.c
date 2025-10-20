@@ -1110,6 +1110,33 @@ int minidump_fill_tlv_crashdump_buffer(const uint64_t start_addr, uint64_t size,
 }
 
 /*
+* Function: minidump_virt_to_phys
+*
+* Description: Convert virtual address to physical address, handling both
+* linear mapping addresses and vmalloc/module addresses correctly.
+*
+* @param: [in] virt_addr - Virtual address to convert
+*
+* Return: Physical address on success, 0 on failure
+*/
+static uint64_t minidump_virt_to_phys(uint64_t virt_addr)
+{
+	struct page *page;
+
+	if (is_vmalloc_or_module_addr((const void *)(uintptr_t)(virt_addr & (~(PAGE_SIZE - 1))))) {
+		page = vmalloc_to_page((const void *)(uintptr_t)(virt_addr & (~(PAGE_SIZE - 1))));
+		if (!page) {
+			pr_warn("Minidump: Cannot get page for address 0x%llx\n", virt_addr);
+			return 0;
+		}
+		return page_to_phys(page) + offset_in_page(virt_addr);
+	} else {
+		/* Handle linear mapping addresses */
+		return (uint64_t)__pa(virt_addr);
+	}
+}
+
+/*
 * Function: minidump_fill_segments_internal
 *
 * Description: Add a dump segment as a TLV entry in the Metadata list
@@ -1125,14 +1152,12 @@ int minidump_fill_tlv_crashdump_buffer(const uint64_t start_addr, uint64_t size,
 * Return: 0 on success, -ENOMEM on failure
 */
 int minidump_fill_segments_internal(const u64 start_addr, u64 size,
-				    enum minidump_tlv_type type, const char *name, int islowmem,
+				    enum minidump_tlv_type type, const char *name,
 				    enum minidump_crash_type crashtype)
 {
 
 	int ret = 0;
 	unsigned int replace = 0;
-	int highmem = 0;
-	struct page *minidump_tlv_page;
 	uint64_t phys_addr;
 	unsigned char *tlv_offset = NULL;
 
@@ -1140,29 +1165,19 @@ int minidump_fill_segments_internal(const u64 start_addr, u64 size,
 	if (crashtype >= MINIDUMP_CRASH_TYPE_MAX)
 		return -EINVAL;
 
-	/*
-	* Calculate PA of Dump segment using relevant APIs for lowmem and highmem
-	* virtual address.
-	*/
-	if (islowmem) {
-		phys_addr = (uint64_t)__pa(start_addr);
-	} else {
-		if (!is_vmalloc_or_module_addr((const void *)(uintptr_t)(start_addr & (~(PAGE_SIZE - 1))))) {
-			phys_addr = (uint64_t)__pa(start_addr);
-		} else {
-			minidump_tlv_page = vmalloc_to_page((const void *)(uintptr_t)
-					(start_addr & (~(PAGE_SIZE - 1))));
-			phys_addr = page_to_phys(minidump_tlv_page) + offset_in_page(start_addr);
-			highmem = 1;
-		}
+	phys_addr = minidump_virt_to_phys(start_addr);
+	if (!phys_addr) {
+		pr_warn("Minidump: Failed to convert virtual address 0x%llx to physical for %s, skipping\n",
+			start_addr, name ? name : "unknown");
+		return -EINVAL;
 	}
 	replace = minidump_traverse_metadata_list(name, start_addr, (const unsigned long)phys_addr,
 						  &tlv_offset, size, (unsigned char)type,
 						  crashtype);
 	/* return value of -ENOMEM indicates  new list node was not created
-    * due to an alloc failure. return value of -EINVAL indicates an attempt to
-    * add a duplicate entry
-    */
+	 * due to an alloc failure. return value of -EINVAL indicates an attempt to
+	 * add a duplicate entry
+	 */
 	if (replace == -EINVAL)
 		return 0;
 
@@ -1206,7 +1221,7 @@ int minidump_add_segments(const u64 start_addr, u64 size, enum minidump_tlv_type
 {
 	int ret = 0;
 
-	ret = minidump_fill_segments_internal(start_addr, size, type, name, 0, crashtype);
+	ret = minidump_fill_segments_internal(start_addr, size, type, name, crashtype);
 	if (!ret) {
 		if (module_name) {
 			/* traverse through the metadata module list and add entry if new module */
@@ -1224,7 +1239,7 @@ EXPORT_SYMBOL(minidump_add_segments);
 int minidump_fill_segments(const u64 start_addr, u64 size, enum minidump_tlv_type type,
 			   const char *name)
 {
-	return minidump_fill_segments_internal(start_addr, size, type, name, 0,
+	return minidump_fill_segments_internal(start_addr, size, type, name,
 					       MINIDUMP_CRASH_TYPE_HOST |
 					       MINIDUMP_CRASH_TYPE_FW);
 }
@@ -1428,13 +1443,18 @@ static int ctx_save_fill_log_dump_tlv(void)
 	ret_val = minidump_fill_segments_internal(dmesg_tail_lpos.start,
 						  dmesg_tail_lpos.size,
 						  QCA_WDT_LOG_DUMP_TYPE_TEXT_DATA_TAIL,
-						  "DMESG_READ", 1, MINIDUMP_CRASH_TYPE_DEFAULT);
+						  "DMESG_READ", MINIDUMP_CRASH_TYPE_DEFAULT);
 	if (ret_val)
 		return ret_val;
 
 	minidump_get_log_buf_info(&log_buf_info.start, &log_buf_info.size);
-	ret_val = minidump_fill_segments_internal(log_buf_info.start, log_buf_info.size,
-						  QCA_WDT_LOG_DUMP_TYPE_DMESG, "DMESG", 1,
+	uint64_t log_buf_size_phys = minidump_virt_to_phys(log_buf_info.size);
+	if (!log_buf_size_phys) {
+		pr_err("Minidump: Failed to convert log_buf_info.size virtual address to physical\n");
+		return -EINVAL;
+	}
+	ret_val = minidump_fill_segments_internal(log_buf_info.start, log_buf_size_phys,
+						  QCA_WDT_LOG_DUMP_TYPE_DMESG, "DMESG",
 						  MINIDUMP_CRASH_TYPE_DEFAULT);
 	if (ret_val) {
 		pr_err("Minidump: Crashdump buffer is full %d \n", ret_val);
@@ -1443,7 +1463,7 @@ static int ctx_save_fill_log_dump_tlv(void)
 
 	minidump_get_pgd_info(&pagetable_tlv_info.start, &pagetable_tlv_info.size);
 	ret_val = minidump_fill_segments_internal(pagetable_tlv_info.start, pagetable_tlv_info.size,
-						  QCA_WDT_LOG_DUMP_TYPE_LEVEL1_PT, "PGD", 1,
+						  QCA_WDT_LOG_DUMP_TYPE_LEVEL1_PT, "PGD",
 						  MINIDUMP_CRASH_TYPE_DEFAULT);
 	if (ret_val) {
 		pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
@@ -1452,32 +1472,42 @@ static int ctx_save_fill_log_dump_tlv(void)
 
 	minidump_get_linux_buf_info(&linux_banner_info.start, &linux_banner_info.size);
 	ret_val = minidump_fill_segments_internal(linux_banner_info.start, linux_banner_info.size,
-						  QCA_WDT_LOG_DUMP_TYPE_MOD, "linux_banner", 1,
+						  QCA_WDT_LOG_DUMP_TYPE_MOD, "linux_banner",
 						  MINIDUMP_CRASH_TYPE_DEFAULT);
 	if (ret_val) {
 		pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
 		return ret_val;
 	}
 
+	uint64_t mod_log_len_phys = minidump_virt_to_phys((uint64_t)(uintptr_t)&minidump_meta_info.mod_log_len);
+	if (!mod_log_len_phys) {
+		pr_err("Minidump: Failed to convert mod_log_len virtual address to physical\n");
+		return -EINVAL;
+	}
 	ret_val = minidump_fill_segments_internal((uint64_t)(uintptr_t)minidump_meta_info.mod_log,
-						  (uint64_t)__pa(&minidump_meta_info.mod_log_len),
-						  QCA_WDT_LOG_DUMP_TYPE_MOD_INFO, "mod_info", 1,
+						  mod_log_len_phys,
+						  QCA_WDT_LOG_DUMP_TYPE_MOD_INFO, "mod_info",
 						  MINIDUMP_CRASH_TYPE_DEFAULT);
 	if (ret_val) {
 		pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
 		return ret_val;
 	}
 
+	uint64_t mmu_log_len_phys = minidump_virt_to_phys((uint64_t)(uintptr_t)&minidump_meta_info.mmu_log_len);
+	if (!mmu_log_len_phys) {
+		pr_err("Minidump: Failed to convert mmu_log_len virtual address to physical\n");
+		return -EINVAL;
+	}
 	ret_val = minidump_fill_segments_internal((uint64_t)(uintptr_t)minidump_meta_info.mmu_log,
-						  (uint64_t)__pa(&minidump_meta_info.mmu_log_len),
-						  QCA_WDT_LOG_DUMP_TYPE_MMU_INFO, "mmu_info", 1,
+						  mmu_log_len_phys,
+						  QCA_WDT_LOG_DUMP_TYPE_MMU_INFO, "mmu_info",
 						  MINIDUMP_CRASH_TYPE_DEFAULT);
 	if (ret_val) {
 		pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
 		return ret_val;
 	}
 	ret_val = minidump_fill_segments_internal((uint64_t)(uintptr_t)tz_diag_addr_va, 3 * SZ_4K,
-						  QCA_WDT_LOG_DUMP_TYPE_MOD, "TZ_DIAG", 0,
+						  QCA_WDT_LOG_DUMP_TYPE_MOD, "TZ_DIAG",
 						  MINIDUMP_CRASH_TYPE_DEFAULT);
 	if (ret_val) {
 		pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
@@ -1485,14 +1515,14 @@ static int ctx_save_fill_log_dump_tlv(void)
 	}
 
 	ret_val = minidump_fill_segments_internal((uint64_t)(uintptr_t)imem_base_add, imem_size,
-						  QCA_WDT_LOG_DUMP_TYPE_MOD, "IMEM", 0,
+						  QCA_WDT_LOG_DUMP_TYPE_MOD, "IMEM",
 						  MINIDUMP_CRASH_TYPE_DEFAULT);
 	if (ret_val) {
 		pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
 		return ret_val;
 	}
 	ret_val = minidump_fill_segments_internal((uint64_t)(uintptr_t)smem_base_addr, smem_size,
-						  QCA_WDT_LOG_DUMP_TYPE_MOD, "SMEM", 0,
+						  QCA_WDT_LOG_DUMP_TYPE_MOD, "SMEM",
 						  MINIDUMP_CRASH_TYPE_DEFAULT);
 	if (ret_val) {
 		pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
@@ -1546,7 +1576,7 @@ int minidump_dump_modules(void)
 	module_tlv_info.start = (uintptr_t)minidump_modules;
 	module_tlv_info.size = sizeof(struct list_head);
 	ret_val = minidump_fill_segments_internal(module_tlv_info.start,
-			module_tlv_info.size, QCA_WDT_LOG_DUMP_TYPE_MOD, "mod_list_head", 0,
+			module_tlv_info.size, QCA_WDT_LOG_DUMP_TYPE_MOD, "mod_list_head",
 			MINIDUMP_CRASH_TYPE_DEFAULT);
 	if (ret_val) {
 		pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
@@ -1570,7 +1600,7 @@ int minidump_dump_modules(void)
 		module_tlv_info.size = sizeof(struct module);
 		ret_val = minidump_fill_segments_internal(module_tlv_info.start,
 							  module_tlv_info.size,
-							  QCA_WDT_LOG_DUMP_TYPE_MOD, mod->name, 0,
+							  QCA_WDT_LOG_DUMP_TYPE_MOD, mod->name,
 							  MINIDUMP_CRASH_TYPE_DEFAULT);
 		if (ret_val) {
 			pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
