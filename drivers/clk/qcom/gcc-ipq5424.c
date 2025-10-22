@@ -3581,7 +3581,7 @@ static int gcc_ipq5424_probe(struct platform_device *pdev)
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
-	ret = qcom_cc_really_probe(pdev, &ipq5424_desc, regmap);
+	ret = qcom_cc_really_probe(&pdev->dev, &ipq5424_desc, regmap);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to register GCC clocks ret=%d\n", ret);
 		return ret;

@@ -1402,7 +1402,7 @@ static int nss_cc_ipq54xx_probe(struct platform_device *pdev)
 		return PTR_ERR(regmap);
 
 
-	ret = qcom_cc_really_probe(pdev, &desc, regmap);
+	ret = qcom_cc_really_probe(&pdev->dev, &desc, regmap);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to register NSS CC clocks\n");
 		return ret;
