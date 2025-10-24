@@ -39,12 +39,30 @@
 #define COREDUMP_DESC				"Q6-COREDUMP"
 #define Q6_SFR_DESC				"Q6-SFR"
 
-
 #define MHISTATUS				0x48
 #define MHICTRL					0x38
 #define MHICTRL_RESET_MASK			0x2
+#define BHI_EXECENV				0x128
+
+#define QCN9224_PCIE_REMAP_BAR_CTRL_OFFSET	0x310C
+#define QCN9625_PCIE_REMAP_BAR_CTRL_OFFSET	0x3278
+#define QCN9224_PCI_MHIREGLEN_REG		0x1E0E100
+#define QCN9224_PCI_MHI_REGION_END		0x1E0EFFC
+#define PCIE_LOCAL_REG_BASE			0x1E00000
+#define PCIE_LOCAL_REG_END			0x1E03FFF
+
+#define WINDOW_SHIFT				19
+#define WINDOW_VALUE_MASK			0x3f
+#define WINDOW_ENABLE_BIT			0x40000000
+#define MAX_UNWINDOWED_ADDRESS			0x80000
+#define WINDOW_START				MAX_UNWINDOWED_ADDRESS
+#define WINDOW_RANGE_MASK			0x7FFFF
+
+#define QCN9625_Q6_BCR_RESET			0x1E381F0
 
 #define TIMEOUT_SAVE_DUMP_MS 300000
+
+static DEFINE_SPINLOCK(pci_reg_window_lock);
 
 bool autostart = true;
 module_param(autostart, bool, 0);
@@ -231,7 +249,7 @@ struct ramdump_header {
 
 irqreturn_t mhitest_msi_handlr(int irq_number, void *dev)
 {
-	printk("mhitest_msi_handlr irq_number==%d\n",irq_number);
+	pr_info("mhitest_msi_handlr irq_number==%d\n", irq_number);
 	return IRQ_HANDLED;
 }
 
@@ -1117,6 +1135,231 @@ out2:
 	pci_disable_device(pci_dev);
 out:
 	return ret;
+}
+
+static int mhitest_get_bar_remap_ctrl_offset(struct mhitest_platform *mplat,
+					     u32 *reg)
+{
+	switch (mplat->device_id) {
+	case QCN90XX_DEVICE_ID:
+		fallthrough;
+	case QCN92XX_DEVICE_ID:
+		*reg = QCN9224_PCIE_REMAP_BAR_CTRL_OFFSET;
+		break;
+
+	case QCN95XX_DEVICE_ID:
+		fallthrough;
+	case QCN96XX_DEVICE_ID:
+		*reg = QCN9625_PCIE_REMAP_BAR_CTRL_OFFSET;
+		break;
+
+	default:
+		pr_err("Unknown device type 0x%lx\n", mplat->device_id);
+		return -ENODEV;
+	}
+
+	return 0;
+}
+
+static int mhitest_pci_select_window(struct mhitest_platform *mplat, u32 addr)
+{
+	u32 window = (addr >> WINDOW_SHIFT) & WINDOW_VALUE_MASK;
+	u32 prev_window = 0, curr_window = 0, prev_cleared_window = 0;
+	volatile u32 write_val, read_val = 0;
+	u32 bar_remap_ctrl_offset = 0;
+	int retry = 0;
+	void __iomem *bar = NULL;
+
+	if (!mplat || !mplat->bar) {
+		pr_err("mplat is NULL or bar not assigned\n");
+		return -ENODEV;
+	}
+
+	bar = mplat->bar;
+
+	if (mhitest_get_bar_remap_ctrl_offset(mplat, &bar_remap_ctrl_offset)) {
+		pr_err("Failed to get bar remap ctrl offset\n");
+		return -ENODEV;
+	}
+
+	prev_window = readl_relaxed(bar + bar_remap_ctrl_offset);
+
+	/* Clear out last 6 bits of window register */
+	prev_cleared_window = prev_window & ~(0x3f);
+
+	/* Write the new last 6 bits of window register. Only window 1 values
+	 * are changed. Window 2 and 3 are unaffected.
+	 */
+	curr_window = prev_cleared_window | window;
+
+	/* Skip writing into window register if the read value
+	 * is same as calculated value.
+	 */
+	if (curr_window == prev_window)
+		return 0;
+
+	write_val = WINDOW_ENABLE_BIT | curr_window;
+	writel_relaxed(write_val, bar + bar_remap_ctrl_offset);
+
+	read_val = readl_relaxed(bar + bar_remap_ctrl_offset);
+
+	/* If value written is not yet reflected, wait till it is reflected */
+	while ((read_val != write_val) && (retry < 10)) {
+		mdelay(1);
+		read_val = readl_relaxed(bar + bar_remap_ctrl_offset);
+		retry++;
+	}
+
+	if (retry >= 10 && read_val != write_val)
+		pr_err("retry count: %d", retry);
+
+	return 0;
+}
+
+static int mhitest_get_mhi_region_len(struct mhitest_platform *mplat,
+				      u32 *reg_start, u32 *reg_end)
+{
+	switch (mplat->device_id) {
+	case QCN92XX_DEVICE_ID:
+		fallthrough;
+	case QCN95XX_DEVICE_ID:
+		fallthrough;
+	case QCN96XX_DEVICE_ID:
+		*reg_start = QCN9224_PCI_MHIREGLEN_REG;
+		*reg_end = QCN9224_PCI_MHI_REGION_END;
+		break;
+	default:
+		pr_err("Unknown device type 0x%lx\n", mplat->device_id);
+		return -ENODEV;
+	}
+
+	return 0;
+}
+
+int mhitest_pci_reg_read(struct mhitest_platform *mplat, u32 addr, u32 *val)
+{
+	int ret = 0;
+	u32 mhi_region_start_reg = 0;
+	u32 mhi_region_end_reg = 0;
+	unsigned long flags;
+	void __iomem *bar = NULL;
+
+	if (!mplat || !mplat->bar) {
+		pr_err("mplat is NULL or bar not assigned\n");
+		return -ENODEV;
+	}
+
+	bar = mplat->bar;
+
+	if (addr < MAX_UNWINDOWED_ADDRESS) {
+		*val = readl_relaxed(bar + addr);
+		return 0;
+	}
+
+	ret = mhitest_get_mhi_region_len(mplat, &mhi_region_start_reg,
+					 &mhi_region_end_reg);
+	if (ret) {
+		pr_err("MHI start and end region not assigned.\n");
+		return ret;
+	}
+
+	spin_lock_irqsave(&pci_reg_window_lock, flags);
+	ret = mhitest_pci_select_window(mplat, addr);
+	if (ret) {
+		pr_err("Failed to select window %d\n", ret);
+		goto out;
+	}
+
+	if ((addr >= PCIE_LOCAL_REG_BASE && addr <= PCIE_LOCAL_REG_END) ||
+	    (addr >= mhi_region_start_reg && addr <= mhi_region_end_reg)) {
+		if (addr >= mhi_region_start_reg && addr <= mhi_region_end_reg)
+			addr = addr - mhi_region_start_reg;
+
+		*val = readl_relaxed(bar + (addr & WINDOW_RANGE_MASK));
+	} else {
+		*val = readl_relaxed(bar + WINDOW_START + (addr & WINDOW_RANGE_MASK));
+	}
+
+out:
+	spin_unlock_irqrestore(&pci_reg_window_lock, flags);
+
+	return ret;
+}
+
+int mhitest_pci_reg_write(struct mhitest_platform *mplat, u32 addr, u32 val)
+{
+	int ret = 0;
+	u32 mhi_region_start_reg = 0;
+	u32 mhi_region_end_reg = 0;
+	unsigned long flags;
+	void __iomem *bar = NULL;
+
+	if (!mplat || !mplat->bar) {
+		pr_err("mplat is NULL or bar not assigned\n");
+		return -ENODEV;
+	}
+
+	bar = mplat->bar;
+
+	if (addr < MAX_UNWINDOWED_ADDRESS) {
+		writel_relaxed(val, bar + addr);
+		return 0;
+	}
+
+	ret = mhitest_get_mhi_region_len(mplat, &mhi_region_start_reg,
+					 &mhi_region_end_reg);
+	if (ret) {
+		pr_err("MHI start and end region not assigned.\n");
+		return ret;
+	}
+
+	spin_lock_irqsave(&pci_reg_window_lock, flags);
+
+	ret = mhitest_pci_select_window(mplat, addr);
+	if (ret) {
+		pr_err("Failed to select window %d\n", ret);
+		goto out;
+	}
+
+	if ((addr >= PCIE_LOCAL_REG_BASE && addr <= PCIE_LOCAL_REG_END) ||
+	    (addr >= mhi_region_start_reg && addr <= mhi_region_end_reg)) {
+		if (addr >= mhi_region_start_reg && addr <= mhi_region_end_reg)
+			addr = addr - mhi_region_start_reg;
+
+		writel_relaxed(val, bar + (addr & WINDOW_RANGE_MASK));
+	} else {
+		writel_relaxed(val, bar + WINDOW_START + (addr & WINDOW_RANGE_MASK));
+	}
+
+out:
+	spin_unlock_irqrestore(&pci_reg_window_lock, flags);
+
+	return ret;
+}
+
+void mhitest_q6_bcr_reset(struct mhitest_platform *mplat)
+{
+	int count = soc_reset_delay_ms / 100;
+	u32 device_ee = MHI_EE_MAX;
+
+	pr_info("Issuing Q6 BCR reset Reset\n");
+
+	mhitest_pci_reg_write(mplat, QCN9625_Q6_BCR_RESET, 1);
+
+	pr_info("Q6 bcr reset issued\n");
+
+	while (count >= 0) {
+		device_ee = readl_relaxed(mplat->bar + BHI_EXECENV);
+		if (device_ee == MHI_EE_PBL) {
+			pr_info("Target switched to PBL, reset success, count: %d\n", count);
+			break;
+		}
+		msleep(100);
+		count--;
+	}
+
+	if (count < 0)
+		pr_info("Failed to switch to PBL after BCR reset\n");
 }
 
 void mhitest_global_soc_reset(struct mhitest_platform *mplat)

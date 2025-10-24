@@ -28,9 +28,6 @@
 #define QCN9224_PBL_BOOTSTRAP_STATUS		0x1A006D4
 #define MAX_PBL_DATA_SNAPSHOT			2
 
-#define QCN9000_PCIE_REMAP_BAR_CTRL_OFFSET	0x310C
-#define QCN9224_PCI_MHIREGLEN_REG		0x1E0E100
-#define QCN9224_PCI_MHI_REGION_END		0x1E0EFFC
 #define QCN9224_SNOC_ERL_ErrVld_Low		0x1E80010
 #define QCN9224_SNOC_ERL_ErrLog0_Low		0x1E80020
 #define QCN9224_SNOC_ERL_ErrLog0_High		0x1E80024
@@ -61,18 +58,7 @@
 #define PCIE_MSI_CAP_OFF_04H_REG		0x54
 #define PCIE_MSI_CAP_OFF_08H_REG		0x58
 #define PCIE_MSI_CAP_OFF_0CH_REG		0x5C
-#define PCIE_LOCAL_REG_BASE			0x1E00000
-#define PCIE_LOCAL_REG_END			0x1E03FFF
 #define SBL_LOG_SIZE_MASK			0xFFFF
-
-#define WINDOW_SHIFT				19
-#define WINDOW_VALUE_MASK			0x3f
-#define WINDOW_ENABLE_BIT			0x40000000
-#define MAX_UNWINDOWED_ADDRESS			0x80000
-#define WINDOW_START				MAX_UNWINDOWED_ADDRESS
-#define WINDOW_RANGE_MASK			0x7FFFF
-
-static DEFINE_SPINLOCK(pci_reg_window_lock);
 
 struct pbl_reg_addr {
 	u32 pbl_log_sram_start;
@@ -126,149 +112,6 @@ struct noc_err_table {
 	int (*reg_handler)(struct mhitest_platform *mplat, u32 addr,
 			   u32 *val);
 };
-
-static int mhitest_pci_get_bar_addr(struct mhitest_platform *mplat,
-				    void __iomem **bar)
-{
-	if (!mplat) {
-		pr_err("Plat Priv is null\n");
-		return -ENODEV;
-	}
-
-	switch (mplat->device_id) {
-	case QCN92XX_DEVICE_ID:
-		if (!mplat->bar) {
-			pr_err("PCI bar is not yet assigned\n");
-			return -EINVAL;
-		}
-		*bar = mplat->bar;
-		break;
-	default:
-		pr_err("Unsupported device id 0x%lx\n",
-			mplat->device_id);
-		return -ENODEV;
-	}
-
-	return 0;
-}
-
-static void mhitest_pci_select_window(struct mhitest_platform *mplat, u32 addr)
-{
-	u32 window = (addr >> WINDOW_SHIFT) & WINDOW_VALUE_MASK;
-	u32 prev_window = 0, curr_window = 0, prev_cleared_window = 0;
-	volatile u32 write_val, read_val = 0;
-	int retry = 0;
-	void __iomem *bar = NULL;
-
-	if (mhitest_pci_get_bar_addr(mplat, &bar) < 0) {
-		pr_err("Get bar address failed\n");
-		return;
-	}
-
-
-	prev_window = readl_relaxed(bar +
-				    QCN9000_PCIE_REMAP_BAR_CTRL_OFFSET);
-
-	/* Clear out last 6 bits of window register */
-	prev_cleared_window = prev_window & ~(0x3f);
-
-	/* Write the new last 6 bits of window register. Only window 1 values
-	 * are changed. Window 2 and 3 are unaffected.
-	 */
-	curr_window = prev_cleared_window | window;
-
-	/* Skip writing into window register if the read value
-	 * is same as calculated value.
-	 */
-	if (curr_window == prev_window)
-		return;
-
-	write_val = WINDOW_ENABLE_BIT | curr_window;
-	writel_relaxed(write_val, bar +
-		       QCN9000_PCIE_REMAP_BAR_CTRL_OFFSET);
-
-	read_val = readl_relaxed(bar +
-				 QCN9000_PCIE_REMAP_BAR_CTRL_OFFSET);
-
-	/* If value written is not yet reflected, wait till it is reflected */
-	while ((read_val != write_val) && (retry < 10)) {
-		mdelay(1);
-		read_val = readl_relaxed(bar +
-					 QCN9000_PCIE_REMAP_BAR_CTRL_OFFSET);
-		retry++;
-	}
-
-	if ((retry >= 10) && (read_val != write_val))
-		pr_debug("retry count: %d", retry);
-}
-
-int mhitest_get_mhi_region_len(struct mhitest_platform *mplat,
-			       u32 *reg_start, u32 *reg_end)
-{
-	switch (mplat->device_id) {
-	case QCN92XX_DEVICE_ID:
-		*reg_start = QCN9224_PCI_MHIREGLEN_REG;
-		*reg_end = QCN9224_PCI_MHI_REGION_END;
-		break;
-	default:
-		pr_err("Unknown device type 0x%lx\n",
-			mplat->device_id);
-		return -ENODEV;
-	}
-
-	return 0;
-}
-
-int mhitest_pci_reg_read(struct mhitest_platform *mplat,
-			 u32 addr, u32 *val)
-{
-	int ret;
-	u32 mhi_region_start_reg = 0;
-	u32 mhi_region_end_reg = 0;
-	unsigned long flags;
-	void __iomem *bar = NULL;
-
-	if (!mplat) {
-		pr_err("Plat Priv is null\n");
-		return -ENODEV;
-	}
-
-	ret = mhitest_pci_get_bar_addr(mplat, &bar);
-	if (ret < 0) {
-		pr_err("Get bar address failed\n");
-		return ret;
-	}
-
-	if (addr < MAX_UNWINDOWED_ADDRESS) {
-		*val = readl_relaxed(bar + addr);
-		return 0;
-	}
-
-	ret = mhitest_get_mhi_region_len(mplat, &mhi_region_start_reg,
-					 &mhi_region_end_reg);
-	if (ret) {
-		pr_err("MHI start and end region not assigned.\n");
-		return ret;
-	}
-
-	spin_lock_irqsave(&pci_reg_window_lock, flags);
-	mhitest_pci_select_window(mplat, addr);
-
-	if ((addr >= PCIE_LOCAL_REG_BASE && addr <= PCIE_LOCAL_REG_END) ||
-		(addr >= mhi_region_start_reg && addr <= mhi_region_end_reg)) {
-		if (addr >= mhi_region_start_reg && addr <= mhi_region_end_reg)
-			addr = addr - mhi_region_start_reg;
-
-		*val = readl_relaxed(bar +
-				     (addr & WINDOW_RANGE_MASK));
-	} else {
-		*val = readl_relaxed(bar + WINDOW_START +
-				     (addr & WINDOW_RANGE_MASK));
-	}
-	spin_unlock_irqrestore(&pci_reg_window_lock, flags);
-
-	return 0;
-}
 
 static struct noc_err_table noc_err_table_list[] = {
 	{"SNOC_ERL_ErrVld_Low", QCN9224_SNOC_ERL_ErrVld_Low,
