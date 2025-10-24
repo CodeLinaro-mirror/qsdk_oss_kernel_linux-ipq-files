@@ -37,5 +37,8 @@
 #define GCC_QDSS_DAP_CLK		27
 #define GCC_QDSS_AT_CLK			28
 #define GCC_QUPV3_SPI0_CLK		29
+#define GCC_QPIC_AHB_CLK		30
+#define GCC_QPIC_CLK			31
+#define GCC_QPIC_IO_MACRO_CLK		32
 
 #endif
