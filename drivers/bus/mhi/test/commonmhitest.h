@@ -66,6 +66,8 @@
 					 ee == MHI_EE_WFW || \
 					 ee == MHI_EE_FP)
 
+#define QCN9625_WLAON_SOC_RESET_CAUSE_SHADOW_REG 0x1F80718
+#define QCN9625_RESET_CAUSE_Q6_BCR BIT(18)
 /*
  *Structure specific to mhitest module
  */
@@ -220,3 +222,6 @@ int mhitest_pci_remove_all(struct mhitest_platform *);
 void mhitest_pci_soc_reset(struct mhitest_platform *mplat);
 void mhitest_reset_mhi_state(struct mhitest_platform *mplat);
 void mhitest_pci_dump_bl_sram_mem(struct mhitest_platform *mplat);
+int mhitest_pci_reg_read(struct mhitest_platform *mplat, u32 addr, u32 *val);
+int mhitest_pci_reg_write(struct mhitest_platform *mplat, u32 addr, u32 val);
+void mhitest_q6_bcr_reset(struct mhitest_platform *mplat);
