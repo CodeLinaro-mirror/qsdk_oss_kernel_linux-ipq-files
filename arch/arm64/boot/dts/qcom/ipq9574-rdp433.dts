@@ -35,6 +35,24 @@
 		stdout-path = "serial0:115200n8";
 	};
 
+	regulator_fixed_3p3: s3300 {
+		compatible = "regulator-fixed";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-boot-on;
+		regulator-always-on;
+		regulator-name = "fixed_3p3";
+	};
+
+	regulator_fixed_0p925: s0925 {
+		compatible = "regulator-fixed";
+		regulator-min-microvolt = <925000>;
+		regulator-max-microvolt = <925000>;
+		regulator-boot-on;
+		regulator-always-on;
+		regulator-name = "fixed_0p925";
+	};
+
 	soc@0 {
 		mdio@90000 {
 			pinctrl-0 = <&mdio_pins>;
@@ -546,6 +564,9 @@
 };
 
 &qusb_phy_0 {
+	vdd-supply = <&regulator_fixed_0p925>;
+	vdda-pll-supply = <&mp5496_l5>;
+	vdda-phy-dpdm-supply = <&regulator_fixed_3p3>;
 	status = "okay";
 };
 
@@ -599,6 +620,8 @@
 };
 
 &ssphy_0 {
+	vdda-pll-supply = <&mp5496_l5>;
+	vdda-phy-supply = <&regulator_fixed_0p925>;
 	status = "okay";
 };
 
@@ -627,6 +650,13 @@
 			regulator-min-microvolt = <1>;
 			regulator-max-microvolt = <9>;
 			regulator-always-on;
+		};
+
+		mp5496_l5: l5 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-always-on;
+			regulator-boot-on;
 		};
 	};
 };
