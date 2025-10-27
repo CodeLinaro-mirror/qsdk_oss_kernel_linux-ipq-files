@@ -158,6 +158,11 @@
 			compatible = "linaro,optee-tz";
 			method = "smc";
 		};
+
+		scm {
+			compatible = "qcom,scm-ipq9679", "qcom,scm";
+			qcom,dload-mode = <&tcsr 0x240fc>;
+		};
 	};
 
 	memory@80000000 {
