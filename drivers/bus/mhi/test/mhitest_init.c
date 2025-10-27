@@ -124,7 +124,6 @@ int mhitest_recovery_event_handler(struct mhitest_platform *mplat, void *data)
 		break;
 	case MHI_RDDM:
 		mhitest_dump_info(mplat, false);
-		mhitest_dev_ramdump(mplat);
 
 		if (rddm_r) { /*using mod param for now*/
 			mhitest_recovery_post_rddm(mplat);

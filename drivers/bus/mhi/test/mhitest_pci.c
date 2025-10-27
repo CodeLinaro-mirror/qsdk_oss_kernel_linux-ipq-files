@@ -43,7 +43,6 @@
 #define MHICTRL					0x38
 #define MHICTRL_RESET_MASK			0x2
 
-DECLARE_COMPLETION(dump_done);
 #define TIMEOUT_SAVE_DUMP_MS 300000
 
 bool autostart = true;
@@ -296,273 +295,72 @@ void mhitest_get_crash_reason(struct mhi_controller *mhi_cntrl)
 			msg);
 }
 
-int mhitest_dump_info(struct mhitest_platform *mplat, bool in_panic)
+static int mhitest_coredump_build_dump_info(struct mhitest_platform *mplat,
+					    struct mhitest_dump_seg *segments,
+					    u32 num_seg,
+					    struct mhitest_dump_seg **chunks_out,
+					    u32 *num_chunks)
 {
-	struct mhi_controller *mhi_ctrl;
-	struct image_info *rddm_img, *fw_img;
-	struct mhitest_dump_data *dump_data;
-	struct mhitest_dump_seg *dump_seg;
-	int ret, i;
-	u16 device_id;
+	struct mhitest_dump_entry tmp[FW_DUMP_TYPE_MAX] = {0};
+	int i, type, num_dump_types = 0;
+	struct mhitest_dump_meta_info *meta_info;
+	struct mhitest_dump_entry *entry;
+	struct mhitest_dump_seg *chunks;
+	void *data;
+	size_t data_len;
 
-	mhi_ctrl = mplat->mhi_ctrl;
-	pci_read_config_word(mplat->pci_dev, PCI_DEVICE_ID, &device_id);
-	pr_debug("Read config space again, Device_id:0x%x\n", device_id);
-	if (device_id != mplat->pci_dev_id->device) {
-		pr_debug("Device Id does not match with Probe ID..\n");
-		return -EIO;
+	for (i = 0; i < num_seg; i++) {
+		type = segments[i].type;
+		if (type < 0 || type >= FW_DUMP_TYPE_MAX)
+			continue;
+
+		if (tmp[type].entry_num == 0)
+			tmp[type].entry_start = i + 1;
+		tmp[type].type = type;
+		tmp[type].entry_num++;
 	}
 
-	ret = mhi_download_rddm_image(mhi_ctrl, in_panic);
-	if (ret) {
-		pr_debug("Error .. not able to dload rddm img ret:%d\n",
-			 ret);
-		return ret;
-	}
+	/* to find the number of dump types */
+	for (i = 0; i < FW_DUMP_TYPE_MAX; i++)
+		if (tmp[i].entry_num)
+			num_dump_types++;
 
-	mhitest_get_crash_reason(mhi_ctrl);
-
-	pr_debug("Let's dump some more things...\n");
-	/* TODO: Need to add function in MHI */
-	//mhi_debug_reg_dump(mhi_ctrl);
-
-	rddm_img = mhi_ctrl->rddm_image;
-	fw_img = mhi_ctrl->fbc_image;
-	dump_data = &mplat->mhitest_rdinfo.dump_data;
-	dump_seg = mplat->mhitest_rdinfo.dump_data_vaddr;
-
-	dump_data->nentries = 0;
-	pr_debug("dump_dname:%s entries:%d\n", dump_data->name,
-		 dump_data->nentries);
-	pr_debug("----Collect FW image dump segment, nentries %d----\n",
-		 fw_img->entries);
-
-	for (i = 0; i < fw_img->entries; i++) {
-		dump_seg->address = fw_img->mhi_buf[i].dma_addr;
-		dump_seg->v_address = fw_img->mhi_buf[i].buf;
-		dump_seg->size = fw_img->mhi_buf[i].len;
-		dump_seg->type = FW_IMAGE;
-		pr_debug("seg-%d:Address:0x%lx,v_Address %pK, size 0x%lx\n",
-			 i, dump_seg->address, dump_seg->v_address,
-							dump_seg->size);
-		dump_seg++;
-	}
-	dump_data->nentries += fw_img->entries;
-
-	pr_debug("----Collect RDDM image dump segment, nentries %d----\n",
-		 rddm_img->entries);
-
-	for (i = 0; i < rddm_img->entries; i++) {
-		dump_seg->address = rddm_img->mhi_buf[i].dma_addr;
-		dump_seg->v_address = rddm_img->mhi_buf[i].buf;
-		dump_seg->size = rddm_img->mhi_buf[i].len;
-		dump_seg->type = FW_RDDM;
-		pr_debug("seg-%d: address:0x%lx,v_address %pK,size 0x%lx\n",
-			 i, dump_seg->address, dump_seg->v_address,
-								dump_seg->size);
-		dump_seg++;
-	}
-	dump_data->nentries += rddm_img->entries;
-	pr_debug("----TODO/not need to Collect remote heap dump segment--\n");
-	if (dump_data->nentries > 0)
-		mplat->mhitest_rdinfo.dump_data_valid = true;
-
-	return 0;
-}
-
-static ssize_t mhitest_devcd_readv(char *buffer, loff_t offset, size_t count,
-				   void *data, size_t datalen)
-{
-	struct mhitest_dump_desc *desc = data;
-
-	return memory_read_from_buffer(buffer, count, &offset, desc->data,
-				       datalen);
-}
-
-static void mhitest_devcd_freev(void *data)
-{
-	struct mhitest_dump_desc *desc = data;
-
-	pr_debug("Free dump data for dev coredump\n");
-
-	complete(&dump_done);
-	vfree(desc->data);
-	kfree(desc);
-}
-
-static int mhitest_devcd_dump(struct device *dev, void *data, size_t datalen,
-			      gfp_t gfp)
-{
-	struct mhitest_dump_desc *desc;
-	unsigned int timeout = TIMEOUT_SAVE_DUMP_MS;
-	int ret;
-
-	desc = kmalloc(sizeof(*desc), GFP_KERNEL);
-	if (!desc)
-		return -ENOMEM;
-
-	desc->data = data;
-	reinit_completion(&dump_done);
-
-	dev_coredumpm(dev, NULL, desc, datalen, gfp,
-		      mhitest_devcd_readv, mhitest_devcd_freev);
-
-	ret = wait_for_completion_timeout(&dump_done,
-					  msecs_to_jiffies(timeout));
-	if (!ret)
-		pr_err("Timeout waiting (%dms) for saving dump to file system\n",
-		       timeout);
-
-	return ret ? 0 : -ETIMEDOUT;
-}
-
-/* Since the elf32 and elf64 identification is identical apart from
- * the class, use elf32 by default.
- */
-static void init_elf_identification(struct elf32_hdr *ehdr, unsigned char class)
-{
-	memcpy(ehdr->e_ident, ELFMAG, SELFMAG);
-	ehdr->e_ident[EI_CLASS] = class;
-	ehdr->e_ident[EI_DATA] = ELFDATA2LSB;
-	ehdr->e_ident[EI_VERSION] = EV_CURRENT;
-	ehdr->e_ident[EI_OSABI] = ELFOSABI_NONE;
-}
-
-static int mhitest_elf_dump(struct list_head *segs, struct device *dev,
-			    unsigned char class)
-{
-	struct mhitest_dump_seg_list *segment = NULL;
-	Elf32_Phdr *phdr;
-	Elf32_Ehdr *ehdr;
-	size_t data_size = 0, offset = 0;
-	int phnum = 0;
-	void *data = NULL;
-	void __iomem *ptr = NULL;
-
-	if (!segs || list_empty(segs))
-		return -EINVAL;
-
-	data_size = sizeof_elf_hdr(class);
-	list_for_each_entry(segment, segs, node) {
-		data_size += sizeof_elf_phdr(class) + segment->size;
-		phnum++;
-	}
-	data = vmalloc(data_size);
+	data_len = ALIGN(sizeof(struct mhitest_dump_meta_info) +
+			num_dump_types * sizeof(struct mhitest_dump_entry), 4);
+	data = kzalloc(data_len, GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
 
-	pr_info("Creating ELF file with size %zu\n", data_size);
-
-	ehdr = data;
-	memset(ehdr, 0, sizeof_elf_hdr(class));
-	init_elf_identification(ehdr, class);
-	set_ehdr_property(ehdr, class, e_type, ET_CORE);
-	set_ehdr_property(ehdr, class, e_machine, EM_NONE);
-	set_ehdr_property(ehdr, class, e_version, EV_CURRENT);
-	set_ehdr_property(ehdr, class, e_phoff, sizeof_elf_hdr(class));
-	set_ehdr_property(ehdr, class, e_ehsize, sizeof_elf_hdr(class));
-	set_ehdr_property(ehdr, class, e_phentsize, sizeof_elf_phdr(class));
-	set_ehdr_property(ehdr, class, e_phnum, phnum);
-
-	phdr = data + sizeof_elf_hdr(class);
-	offset = sizeof_elf_hdr(class) + sizeof_elf_phdr(class) * phnum;
-	list_for_each_entry(segment, segs, node) {
-		memset(phdr, 0, sizeof_elf_phdr(class));
-		set_phdr_property(phdr, class, p_type, PT_LOAD);
-		set_phdr_property(phdr, class, p_offset, offset);
-		set_phdr_property(phdr, class, p_vaddr, segment->da);
-		set_phdr_property(phdr, class, p_paddr, segment->da);
-		set_phdr_property(phdr, class, p_filesz, segment->size);
-		set_phdr_property(phdr, class, p_memsz, segment->size);
-		set_phdr_property(phdr, class, p_flags, PF_R | PF_W | PF_X);
-		set_phdr_property(phdr, class, p_align, 0);
-
-		if (segment->va) {
-			memcpy(data + offset, segment->va, segment->size);
-		} else {
-			ptr = devm_ioremap(dev, segment->da, segment->size);
-			if (!ptr) {
-				pr_info("Invalid coredump segment (%pad, %zu)\n",
-					&segment->da, segment->size);
-				memset(data + offset, 0xff, segment->size);
-			} else {
-				memcpy_fromio(data + offset, ptr,
-					      segment->size);
-			}
-		}
-
-		offset += segment->size;
-		phdr += sizeof_elf_phdr(class);
-	}
-
-	return mhitest_devcd_dump(dev, data, data_size, GFP_KERNEL);
-}
-
-int mhitest_dev_ramdump(struct mhitest_platform *mplat)
-{
-	struct mhitest_ramdump_info *rdinfo = &mplat->mhitest_rdinfo;
-	struct mhitest_dump_data *dump_data = &rdinfo->dump_data;
-	struct mhitest_dump_seg *dump_seg = rdinfo->dump_data_vaddr;
-	struct mhitest_dump_seg_list *seg;
-	struct mhitest_dump_meta_info *meta_info;
-	struct list_head head;
-	int i, ret = 0, idx = 0;
-
-	if (!rdinfo->dump_data_valid ||
-	    dump_data->nentries == 0)
-		return 0;
-
-	INIT_LIST_HEAD(&head);
-
-	meta_info = kzalloc(PAGE_SIZE, GFP_KERNEL);
-	if (!meta_info) {
-		ret = -ENOMEM;
-		goto free_seg_list;
-	}
-
-	seg = kzalloc(sizeof(*seg), GFP_KERNEL);
-	if (!seg) {
-		ret = -ENOMEM;
-		goto free_seg_list;
-	}
-
+	meta_info = data;
 	meta_info->magic = MHITEST_RAMDUMP_MAGIC;
 	meta_info->version = MHITEST_RAMDUMP_VERSION_V2;
 	meta_info->chipset = mplat->device_id;
+	meta_info->total_entries = num_dump_types;
 
-	seg->va = meta_info;
-	seg->size = sizeof(meta_info);
-	list_add(&seg->node, &head);
-
-	for (i = 0; i < dump_data->nentries; i++) {
-		if (dump_seg->type >= FW_DUMP_TYPE_MAX) {
-			pr_err("Unsupported dump type: %d",
-			       dump_seg->type);
-			continue;
+	entry = meta_info->entry;
+	for (i = 0; i < FW_DUMP_TYPE_MAX; i++) {
+		if (tmp[i].entry_num) {
+			*entry = tmp[i];
+			entry++;
 		}
-
-		seg = kzalloc(sizeof(*seg), GFP_KERNEL);
-		if (!seg) {
-			ret = -ENOMEM;
-			goto free_seg_list;
-		}
-
-		if (dump_seg->type != meta_info->entry[idx].type)
-			idx++;
-
-		if (meta_info->entry[dump_seg->type].entry_start == 0) {
-			meta_info->entry[dump_seg->type].type = dump_seg->type;
-			meta_info->entry[dump_seg->type].entry_start = i + 1;
-		}
-		meta_info->entry[dump_seg->type].entry_num++;
-		seg->da = dump_seg->address;
-		seg->va = dump_seg->v_address;
-		seg->size = dump_seg->size;
-		list_add_tail(&seg->node, &head);
-		dump_seg++;
 	}
 
-	meta_info->total_entries = idx + 1;
+	chunks = kcalloc(1 + num_seg, sizeof(*chunks), GFP_KERNEL);
+	if (!chunks) {
+		kfree(data);
+		return -ENOMEM;
+	}
+
+	chunks[0].address   = 0;
+	chunks[0].v_address = data;
+	chunks[0].size      = data_len;
+	chunks[0].type      = 0xFFFFFFFF;
+
+	for (i = 0; i < num_seg; i++)
+		chunks[1 + i] = segments[i];
+
+	*chunks_out = chunks;
+	*num_chunks = 1 + num_seg;
 
 	pr_info("Dumping meta_info: total_entries: %d",
 		meta_info->total_entries);
@@ -572,15 +370,260 @@ int mhitest_dev_ramdump(struct mhitest_platform *mplat)
 			meta_info->entry[i].entry_start,
 			meta_info->entry[i].entry_num);
 
-	ret = mhitest_elf_dump(&head, rdinfo->ramdump_dev, ELF_CLASS);
+	return 0;
+}
 
-free_seg_list:
-	while (!list_empty(&head)) {
-		seg = list_first_entry(&head,
-				       struct mhitest_dump_seg_list, node);
-		list_del(&seg->node);
-		kfree(seg);
+
+static int mhitest_coredump_build_elf32(struct mhitest_platform *mplat,
+					struct mhitest_dump_seg *segments,
+					u32 num_seg,
+					struct mhitest_pci_elf_coredump_state **out_state)
+{
+	struct mhitest_pci_elf_coredump_state *st;
+	Elf32_Ehdr *ehdr;
+	Elf32_Phdr *phdr;
+	void *elf_hdr;
+	struct mhitest_dump_seg *chunks;
+	u32 num_chunks;
+	u16 phnum;
+	u32 elf_hdr_sz, cur_off, i, paddr32;
+	int ret;
+
+	ret = mhitest_coredump_build_dump_info(mplat, segments, num_seg,
+					       &chunks, &num_chunks);
+	if (ret)
+		return ret;
+
+	phnum = num_chunks;
+	elf_hdr_sz = sizeof(Elf32_Ehdr) + phnum * sizeof(Elf32_Phdr);
+
+	elf_hdr = vzalloc(elf_hdr_sz);
+	if (!elf_hdr) {
+		kfree(chunks[0].v_address);
+		kfree(chunks);
+		return -ENOMEM;
 	}
+
+	/* ELF header */
+	ehdr = (Elf32_Ehdr *)elf_hdr;
+	memcpy(ehdr->e_ident, ELFMAG, SELFMAG);
+	ehdr->e_ident[EI_CLASS] = ELFCLASS32;
+	ehdr->e_ident[EI_DATA] = ELFDATA2LSB;
+	ehdr->e_ident[EI_VERSION] = EV_CURRENT;
+	ehdr->e_ident[EI_OSABI] = ELFOSABI_NONE;
+	ehdr->e_type = cpu_to_le16(ET_CORE);
+	ehdr->e_machine = cpu_to_le16(EM_NONE);
+	ehdr->e_version = cpu_to_le32(EV_CURRENT);
+	ehdr->e_entry = cpu_to_le32(0);
+	ehdr->e_phoff = cpu_to_le32(sizeof(Elf32_Ehdr));
+	ehdr->e_shoff = cpu_to_le32(0);
+	ehdr->e_flags = cpu_to_le32(0);
+	ehdr->e_ehsize = cpu_to_le16(sizeof(Elf32_Ehdr));
+	ehdr->e_phentsize = cpu_to_le16(sizeof(Elf32_Phdr));
+	ehdr->e_phnum = cpu_to_le16(phnum);
+	ehdr->e_shentsize = cpu_to_le16(0);
+	ehdr->e_shnum = cpu_to_le16(0);
+	ehdr->e_shstrndx = cpu_to_le16(0);
+
+	/* Program headers */
+	phdr = (Elf32_Phdr *)((u8 *)elf_hdr + sizeof(Elf32_Ehdr));
+	cur_off = elf_hdr_sz;
+
+	for (i = 0; i < phnum; i++) {
+		paddr32 = (i == 0) ? 0 : (u32)chunks[i].address;
+		phdr[i].p_type   = cpu_to_le32(PT_LOAD);
+		phdr[i].p_offset = cpu_to_le32(cur_off);
+		phdr[i].p_vaddr  = cpu_to_le32(paddr32);
+		phdr[i].p_paddr  = cpu_to_le32(paddr32);
+		phdr[i].p_filesz = cpu_to_le32(chunks[i].size);
+		phdr[i].p_memsz  = cpu_to_le32(chunks[i].size);
+		phdr[i].p_flags  = cpu_to_le32(PF_R | PF_W | PF_X);
+		phdr[i].p_align  = cpu_to_le32(0);
+		cur_off += chunks[i].size;
+	}
+
+	st = kzalloc(sizeof(*st), GFP_KERNEL);
+	if (!st) {
+		vfree(elf_hdr);
+		kfree(chunks[0].v_address);
+		kfree(chunks);
+		return -ENOMEM;
+	}
+
+	st->elf_hdr    = elf_hdr;
+	st->elf_hdr_sz = elf_hdr_sz;
+	st->chunks     = chunks;
+	st->num_chunks = phnum;
+
+	init_completion(&st->dump_done);
+	*out_state = st;
+	return 0;
+}
+
+static ssize_t mhitest_coredump_pci_read(char *buffer, loff_t offset,
+					 size_t count, void *data,
+					 size_t header_size)
+{
+	struct mhitest_pci_elf_coredump_state *st = data;
+	size_t bytes_left = count;
+	struct mhitest_dump_seg *seg = NULL;
+	size_t copied = 0;
+	int i;
+	unsigned long data_left;
+	size_t seg_copy_sz, copy_size, hdr_copy;
+	void *addr;
+	loff_t cur;
+
+	/* Copy ELF header first */
+	if (offset < header_size) {
+		hdr_copy = min_t(size_t, bytes_left, header_size - offset);
+		memcpy(buffer, (u8 *)st->elf_hdr + offset, hdr_copy);
+		return hdr_copy;
+	}
+
+	offset -= header_size;
+
+	while (bytes_left) {
+		cur = 0;
+		seg = NULL;
+
+		for (i = 0; i < st->num_chunks; i++) {
+			if (offset < cur + st->chunks[i].size) {
+				seg = &st->chunks[i];
+				break;
+			}
+			cur += st->chunks[i].size;
+		}
+		if (!seg)
+			break;
+
+		if (offset < cur) {
+			pr_err("Invalid offset calculation: offset=%lld < cur=%lld\n",
+			       (long long)offset, (long long)cur);
+			break;
+		}
+
+		data_left = offset - cur;
+		if (data_left >= seg->size) {
+			pr_err("Invalid offset: data_left=%lu >= seg->size=%lu\n",
+			       data_left, seg->size);
+			break;
+		}
+
+		seg_copy_sz = seg->size - data_left;
+		copy_size = min_t(size_t, bytes_left, seg_copy_sz);
+		addr = (u8 *)seg->v_address + data_left;
+		memcpy(buffer, addr, copy_size);
+
+		offset     += copy_size;
+		buffer     += copy_size;
+		bytes_left -= copy_size;
+		copied     += copy_size;
+	}
+
+	return copied;
+}
+
+static void mhitest_coredump_pci_free(void *data)
+{
+	struct mhitest_pci_elf_coredump_state *st = data;
+
+	complete(&st->dump_done);
+}
+
+
+int mhitest_dump_info(struct mhitest_platform *mplat, bool in_panic)
+{
+	struct mhi_controller *mhi_ctrl = mplat->mhi_ctrl;
+	struct image_info *rddm_img, *fw_img;
+	struct mhitest_dump_seg *segment, *seg_info;
+	int ret = 0, i, num_seg, len, seg_sz, skip_count = 0;
+	u16 device_id;
+	struct device *dev = &mplat->plat_dev->dev;
+	struct mhitest_pci_elf_coredump_state *st = NULL;
+
+	/* Validate device */
+	pci_read_config_word(mplat->pci_dev, PCI_DEVICE_ID, &device_id);
+	pr_debug("Read config space again, Device_id:0x%x\n", device_id);
+	if (device_id != mplat->pci_dev_id->device) {
+		pr_debug("Device Id does not match with Probe ID..\n");
+		return -EIO;
+	}
+
+	/* Download RDDM image */
+	ret = mhi_download_rddm_image(mhi_ctrl, in_panic);
+	if (ret) {
+		pr_debug("Error .. not able to dload rddm img ret:%d\n", ret);
+		return ret;
+	}
+
+	/* Get crash reason */
+	mhitest_get_crash_reason(mhi_ctrl);
+
+	/* Prepare dump data structures */
+	rddm_img = mhi_ctrl->rddm_image;
+	fw_img = mhi_ctrl->fbc_image;
+	num_seg = fw_img->entries + rddm_img->entries;
+	len = num_seg * sizeof(*segment);
+
+	/* Allocate segment array for FW and RDDM entries */
+	segment = kzalloc(len, GFP_KERNEL);
+	if (!segment)
+		return -ENOMEM;
+
+	seg_info = segment;
+
+	/* Copy FW image segments */
+	for (i = 0; i < fw_img->entries; i++) {
+		if (!fw_img->mhi_buf[i].buf) {
+			skip_count++;
+			continue;
+		}
+		seg_sz = fw_img->mhi_buf[i].len;
+		seg_info->size = PAGE_ALIGN(seg_sz);
+		seg_info->address = fw_img->mhi_buf[i].dma_addr;
+		seg_info->v_address = fw_img->mhi_buf[i].buf;
+		seg_info->type = FW_IMAGE;
+		seg_info++;
+	}
+
+	/* Copy RDDM image segments */
+	for (i = 0; i < rddm_img->entries; i++) {
+		if (!rddm_img->mhi_buf[i].buf) {
+			skip_count++;
+			continue;
+		}
+		seg_sz = rddm_img->mhi_buf[i].len;
+		seg_info->size = PAGE_ALIGN(seg_sz);
+		seg_info->address = rddm_img->mhi_buf[i].dma_addr;
+		seg_info->v_address = rddm_img->mhi_buf[i].buf;
+		seg_info->type = FW_RDDM;
+		seg_info++;
+	}
+
+	num_seg = num_seg - skip_count;
+	ret = mhitest_coredump_build_elf32(mplat, segment, num_seg, &st);
+	if (ret) {
+		pr_err("ELF32 build failed:%d\n", ret);
+		kfree(segment);
+		return ret;
+	}
+
+	dev_coredumpm(dev, THIS_MODULE, st, st->elf_hdr_sz, GFP_KERNEL,
+		      mhitest_coredump_pci_read, mhitest_coredump_pci_free);
+
+	ret = wait_for_completion_timeout(&st->dump_done,
+					  msecs_to_jiffies(TIMEOUT_SAVE_DUMP_MS));
+	if (!ret) {
+		pr_err("Coredump: Timed out waiting to save the dump\n");
+		ret = -ETIMEDOUT;
+	}
+
+	vfree(st->elf_hdr);
+	kfree(st->chunks[0].v_address);
+	kfree(st->chunks);
+	kfree(st);
+	kfree(segment);
 
 	return ret;
 }
@@ -961,8 +1004,6 @@ int mhitest_pci_register_mhi(struct mhitest_platform *mplat)
 		pr_err("Failed to register mhi controller ret:%d\n", ret);
 		goto out;
 	}
-	mhi_ctrl->rddm_prealloc = false;
-	mhi_ctrl->rddm_seg_len = SZ_4K;
 
 	pr_debug("GOOD!\n");
 	return  0;
