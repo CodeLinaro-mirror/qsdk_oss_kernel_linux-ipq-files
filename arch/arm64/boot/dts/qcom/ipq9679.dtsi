@@ -1448,6 +1448,18 @@
 				};
 			};
 		};
+
+		edma@2ad00000 {
+			compatible = "qcom,edma";
+			reg = <0x2ad00000 0x1c5000>;
+			reg-names = "edma-reg-base";
+			/* TO-DO: Add EDMA HW resets */
+			reset-names = "edma_rst";
+		};
+
+		nss-ppe {
+			compatible = "qcom,nss-ppe";
+		};
 	};
 
 	timer {
