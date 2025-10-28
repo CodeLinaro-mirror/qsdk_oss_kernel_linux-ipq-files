@@ -422,6 +422,10 @@
 	status = "okay";
 };
 
+&mlo_global_mem0 {
+	status = "okay";
+};
+
 &pcie0 {
 	perst-gpio = <&tlmm 25 GPIO_ACTIVE_LOW>;
 	link_retries_count = <400>;
@@ -431,8 +435,8 @@
 		reg = <0 0 0 0 0>;
 		qcom,mhi@0 {
 			reg = <0 0 0 0 0>;
-			memory-region = <&qcn9224_pcie1>, <&mhi_region1>;
-			memory-region-names = "host-ddr-mem", "mhi-region";
+			memory-region = <&qcn9224_pcie1>, <&mhi_region1>, <&mlo_global_mem0>;
+			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
 			qcom,board_id = <0x1>;
 			qcom,wsi-controller;
 
@@ -442,18 +446,10 @@
 
 				port@0 {
 					reg = <0>;
-
-					wifi1_wsi_tx: endpoint {
-						remote-endpoint = <&wifi1_wsi_rx>;
-					};
 				};
 
 				port@1 {
 					reg = <1>;
-
-					wifi1_wsi_rx: endpoint {
-						remote-endpoint = <&wifi1_wsi_tx>;
-					};
 				};
 			};
 		};
