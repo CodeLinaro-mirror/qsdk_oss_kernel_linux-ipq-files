@@ -296,9 +296,9 @@
 			};
 		};
 
-		ipcc: mailbox@1b00000 {
+		ipcc: mailbox@1b03000 {
 			compatible = "qcom,ipq9679-ipcc", "qcom,ipcc";
-			reg = <0x01b00000 0x1000>;
+			reg = <0x01b03000 0x1000>;
 			interrupts = <GIC_SPI 445 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-controller;
 			#interrupt-cells = <3>;
