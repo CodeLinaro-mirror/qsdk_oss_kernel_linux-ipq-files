@@ -118,6 +118,7 @@ static struct clk_regmap *gcc_ipq9679_dummy_clks[] = {
 	[GCC_PCIE2_PIPE_CLK] = DEFINE_DUMMY_CLK(gcc_pcie2_pipe_clk),
 	[GCC_QDSS_DAP_CLK] = DEFINE_DUMMY_CLK(gcc_qdss_dap),
 	[GCC_QDSS_AT_CLK] = DEFINE_DUMMY_CLK(gcc_qdss_at),
+	[GCC_QUPV3_SPI0_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_spi0),
 };
 
 static const struct qcom_reset_map gcc_ipq9679_resets[] = {

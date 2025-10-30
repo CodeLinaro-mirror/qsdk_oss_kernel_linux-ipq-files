@@ -36,5 +36,6 @@
 #define GCC_PCIE2_PIPE_CLK		26
 #define GCC_QDSS_DAP_CLK		27
 #define GCC_QDSS_AT_CLK			28
+#define GCC_QUPV3_SPI0_CLK		29
 
 #endif
