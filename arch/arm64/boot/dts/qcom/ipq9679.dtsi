@@ -283,6 +283,8 @@
 				interrupts = <GIC_SPI 339 IRQ_TYPE_LEVEL_HIGH>;
 				assigned-clocks = <&gcc GCC_QUPV3_SPI0_CLK>;
 				assigned-clock-rates = <50000000>;
+				/* Use common SE TX FIFO depth configuration */
+				qup-tx-fifo-depth = <0x20>;
 				status = "disabled";
 			};
 
