@@ -16,6 +16,7 @@
 	compatible = "qcom,ipq9679-emulation", "qcom,ipq9679";
 
 	/delete-node/ firmware;
+	/delete-node/ ctx-save;
 
 	/* Timer freq for rumi = timer freq / 200 */
 	clocks {

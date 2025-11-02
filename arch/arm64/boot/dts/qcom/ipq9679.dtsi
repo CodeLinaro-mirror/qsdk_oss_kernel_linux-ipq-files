@@ -149,6 +149,10 @@
 		};
 	};
 
+	ctx-save {
+		compatible = "qti,ctxt-save-ipq9679";
+	};
+
 	firmware {
 		optee {
 			compatible = "linaro,optee-tz";
