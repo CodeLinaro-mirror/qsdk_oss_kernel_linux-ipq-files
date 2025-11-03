@@ -71,7 +71,7 @@ enum minidump_crash_type {
 };
 
 int minidump_fill_segments_internal(const u64 start_addr, u64 size, enum minidump_tlv_type type,
-				    const char *name, int islowmem,
+				    const char *name,
 				    enum minidump_crash_type crashtype);
 int minidump_fill_segments(const u64 start_addr, u64 size, enum minidump_tlv_type type,
 			   const char *name);
