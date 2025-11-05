@@ -157,7 +157,7 @@
 			compatible = "qcom,nss-dp";
 			qcom,id = <1>;
 			reg = <0x2a500000 0x4000>;
-			qcom,mactype = <0>;
+			qcom,mactype = <1>;
 			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <16>;
@@ -170,7 +170,7 @@
 			compatible = "qcom,nss-dp";
 			qcom,id = <2>;
 			reg = <0x2a504000 0x4000>;
-			qcom,mactype = <0>;
+			qcom,mactype = <1>;
 			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <16>;
@@ -183,7 +183,7 @@
 			compatible = "qcom,nss-dp";
 			qcom,id = <3>;
 			reg = <0x2a508000 0x4000>;
-			qcom,mactype = <0>;
+			qcom,mactype = <1>;
 			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <16>;
@@ -196,7 +196,7 @@
 			compatible = "qcom,nss-dp";
 			qcom,id = <4>;
 			reg = <0x2a50c000 0x4000>;
-			qcom,mactype = <0>;
+			qcom,mactype = <1>;
 			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <16>;
@@ -209,7 +209,7 @@
 			compatible = "qcom,nss-dp";
 			qcom,id = <5>;
 			reg = <0x2a510000 0x4000>;
-			qcom,mactype = <0>;
+			qcom,mactype = <1>;
 			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <16>;
@@ -222,7 +222,7 @@
 			compatible = "qcom,nss-dp";
 			qcom,id = <6>;
 			reg = <0x2a514000 0x4000>;
-			qcom,mactype = <0>;
+			qcom,mactype = <1>;
 			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <16>;
