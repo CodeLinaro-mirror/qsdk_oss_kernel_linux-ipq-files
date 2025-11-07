@@ -84,12 +84,12 @@
 				&tlmm 18 GPIO_ACTIVE_LOW
 			>;
 
-			ethernet-phy@4 {
+			phy4: ethernet-phy@4 {
 				reg = <8>;
 				compatible ="ethernet-phy-ieee802.3-c45";
 			};
 
-			ethernet-phy@5 {
+			phy5: ethernet-phy@5 {
 				reg = <12>;
 				compatible ="ethernet-phy-ieee802.3-c45";
 			};
@@ -114,11 +114,15 @@
 						port_id = <1>;
 						phy_address = <8>;
 						ethernet-phy-ieee802.3-c45;
+						phy-handle = <&phy4>;
+						phy-mode = "usxgmii";
 					};
 					port@1 {
 						port_id = <2>;
 						phy_address = <12>;
 						ethernet-phy-ieee802.3-c45;
+						phy-handle = <&phy5>;
+						phy-mode = "usxgmii";
 					};
 				};
 
@@ -157,9 +161,6 @@
 			reg = <0x3A500000 0x4000>;
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
-			qcom,phy-mdio-addr = <8>;
-			qcom,link-poll = <1>;
-			phy-mode = "usxgmii";
 		};
 
 		dp2 {
@@ -172,9 +173,6 @@
 			reg = <0x3A504000 0x4000>;
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
-			qcom,phy-mdio-addr = <12>;
-			qcom,link-poll = <1>;
-			phy-mode = "usxgmii";
 		};
 
 		dp3 {
@@ -189,7 +187,6 @@
 			local-mac-address = [000000000000];
 			qcom,mht-dev = <1>;
 			qcom,is_switch_connected = <1>;
-			phy-mode = "sgmii";
 			qcom,ppe-offload-disabled = <1>;
 		};
 

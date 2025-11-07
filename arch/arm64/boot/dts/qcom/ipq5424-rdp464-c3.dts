@@ -161,6 +161,18 @@
 			};
 		};
 
+		sfp0: sfp@0 {
+			status = "okay";
+			compatible = "qcom,nss-phy";
+			i2c-bus = <&i2c1>;
+		};
+
+		sfp1: sfp@1 {
+			status = "okay";
+			compatible = "qcom,nss-phy";
+			i2c-bus = <&i2c2>;
+		};
+
 		ess-instance {
 #ifdef __CONFIG_IO_COHERENCY__
 			dma-coherent;
@@ -243,7 +255,6 @@
 			local-mac-address = [000000000000];
 			qcom,mht-dev = <1>;
 			qcom,is_switch_connected = <1>;
-			phy-mode = "sgmii";
 			qcom,ppe-offload-disabled = <1>;
 		};
 
