@@ -1924,7 +1924,7 @@ static int nss_cc_ipq9679_probe(struct platform_device *pdev)
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
-	ret = qcom_cc_really_probe(pdev, &nss_cc_ipq9679_desc, regmap);
+	ret = qcom_cc_really_probe(&pdev->dev, &nss_cc_ipq9679_desc, regmap);
 	if (ret) {
 		dev_err(&pdev->dev,
 			"Failed to register NSS CC clocks with error: %d\n", ret);

@@ -329,7 +329,7 @@ static int apss_ipq5424_probe(struct platform_device *pdev)
 
 	clk_alpha_pll_configure(&ipq5424_apss_pll, regmap, &apss_pll_config);
 
-	ret = qcom_cc_really_probe(pdev, &apss_ipq5424_desc, regmap);
+	ret = qcom_cc_really_probe(&pdev->dev, &apss_ipq5424_desc, regmap);
 	if (ret)
 		return ret;
 

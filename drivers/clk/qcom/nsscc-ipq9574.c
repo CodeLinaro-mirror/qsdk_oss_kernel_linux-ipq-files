@@ -3253,7 +3253,7 @@ static int nss_cc_ipq9574_probe(struct platform_device *pdev)
 
 	clk_alpha_pll_configure(&ubi32_pll_main, regmap, &ubi32_pll_config);
 
-	ret = qcom_cc_really_probe(pdev, &nsscc_ipq9574_desc, regmap);
+	ret = qcom_cc_really_probe(&pdev->dev, &nsscc_ipq9574_desc, regmap);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to register NSS CC clocks\n");
 		return ret;
