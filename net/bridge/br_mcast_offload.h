@@ -149,4 +149,28 @@ void br_mcast_offload_event_notifier_register(struct notifier_block *nb);
 void br_mcast_offload_event_notifier_unregister(struct notifier_block *nb);
 void br_mcast_offload_send_event(void *port_data, void *host_addr, enum br_mcast_event_type event);
 
+/* EHT creation support for IGMPv2/MLDv1*/
+int br_mcast_offload_handle_igmpv2_report(struct net_bridge_mcast *brmctx,
+					  struct net_bridge_mcast_port *pmctx,
+					  struct sk_buff *skb,
+					  u16 vid);
+void br_mcast_offload_handle_igmpv2_leave(struct net_bridge_mcast *brmctx,
+					  struct net_bridge_mcast_port *pmctx,
+					  struct sk_buff *skb,
+					  __be32 group,
+					  __u16 vid,
+					  const unsigned char *src);
+#if IS_ENABLED(CONFIG_IPV6)
+int br_mcast_offload_handle_mldv1_report(struct net_bridge_mcast *brmctx,
+					 struct net_bridge_mcast_port *pmctx,
+					 struct sk_buff *skb,
+					 u16 vid);
+void br_mcast_offload_handle_mldv1_leave(struct net_bridge_mcast *brmctx,
+					 struct net_bridge_mcast_port *pmctx,
+					 struct sk_buff *skb,
+					 const struct in6_addr *group,
+					 __u16 vid,
+					 const unsigned char *src);
+#endif
+
 #endif /* _BR_MCAST_OFFLOAD_H */
