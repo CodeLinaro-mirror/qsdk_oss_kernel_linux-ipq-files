@@ -176,6 +176,12 @@
 		method = "smc";
 	};
 
+	qti,tfa-optee-log {
+		compatible = "qti,tfa-optee-log";
+		tfa-diag-info =<&tfa_diag_buf>;
+		optee-diag-info =<&optee_diag_buf>;
+	};
+
 	reserved-memory {
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -708,6 +714,32 @@
 			clock-names = "iface", "core", "xo";
 
 			status = "disabled";
+		};
+
+		imem: sram@8600000 {
+			compatible = "qcom,ipq9679-imem", "qcom,imem";
+			reg = <0x08600000 0x1000>;
+			ranges = <0 0x08600000 0x1000>;
+
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			/*
+			 * First 4 bytes contains the Diag buffer address
+			 * Second 4 bytes contains the Diag buffer size
+			 */
+			tfa_diag_buf: tfa-diag-buf@720 {
+				reg = <0x720 8>;
+			};
+
+			/*
+			 * First 4 bytes contains the Diag buffer address
+			 * Second 4 bytes contains the Diag buffer size
+			 */
+			optee_diag_buf: optee-diag-buf@730 {
+				reg = <0x730 8>;
+			};
+
 		};
 
 		intc: interrupt-controller@f200000 {
