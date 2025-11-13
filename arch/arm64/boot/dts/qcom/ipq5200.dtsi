@@ -98,6 +98,29 @@
 		reg = <0x0 0x80000000 0x0 0x0 >;
 	};
 
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		tfa@0x8a600000 {
+			reg = <0x0 0x8a600000 0x0 0x80000>;
+			no-map;
+		};
+
+		smem@8a800000 {
+			compatible = "qcom,smem";
+			reg = <0x0 0x8a800000 0x0 0x32000>;
+			no-map;
+
+			hwlocks = <&tcsr_mutex 3>;
+		};
+
+		minidump_mem: minidump_mem@0 {
+			no-map;
+		};
+	};
+
 	soc@0 {
 		compatible = "simple-bus";
 		#address-cells = <1>;
@@ -225,6 +248,20 @@
 			#clock-cells = <1>;
 			#reset-cells = <1>;
 			#power-domain-cells = <1>;
+		};
+
+		tcsr_mutex: hwlock@1905000 {
+			compatible = "qcom,tcsr-mutex";
+			reg = <0x01905000 0x20000>;
+			#hwlock-cells = <1>;
+		};
+
+		tcsr: syscon@1937000 {
+			compatible = "qcom,tcsr-ipq5200", "syscon", "simple-mfd";
+			reg = <0x01937000 0x2b000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0x0 0x01937000 0x2b000>;
 		};
 
 		qupv3: geniqup@1ac0000 {
@@ -759,6 +796,26 @@
 			#interconnect-cells = <1>;
 		};
 
+		imem: sram@8600000 {
+			compatible = "qcom,ipq5200-imem", "syscon", "simple-mfd";
+			reg = <0x08600000 0x1000>;
+			ranges = <0 0x08600000 0x1000>;
+
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			tz-log-buf-addr@720 {
+				compatible = "qcom,msm-imem-tz-log-buf-addr";
+				reg = <0x720 4>;
+			};
+		};
+	};
+
+	firmware {
+		scm {
+			compatible = "qcom,scm-ipq5200", "qcom,scm";
+			qcom,dload-mode = <&tcsr 0x25100>;
+		};
 	};
 
 	tmel-log {
@@ -772,5 +829,12 @@
 	psci {
 		compatible = "arm,psci-1.0";
 		method = "smc";
+	};
+
+	ctx-save {
+		compatible = "qti,ctxt-save-ipq5200";
+		memory-region = <&minidump_mem>;
+		qcom,imem = <&imem>;
+		minidump-level = <2>;
 	};
 };
