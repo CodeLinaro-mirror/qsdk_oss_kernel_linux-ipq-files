@@ -410,7 +410,7 @@
 			memory-region = <&qcn9224_pcie2>, <&mhi_region2>, <&mlo_global_mem0>;
 			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
 #ifdef __PCIE_QCOM_EARLY_CAL_SUPPORT__
-			qcom,early_cal_enabled = "supported";
+			qcom,early_cal_enabled = "disabled";
 #endif
 			qcom,caldata_offset = <0x12000>;
 			qcom,board_id = <0x32>;
@@ -459,7 +459,7 @@
 			memory-region = <&qcn9224_pcie3>, <&mhi_region3>, <&mlo_global_mem0>;
 			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
 #ifdef __PCIE_QCOM_EARLY_CAL_SUPPORT__
-			qcom,early_cal_enabled = "supported";
+			qcom,early_cal_enabled = "disabled";
 #endif
 			qcom,caldata_offset = <0x2E800>;
 			qcom,board_id = <0x31>;
