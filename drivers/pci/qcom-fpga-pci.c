@@ -10,6 +10,8 @@
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
 #include <linux/proc_fs.h>
+#include <linux/of.h>
+#include <linux/platform_device.h>
 
 #include <linux/qcom-fpga-pci.h>
 
@@ -223,6 +225,33 @@ static struct attribute *qcom_fpga_reg_wr_attrs[] = {
 
 ATTRIBUTE_GROUPS(qcom_fpga_reg_wr);
 
+static void qcom_memnoc_configuration(struct pci_dev *pdev)
+{
+	int len, i;
+	const __be32 *prop;
+	u32 addr, val;
+	struct device *dev = &pdev->dev;
+
+	prop = of_get_property(dev->of_node, "qcom,memnoc-config", &len);
+	if (!prop)
+		return;
+
+	len /= sizeof(__be32);
+
+	if (len % 2) {
+		dev_err(dev, "Invalid qcom,memnoc-config length\n");
+		return;
+	}
+
+	for (i = 0; i < len; i += 2) {
+		addr = be32_to_cpup(&prop[i]);
+		val = be32_to_cpup(&prop[i + 1]);
+		qcom_fpga_mem_write(addr, val);
+	}
+
+	dev_info(dev, "MEMNOC configuration done");
+}
+
 static int fpga_pci_init(struct pci_dev *pdev, const struct pci_device_id *ent)
 {
 	int  region, ret = 0;
@@ -283,6 +312,8 @@ static int fpga_pci_init(struct pci_dev *pdev, const struct pci_device_id *ent)
 	}
 
 	pci_set_master(pdev);
+
+	qcom_memnoc_configuration(pdev);
 
 	return 0;
 }
