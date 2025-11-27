@@ -82,6 +82,7 @@
 	 * +==================================================+
 	 */
 
+#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
 	reserved-memory {
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -174,4 +175,79 @@
 			status = "disabled";
 		};
 	};
+#else
+	reserved-memory {
+		q6_region: wcnss@8a900000 {
+			no-map;
+			reg = <0x0 0x8a900000 0x0 0xa00000>;
+		};
+
+		q6_ipq5424_data: q6_ipq5424_data@8b300000 {
+			no-map;
+			reg = <0x0 0x8b300000 0x0 0x2800000>;
+		};
+
+		qcn9224_pcie0: qcn9224_pcie0@8db00000 {
+			no-map;
+			reg = <0x0 0x8db00000 0x0 0x03200000>;
+			status = "disabled";
+		};
+
+		qcn9224_pcie1: qcn9224_pcie1@90d00000 {
+			no-map;
+			reg = <0x0 0x90d00000 0x0 0x03200000>;
+			status = "disabled";
+		};
+
+		qcn9224_pcie2: qcn9224_pcie2@93f00000 {
+			no-map;
+			reg = <0x0 0x93f00000 0x0 0x03200000>;
+			status = "disabled";
+		};
+
+		qcn9224_pcie3: qcn9224_pcie3@97100000 {
+			no-map;
+			reg = <0x0 0x97100000 0x0 0x03200000>;
+			status = "disabled";
+		};
+
+		mhi_region0: dma_pool0@0 {
+			compatible = "shared-dma-pool";
+			no-map;
+			size = <0x0 0x00900000>;
+			alignment = <0x0 0x1000>;
+			status = "disabled";
+		};
+
+		mhi_region1: dma_pool1@1 {
+			compatible = "shared-dma-pool";
+			no-map;
+			size = <0x0 0x00900000>;
+			alignment = <0x0 0x1000>;
+			status = "disabled";
+		};
+
+		mhi_region2: dma_pool2@2 {
+			compatible = "shared-dma-pool";
+			no-map;
+			size = <0x0 0x00900000>;
+			alignment = <0x0 0x1000>;
+			status = "disabled";
+		};
+
+		mhi_region3: dma_pool3@3 {
+			compatible = "shared-dma-pool";
+			no-map;
+			size = <0x0 0x00900000>;
+			alignment = <0x0 0x1000>;
+			status = "disabled";
+		};
+
+		mlo_global_mem0: mlo_global_mem_0@9b500000 {
+			no-map;
+			reg = <0x0 0x9b500000 0x0 0x1200000>;
+			status = "disabled";
+		};
+	};
+#endif
 };

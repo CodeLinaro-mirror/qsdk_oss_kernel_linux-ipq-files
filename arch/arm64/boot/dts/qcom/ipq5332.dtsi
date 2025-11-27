@@ -2501,7 +2501,9 @@
 					   <&wcss_smp2p_out 1>;
 			qcom,smem-state-names = "shutdown",
 						"stop";
-			memory-region = <&q6_region>;
+			memory-region = <&q6_region>,
+					<&q6_ipq5332_data>,
+					<&mlo_global_mem0>;
 			qcom,bootargs_smem = <507>;
 			qcom,bootargs_version = <2>;
 			qcom,userpd-bootargs;
