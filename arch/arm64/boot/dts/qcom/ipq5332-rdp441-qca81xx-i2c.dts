@@ -533,6 +533,7 @@
 #endif
 			qcom,caldata_offset = <0x26800>;
 			qcom,board_id = <0x15>;
+#if !defined(__IPQ_MEM_PROFILE_256_MB__)
 			qcom,wsi = <&wsi>;
 			qcom,wsi_index = <1>;
 			ports {
@@ -555,6 +556,7 @@
 					};
 				};
 			};
+#endif
 		};
 	};
 };
@@ -590,6 +592,7 @@
 			qcom,caldata_offset = <0x58800>;
 #endif
 			qcom,board_id = <0x16>;
+#if !defined(__IPQ_MEM_PROFILE_256_MB__)
 			qcom,wsi = <&wsi>;
 			qcom,wsi_index = <2>;
 			ports {
@@ -612,6 +615,7 @@
 					};
 				};
 			};
+#endif
 		};
 	};
 };
@@ -653,13 +657,14 @@
 	memory-region-names = "q6-region", "q6-1region-1", "host-ddr-mem", "m3-dump",
 		"mlo-global-mem", "q6-etr-dump";
 #endif
-	qcom,wsi = <&wsi>;
-	qcom,wsi_index = <0>;
 	qcom,wsi-controller;
 	qcom,board_id = <0x12>;
 	qcom,bdf-addr = <0x4B500000 0x4B500000 0x4B240000 0x0 0x0 0x0>;
 	hw_link_id = <0 0>;
 	status = "okay";
+#if !defined(__IPQ_MEM_PROFILE_256_MB__)
+	qcom,wsi = <&wsi>;
+	qcom,wsi_index = <0>;
 	ports {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -680,6 +685,7 @@
 			};
 		};
 	};
+#endif
 };
 
 &qcn9224_pcie0 {
