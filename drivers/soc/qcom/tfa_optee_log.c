@@ -275,14 +275,14 @@ static int tfa_optee_log_probe(struct platform_device *pdev)
 	/* Validate buffer addresses and sizes */
 	if (!tfa_addr || !tfa_size) {
 		return dev_err_probe(&pdev->dev, -EINVAL,
-				     "invalid TFA buffer: addr=0x%llx, size=0x%x\n",
-				     tfa_addr, tfa_size);
+				     "invalid TFA buffer: addr=%pa, size=0x%x\n",
+				     &tfa_addr, tfa_size);
 	}
 
 	if (!optee_addr || !optee_size) {
 		return dev_err_probe(&pdev->dev, -EINVAL,
-				     "invalid OPTEE buffer: addr=0x%llx, size=0x%x\n",
-				     optee_addr, optee_size);
+				     "invalid OPTEE buffer: addr=%pa, size=0x%x\n",
+				     &optee_addr, optee_size);
 	}
 
 	log_data->tfa_phys_addr = tfa_addr;
@@ -319,8 +319,8 @@ static int tfa_optee_log_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, log_data);
 
-	dev_dbg(&pdev->dev, "TFA log: addr=0x%llx, size=0x%x\tOPTEE log: addr=0x%llx, size=0x%x\n",
-		tfa_addr, tfa_size, optee_addr, optee_size);
+	dev_dbg(&pdev->dev, "TFA log: addr=%pa, size=0x%x\tOPTEE log: addr=%pa, size=0x%x\n",
+		&tfa_addr, tfa_size, &optee_addr, optee_size);
 
 	return 0;
 }
