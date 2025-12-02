@@ -1,0 +1,81 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/clock/qcom,qce2204-nsscc.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Qualcomm QCE2204 Network SubSystem Clock Controller
+
+maintainers:
+  - Luo Jie <luoj@qti.qualcomm.com>
+
+description: |
+  Qualcomm QCE2204 network subsystem clock controller which provides
+  clocks and resets for the QCE2204 Ethernet switch hardware.
+
+properties:
+  compatible:
+    const: qcom,qce2204-nsscc
+
+  reg:
+    description: MDIO address of the QCE2204 device
+    maxItems: 1
+
+  '#clock-cells':
+    const: 1
+
+  '#reset-cells':
+    const: 1
+
+  clocks:
+    items:
+      - description: XO clock source
+      - description: UNIPHY1 RX clock
+      - description: UNIPHY1 TX clock
+      - description: UNIPHY1 PPE 250MHz clock
+      - description: UNIPHY0 RX 312.5MHz clock
+      - description: UNIPHY0 TX 312.5MHz clock
+      - description: UNIPHY1 RX 312.5MHz clock
+      - description: UNIPHY1 TX 312.5MHz clock
+
+  clock-names:
+    items:
+      - const: xo
+      - const: uniphy1_rx
+      - const: uniphy1_tx
+      - const: uniphy1_ppe_250m
+      - const: uniphy0_rx_312p5m
+      - const: uniphy0_tx_312p5m
+      - const: uniphy1_rx_312p5m
+      - const: uniphy1_tx_312p5m
+
+required:
+  - compatible
+  - reg
+  - '#clock-cells'
+  - '#reset-cells'
+  - clocks
+  - clock-names
+
+additionalProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/clock/qcom,qce2204-nsscc.h>
+    #include <dt-bindings/reset/qcom,qce2204-nsscc.h>
+
+    mdio {
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        qce2204_nsscc: clock-controller@0 {
+            compatible = "qcom,qce2204-nsscc";
+            reg = <0>;
+            #clock-cells = <1>;
+            #reset-cells = <1>;
+            clocks = <&xo_board>, <&uniphy1_rx>, <&uniphy1_tx>, <&uniphy1_ppe_250m>,
+                     <&uniphy0_rx_312p5m>, <&uniphy0_tx_312p5m>, <&uniphy1_rx_312p5m>, <&uniphy1_tx_312p5m>;
+            clock-names = "xo", "uniphy1_rx", "uniphy1_tx", "uniphy1_ppe_250m",
+                          "uniphy0_rx_312p5m", "uniphy0_tx_312p5m", "uniphy1_rx_312p5m", "uniphy1_tx_312p5m";
+        };
+    };
