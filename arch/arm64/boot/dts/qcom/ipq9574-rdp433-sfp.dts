@@ -35,6 +35,8 @@
 		dp1 {
 			reg = <0x3a500000 0x4000>;
 			qcom,mactype = <1>;
+			qcom,link-poll = <1>;
+			phy-mode = "10gbase-r";
 			qcom,phy-mdio-addr = <30>;
 		};
 
@@ -42,16 +44,12 @@
 			qcom,id = <5>;
 			reg = <0x3a510000 0x4000>;
 			qcom,mactype = <1>;
-			qcom,phy-mdio-addr = <8>;
-			phy-mode = "usxgmii";
 		};
 
 		dp3 {
 			qcom,id = <6>;
 			reg = <0x3a514000 0x4000>;
 			qcom,mactype = <1>;
-			qcom,phy-mdio-addr = <0>;
-			phy-mode = "usxgmii";
 		};
 
 		/delete-node/ dp4;
@@ -61,11 +59,11 @@
 		mdio0:mdio@90000 {
 			/delete-property/phy-reset-gpio;
 
-			ethernet-phy@0 {
+			phy0: ethernet-phy@0 {
 				compatible ="ethernet-phy-ieee802.3-c45";
 				reg = <8>;
 			};
-			ethernet-phy@1 {
+			phy1: ethernet-phy@1 {
 				compatible ="ethernet-phy-ieee802.3-c45";
 				reg = <0>;
 			};
@@ -92,6 +90,14 @@
 					/delete-node/ port@1;
 					/delete-node/ port@2;
 					/delete-node/ port@3;
+					port@4 {
+						phy-handle = <&phy0>;
+						phy-mode = "usxgmii";
+					};
+					port@5 {
+						phy-handle = <&phy1>;
+						phy-mode = "usxgmii";
+					};
 				};
 			};
 		};
