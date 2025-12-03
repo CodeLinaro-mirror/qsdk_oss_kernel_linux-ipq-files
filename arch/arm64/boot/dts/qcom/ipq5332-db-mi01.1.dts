@@ -90,11 +90,15 @@
 						port_id = <1>;
 						phy_address = <8>;
 						ethernet-phy-ieee802.3-c45;
+						phy-handle = <&phy0>;
+						phy-mode = "usxgmii";
 					};
 					port@1 {
 						port_id = <2>;
 						phy_address = <0>;
 						ethernet-phy-ieee802.3-c45;
+						phy-handle = <&phy1>;
+						phy-mode = "usxgmii";
 					};
 				};
 			};
@@ -107,9 +111,6 @@
 			reg = <0x3a504000 0x4000>;
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
-			qcom,phy-mdio-addr = <0>;
-			qcom,link-poll = <1>;
-			phy-mode = "usxgmii";
 		};
 
 		dp2 {
@@ -119,9 +120,6 @@
 			reg = <0x3a500000 0x4000>;
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
-			qcom,phy-mdio-addr = <8>;
-			qcom,link-poll = <1>;
-			phy-mode = "usxgmii";
 			qcom,mht-dev = <1>;
 			qcom,ppe-offload-disabled = <1>;
 		};

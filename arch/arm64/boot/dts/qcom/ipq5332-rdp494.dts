@@ -389,10 +389,17 @@
 							switch_handle = <&switch1>;
 							switch_cpu_port = <0>;
 						};
+						fixed-link {
+							speed = <2500>;
+							full-duplex;
+							pause;
+						};
 					};
 					port@1 {
 						port_id = <2>;
 						phy_address = <4>;
+						phy-handle = <&phy3>;
+						phy-mode = "sgmii";
 					};
 				};
 
@@ -476,10 +483,6 @@
 			reg = <0x3a504000 0x4000>;
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
-			mdio-bus = <&mdio>;
-			qcom,phy-mdio-addr = <4>;
-			qcom,link-poll = <1>;
-			phy-mode = "sgmii";
 		};
 
 		gmac2:dp2 {
@@ -489,7 +492,6 @@
 			reg = <0x3a500000 0x4000>;
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
-			phy-mode = "sgmii";
 			qcom,mht-dev = <1>;
 		};
 
