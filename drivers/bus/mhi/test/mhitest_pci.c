@@ -12,6 +12,7 @@
  * GNU General Public License for more details.
  */
 
+#include <linux/bitfield.h>
 #include <linux/memblock.h>
 #include <linux/pm_runtime.h>
 #include <linux/of.h>
@@ -25,12 +26,12 @@
 #define QCN9000_DEFAULT_FW_FILE_NAME	"qcn9000/amss.bin"
 #define QCN9224_DEFAULT_FW_FILE_NAME	"qcn9224/amss.bin"
 #define QCN9625_DEFAULT_FW_FILE_NAME	"qcn9625/amss.bin"
+#define QCN9589_DEFAULT_FW_FILE_NAME	"qcn9589/amss.bin"
 
 #define PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV0		0x3164
 #define QCN9625_PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV0	0x3300
-#define QCN90XX_QRTR_INSTANCE_ID_BASE		0x20
-#define QCN92XX_QRTR_INSTANCE_ID_BASE		0x30
-#define QCN96XX_QRTR_INSTANCE_ID_BASE		0x40
+#define DOMAIN_NR_MASK					GENMASK(7, 4)
+#define BUS_NR_MASK					GENMASK(3, 0)
 
 #define MHITEST_MHI_SEG_LEN			SZ_512K
 #define MHITEST_DUMP_DESC_TOLERANCE		64
@@ -996,7 +997,8 @@ int mhitest_pci_register_mhi(struct mhitest_platform *mplat)
 	mhi_ctrl->seg_len = SZ_512K;
 	mhi_ctrl->fbc_download = true;
 
-	if (mplat->device_id == QCN96XX_DEVICE_ID)
+	if (mplat->device_id == QCN96XX_DEVICE_ID ||
+	    mplat->device_id == QCN95XX_DEVICE_ID)
 		mhi_ctrl->standard_elf_image = true;
 
 	ret = mhi_register_controller(mhi_ctrl, &mhitest_mhi_config);
@@ -1455,6 +1457,7 @@ extern int timeout_ms;
 int mhitest_pci_start_mhi(struct mhitest_platform *mplat)
 {
 	int ret;
+	u32 val;
 	int qrtr_instance_id_reg = PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV0;
 
 	pr_debug("Enter\n");
@@ -1471,6 +1474,7 @@ int mhitest_pci_start_mhi(struct mhitest_platform *mplat)
 		pr_err("Error not able to set mhi init. returning..\n");
 		goto out1;
 	}
+
 	/**
 	 * in the single wlan chipset case, plat_priv->qrtr_node_id always is 0,
 	 * wlan fw will use the hardcode 7 as the qrtr node id.
@@ -1485,18 +1489,14 @@ int mhitest_pci_start_mhi(struct mhitest_platform *mplat)
 	 * exchange. According to qrtr spec, every node should
 	 * have unique qrtr node id
 	 */
-	u32 val;
-	u32 qrtr_id;
 
 	switch (mplat->device_id) {
 	case QCN90XX_DEVICE_ID:
-		qrtr_id = QCN90XX_QRTR_INSTANCE_ID_BASE;
-		break;
 	case QCN92XX_DEVICE_ID:
-		qrtr_id = QCN92XX_QRTR_INSTANCE_ID_BASE;
+		qrtr_instance_id_reg = PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV0;
 		break;
+	case QCN95XX_DEVICE_ID:
 	case QCN96XX_DEVICE_ID:
-		qrtr_id = QCN96XX_QRTR_INSTANCE_ID_BASE;
 		qrtr_instance_id_reg =
 				QCN9625_PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV0;
 		break;
@@ -1505,18 +1505,12 @@ int mhitest_pci_start_mhi(struct mhitest_platform *mplat)
 		goto out1;
 	}
 
-	qrtr_id += mplat->d_instance;
-
-	pr_debug("write 0x%x to qrtr_instance_id_reg\n", qrtr_id);
-	writel(qrtr_id, mplat->bar + qrtr_instance_id_reg);
-	if (ret) {
-		pr_err("Failed to write register offset 0x%x, err = %d\n",
-		       qrtr_instance_id_reg, ret);
-		goto out1;
-	}
+	pr_debug("write 0x%x to qrtr_instance_id_reg\n", mplat->d_instance);
+	writel(mplat->d_instance, mplat->bar + qrtr_instance_id_reg);
+	msleep(1);
 	val = readl(mplat->bar + qrtr_instance_id_reg);
 
-	if (val != qrtr_id) {
+	if (val != mplat->d_instance) {
 		pr_err("qrtr node id write to register doesn't match with readout value 0x%x", val);
 		goto out1;
 	}
@@ -1671,7 +1665,9 @@ int mhitest_pci_probe(struct pci_dev *pci_dev, const struct pci_device_id *id)
 	mplat->pci_dev = pci_dev;
 	mplat->device_id = pci_dev->device;
 	mplat->pci_dev_id = id;
-	mplat->d_instance = pci_domain_nr(pci_dev->bus);
+	mplat->d_instance = u32_encode_bits(pci_domain_nr(pci_dev->bus),
+					    DOMAIN_NR_MASK) |
+			    u32_encode_bits(pci_dev->bus->number, BUS_NR_MASK);
 
 	pr_info("Vendor ID:0x%x Device ID:0x%x Probed Device ID:0x%x Instance ID:0x%x\n",
 		pci_dev->vendor, pci_dev->device, id->device,
@@ -1689,6 +1685,9 @@ int mhitest_pci_probe(struct pci_dev *pci_dev, const struct pci_device_id *id)
 	else if (mplat->device_id == QCN96XX_DEVICE_ID)
 		snprintf(mplat->fw_name, sizeof(mplat->fw_name),
 			 QCN9625_DEFAULT_FW_FILE_NAME);
+	else if (mplat->device_id == QCN95XX_DEVICE_ID)
+		snprintf(mplat->fw_name, sizeof(mplat->fw_name),
+			 QCN9589_DEFAULT_FW_FILE_NAME);
 	else
 		snprintf(mplat->fw_name, sizeof(mplat->fw_name),
 			 QCN9000_DEFAULT_FW_FILE_NAME);
@@ -1788,6 +1787,7 @@ static const struct pci_device_id mhitest_pci_id_table[] = {
 	{QTI_PCI_VENDOR_ID, QCN90XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
 	{QTI_PCI_VENDOR_ID, QCN92XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
 	{QTI_PCI_VENDOR_ID, QCN96XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
+	{QTI_PCI_VENDOR_ID, QCN95XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
 };
 
 struct pci_driver mhitest_pci_driver = {
