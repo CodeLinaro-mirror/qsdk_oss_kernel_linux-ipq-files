@@ -14,6 +14,9 @@
 	model = "Qualcomm Technologies, Inc. IPQ5200-EMULATION";
 	compatible = "qcom,ipq5200-emulation", "qcom,ipq5200";
 
+	/delete-node/ firmware;
+	/delete-node/ ctx-save;
+
 	/*Timer freq for rumi = timer freq / 100*/
 	clocks {
 		sleep_clk: sleep-clk {
@@ -30,9 +33,9 @@
 	};
 
 	chosen {
-		linux,initrd-end = <0x97000000>;
+		linux,initrd-end = <0x98000000>;
 		linux,initrd-start = <0x95000000>;
-		bootargs = "root=/dev/ram0 rw init=/init clk_ignore_unused";
+		bootargs = "root=/dev/ram0 rw init=/init clk_ignore_unused earlycon";
 		stdout-path = "serial0";
 	};
 
