@@ -336,6 +336,21 @@
 	max-link-speed = <2>;
 	link_retries_count = <400>;
 
+	qcom,memnoc-config = <0xa84808 0x60020021>,
+			     <0xa8480c 0x00000031>,
+			     <0xa84810 0x00ff0001>,
+			     <0xa84880 0x0a14143f>,
+			     <0xa84884 0x00000423>,
+			     <0xa84888 0x1308041c>,
+			     <0xa8488c 0x00071807>,
+			     <0xa84890 0x0002411f>,
+			     <0xa86008 0x00000f01>,
+			     <0xa84820 0x00000000>,
+			     <0xa84828 0x21212121>,
+			     <0xa86820 0x28282828>,
+			     <0xa86828 0x00000000>,
+			     <0xa86830 0x00000000>;
+
 	enable-iatu;
 	iatu-ib0-base-addr-cfg = <0x80000000 0x0 0xFFFFFFFF>;
 	iatu-ib0-target-addr-cfg = <0x40000000 0x0 0xFFFFFFFF>;
@@ -355,6 +370,21 @@
 	perst-gpios = <&tlmm 32 GPIO_ACTIVE_LOW>;
 	max-link-speed = <2>;
 	link_retries_count = <400>;
+
+	qcom,memnoc-config = <0xa84808 0x60020021>,
+			     <0xa8480c 0x00000031>,
+			     <0xa84810 0x00ff0001>,
+			     <0xa84880 0x0a14143f>,
+			     <0xa84884 0x00000423>,
+			     <0xa84888 0x1308041c>,
+			     <0xa8488c 0x00071807>,
+			     <0xa84890 0x0002411f>,
+			     <0xa86008 0x00000f01>,
+			     <0xa84820 0x00000000>,
+			     <0xa84828 0x21212121>,
+			     <0xa86820 0x28282828>,
+			     <0xa86828 0x00000000>,
+			     <0xa86830 0x00000000>;
 
 	enable-iatu;
 	iatu-ib0-base-addr-cfg = <0x80000000 0x0 0xFFFFFFFF>;
