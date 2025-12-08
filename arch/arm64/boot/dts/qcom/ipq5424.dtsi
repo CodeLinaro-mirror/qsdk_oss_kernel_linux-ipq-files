@@ -1749,6 +1749,13 @@
 			compatible = "qcom,noc-tprobe-driver";
 		};
 
+		qci_snoop_comp {
+			compatible = "qcom,qci-snoop-comp-driver";
+			reg = <0xAC9000 0x1000>;
+			reg-names = "eventcounter-base";
+			status = "ok";
+		};
+
 		apss_comp {
 			compatible = "qcom,apss-comp-driver";
 			reg = <0xAC0A00 0x1000>,<0xAC2000 0x1000>, <0xAC9000 0x1000>;
