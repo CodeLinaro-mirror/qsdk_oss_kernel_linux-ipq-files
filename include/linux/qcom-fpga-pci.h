@@ -12,11 +12,14 @@
 #define MODULENAME			"qcom-fpga-pci"
 #define PCIE_MEM_ACCESS_BASE_ADDR_REG	0x4
 
-#define QTI_FPGA_PON_VENDOR_ID		0x10EE
+#define QTI_FPGA_PON_VENDOR_ID_1	0x10EE
+#define QTI_FPGA_PON_VENDOR_ID_2	0x17CB
+
 #define QTI_FPGA_PON_DEVICE_ID_1	0x9012
 #define QTI_FPGA_PON_DEVICE_ID_2	0x9022
 #define QTI_FPGA_PON_DEVICE_ID_3	0x9011
 #define QTI_FPGA_PON_DEVICE_ID_4	0x9021
+#define QTI_FPGA_PON_DEVICE_ID_5	0x1006
 
 #define QCOM_GET_NEW_ADDR(reg)		(((reg) & 0xfffff) | 0x100000)
 #define QCOM_GET_BASE_ADDR(reg)		(((((reg) & 0xfff00000) | (((reg) & 0xf00000000) >> 0x10))) | 1)
