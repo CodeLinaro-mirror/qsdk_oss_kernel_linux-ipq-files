@@ -35,6 +35,8 @@
 #include <net/rtnetlink.h>
 #include "br_private_mcast_eht.h"
 
+#define BR_MCAST_OFFLOAD_MAP_TIMER_INTVL (10 * HZ)
+
 /*
  * Bridge multicast offload notifier API
  */
@@ -960,7 +962,7 @@ static void br_mcast_offload_recompute_shared_mac(struct net_bridge_mcast *brmct
 	/* Count total matches */
 	for (i = 0; i < BR_IP_MAC_HASH_SIZE; i++) {
 		hlist_for_each_entry_rcu(tmp, &brmctx->ip_mac_map[i], hlist) {
-			if ((tmp->vid == vid) && (tmp->ifindex == ifindex) && ether_addr_equal(tmp->mac, mac))
+			if (ether_addr_equal(tmp->mac, mac) && (tmp->vid == vid) && (tmp->ifindex == ifindex))
 				matches++;
 		}
 	}
@@ -984,7 +986,7 @@ static void br_mcast_offload_recompute_shared_mac(struct net_bridge_mcast *brmct
 	/* Update all matching entries */
 	for (i = 0; i < BR_IP_MAC_HASH_SIZE; i++) {
 		hlist_for_each_entry_rcu(tmp, &brmctx->ip_mac_map[i], hlist) {
-			if ((tmp->vid == vid) && (tmp->ifindex == ifindex) && ether_addr_equal(tmp->mac, mac))
+			if (ether_addr_equal(tmp->mac, mac) && (tmp->vid == vid) && (tmp->ifindex == ifindex))
 				tmp->shared_mac = is_shared;
 		}
 	}
@@ -1031,9 +1033,12 @@ static void br_mcast_offload_map_deferred_cleanup(struct rcu_head *rcu)
  */
 static void br_mcast_offload_map_timer(struct timer_list *t)
 {
-	struct net_bridge_ip_to_mac *entry = from_timer(entry, t, timer);
-	struct net_bridge_mcast *brmctx = entry->brmctx;
+	struct net_bridge_mcast *brmctx = from_timer(brmctx, t, ip_mac_map_timer);
 	struct net_bridge *br;
+	struct net_bridge_ip_to_mac *entry;
+	struct hlist_node *tmp;
+	unsigned int i;
+	bool has_entries = false;
 
 	if (!brmctx || !brmctx->br)
 		return;
@@ -1042,24 +1047,31 @@ static void br_mcast_offload_map_timer(struct timer_list *t)
 
 	spin_lock_bh(&br->multicast_lock);
 
-	/* Check if entry is still in hash table */
-	if (hlist_unhashed(&entry->hlist)) {
-		spin_unlock_bh(&br->multicast_lock);
-		return;
+	for (i = 0; i < BR_IP_MAC_HASH_SIZE; i++) {
+		hlist_for_each_entry_safe(entry, tmp, &brmctx->ip_mac_map[i], hlist) {
+			if (hlist_unhashed(&entry->hlist))
+				continue;
+
+			if (time_after_eq(jiffies, entry->time + br_multicast_gmi(brmctx))) {
+				hlist_del_init_rcu(&entry->hlist);
+				br_mcast_offload_free_entry(entry);
+			} else {
+				has_entries = true;
+			}
+		}
 	}
 
-	/* Remove entry from hash table and schedule deferred cleanup */
-	hlist_del_init_rcu(&entry->hlist);
-	call_rcu(&entry->rcu, br_mcast_offload_map_deferred_cleanup);
-
 	spin_unlock_bh(&br->multicast_lock);
+
+	if (has_entries)
+		mod_timer(&brmctx->ip_mac_map_timer, jiffies + BR_MCAST_OFFLOAD_MAP_TIMER_INTVL);
 }
 
 /*
- * br_multicast_ip_mac_map_add
+ * br_mcast_offload_ip_mac_map_add
  *	Store the host ip and corresponding host mac address in the db
  */
-int br_mcast_offload_map_add(struct net_bridge_mcast *brmctx,
+int br_mcast_offload_ip_mac_map_add(struct net_bridge_mcast *brmctx,
 				    const struct br_ip *host,
 				    const unsigned char *mac,
 				    int ifindex,
@@ -1068,10 +1080,15 @@ int br_mcast_offload_map_add(struct net_bridge_mcast *brmctx,
 	struct net_bridge_ip_to_mac *ip_mac_entry, *tmp;
 	unsigned int hash;
 
-	spin_lock_bh(&brmctx->br->multicast_lock);
-
 	/* Calculate hash based on IP address */
 	hash = br_mcast_offload_map_hash(host);
+
+	spin_lock_bh(&brmctx->br->multicast_lock);
+
+	if (!netif_running(brmctx->br->dev)) {
+		spin_unlock_bh(&brmctx->br->multicast_lock);
+		return -EINVAL;
+	}
 
 	hlist_for_each_entry_rcu(tmp, &brmctx->ip_mac_map[hash], hlist) {
 		if (tmp->ip_proto != host->proto)
@@ -1079,24 +1096,25 @@ int br_mcast_offload_map_add(struct net_bridge_mcast *brmctx,
 
 		switch (host->proto) {
 		case htons(ETH_P_IP):
-			if ((tmp->vid == vid) &&
-			    (tmp->addr.ip == host->src.ip4) &&
+			if ((tmp->addr.ip == host->src.ip4) && (tmp->vid == vid) &&
 			    (tmp->ifindex == ifindex)) {
-				/* Entry exists - restart the timer */
-				mod_timer(&tmp->timer,
-					  jiffies + br_multicast_gmi(brmctx));
+				/* Entry exists - update the entry time */
+				tmp->time = jiffies;
+				if (!timer_pending(&brmctx->ip_mac_map_timer))
+					mod_timer(&brmctx->ip_mac_map_timer, jiffies + BR_MCAST_OFFLOAD_MAP_TIMER_INTVL);
 				spin_unlock_bh(&brmctx->br->multicast_lock);
 				return 0;
 			}
 			break;
 #if IS_ENABLED(CONFIG_IPV6)
 		case htons(ETH_P_IPV6):
-			if ((tmp->vid == vid) &&
-			    ipv6_addr_equal(&tmp->addr.in6, &host->src.ip6) &&
+			if (ipv6_addr_equal(&tmp->addr.in6, &host->src.ip6) &&
+			    (tmp->vid == vid) &&
 			    (tmp->ifindex == ifindex)) {
-				/* Entry exists - restart the timer */
-				mod_timer(&tmp->timer,
-					  jiffies + br_multicast_gmi(brmctx));
+				/* Entry exists - update the entry time */
+				tmp->time = jiffies;
+				if (!timer_pending(&brmctx->ip_mac_map_timer))
+					mod_timer(&brmctx->ip_mac_map_timer, jiffies + BR_MCAST_OFFLOAD_MAP_TIMER_INTVL);
 				spin_unlock_bh(&brmctx->br->multicast_lock);
 				return 0;
 			}
@@ -1142,8 +1160,9 @@ int br_mcast_offload_map_add(struct net_bridge_mcast *brmctx,
 	ip_mac_entry->brmctx = brmctx;
 	ip_mac_entry->shared_mac = false;
 
-	timer_setup(&ip_mac_entry->timer, br_mcast_offload_map_timer, 0);
-	mod_timer(&ip_mac_entry->timer, jiffies + br_multicast_gmi(brmctx));
+	ip_mac_entry->time = jiffies;
+	if (!timer_pending(&brmctx->ip_mac_map_timer))
+		mod_timer(&brmctx->ip_mac_map_timer, jiffies + BR_MCAST_OFFLOAD_MAP_TIMER_INTVL);
 
 	hlist_add_head_rcu(&ip_mac_entry->hlist, &brmctx->ip_mac_map[hash]);
 
@@ -1184,8 +1203,8 @@ int br_mcast_offload_ip_map_lookup(struct net_bridge_mcast *brmctx,
 
 		switch (host->proto) {
 		case htons(ETH_P_IP):
-			if ((ip_mac_entry->vid == vid) &&
-			    (ip_mac_entry->addr.ip == host->src.ip4) &&
+			if ((ip_mac_entry->addr.ip == host->src.ip4) &&
+			    (ip_mac_entry->vid == vid) &&
 			    (ip_mac_entry->ifindex == ifindex)) {
 				ether_addr_copy(mac_out, ip_mac_entry->mac);
 				*shared_mac = ip_mac_entry->shared_mac;
@@ -1195,8 +1214,8 @@ int br_mcast_offload_ip_map_lookup(struct net_bridge_mcast *brmctx,
 			break;
 #if IS_ENABLED(CONFIG_IPV6)
 		case htons(ETH_P_IPV6):
-			if ((ip_mac_entry->vid == vid) &&
-			    ipv6_addr_equal(&ip_mac_entry->addr.in6, &host->src.ip6) &&
+			if (ipv6_addr_equal(&ip_mac_entry->addr.in6, &host->src.ip6) &&
+			    (ip_mac_entry->vid == vid) &&
 			    (ip_mac_entry->ifindex == ifindex)) {
 				ether_addr_copy(mac_out, ip_mac_entry->mac);
 				*shared_mac = ip_mac_entry->shared_mac;
@@ -1220,8 +1239,6 @@ exit:
  */
 void br_mcast_offload_get_br_ip(const struct sk_buff *skb, struct br_ip *host)
 {
-	memset(host, 0, sizeof(*host));
-
 	if (skb->protocol == htons(ETH_P_IP)) {
 		host->proto = htons(ETH_P_IP);
 		host->src.ip4 = ip_hdr(skb)->saddr;
@@ -1232,6 +1249,31 @@ void br_mcast_offload_get_br_ip(const struct sk_buff *skb, struct br_ip *host)
 		host->src.ip6 = ipv6_hdr(skb)->saddr;
 	}
 #endif
+}
+
+/*
+ * br_mcast_offload_map_add
+ *	Host ip and mac address mapping
+ */
+void br_mcast_offload_map_add(struct net_bridge_mcast_port *pmctx, struct net_bridge_mcast *brmctx,
+		struct sk_buff *skb,
+		const unsigned char *mac,
+		uint16_t vid)
+{
+	struct net_bridge *br = brmctx->br;
+	struct br_ip host = {0};
+	int ifindex, ret = 0;
+
+	if ((pmctx) && (pmctx->port->flags & BR_MCAST_MCUC_HW_OFFLOAD)) {
+		ifindex = pmctx->port->dev->ifindex;
+		br_mcast_offload_get_br_ip(skb, &host);
+		ret = br_mcast_offload_ip_mac_map_add(&br->multicast_ctx, &host, mac, ifindex, vid);
+		if (ret) {
+			pr_debug("br_mcast_offload: Failed to add IP-MAC mapping: %d\n", ret);
+		}
+	}
+
+	return;
 }
 
 /*
@@ -1250,47 +1292,21 @@ void br_mcast_offload_free_entry(struct net_bridge_ip_to_mac *entry)
 void br_mcast_offload_cleanup_map(struct net_bridge_mcast *brmctx)
 {
 	struct net_bridge_ip_to_mac *ip_mac_entry;
+	struct hlist_node *tmp;
 	unsigned int i;
 
+	timer_shutdown_sync(&brmctx->ip_mac_map_timer);
+
+	spin_lock_bh(&brmctx->br->multicast_lock);
+
 	for (i = 0; i < BR_IP_MAC_HASH_SIZE; i++) {
-next:
-		spin_lock_bh(&brmctx->br->multicast_lock);
-
-		/* Always take the first entry in the bucket */
-		ip_mac_entry = hlist_entry_safe(
-				brmctx->ip_mac_map[i].first,
-				struct net_bridge_ip_to_mac, hlist);
-
-		if (ip_mac_entry) {
-			/*
-			 * Remove from hash FIRST while holding lock.
-			 * This makes hlist_unhashed() return true,
-			 * so timer callback will early-return safely.
-			 */
+		hlist_for_each_entry_safe(ip_mac_entry, tmp, &brmctx->ip_mac_map[i], hlist) {
 			hlist_del_init_rcu(&ip_mac_entry->hlist);
-			spin_unlock_bh(&brmctx->br->multicast_lock);
-
-			/*
-			 * Shutdown timer without lock.
-			 * Timer callback can no longer access this entry
-			 * because hlist_unhashed() now returns true.
-			 */
-			timer_shutdown_sync(&ip_mac_entry->timer);
-
-			/*
-			 * Schedule RCU cleanup via offload helper.
-			 * Safe because timer is dead and entry is unhashed.
-			 */
 			br_mcast_offload_free_entry(ip_mac_entry);
-
-			/*
-			 * Process next entry in this bucket
-			 */
-			goto next;
 		}
-
-		spin_unlock_bh(&brmctx->br->multicast_lock);
 	}
+
+	spin_unlock_bh(&brmctx->br->multicast_lock);
 }
 
 /*
@@ -1321,6 +1337,7 @@ void br_mcast_offload_init_map(struct net_bridge_mcast *brmctx)
 	for (i = 0; i < BR_IP_MAC_HASH_SIZE; i++) {
 		INIT_HLIST_HEAD(&brmctx->ip_mac_map[i]);
 	}
+	timer_setup(&brmctx->ip_mac_map_timer, br_mcast_offload_map_timer, 0);
 }
 
 /*
@@ -1958,6 +1975,23 @@ bool br_mcast_rule_check_ip6(struct net_bridge *br, const struct in6_addr *group
 	return hit;
 }
 #endif
+
+bool br_mcast_offload_should_force_flood(struct net_bridge *br, struct sk_buff *skb, struct net_bridge_mdb_entry *mdst)
+{
+	if (!mdst) {
+		if (skb->protocol == htons(ETH_P_IP)) {
+			if (br_mcast_rule_check_ip4(br, ip_hdr(skb)->daddr))
+				return true;
+#if IS_ENABLED(CONFIG_IPV6)
+		} else if (skb->protocol == htons(ETH_P_IPV6)) {
+			if (br_mcast_rule_check_ip6(br, &ipv6_hdr(skb)->daddr))
+				return true;
+#endif
+		}
+	}
+
+	return false;
+}
 
 int br_mcast_rule_add(struct net_bridge *br, __be16 proto,
 		      const void *group, size_t len, u8 action)
