@@ -351,6 +351,38 @@
 	status = "okay";
 };
 
+&pcie0 {
+	qcom,emulation;
+	max-link-speed = <1>;
+	phys = <>;
+	phy-names = "";
+	perst-gpio = <&tlmm 25 GPIO_ACTIVE_LOW>;
+
+	pcie0_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
+&pcie1 {
+	qcom,emulation;
+	max-link-speed = <1>;
+	phys = <>;
+	phy-names = "";
+	perst-gpio = <&tlmm 28 GPIO_ACTIVE_LOW>;
+
+	pcie1_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
 &qcn9625_pcie2 {
 	status = "okay";
 };
@@ -361,6 +393,7 @@
 	link_retries_count = <400>;
 	phys = <>;
 	phy-names = "";
+	perst-gpio = <&tlmm 52 GPIO_ACTIVE_LOW>;
 	status = "okay";
 
 	pcie2_rp {
@@ -385,6 +418,38 @@
 					reg = <1>;
 				};
 			};
+		};
+	};
+};
+
+&pcie3 {
+	qcom,emulation;
+	max-link-speed = <1>;
+	phys = <>;
+	phy-names = "";
+	perst-gpio = <&tlmm 41 GPIO_ACTIVE_LOW>;
+
+	pcie3_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
+&pcie4 {
+	qcom,emulation;
+	max-link-speed = <1>;
+	phys = <>;
+	phy-names = "";
+	perst-gpio = <&tlmm 31 GPIO_ACTIVE_LOW>;
+
+	pcie4_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
 		};
 	};
 };
