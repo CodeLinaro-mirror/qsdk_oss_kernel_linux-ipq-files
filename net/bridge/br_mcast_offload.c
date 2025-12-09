@@ -32,6 +32,7 @@
 #include "br_private.h"
 #include "br_mcast_offload.h"
 #include <net/netlink.h>
+#include <net/rtnetlink.h>
 #include "br_private_mcast_eht.h"
 
 /*
@@ -1910,3 +1911,374 @@ unlock:
 	spin_unlock(&brmctx->br->multicast_lock);
 }
 #endif /* IS_ENABLED(CONFIG_IPV6) */
+
+static void br_mcast_rule_free_rcu(struct rcu_head *rcu)
+{
+	struct br_mcast_rule *r = container_of(rcu, struct br_mcast_rule, rcu);
+
+	kfree(r);
+}
+
+bool br_mcast_rule_check_ip4(struct net_bridge *br, __be32 group)
+{
+	struct br_mcast_rule *r;
+	bool hit = false;
+
+	rcu_read_lock();
+	hlist_for_each_entry_rcu(r, &br->mcast_rule_list, hnode) {
+		if (r->key.proto == htons(ETH_P_IP) &&
+		    r->key.dst.ip4 == group &&
+		    r->action == 1) {
+			hit = true;
+			break;
+		}
+	}
+	rcu_read_unlock();
+
+	return hit;
+}
+
+#if IS_ENABLED(CONFIG_IPV6)
+bool br_mcast_rule_check_ip6(struct net_bridge *br, const struct in6_addr *group)
+{
+	struct br_mcast_rule *r;
+	bool hit = false;
+
+	rcu_read_lock();
+	hlist_for_each_entry_rcu(r, &br->mcast_rule_list, hnode) {
+		if (r->key.proto == htons(ETH_P_IPV6) &&
+		    ipv6_addr_equal(&r->key.dst.ip6, group) &&
+		    r->action == 1) {
+			hit = true;
+			break;
+		}
+	}
+	rcu_read_unlock();
+
+	return hit;
+}
+#endif
+
+int br_mcast_rule_add(struct net_bridge *br, __be16 proto,
+		      const void *group, size_t len, u8 action)
+{
+	struct br_mcast_rule *r, *iter;
+	int ret = 0;
+
+	if (action != 1)
+		return -EOPNOTSUPP;
+
+	/*
+	 * Validate protocol and group length prior to allocation to avoid leaks
+	 */
+	if (proto == htons(ETH_P_IP)) {
+		if (len != sizeof(__be32))
+			return -EINVAL;
+#if IS_ENABLED(CONFIG_IPV6)
+	} else if (proto == htons(ETH_P_IPV6)) {
+		if (len != sizeof(struct in6_addr))
+			return -EINVAL;
+#endif
+	} else {
+		return -EINVAL;
+	}
+
+	spin_lock_bh(&br->multicast_lock);
+
+	hlist_for_each_entry(iter, &br->mcast_rule_list, hnode) {
+		if (iter->key.proto != proto)
+			continue;
+
+		if (proto == htons(ETH_P_IP)) {
+			if (len == sizeof(__be32) &&
+			    iter->key.dst.ip4 == *(__be32 *)group) {
+				iter->action = action;
+				goto out_unlock;
+			}
+		}
+#if IS_ENABLED(CONFIG_IPV6)
+		else if (proto == htons(ETH_P_IPV6)) {
+			if (len == sizeof(struct in6_addr) &&
+			    ipv6_addr_equal(&iter->key.dst.ip6,
+					    (const struct in6_addr *)group)) {
+				iter->action = action;
+				goto out_unlock;
+			}
+		}
+#endif
+	}
+
+	r = kzalloc(sizeof(*r), GFP_ATOMIC);
+	if (!r) {
+		ret = -ENOMEM;
+		goto out_unlock;
+	}
+
+	r->key.proto = proto;
+	if (proto == htons(ETH_P_IP) && len == sizeof(__be32)) {
+		r->key.dst.ip4 = *(__be32 *)group;
+#if IS_ENABLED(CONFIG_IPV6)
+	} else if (proto == htons(ETH_P_IPV6) &&
+		   len == sizeof(struct in6_addr)) {
+		r->key.dst.ip6 = *(const struct in6_addr *)group;
+#endif
+	} else {
+		kfree(r);
+		ret = -EINVAL;
+		goto out_unlock;
+	}
+
+	r->action = action;
+	hlist_add_head_rcu(&r->hnode, &br->mcast_rule_list);
+
+out_unlock:
+	spin_unlock_bh(&br->multicast_lock);
+	return ret;
+}
+
+int br_mcast_rule_del(struct net_bridge *br, __be16 proto,
+		      const void *group, size_t len)
+{
+	struct br_mcast_rule *iter;
+	int ret = -ENOENT;
+
+	spin_lock_bh(&br->multicast_lock);
+
+	hlist_for_each_entry(iter, &br->mcast_rule_list, hnode) {
+		if (iter->key.proto != proto)
+			continue;
+
+		if (proto == htons(ETH_P_IP)) {
+			if (len == sizeof(__be32) &&
+			    iter->key.dst.ip4 == *(__be32 *)group) {
+				hlist_del_rcu(&iter->hnode);
+				call_rcu(&iter->rcu, br_mcast_rule_free_rcu);
+				ret = 0;
+				break;
+			}
+		}
+#if IS_ENABLED(CONFIG_IPV6)
+		else if (proto == htons(ETH_P_IPV6)) {
+			if (len == sizeof(struct in6_addr) &&
+			    ipv6_addr_equal(&iter->key.dst.ip6,
+					    (const struct in6_addr *)group)) {
+				hlist_del_rcu(&iter->hnode);
+				call_rcu(&iter->rcu, br_mcast_rule_free_rcu);
+				ret = 0;
+				break;
+			}
+		}
+#endif
+	}
+
+	spin_unlock_bh(&br->multicast_lock);
+	return ret;
+}
+
+void br_mcast_rule_flush(struct net_bridge *br)
+{
+	struct br_mcast_rule *r;
+	struct hlist_node *tmp;
+
+	spin_lock_bh(&br->multicast_lock);
+	hlist_for_each_entry_safe(r, tmp, &br->mcast_rule_list, hnode) {
+		hlist_del_rcu(&r->hnode);
+		call_rcu(&r->rcu, br_mcast_rule_free_rcu);
+	}
+	spin_unlock_bh(&br->multicast_lock);
+}
+
+int br_mcastrule_dump(struct sk_buff *skb, struct netlink_callback *cb)
+{
+	struct br_mcast_rule_msg *msg;
+	struct net_device *dev;
+	struct net_bridge *br;
+	struct br_mcast_rule *r;
+	__be16 proto;
+	int idx = 0, s_idx = cb->args[0];
+	int err = 0;
+	struct nlmsghdr *nlh = NULL;
+	struct nlattr *nest = NULL;
+
+	if (cb->nlh->nlmsg_len < NLMSG_HDRLEN + sizeof(*msg))
+		return -EINVAL;
+
+	msg = nlmsg_data(cb->nlh);
+
+	switch (msg->family) {
+	case AF_INET:
+		proto = htons(ETH_P_IP);
+		break;
+#if IS_ENABLED(CONFIG_IPV6)
+	case AF_INET6:
+		proto = htons(ETH_P_IPV6);
+		break;
+#endif
+	case AF_UNSPEC:
+		/* Dump all protocols when family is unspecified */
+		proto = 0;
+		break;
+	case AF_BRIDGE:
+		/* iproute2 'bridge mcast-rule show' uses AF_BRIDGE/PF_BRIDGE here */
+		proto = 0;
+		break;
+	default:
+		return -EAFNOSUPPORT;
+	}
+
+	{
+		struct net *net = sock_net(cb->skb->sk);
+
+		if (msg->ifindex) {
+			/* Single device specified */
+			dev = __dev_get_by_index(net, msg->ifindex);
+			if (!dev)
+				return -ENODEV;
+			if (!netif_is_bridge_master(dev))
+				return -EINVAL;
+
+			br = netdev_priv(dev);
+
+			rcu_read_lock();
+			hlist_for_each_entry_rcu(r, &br->mcast_rule_list, hnode) {
+				struct br_mcast_rule_msg *out;
+
+				/* If proto filter is set, skip non-matching entries */
+				if (proto && r->key.proto != proto)
+					continue;
+
+				if (idx++ < s_idx)
+					continue;
+
+				nlh = nlmsg_put(skb, NETLINK_CB(cb->skb).portid,
+						cb->nlh->nlmsg_seq, cb->nlh->nlmsg_type,
+						sizeof(*out), NLM_F_MULTI);
+				if (!nlh) {
+					err = -EMSGSIZE;
+					break;
+				}
+
+				out = nlmsg_data(nlh);
+				memset(out, 0, sizeof(*out));
+				/* Report family per entry when dumping all */
+				if (r->key.proto == htons(ETH_P_IP))
+					out->family = AF_INET;
+#if IS_ENABLED(CONFIG_IPV6)
+				else if (r->key.proto == htons(ETH_P_IPV6))
+					out->family = AF_INET6;
+#endif
+				else
+					out->family = msg->family;
+				out->ifindex = dev->ifindex;
+
+				nest = nla_nest_start_noflag(skb, BR_MCASTRULE_ENTRY);
+				if (!nest)
+					goto nla_err;
+
+				if (r->key.proto == htons(ETH_P_IP)) {
+					if (nla_put(skb, BR_MCASTRULE_ENTRY_GROUP,
+						    sizeof(__be32), &r->key.dst.ip4))
+						goto nla_err;
+#if IS_ENABLED(CONFIG_IPV6)
+				} else if (r->key.proto == htons(ETH_P_IPV6)) {
+					if (nla_put(skb, BR_MCASTRULE_ENTRY_GROUP,
+						    sizeof(struct in6_addr), &r->key.dst.ip6))
+						goto nla_err;
+#endif
+				} else {
+					goto nla_err;
+				}
+
+				if (nla_put_u8(skb, BR_MCASTRULE_ENTRY_ACTION, r->action))
+					goto nla_err;
+
+				nla_nest_end(skb, nest);
+				nlmsg_end(skb, nlh);
+			}
+			rcu_read_unlock();
+		} else {
+			/* No device specified: iterate all bridge masters in netns */
+			for_each_netdev(net, dev) {
+				struct net_bridge *iter_br;
+
+				if (!netif_is_bridge_master(dev))
+					continue;
+
+				iter_br = netdev_priv(dev);
+
+				rcu_read_lock();
+				hlist_for_each_entry_rcu(r, &iter_br->mcast_rule_list, hnode) {
+					struct br_mcast_rule_msg *out;
+
+					/* If proto filter is set, skip non-matching entries */
+					if (proto && r->key.proto != proto)
+						continue;
+
+					if (idx++ < s_idx)
+						continue;
+
+					nlh = nlmsg_put(skb, NETLINK_CB(cb->skb).portid,
+							cb->nlh->nlmsg_seq, cb->nlh->nlmsg_type,
+							sizeof(*out), NLM_F_MULTI);
+					if (!nlh) {
+						err = -EMSGSIZE;
+						rcu_read_unlock();
+						goto done_devices;
+					}
+
+					out = nlmsg_data(nlh);
+					memset(out, 0, sizeof(*out));
+					/* Report family per entry when dumping all */
+					if (r->key.proto == htons(ETH_P_IP))
+						out->family = AF_INET;
+#if IS_ENABLED(CONFIG_IPV6)
+					else if (r->key.proto == htons(ETH_P_IPV6))
+						out->family = AF_INET6;
+#endif
+					else
+						out->family = msg->family;
+					out->ifindex = dev->ifindex;
+
+					nest = nla_nest_start_noflag(skb, BR_MCASTRULE_ENTRY);
+					if (!nest)
+						goto nla_err;
+
+					if (r->key.proto == htons(ETH_P_IP)) {
+						if (nla_put(skb, BR_MCASTRULE_ENTRY_GROUP,
+							    sizeof(__be32), &r->key.dst.ip4))
+							goto nla_err;
+#if IS_ENABLED(CONFIG_IPV6)
+					} else if (r->key.proto == htons(ETH_P_IPV6)) {
+						if (nla_put(skb, BR_MCASTRULE_ENTRY_GROUP,
+							    sizeof(struct in6_addr), &r->key.dst.ip6))
+							goto nla_err;
+#endif
+					} else {
+						goto nla_err;
+					}
+
+					if (nla_put_u8(skb, BR_MCASTRULE_ENTRY_ACTION, r->action))
+						goto nla_err;
+
+					nla_nest_end(skb, nest);
+					nlmsg_end(skb, nlh);
+				}
+				rcu_read_unlock();
+			}
+done_devices:
+			;
+		}
+	}
+
+	cb->args[0] = idx;
+
+	return err;
+
+nla_err:
+	if (nest)
+		nla_nest_cancel(skb, nest);
+	if (nlh)
+		nlmsg_cancel(skb, nlh);
+	rcu_read_unlock();
+	return -EMSGSIZE;
+}

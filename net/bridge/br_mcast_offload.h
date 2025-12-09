@@ -24,6 +24,9 @@
 #include "br_private.h"
 #include "br_private_mcast_eht.h"
 
+/* fwd decl for netlink dump callback */
+struct netlink_callback;
+
 /*
  * Hash size for IP->MAC map buckets
  */
@@ -172,5 +175,19 @@ void br_mcast_offload_handle_mldv1_leave(struct net_bridge_mcast *brmctx,
 					 __u16 vid,
 					 const unsigned char *src);
 #endif
+
+/* Multicast rule helper prototypes */
+bool br_mcast_rule_check_ip4(struct net_bridge *br, __be32 group);
+#if IS_ENABLED(CONFIG_IPV6)
+bool br_mcast_rule_check_ip6(struct net_bridge *br, const struct in6_addr *group);
+#endif
+int br_mcast_rule_add(struct net_bridge *br, __be16 proto,
+		      const void *group, size_t len, u8 action);
+int br_mcast_rule_del(struct net_bridge *br, __be16 proto,
+		      const void *group, size_t len);
+void br_mcast_rule_flush(struct net_bridge *br);
+
+/* mcast-rule dump (RTM_GETMCASTRULE) */
+int br_mcastrule_dump(struct sk_buff *skb, struct netlink_callback *cb);
 
 #endif /* _BR_MCAST_OFFLOAD_H */
