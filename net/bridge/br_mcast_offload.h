@@ -22,6 +22,7 @@
 #include <linux/netdevice.h>
 #include <linux/netfilter.h>
 #include "br_private.h"
+#include "br_private_mcast_eht.h"
 
 /*
  * Hash size for IP->MAC map buckets
@@ -46,6 +47,27 @@ struct net_bridge_ip_to_mac {
 	struct rcu_head rcu;
 };
 
+/* Snapshot structures for EHT data collection */
+struct eht_src_entry_snapshot {
+	union net_bridge_eht_addr	src_addr;
+	unsigned long			timer_val;
+};
+
+struct eht_host_snapshot {
+	union net_bridge_eht_addr	h_addr;
+	u8				filter_mode;
+	u32				num_entries;
+	struct eht_src_entry_snapshot	*src_entries;
+	unsigned char			mac_addr[ETH_ALEN];
+	bool				mac_valid;
+};
+
+struct eht_snapshot {
+	struct eht_host_snapshot	*hosts;
+	u32				num_hosts;
+	__be16				proto;
+};
+
 int br_mcast_offload_map_add(struct net_bridge_mcast *brmctx,
 			     const struct br_ip *host,
 			     const unsigned char *mac,
@@ -68,5 +90,11 @@ bool br_mcast_offload_ip6_should_snoop_group(const struct net_bridge_mcast *brmc
 bool br_mcast_offload_ip6_should_mark_mrouters_only(const struct net_bridge_mcast *brmctx,
 						    const struct in6_addr *dst);
 #endif
+
+struct eht_snapshot *br_mcast_offload_eht_collect_snapshot(struct net_bridge_port_group *pg,
+							   __be16 proto);
+void br_mcast_offload_eht_snapshot_free(struct eht_snapshot *snapshot);
+int br_mcast_offload_mdb_fill_eht_hosts_from_snapshot(struct sk_buff *skb,
+						      struct eht_snapshot *snapshot);
 
 #endif /* _BR_MCAST_OFFLOAD_H */

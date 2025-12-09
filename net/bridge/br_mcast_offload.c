@@ -27,6 +27,268 @@
 
 #include "br_private.h"
 #include "br_mcast_offload.h"
+#include <net/netlink.h>
+#include "br_private_mcast_eht.h"
+
+/*
+ * br_mcast_offload_eht_snapshot_free
+ *     API to free the EHT snapshot
+ */
+void br_mcast_offload_eht_snapshot_free(struct eht_snapshot *snapshot)
+{
+	u32 i;
+
+	if (!snapshot)
+		return;
+
+	if (snapshot->hosts) {
+		for (i = 0; i < snapshot->num_hosts; i++)
+			kfree(snapshot->hosts[i].src_entries);
+		kfree(snapshot->hosts);
+	}
+	kfree(snapshot);
+}
+
+/*
+ * br_mcast_offload_eht_collect_snapshot
+ *
+ *	Collect EHT snapshot in a single pass under spinlock.
+ * Counts, allocates, and copies data in one loop iteration.
+ */
+struct eht_snapshot *br_mcast_offload_eht_collect_snapshot(struct net_bridge_port_group *pg, __be16 proto)
+{
+	struct net_bridge *br = pg->key.port->br;
+	struct net_bridge_group_eht_host *eht_host;
+	struct net_bridge_group_eht_set_entry *set_h;
+	struct eht_host_snapshot *host_snap;
+	struct net_bridge_mcast *brmctx;
+	struct eht_snapshot *snapshot;
+	struct rb_node *node;
+	struct br_ip host_ip;
+	bool shared_mac;
+	u32 host_idx, src_idx;
+
+	spin_lock_bh(&br->multicast_lock);
+
+	if (RB_EMPTY_ROOT(&pg->eht_host_tree)) {
+		spin_unlock_bh(&br->multicast_lock);
+		return NULL;
+	}
+
+	snapshot = kzalloc(sizeof(*snapshot), GFP_ATOMIC);
+	if (!snapshot) {
+		spin_unlock_bh(&br->multicast_lock);
+		return NULL;
+	}
+
+	snapshot->proto = proto;
+	brmctx = &pg->key.port->br->multicast_ctx;
+
+	snapshot->num_hosts = 0;
+	for (node = rb_first(&pg->eht_host_tree); node; node = rb_next(node))
+		snapshot->num_hosts++;
+
+	if (!snapshot->num_hosts) {
+		spin_unlock_bh(&br->multicast_lock);
+		kfree(snapshot);
+		return NULL;
+	}
+
+	snapshot->hosts = kcalloc(snapshot->num_hosts,
+			sizeof(struct eht_host_snapshot),
+			GFP_ATOMIC);
+	if (!snapshot->hosts) {
+		spin_unlock_bh(&br->multicast_lock);
+		kfree(snapshot);
+		return NULL;
+	}
+
+	host_idx = 0;
+	for (node = rb_first(&pg->eht_host_tree); node; node = rb_next(node)) {
+		if (host_idx >= snapshot->num_hosts)
+			break;
+
+		eht_host = rb_entry(node, struct net_bridge_group_eht_host,
+				rb_node);
+		host_snap = &snapshot->hosts[host_idx];
+
+		host_snap->h_addr = eht_host->h_addr;
+		host_snap->filter_mode = eht_host->filter_mode;
+		host_snap->num_entries = eht_host->num_entries;
+
+		if (host_snap->num_entries > 0) {
+			host_snap->src_entries =
+				kcalloc(host_snap->num_entries,
+						sizeof(struct eht_src_entry_snapshot),
+						GFP_ATOMIC);
+			if (!host_snap->src_entries) {
+				/*
+				 * Allocation failed. Cleanup to hosts initialized so far.
+				 */
+				snapshot->num_hosts = host_idx;
+				br_mcast_offload_eht_snapshot_free(snapshot);
+				spin_unlock_bh(&br->multicast_lock);
+				return NULL;
+			}
+
+			src_idx = 0;
+			hlist_for_each_entry(set_h, &eht_host->set_entries,
+					host_list) {
+				/*
+				 * Copy source entries, skipping 0.0.0.0 entries
+				 */
+				if (proto == htons(ETH_P_IP) &&
+				    set_h->eht_set->src_addr.ip4 == 0)
+					continue;
+#if IS_ENABLED(CONFIG_IPV6)
+				if (proto == htons(ETH_P_IPV6) &&
+				    ipv6_addr_any(&set_h->eht_set->src_addr.ip6))
+					continue;
+#endif
+				if (src_idx >= host_snap->num_entries)
+					break;
+
+				host_snap->src_entries[src_idx].src_addr =
+					set_h->eht_set->src_addr;
+				host_snap->src_entries[src_idx].timer_val =
+					br_timer_value(&set_h->timer);
+				src_idx++;
+			}
+			host_snap->num_entries = src_idx;
+		}
+
+		memset(&host_ip, 0, sizeof(host_ip));
+		host_ip.proto = proto;
+		host_snap->mac_valid = false;
+
+		if (proto == htons(ETH_P_IP)) {
+			host_ip.src.ip4 = eht_host->h_addr.ip4;
+#if IS_ENABLED(CONFIG_IPV6)
+		} else if (proto == htons(ETH_P_IPV6)) {
+			host_ip.src.ip6 = eht_host->h_addr.ip6;
+#endif
+		}
+
+		if (proto == htons(ETH_P_IP) || proto == htons(ETH_P_IPV6)) {
+			if (!br_mcast_offload_ip_map_lookup(brmctx, &host_ip,
+						pg->key.port->dev->ifindex,
+						pg->key.addr.vid,
+						host_snap->mac_addr,
+						&shared_mac)) {
+				host_snap->mac_valid = true;
+			}
+		}
+
+		host_idx++;
+	}
+
+	spin_unlock_bh(&br->multicast_lock);
+
+	snapshot->num_hosts = host_idx;
+
+	if (!host_idx) {
+		br_mcast_offload_eht_snapshot_free(snapshot);
+		return NULL;
+	}
+
+	return snapshot;
+}
+
+/*
+ * br_mcast_offload_mdb_fill_eht_hosts_from_snapshot
+ *	Build netlink message from snapshot (no locks held)
+ */
+int br_mcast_offload_mdb_fill_eht_hosts_from_snapshot(struct sk_buff *skb,
+		struct eht_snapshot *snapshot)
+{
+	struct nlattr *nest, *host_nest, *src_nest, *src_entry_nest;
+	u32 i, j;
+	int addr_size;
+
+	if (!snapshot || !snapshot->num_hosts)
+		return 0;
+
+	switch (snapshot->proto) {
+	case htons(ETH_P_IP):
+		addr_size = sizeof(__be32);
+		break;
+#if IS_ENABLED(CONFIG_IPV6)
+	case htons(ETH_P_IPV6):
+		addr_size = sizeof(struct in6_addr);
+		break;
+#endif
+	default:
+		addr_size = ETH_ALEN;
+		break;
+	}
+
+	nest = nla_nest_start(skb, MDBA_MDB_EATTR_EHT_HOSTS);
+	if (!nest)
+		return -EMSGSIZE;
+
+	for (i = 0; i < snapshot->num_hosts; i++) {
+		struct eht_host_snapshot *host = &snapshot->hosts[i];
+
+		host_nest = nla_nest_start(skb, MDBA_MDB_EATTR_EHT_HOST_ENTRY);
+		if (!host_nest)
+			goto out_cancel;
+
+		if (nla_put(skb, MDBA_MDB_EATTR_EHT_HOST_IP_ADDR,
+					addr_size, &host->h_addr))
+			goto out_cancel_host;
+
+		if (nla_put_u8(skb, MDBA_MDB_EATTR_EHT_HOST_MODE,
+					host->filter_mode) ||
+				nla_put_u32(skb, MDBA_MDB_EATTR_EHT_HOST_NSRCS,
+					host->num_entries))
+			goto out_cancel_host;
+
+		if (host->mac_valid) {
+			if (nla_put(skb, MDBA_MDB_EATTR_EHT_HOST_MAC,
+						ETH_ALEN, host->mac_addr))
+				goto out_cancel_host;
+		}
+
+		if (host->num_entries && host->src_entries) {
+			src_nest = nla_nest_start(skb, MDBA_MDB_EATTR_EHT_HOST_SRCS);
+			if (!src_nest)
+				goto out_cancel_host;
+
+			for (j = 0; j < host->num_entries; j++) {
+				struct eht_src_entry_snapshot *src = &host->src_entries[j];
+
+				src_entry_nest = nla_nest_start(skb,
+						MDBA_MDB_EATTR_EHT_HOST_SRC_ENTRY);
+				if (!src_entry_nest)
+					goto out_cancel_src;
+
+				if (nla_put(skb, MDBA_MDB_EATTR_EHT_HOST_SRC_ADDR,
+							addr_size, &src->src_addr) ||
+						nla_put_u32(skb, MDBA_MDB_EATTR_EHT_HOST_SRC_TIMER,
+							src->timer_val)) {
+					goto out_cancel_src;
+				}
+
+				nla_nest_end(skb, src_entry_nest);
+			}
+
+			nla_nest_end(skb, src_nest);
+		}
+
+		nla_nest_end(skb, host_nest);
+	}
+
+	nla_nest_end(skb, nest);
+	return 0;
+
+out_cancel_src:
+	nla_nest_cancel(skb, src_nest);
+out_cancel_host:
+	nla_nest_cancel(skb, host_nest);
+out_cancel:
+	nla_nest_cancel(skb, nest);
+	return -EMSGSIZE;
+}
 
 #if IS_ENABLED(CONFIG_IPV6)
 /*
