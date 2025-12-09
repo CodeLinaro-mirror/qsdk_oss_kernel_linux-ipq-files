@@ -20,9 +20,11 @@
 #include <linux/slab.h>
 #include <linux/timer.h>
 #include <net/ip.h>
+#include <linux/igmp.h>
 #if IS_ENABLED(CONFIG_IPV6)
 #include <net/ipv6.h>
 #include <net/addrconf.h>
+#include <net/mld.h>
 #endif
 #include <linux/notifier.h>
 #include <linux/if_bridge.h>
@@ -1670,3 +1672,241 @@ void br_mcast_offload_send_event(void *port_data, void *host_addr, enum br_mcast
 
 	return;
 }
+
+int br_mcast_offload_handle_igmpv2_report(struct net_bridge_mcast *brmctx,
+					  struct net_bridge_mcast_port *pmctx,
+					  struct sk_buff *skb,
+					  u16 vid)
+{
+	struct net_bridge_mdb_entry *mdst;
+	struct net_bridge_port_group *pg;
+	const unsigned char *src;
+	struct igmphdr *ih;
+	struct br_ip br_group = {};
+	bool changed = false;
+	int err = 0;
+
+	if (!pmctx)
+		return 0;
+
+	ih = igmp_hdr(skb);
+	src = eth_hdr(skb)->h_source;
+
+	/* Add group via core helper to avoid duplicating join logic */
+	err = br_ip4_multicast_add_group(brmctx, pmctx, ih->group, vid, src, true);
+	if (err)
+		return err;
+
+	/* EHT-based processing for IGMPv2 semantics */
+	spin_lock(&brmctx->br->multicast_lock);
+	if (!br_multicast_ctx_should_use(brmctx, pmctx))
+		goto unlock;
+
+	memset(&br_group, 0, sizeof(br_group));
+	br_group.dst.ip4 = ih->group;
+	br_group.proto = htons(ETH_P_IP);
+	br_group.vid = vid;
+
+	mdst = br_mdb_ip_get(brmctx->br, &br_group);
+	if (!mdst)
+		goto unlock;
+
+	/* Inline match equivalent to br_port_group_equal */
+	for (pg = mlock_dereference(mdst->ports, brmctx->br);
+	     pg; pg = mlock_dereference(pg->next, brmctx->br)) {
+		if (pg->key.port != pmctx->port)
+			continue;
+		if (!(pmctx->port->flags & BR_MULTICAST_TO_UNICAST) ||
+		    ether_addr_equal(src, pg->eth_addr))
+			break;
+	}
+
+	if (!pg || (pg->flags & MDB_PG_FLAGS_PERMANENT))
+		goto unlock;
+
+	if (br_multicast_eht_handle(brmctx, pg, &ip_hdr(skb)->saddr, NULL, 0,
+				    sizeof(__be32), IGMPV3_MODE_IS_EXCLUDE))
+		changed = true;
+
+	if (changed)
+		br_mdb_notify(brmctx->br->dev, mdst, pg, RTM_NEWMDB);
+
+unlock:
+	spin_unlock(&brmctx->br->multicast_lock);
+	return err;
+}
+
+void br_mcast_offload_handle_igmpv2_leave(struct net_bridge_mcast *brmctx,
+					  struct net_bridge_mcast_port *pmctx,
+					  struct sk_buff *skb,
+					  __be32 group,
+					  __u16 vid,
+					  const unsigned char *src)
+{
+	struct net_bridge_mdb_entry *mdst;
+	struct net_bridge_port_group *pg;
+	struct br_ip br_group = {};
+	bool changed = false;
+
+	if (!pmctx)
+		return;
+
+	/* Use core leave helper to avoid duplicating leave logic */
+	br_ip4_multicast_leave_group(brmctx, pmctx, group, vid, src);
+
+	spin_lock(&brmctx->br->multicast_lock);
+	if (!br_multicast_ctx_should_use(brmctx, pmctx))
+		goto unlock;
+
+	memset(&br_group, 0, sizeof(br_group));
+	br_group.dst.ip4 = group;
+	br_group.proto = htons(ETH_P_IP);
+	br_group.vid = vid;
+
+	mdst = br_mdb_ip_get(brmctx->br, &br_group);
+	if (!mdst)
+		goto unlock;
+
+	for (pg = mlock_dereference(mdst->ports, brmctx->br);
+	     pg; pg = mlock_dereference(pg->next, brmctx->br)) {
+		if (pg->key.port != pmctx->port)
+			continue;
+		if (!(pmctx->port->flags & BR_MULTICAST_TO_UNICAST) ||
+		    ether_addr_equal(src, pg->eth_addr))
+			break;
+	}
+
+	if (!pg || (pg->flags & MDB_PG_FLAGS_PERMANENT))
+		goto unlock;
+
+	/* Simulate IGMPv3 CHANGE_TO_INCLUDE {} for IGMPv2 leave */
+	if (br_multicast_eht_handle(brmctx, pg, &ip_hdr(skb)->saddr, NULL, 0,
+				    sizeof(__be32), IGMPV3_CHANGE_TO_INCLUDE))
+		changed = true;
+
+	if (changed)
+		br_mdb_notify(brmctx->br->dev, mdst, pg, RTM_NEWMDB);
+
+unlock:
+	spin_unlock(&brmctx->br->multicast_lock);
+}
+
+#if IS_ENABLED(CONFIG_IPV6)
+int br_mcast_offload_handle_mldv1_report(struct net_bridge_mcast *brmctx,
+					 struct net_bridge_mcast_port *pmctx,
+					 struct sk_buff *skb,
+					 u16 vid)
+{
+	struct net_bridge_mdb_entry *mdst;
+	struct net_bridge_port_group *pg;
+	const unsigned char *src;
+	struct mld_msg *mld;
+	struct br_ip br_group = {};
+	bool changed = false;
+	int err = 0;
+
+	if (!pmctx)
+		return 0;
+
+	mld = (struct mld_msg *)skb_transport_header(skb);
+	src = eth_hdr(skb)->h_source;
+
+	/* Add group via core helper to avoid duplicating join logic */
+	err = br_ip6_multicast_add_group(brmctx, pmctx, &mld->mld_mca, vid, src, true);
+	if (err)
+		return err;
+
+	spin_lock(&brmctx->br->multicast_lock);
+	if (!br_multicast_ctx_should_use(brmctx, pmctx))
+		goto unlock;
+
+	memset(&br_group, 0, sizeof(br_group));
+	br_group.dst.ip6 = mld->mld_mca;
+	br_group.proto = htons(ETH_P_IPV6);
+	br_group.vid = vid;
+
+	mdst = br_mdb_ip_get(brmctx->br, &br_group);
+	if (!mdst)
+		goto unlock;
+
+	for (pg = mlock_dereference(mdst->ports, brmctx->br);
+	     pg; pg = mlock_dereference(pg->next, brmctx->br)) {
+		if (pg->key.port != pmctx->port)
+			continue;
+		if (!(pmctx->port->flags & BR_MULTICAST_TO_UNICAST) ||
+		    ether_addr_equal(src, pg->eth_addr))
+			break;
+	}
+
+	if (!pg || (pg->flags & MDB_PG_FLAGS_PERMANENT))
+		goto unlock;
+
+	if (br_multicast_eht_handle(brmctx, pg, &ipv6_hdr(skb)->saddr, NULL, 0,
+				    sizeof(struct in6_addr),
+				    MLD2_MODE_IS_EXCLUDE))
+		changed = true;
+
+	if (changed)
+		br_mdb_notify(brmctx->br->dev, mdst, pg, RTM_NEWMDB);
+
+unlock:
+	spin_unlock(&brmctx->br->multicast_lock);
+	return 0;
+}
+
+void br_mcast_offload_handle_mldv1_leave(struct net_bridge_mcast *brmctx,
+					 struct net_bridge_mcast_port *pmctx,
+					 struct sk_buff *skb,
+					 const struct in6_addr *group,
+					 __u16 vid,
+					 const unsigned char *src)
+{
+	struct net_bridge_mdb_entry *mdst;
+	struct net_bridge_port_group *pg;
+	struct br_ip br_group = {};
+	bool changed = false;
+
+	if (!pmctx)
+		return;
+
+	/* Use core leave helper to avoid duplicating leave logic */
+	br_ip6_multicast_leave_group(brmctx, pmctx, group, vid, src);
+
+	spin_lock(&brmctx->br->multicast_lock);
+	if (!br_multicast_ctx_should_use(brmctx, pmctx))
+		goto unlock;
+
+	memset(&br_group, 0, sizeof(br_group));
+	br_group.dst.ip6 = *group;
+	br_group.proto = htons(ETH_P_IPV6);
+	br_group.vid = vid;
+
+	mdst = br_mdb_ip_get(brmctx->br, &br_group);
+	if (!mdst)
+		goto unlock;
+
+	for (pg = mlock_dereference(mdst->ports, brmctx->br);
+	     pg; pg = mlock_dereference(pg->next, brmctx->br)) {
+		if (pg->key.port != pmctx->port)
+			continue;
+		if (!(pmctx->port->flags & BR_MULTICAST_TO_UNICAST) ||
+		    ether_addr_equal(src, pg->eth_addr))
+			break;
+	}
+
+	if (!pg || (pg->flags & MDB_PG_FLAGS_PERMANENT))
+		goto unlock;
+
+	/* Simulate MLDv2 CHANGE_TO_INCLUDE {} for MLDv1 leave */
+	if (br_multicast_eht_handle(brmctx, pg, &ipv6_hdr(skb)->saddr, NULL, 0,
+				    sizeof(struct in6_addr),
+				    MLD2_CHANGE_TO_INCLUDE))
+		changed = true;
+
+	if (changed)
+		br_mdb_notify(brmctx->br->dev, mdst, pg, RTM_NEWMDB);
+
+unlock:
+	spin_unlock(&brmctx->br->multicast_lock);
+}
+#endif /* IS_ENABLED(CONFIG_IPV6) */
