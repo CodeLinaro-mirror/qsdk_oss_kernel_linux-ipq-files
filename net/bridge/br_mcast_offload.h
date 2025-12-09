@@ -31,6 +31,11 @@
 #define BR_IP_MAC_HASH_SIZE 256
 #endif
 
+/* Hash table for shared MAC states */
+#ifndef BR_SHARED_MAC_STATE_HASH_SIZE
+#define BR_SHARED_MAC_STATE_HASH_SIZE 64
+#endif
+
 /*
  * Per-host IP->MAC mapping entry for multicast MCUC offload
  */
@@ -68,6 +73,38 @@ struct eht_snapshot {
 	__be16				proto;
 };
 
+ /*
+ * Consolidated state for a shared MAC address
+ * Tracks the last notified state to detect changes
+ */
+struct br_mcast_shared_mac_state {
+	struct hlist_node hlist;
+	unsigned char mac[ETH_ALEN];
+	__be16 proto;
+	union nf_inet_addr grp_ip;
+	uint16_t vid;
+	uint32_t ifindex;
+
+	/* Consolidated state */
+	enum br_mcast_filter filter_mode;
+	uint32_t src_cnt;
+	union nf_inet_addr src_list[BR_MCAST_SRC_ENT_LIMIT];
+
+	/* Reference counting */
+	uint32_t host_count;		/* Number of hosts sharing this MAC */
+	struct rcu_head rcu;
+};
+
+/*
+ * Capture the Host information from the
+ * corresponding EHT node.
+ */
+struct br_mcast_host_info {
+	enum br_mcast_filter filter_mode;
+	uint32_t src_cnt;
+	union nf_inet_addr src_list[BR_MCAST_SRC_ENT_LIMIT];
+};
+
 int br_mcast_offload_map_add(struct net_bridge_mcast *brmctx,
 			     const struct br_ip *host,
 			     const unsigned char *mac,
@@ -81,6 +118,9 @@ void br_mcast_offload_get_br_ip(const struct sk_buff *skb, struct br_ip *host);
 void br_mcast_offload_free_entry(struct net_bridge_ip_to_mac *entry);
 void br_mcast_offload_cleanup_map(struct net_bridge_mcast *brmctx);
 void br_mcast_offload_init_map(struct net_bridge_mcast *brmctx);
+void br_mcast_offload_cleanup_shared_mac_states(struct net_bridge_mcast *brmctx);
+void br_mcast_offload_init_shared_mac_states(struct net_bridge_mcast *brmctx);
+
 
 #if IS_ENABLED(CONFIG_IPV6)
 /* Wrapper API to decide whether to snoop a given IPv6 multicast group */
@@ -96,5 +136,17 @@ struct eht_snapshot *br_mcast_offload_eht_collect_snapshot(struct net_bridge_por
 void br_mcast_offload_eht_snapshot_free(struct eht_snapshot *snapshot);
 int br_mcast_offload_mdb_fill_eht_hosts_from_snapshot(struct sk_buff *skb,
 						      struct eht_snapshot *snapshot);
+
+/* MDB atomic notifier */
+void br_mcast_offload_mdb_register_notify(struct notifier_block *nb);
+void br_mcast_offload_mdb_unregister_notify(struct notifier_block *nb);
+int br_mcast_offload_mdb_send_event_notify(struct net_device *dev,
+			     struct net_bridge_mdb_entry *mp,
+			     int type);
+
+/* EHT event notifier and send event */
+void br_mcast_offload_event_notifier_register(struct notifier_block *nb);
+void br_mcast_offload_event_notifier_unregister(struct notifier_block *nb);
+void br_mcast_offload_send_event(void *port_data, void *host_addr, enum br_mcast_event_type event);
 
 #endif /* _BR_MCAST_OFFLOAD_H */
