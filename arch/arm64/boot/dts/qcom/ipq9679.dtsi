@@ -185,6 +185,7 @@
 		compatible = "arm,dsu-pmu";
 		interrupts = <GIC_SPI 50 IRQ_TYPE_EDGE_RISING>;
 		cpus = <&CPU0>, <&CPU1>, <&CPU2>, <&CPU3>, <&CPU4>;
+		status = "disabled";
 	};
 
 	psci {
