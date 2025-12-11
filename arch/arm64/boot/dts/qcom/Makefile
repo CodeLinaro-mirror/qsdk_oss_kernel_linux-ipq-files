@@ -63,6 +63,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-rdp433.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-rdp433-mht-phy.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-rdp433-mht-switch.dtb
 dtb-$(CONFIG_ARCH_QCOM) += ipq9574-rdp433-sfp.dtb
+dtb-$(CONFIG_ARCH_QCOM) += ipq9574-freedom.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-rdp437.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-rdp449.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-rdp453.dtb
