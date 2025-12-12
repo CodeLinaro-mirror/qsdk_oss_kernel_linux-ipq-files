@@ -57,6 +57,11 @@ u64 qcom_fpga_mem_read(u64 reg)
 	u64 base_addr, new_addr, val;
 	unsigned long flags;
 
+	if (!qcom_fpga_pci) {
+		pr_warn_once("qcom_fpga_mem_read: PCI device not initialized\n");
+		return ~0ULL;
+	}
+
 	spin_lock_irqsave(&pci_lock, flags);
 
 	new_addr = QCOM_GET_NEW_ADDR(reg);
@@ -83,6 +88,11 @@ void qcom_fpga_mem_write(u64 reg, u64 val)
 {
 	u64 base_addr, new_addr;
 	unsigned long flags;
+
+	if (!qcom_fpga_pci) {
+		pr_warn_once("qcom_fpga_mem_write: PCI device not initialized\n");
+		return;
+	}
 
 	spin_lock_irqsave(&pci_lock, flags);
 
@@ -257,11 +267,11 @@ static int fpga_pci_init(struct pci_dev *pdev, const struct pci_device_id *ent)
 	int  region, ret = 0;
 	void __iomem * const *iomap_table;
 
-	qcom_fpga_pci = kmalloc(sizeof(*qcom_fpga_pci), GFP_KERNEL);
-	if (!qcom_fpga_pci)
-		return -ENOMEM;
-
-	memset(qcom_fpga_pci, 0, sizeof(struct qcom_fpga_pci_priv));
+	qcom_fpga_pci = devm_kzalloc(&pdev->dev, sizeof(*qcom_fpga_pci), GFP_KERNEL);
+	if (!qcom_fpga_pci) {
+		ret = -ENOMEM;
+		goto err;
+	}
 
 	qcom_fpga_pci->pci_dev = pdev;
 
@@ -270,68 +280,72 @@ static int fpga_pci_init(struct pci_dev *pdev, const struct pci_device_id *ent)
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Failed to Enable PCI device Error:%d\n",
 			ret);
-		return ret;
+		goto err;
 	}
 
 	ret = pcim_set_mwi(pdev);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Mem-Wr-Inval unavailable Error:%d\n",
 			ret);
-		return ret;
+		goto err;
 	}
 
 	/* Use the first MMIO region */
 	region = ffs(pci_select_bars(pdev, IORESOURCE_MEM)) - 1;
 	if (region < 0) {
 		dev_err(&pdev->dev, "No MMIO resource found\n");
-		return -ENODEV;
+		ret = -ENODEV;
+		goto err;
 	}
 
 	/* Check for weird/broken PCI region reporting */
 	if (pci_resource_len(pdev, region) < 256) {
 		dev_err(&pdev->dev, "Invalid PCI region size(s), aborting\n");
-		return -ENODEV;
+		ret = -ENODEV;
+		goto err;
 	}
 
 	ret = pcim_iomap_regions(pdev, BIT(region), MODULENAME);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "cannot remap MMIO, aborting\n");
-		return ret;
+		goto err;
 	}
 
 	iomap_table = pcim_iomap_table(pdev);
 	if (!iomap_table) {
 		dev_err(&pdev->dev, "pci iomap allocation table failed\n");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err;
 	}
 
 	qcom_fpga_pci->mmio_addr_base = iomap_table[region];
 	if (!qcom_fpga_pci->mmio_addr_base) {
 		dev_err(&pdev->dev, "unable to map PCI I/O memory regions\n");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err;
 	}
 
 	pci_set_master(pdev);
 
 	qcom_memnoc_configuration(pdev);
 
-	return 0;
+	return ret;
+err:
+	qcom_fpga_pci = NULL;
+	return ret;
 }
 
 static void fpga_pci_remove(struct pci_dev *pdev)
 {
-	kfree(qcom_fpga_pci);
+	/* Memory allocated with devm_kmalloc is automatically freed */
 }
 
 static const struct pci_device_id fpga_pci_tbl[] = {
-	{QTI_FPGA_PON_VENDOR_ID, QTI_FPGA_PON_DEVICE_ID_1, PCI_ANY_ID,
-		PCI_ANY_ID},
-	{QTI_FPGA_PON_VENDOR_ID, QTI_FPGA_PON_DEVICE_ID_2, PCI_ANY_ID,
-		PCI_ANY_ID},
-	{QTI_FPGA_PON_VENDOR_ID, QTI_FPGA_PON_DEVICE_ID_3, PCI_ANY_ID,
-		PCI_ANY_ID},
-	{QTI_FPGA_PON_VENDOR_ID, QTI_FPGA_PON_DEVICE_ID_4, PCI_ANY_ID,
-		PCI_ANY_ID},
+	{ PCI_DEVICE(QTI_FPGA_PON_VENDOR_ID_1, QTI_FPGA_PON_DEVICE_ID_1) },
+	{ PCI_DEVICE(QTI_FPGA_PON_VENDOR_ID_1, QTI_FPGA_PON_DEVICE_ID_2) },
+	{ PCI_DEVICE(QTI_FPGA_PON_VENDOR_ID_1, QTI_FPGA_PON_DEVICE_ID_3) },
+	{ PCI_DEVICE(QTI_FPGA_PON_VENDOR_ID_1, QTI_FPGA_PON_DEVICE_ID_4) },
+	{ PCI_DEVICE(QTI_FPGA_PON_VENDOR_ID_2, QTI_FPGA_PON_DEVICE_ID_5) },
 	{}
 };
 
