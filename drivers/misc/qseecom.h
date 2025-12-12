@@ -566,6 +566,8 @@ struct qsee_ecdsa_verify {
 
 char message[MESSAGE_LEN];
 
+static dma_addr_t qsee_sbuffer_dma;
+static size_t qsee_sbuffer_size;
 static uint32_t qsee_app_id;
 static void *qsee_sbuffer;
 static unsigned long basic_output;

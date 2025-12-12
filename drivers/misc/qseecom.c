@@ -4524,14 +4524,16 @@ static int32_t copy_files(int *img_size)
 
 	if (mdt_file && seg_file) {
 		*img_size = mdt_size + seg_size;
+		qsee_sbuffer_size = *img_size;
 
-		qsee_sbuffer = kzalloc(*img_size, GFP_KERNEL);
+		qsee_sbuffer = dma_alloc_coherent(qdev, qsee_sbuffer_size,
+					&qsee_sbuffer_dma, GFP_KERNEL);
 		if (!qsee_sbuffer) {
-			pr_err("Error: qsee_sbuffer alloc failed\n");
+			pr_err("Error: dma_alloc_coherent failed\n");
 			return -ENOMEM;
 		}
-		buf = qsee_sbuffer;
 
+		buf = qsee_sbuffer;
 		memcpy(buf, mdt_file, mdt_size);
 		buf += mdt_size;
 		memcpy(buf, seg_file, seg_size);
@@ -4548,10 +4550,17 @@ static int load_request(struct device *dev, uint32_t smc_id,
 {
 	union qseecom_load_ireq load_req;
 	struct qseecom_command_scm_resp resp;
-	int ret, ret1;
+	int ret;
 	int img_size;
 
-	kfree(qsee_sbuffer);
+	if (qsee_sbuffer) {
+		dma_free_coherent(qdev, qsee_sbuffer_size,
+					qsee_sbuffer, qsee_sbuffer_dma);
+		qsee_sbuffer = NULL;
+		qsee_sbuffer_size = 0;
+		qsee_sbuffer_dma = 0;
+	}
+
 	ret = copy_files(&img_size);
 	if (ret) {
 		pr_err("Copying Files failed\n");
@@ -4562,21 +4571,12 @@ static int load_request(struct device *dev, uint32_t smc_id,
 
 	load_req.load_lib_req.mdt_len = mdt_size;
 	load_req.load_lib_req.img_len = img_size;
-	load_req.load_lib_req.phy_addr = dma_map_single(dev, qsee_sbuffer,
-						       img_size, DMA_TO_DEVICE);
-	ret1 = dma_mapping_error(dev, load_req.load_lib_req.phy_addr);
-	if (ret1 == 0) {
-		ret = qti_scm_qseecom_load(smc_id, cmd_id, &load_req,
-					   req_size, &resp, sizeof(resp));
-		dma_unmap_single(dev, load_req.load_lib_req.phy_addr,
-				img_size, DMA_TO_DEVICE);
-	}
-	if (ret1) {
-		pr_err("DMA Mapping error (qsee_sbuffer)\n");
-		return ret1;
-	}
+	load_req.load_lib_req.phy_addr = qsee_sbuffer_dma;
+
+	ret = qti_scm_qseecom_load(smc_id, cmd_id, &load_req,
+				req_size, &resp, sizeof(resp));
 	if (ret) {
-		pr_err("SCM_CALL to load app and services failed\n");
+		pr_err("SCM_CALL to load app & services failed ret=%d\n", ret);
 		return ret;
 	}
 
@@ -6705,7 +6705,12 @@ static int __exit qseecom_remove(struct platform_device *pdev)
 	if (props->function & AUTH_OTP)
 		kfree(auth_file);
 
-	kfree(qsee_sbuffer);
+	if (qsee_sbuffer && qsee_sbuffer_size > 0) {
+		dma_free_coherent(qdev, qsee_sbuffer_size, qsee_sbuffer, qsee_sbuffer_dma);
+		qsee_sbuffer = NULL;
+		qsee_sbuffer_size = 0;
+		qsee_sbuffer_dma = 0;
+	}
 
 	if (app_libs_state) {
 		if (unload_app_libs())
