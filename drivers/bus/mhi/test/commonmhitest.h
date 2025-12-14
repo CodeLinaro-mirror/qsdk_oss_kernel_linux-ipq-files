@@ -124,15 +124,16 @@ struct mhitest_ramdump_info {
 	struct mhitest_dump_data dump_data;
 };
 
-struct mhitest_dump_seg_list {
-	struct list_head node;
-	dma_addr_t da;
-	void *va;
-	size_t size;
-};
-
 struct mhitest_dump_desc {
 	void *data;
+	struct completion dump_done;
+};
+
+struct mhitest_pci_elf_coredump_state {
+	void *elf_hdr;
+	u32 elf_hdr_sz;
+	struct mhitest_dump_seg *chunks;
+	u32 num_chunks;
 	struct completion dump_done;
 };
 
@@ -201,7 +202,6 @@ int mhitest_pci_get_link_status(struct mhitest_platform *);
 int mhitest_prepare_pci_mhi_msi(struct mhitest_platform *);
 int mhitest_prepare_start_mhi(struct mhitest_platform *);
 int mhitest_dump_info(struct mhitest_platform *mplat, bool in_panic);
-int mhitest_dev_ramdump(struct mhitest_platform *mplat);
 int mhitest_post_event(struct mhitest_platform *,
 	struct mhitest_recovery_data *, enum mhitest_event_type, u32 flags);
 struct platform_device *get_plat_device(void);
