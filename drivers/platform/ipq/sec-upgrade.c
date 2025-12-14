@@ -971,9 +971,10 @@ store_sec_auth(struct device *dev,
 			remove_nand_preamble_n_magic_bytes(&data, &size);
 		}
 		if(is_compressed(data, &info)) {
-			out_data = kzalloc(info.memsize, GFP_KERNEL);
+			out_data = vzalloc(info.memsize);
 			if(!out_data) {
-				pr_err("%s: Memory allocation failed for out_data buffer\n", __func__);
+				pr_err("%s: Memory allocation failed for %#x bytes\n",
+				       __func__, info.memsize);
 				goto free_data;
 			}
 			if(!img_decompress(data + info.offset, info.filesz, out_data, &info)) {
@@ -1177,7 +1178,7 @@ hash_buf_alloc_err:
 	kfree(hash_file_buf);
 free_out_data:
 	if(out_data)
-		kfree(out_data);
+		vfree(out_data);
 free_data:
 	if (xbl_nand)
 		data -= NAND_PREAMBLE_SIZE;
