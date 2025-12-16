@@ -686,7 +686,6 @@
 		function = "gpio";
 		drive-strength = <8>;
 		bias-pull-up;
-		output-low;
 	};
 
 	i2c_1_pins: i2c-1-state {

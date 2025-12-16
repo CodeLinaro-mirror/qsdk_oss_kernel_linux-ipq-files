@@ -618,7 +618,6 @@
 		function = "gpio";
 		drive-strength = <8>;
 		bias-pull-down;
-		output-low;
 	};
 
 	pci2_pin: pci2-default-state {
@@ -626,7 +625,6 @@
 		function = "gpio";
 		drive-strength = <8>;
 		bias-pull-down;
-		output-low;
 	};
 
 	pci3_pin: pci3-default-state {
@@ -634,7 +632,6 @@
 		function = "gpio";
 		drive-strength = <8>;
 		bias-pull-up;
-		output-low;
 	};
 
 	i2c_3_pins: i2c-3-pins {

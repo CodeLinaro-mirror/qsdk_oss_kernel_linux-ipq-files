@@ -610,7 +610,6 @@
 			function = "gpio";
 			drive-strength = <8>;
 			bias-pull-up;
-			output-low;
 		};
 	};
 
@@ -620,7 +619,6 @@
 			function = "gpio";
 			drive-strength = <8>;
 			bias-pull-up;
-			output-low;
 		};
 	};
 
@@ -630,7 +628,6 @@
 			function = "gpio";
 			drive-strength = <8>;
 			bias-pull-up;
-			output-low;
 		};
 	};
 
@@ -640,7 +637,6 @@
 			function = "gpio";
 			drive-strength = <8>;
 			bias-pull-up;
-			output-low;
 		};
 	};
 
