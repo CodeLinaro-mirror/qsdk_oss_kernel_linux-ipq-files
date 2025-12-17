@@ -15,18 +15,33 @@
 
 #include <linux/qcom-fpga-pci.h>
 
+struct qcom_soc_reg_cfg {
+	u64 start;
+	u64 end;
+	u64 offset;
+};
+
 struct qcom_fpga_pci_priv {
 	void __iomem *mmio_addr_base;
 	struct pci_dev *pci_dev;
 	u64 last_prog_reg;
+	struct qcom_soc_reg_cfg *soc_cfg;
+	size_t soc_cfg_cnt;
+	bool use_soc_cfg;
 };
 
 static struct qcom_fpga_pci_priv *qcom_fpga_pci;
 static DEFINE_SPINLOCK(pci_lock);
+static DEFINE_MUTEX(init_lock);
 
 void qcom_program_window(u64 reg)
 {
 	int retry = 100000;
+
+	if (!qcom_fpga_pci) {
+		pr_warn_once("%s: PCI device not initialized\n", __func__);
+		return;
+	}
 
 	if (qcom_fpga_pci->last_prog_reg == reg)
 		return;
@@ -42,6 +57,93 @@ void qcom_program_window(u64 reg)
 	}
 
 	qcom_fpga_pci->last_prog_reg = reg;
+}
+
+static bool qcom_soc_cfg_translate(u64 reg, u64 *new_addr)
+{
+	size_t i;
+	u64 start, end, offset;
+
+	if (!qcom_fpga_pci) {
+		pr_warn_once("%s: PCI device not initialized\n", __func__);
+		return false;
+	}
+
+	for (i = 0; i < qcom_fpga_pci->soc_cfg_cnt; i++) {
+		start = qcom_fpga_pci->soc_cfg[i].start;
+		end = qcom_fpga_pci->soc_cfg[i].end;
+		offset = qcom_fpga_pci->soc_cfg[i].offset;
+
+		if (reg >= start && reg <= end) {
+			u64 reg_offset = reg - start;
+			/* Check for overflow before addition */
+			if (offset > (U64_MAX - reg_offset))
+				return false;
+			*new_addr = offset + reg_offset;
+			return true;
+		}
+	}
+	return false;
+}
+
+static void qcom_parse_soc_reg_config(struct device *dev)
+{
+	const __be32 *prop;
+	int len, i, cnt;
+
+	if (!qcom_fpga_pci) {
+		pr_warn_once("%s: PCI device not initialized\n", __func__);
+		return;
+	}
+
+	qcom_fpga_pci->use_soc_cfg = false;
+
+	prop = of_get_property(dev->of_node, "qcom,soc-reg-config", &len);
+	if (!prop)
+		return;
+
+	len /= sizeof(__be32);
+
+	if (len % 3) {
+		dev_err(dev, "Invalid qcom,soc-reg-config length\n");
+		return;
+	}
+
+	cnt = len / 3;
+
+	if (!qcom_fpga_pci->soc_cfg) {
+		qcom_fpga_pci->soc_cfg = devm_kmalloc_array(dev, cnt,
+							    sizeof(*qcom_fpga_pci->soc_cfg),
+							    GFP_KERNEL);
+		if (!qcom_fpga_pci->soc_cfg) {
+			dev_err(dev, "qcom_fpga_pci->soc_cfg memory allocation failed\n");
+			return;
+		}
+	}
+
+	qcom_fpga_pci->soc_cfg_cnt = cnt;
+
+	for (i = 0; i < cnt; i++) {
+		u64 start  = be32_to_cpup(&prop[i * 3]);
+		u64 size   = be32_to_cpup(&prop[i * 3 + 1]);
+		u64 offset = be32_to_cpup(&prop[i * 3 + 2]);
+
+		/* Check for overflow in end address calculation */
+		if (size == 0 || size > (U64_MAX - start)) {
+			dev_err(dev, "Invalid qcom,soc-reg-config: address range overflow\n");
+			devm_kfree(dev, qcom_fpga_pci->soc_cfg);
+			qcom_fpga_pci->soc_cfg = NULL;
+			qcom_fpga_pci->soc_cfg_cnt = 0;
+			qcom_fpga_pci->use_soc_cfg = false;
+			return;
+		}
+
+		qcom_fpga_pci->soc_cfg[i].start  = start;
+		qcom_fpga_pci->soc_cfg[i].end    = start + size;
+		qcom_fpga_pci->soc_cfg[i].offset = offset;
+	}
+
+	qcom_fpga_pci->use_soc_cfg = true;
 }
 
 /**
@@ -64,10 +166,17 @@ u64 qcom_fpga_mem_read(u64 reg)
 
 	spin_lock_irqsave(&pci_lock, flags);
 
-	new_addr = QCOM_GET_NEW_ADDR(reg);
-	base_addr = QCOM_GET_BASE_ADDR(reg);
-
-	qcom_program_window(base_addr);
+	if (qcom_fpga_pci->use_soc_cfg) {
+		if (!qcom_soc_cfg_translate(reg, &new_addr)) {
+			spin_unlock_irqrestore(&pci_lock, flags);
+			pr_warn_once("Register value is not within qcom,soc-reg-config range\n");
+			return ~0ULL;
+		}
+	} else {
+		new_addr = QCOM_GET_NEW_ADDR(reg);
+		base_addr = QCOM_GET_BASE_ADDR(reg);
+		qcom_program_window(base_addr);
+	}
 
 	val = readl(qcom_fpga_pci->mmio_addr_base + new_addr);
 
@@ -96,10 +205,17 @@ void qcom_fpga_mem_write(u64 reg, u64 val)
 
 	spin_lock_irqsave(&pci_lock, flags);
 
-	new_addr = QCOM_GET_NEW_ADDR(reg);
-	base_addr = QCOM_GET_BASE_ADDR(reg);
-
-	qcom_program_window(base_addr);
+	if (qcom_fpga_pci->use_soc_cfg) {
+		if (!qcom_soc_cfg_translate(reg, &new_addr)) {
+			spin_unlock_irqrestore(&pci_lock, flags);
+			pr_warn_once("Register value is not within qcom,soc-reg-config range\n");
+			return;
+		}
+	} else {
+		new_addr = QCOM_GET_NEW_ADDR(reg);
+		base_addr = QCOM_GET_BASE_ADDR(reg);
+		qcom_program_window(base_addr);
+	}
 
 	writel(val, qcom_fpga_pci->mmio_addr_base + new_addr);
 
@@ -235,12 +351,11 @@ static struct attribute *qcom_fpga_reg_wr_attrs[] = {
 
 ATTRIBUTE_GROUPS(qcom_fpga_reg_wr);
 
-static void qcom_memnoc_configuration(struct pci_dev *pdev)
+static void qcom_memnoc_configuration(struct device *dev)
 {
 	int len, i;
 	const __be32 *prop;
 	u32 addr, val;
-	struct device *dev = &pdev->dev;
 
 	prop = of_get_property(dev->of_node, "qcom,memnoc-config", &len);
 	if (!prop)
@@ -262,16 +377,54 @@ static void qcom_memnoc_configuration(struct pci_dev *pdev)
 	dev_info(dev, "MEMNOC configuration done");
 }
 
+struct device *get_pcie_controller_dev(struct pci_dev *pdev)
+{
+	struct pci_host_bridge *bridge;
+
+	if (!pdev || !pdev->bus)
+		return NULL;
+
+	bridge = pci_find_host_bridge(pdev->bus);
+	if (!bridge)
+		return NULL;
+
+	/*
+	 * Example sysfs path:
+	 * /sys/devices/platform/soc@0/28000000.pci/pci0000:00/0000:00:00.0/
+	 * 0000:01:00.0/fpga_reg_read
+	 *
+	 * In this hierarchy:
+	 *   - bridge->dev corresponds to "pci0000:00" (the PCI host bridge device)
+	 *   - Its parent is the platform device representing the PCIe controller ("28000000.pci")
+	 */
+
+	return bridge->dev.parent;
+}
+
 static int fpga_pci_init(struct pci_dev *pdev, const struct pci_device_id *ent)
 {
 	int  region, ret = 0;
 	void __iomem * const *iomap_table;
+	resource_size_t bar_phys;
+	resource_size_t bar_size;
+	struct device *dev;
+	struct qcom_fpga_pci_priv *priv;
 
-	qcom_fpga_pci = devm_kzalloc(&pdev->dev, sizeof(*qcom_fpga_pci), GFP_KERNEL);
-	if (!qcom_fpga_pci) {
+	mutex_lock(&init_lock);
+	if (qcom_fpga_pci) {
+		dev_err(&pdev->dev, "Driver already initialized\n");
+		mutex_unlock(&init_lock);
+		return -EBUSY;
+	}
+
+	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
+	if (!priv) {
 		ret = -ENOMEM;
+		mutex_unlock(&init_lock);
 		goto err;
 	}
+	qcom_fpga_pci = priv;
+	mutex_unlock(&init_lock);
 
 	qcom_fpga_pci->pci_dev = pdev;
 
@@ -327,7 +480,25 @@ static int fpga_pci_init(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	pci_set_master(pdev);
 
-	qcom_memnoc_configuration(pdev);
+	/* Get physical BAR base and size */
+	bar_phys = pci_resource_start(pdev, region);
+	bar_size = pci_resource_len(pdev, region);
+	dev_info(&pdev->dev, "BAR%u phys=%pa size=%pa vaddr=%p\n", region,
+		 &bar_phys, &bar_size, qcom_fpga_pci->mmio_addr_base);
+
+	dev = get_pcie_controller_dev(pdev);
+	if (!dev) {
+		pr_warn_once("%s: pcie controller dev is NULL\n", __func__);
+		ret = -ENXIO;
+		goto err;
+	}
+
+	if (of_property_read_bool(dev->of_node, "enable-soc-reg-config")) {
+		dev_info(&pdev->dev, "enable-soc-reg-config found");
+		qcom_parse_soc_reg_config(dev);
+	} else {
+		qcom_memnoc_configuration(dev);
+	}
 
 	return ret;
 err:
@@ -337,6 +508,9 @@ err:
 
 static void fpga_pci_remove(struct pci_dev *pdev)
 {
+	mutex_lock(&init_lock);
+	qcom_fpga_pci = NULL;
+	mutex_unlock(&init_lock);
 	/* Memory allocated with devm_kmalloc is automatically freed */
 }
 
