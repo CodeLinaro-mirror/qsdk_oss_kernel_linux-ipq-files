@@ -9,13 +9,21 @@
 #include <linux/debugfs.h>
 #include <linux/fs.h>
 #include <linux/slab.h>
+#include <linux/interrupt.h>
 #include <linux/io.h>
+#include <linux/irq.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/platform_device.h>
 #include <linux/mm.h>
 #include <linux/gfp.h>
 #include <linux/sizes.h>
+
+#define DEFAULT_PANIC	0x1
+
+static unsigned int paniconaccessviolation = DEFAULT_PANIC;
+module_param(paniconaccessviolation, uint, 0644);
+MODULE_PARM_DESC(paniconaccessviolation, "Panic on Access Violation detected: 0,1");
 
 #define DIAG_MAGIC 0x47414944  /* "DIAG" in hex */
 
@@ -217,6 +225,18 @@ static const struct file_operations fops_optee_log = {
 	.release = optee_log_release,
 };
 
+static irqreturn_t tfa_err_irq(int irq, void *data)
+{
+	if (paniconaccessviolation) {
+		panic("WARN: Access Violation!!!");
+	} else {
+		pr_emerg_ratelimited("WARN: Access Violation!!!, "
+			"Run \"cat /sys/kernel/debug/qti_debug_logs/tfa_log\" "
+			"for more details \n");
+	}
+	return IRQ_HANDLED;
+}
+
 static int get_diag_info_from_imem(struct platform_device *pdev,
 				   const char *phandle_name,
 				   phys_addr_t *addr, u32 *size)
@@ -256,6 +276,7 @@ static int tfa_optee_log_probe(struct platform_device *pdev)
 	phys_addr_t tfa_addr, optee_addr;
 	u32 tfa_size, optee_size;
 	int ret;
+	int irq;
 
 	log_data = devm_kzalloc(&pdev->dev, sizeof(struct tfa_optee_log_struct), GFP_KERNEL);
 	if (!log_data)
@@ -305,6 +326,14 @@ static int tfa_optee_log_probe(struct platform_device *pdev)
 	log_data->optee_copy_buf = devm_kzalloc(&pdev->dev, log_data->optee_buf_size, GFP_KERNEL);
 	if (!log_data->optee_copy_buf)
 		return -ENOMEM;
+
+	irq = platform_get_irq(pdev, 0);
+	if (irq > 0) {
+		ret = devm_request_irq(&pdev->dev, irq, tfa_err_irq,
+					IRQF_ONESHOT, "tfaerror", NULL);
+		if (ret < 0)
+			return dev_err_probe(&pdev->dev, ret, "failed to request interrupt\n");
+	}
 
 	mutex_init(&log_data->tfa_lock);
 	mutex_init(&log_data->optee_lock);

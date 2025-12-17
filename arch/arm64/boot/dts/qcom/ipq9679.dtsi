@@ -195,6 +195,7 @@
 
 	qti,tfa-optee-log {
 		compatible = "qti,tfa-optee-log";
+		interrupts = <GIC_SPI 56 IRQ_TYPE_EDGE_RISING>;
 		tfa-diag-info =<&tfa_diag_buf>;
 		optee-diag-info =<&optee_diag_buf>;
 	};
