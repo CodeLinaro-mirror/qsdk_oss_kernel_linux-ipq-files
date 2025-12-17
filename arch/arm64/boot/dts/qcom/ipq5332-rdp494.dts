@@ -546,7 +546,7 @@
 
 		nss-macsec0 {
 			compatible = "qcom,nss-macsec";
-			phy_addr = <12>;
+			phy_addr = <4>;
 			mdiobus = <&mdio>;
 		};
 
@@ -558,7 +558,7 @@
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
 			mdio-bus = <&mdio>;
-			qcom,phy-mdio-addr = <12>;
+			qcom,phy-mdio-addr = <4>;
 			qcom,link-poll = <1>;
 			phy-mode = "sgmii";
 		};
