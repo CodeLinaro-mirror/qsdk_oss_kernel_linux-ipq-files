@@ -103,17 +103,27 @@
 		#size-cells = <2>;
 		ranges;
 
-		tfa@0x8a600000 {
+		smem@8a100000 {
+			compatible = "qcom,smem";
+			reg = <0x0 0x8a100000 0x0 0x40000>;
+			no-map;
+
+			hwlocks = <&tcsr_mutex 3>;
+		};
+
+		bootloader@0x8a200000 {
+			reg = <0x0 0x8a200000 0x0 0x400000>;
+			no-map;
+		};
+
+		tfa@8a600000 {
 			reg = <0x0 0x8a600000 0x0 0x80000>;
 			no-map;
 		};
 
-		smem@8a800000 {
-			compatible = "qcom,smem";
-			reg = <0x0 0x8a800000 0x0 0x32000>;
+		optee@8a680000 {
+			reg = <0x0 0x8a680000 0x0 0x280000>;
 			no-map;
-
-			hwlocks = <&tcsr_mutex 3>;
 		};
 
 		minidump_mem: minidump_mem@0 {
