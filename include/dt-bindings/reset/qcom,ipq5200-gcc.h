@@ -44,5 +44,6 @@
 #define GCC_UNIPHY0_XPCS_ARES			34
 #define GCC_UNIPHY1_XPCS_ARES			35
 #define GCC_UNIPHY2_XPCS_ARES			36
+#define GCC_QRNG_BCR				37
 
 #endif
