@@ -435,8 +435,75 @@
 		reg = <0 0 0 0 0>;
 		qcom,mhi@0 {
 			reg = <0 0 0 0 0>;
-			memory-region = <&qcn9224_pcie1>, <&mhi_region1>, <&mlo_global_mem0>;
-			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
+			memory-region = <&qcn9224_pcie0>, <&mlo_global_mem0>;
+			memory-region-names = "host-ddr-mem", "mlo-global-mem";
+			qcom,board_id = <0x2>;
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+
+					wifi0_wsi_tx: endpoint {
+						remote-endpoint = <&wifi3_wsi_rx>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+
+					wifi0_wsi_rx: endpoint {
+						remote-endpoint = <&wifi3_wsi_tx>;
+					};
+				};
+			};
+		};
+	};
+};
+
+&pcie1_phy {
+	status = "okay";
+};
+
+&pcie1 {
+	status = "okay";
+	perst-gpio = <&tlmm 28 GPIO_ACTIVE_LOW>;
+
+	pcie1_rp {
+		reg = <0 0 0 0 0>;
+	};
+};
+
+&pcie2_phy {
+	status = "okay";
+};
+
+&pcie2 {
+	status = "okay";
+	perst-gpio = <&tlmm 31 GPIO_ACTIVE_LOW>;
+
+	pcie2_rp {
+		reg = <0 0 0 0 0>;
+	};
+};
+
+&pcie3_phy {
+	status = "okay";
+};
+
+&pcie3 {
+	perst-gpio = <&tlmm 34 GPIO_ACTIVE_LOW>;
+	link_retries_count = <400>;
+	status = "okay";
+
+	pcie3_rp {
+		reg = <0 0 0 0 0>;
+		qcom,mhi@3 {
+			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9224_pcie3>, <&mlo_global_mem0>;
+			memory-region-names = "host-ddr-mem", "mlo-global-mem";
 			qcom,board_id = <0x1>;
 			qcom,wsi-controller;
 
@@ -446,52 +513,21 @@
 
 				port@0 {
 					reg = <0>;
+
+					wifi3_wsi_tx: endpoint {
+						remote-endpoint = <&wifi0_wsi_rx>;
+					};
 				};
 
 				port@1 {
 					reg = <1>;
+
+					wifi3_wsi_rx: endpoint {
+						remote-endpoint = <&wifi0_wsi_tx>;
+					};
 				};
 			};
 		};
-	};
-};
-
-&pcie1_phy {
-	status = "disabled";
-};
-
-&pcie1 {
-	status = "disabled";
-	perst-gpio = <&tlmm 28 GPIO_ACTIVE_LOW>;
-
-	pcie1_rp {
-		reg = <0 0 0 0 0>;
-	};
-};
-
-&pcie2_phy {
-	status = "disabled";
-};
-
-&pcie2 {
-	status = "disabled";
-	perst-gpio = <&tlmm 31 GPIO_ACTIVE_LOW>;
-
-	pcie2_rp {
-		reg = <0 0 0 0 0>;
-	};
-};
-
-&pcie3_phy {
-	status = "disabled";
-};
-
-&pcie3 {
-	status = "disabled";
-	perst-gpio = <&tlmm 34 GPIO_ACTIVE_LOW>;
-
-	pcie3_rp {
-		reg = <0 0 0 0 0>;
 	};
 };
 
@@ -747,14 +783,13 @@
 	};
 };
 
-&qcn9224_pcie1 {
+&qcn9224_pcie0 {
 	status = "okay";
 };
-#if defined(__MHI_BUS_RESERVED_DMA_POOL__)
-&mhi_region1 {
+
+&qcn9224_pcie3 {
 	status = "okay";
 };
-#endif
 
 /* 2G radio */
 &wifi0 {
@@ -767,32 +802,5 @@
 	hw_link_id = <0 0>;
 	led-gpio = <&tlmm 41 GPIO_ACTIVE_HIGH>;
 	probe-order = <1>;
-	status = "disabled";
-};
-
-/* 5GL radio */
-&wifi2 {
-	hremote_node = <&qcn9224_pcie1>;
-	board_id = <0x21>;
-	hw_link_id = <2 0>;
-	probe-order = <3>;
-	status = "disabled";
-};
-
-/* 6G radio */
-&wifi3 {
-	hremote_node = <&qcn9224_pcie2>;
-	board_id = <0x26>;
-	hw_link_id = <3 0>;
-	probe-order = <4>;
-	status = "disabled";
-};
-
-/* 5GH radio */
-&wifi4 {
-	hremote_node = <&qcn9224_pcie3>;
-	board_id = <0x22>;
-	hw_link_id = <1 0>;
-	probe-order = <2>;
 	status = "disabled";
 };
