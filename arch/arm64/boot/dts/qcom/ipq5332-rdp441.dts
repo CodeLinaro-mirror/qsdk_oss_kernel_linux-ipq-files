@@ -630,7 +630,7 @@
 	};
 };
 
-#if !defined(__IPQ_MEM_PROFILE_256_MB__) && !defined(__IPQ_MEM_PROFILE_512_MB__)
+#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
 &q6v5_wcss {
 	q6_wcss_pd1: remoteproc_pd1 {
 		memory-region = <&q6_ipq5332_data>,
@@ -646,11 +646,7 @@
 #if defined(__RPROC_DISABLE_MPD_SUPPORT__)
 	qcom,rproc = <&q6v5_wcss>;
 	dump-region = <&q6_ipq5332_data>,
-		<&m3_dump>,
-#if !defined(__IPQ_MEM_PROFILE_256_MB__)
-		<&q6_etr_region>,
-		<&q6_caldb_region>;
-#endif
+		      <&mlo_global_mem0>;
 #else
 	qcom,rproc = <&q6_wcss_pd1>;
 	qcom,rproc_rpd = <&q6v5_wcss>;
@@ -662,10 +658,8 @@
 	memory-region = <&q6_region>, <&q6_region>, <&mlo_global_mem0>;
 	memory-region-names = "q6-region", "q6-region-1", "mlo-global-mem";
 #else
-	memory-region = <&q6_region>, <&q6_region>, <&q6_ipq5332_data>, <&m3_dump>,
-			<&mlo_global_mem0>,<&q6_etr_region>;
-	memory-region-names = "q6-region", "q6-1region-1", "host-ddr-mem", "m3-dump",
-			      "mlo-global-mem", "q6-etr-dump";
+	memory-region = <&q6_region>, <&q6_ipq5332_data>, <&mlo_global_mem0>;
+	memory-region-names = "q6-region", "host-ddr-mem", "mlo-global-mem";
 #endif
 	qcom,wsi = <&wsi>;
 	qcom,wsi_index = <0>;

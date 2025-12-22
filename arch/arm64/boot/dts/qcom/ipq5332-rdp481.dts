@@ -74,7 +74,7 @@
 / {
 	model = "Qualcomm Technologies, Inc. IPQ5332/RDP481/AP-MI01.14";
 	compatible = "qcom,ipq5332-ap-mi01.14", "qcom,ipq5332-ap-rdp481", "qcom,ipq5332-rdp481", "qcom,ipq5332";
-
+#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
 	reserved-memory {
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -147,7 +147,45 @@
 			alignment = <0x0 0x1000>;
                 };
 	};
+#else
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
 
+		q6_mem_regions: q6_mem_regions@4A900000  {
+			no-map;
+			reg = <0x0 0x4a900000 0x0 0x1500000>;
+		};
+
+		q6_ipq5332_data: q6_ipq5332_data@4be00000 {
+			no-map;
+			reg = <0x0 0x4be00000 0x0 0x1c00000>;
+		};
+
+		q6_qcn6432_data_1: q6_qcn6432_data_1@4da00000 {
+			no-map;
+			reg = <0x0 0x4da00000 0x0 0x1c00000>;
+		};
+
+		mlo_global_mem0: mlo_global_mem_0@4f600000 {
+			no-map;
+			reg = <0x0 0x4f600000 0x0 0x1200000>;
+		};
+
+		qcn9224_pcie1: qcn9224_pcie1@50800000 {
+			no-map;
+			reg = <0x0 0x50800000 0x0 0x03200000>;
+		};
+
+		mhi_region1: dma_pool1@1 {
+			compatible = "shared-dma-pool";
+			no-map;
+			size = <0x0 0x00900000>;
+			alignment = <0x0 0x1000>;
+		};
+	};
+#endif
 	aliases {
 		serial0 = &blsp1_uart0;
 		serial1 = &blsp1_uart1;
@@ -480,16 +518,24 @@
 
 		q6v5_wcss: remoteproc@d100000 {
 			boot-args = <0x1 0x5 0x3 0x0 0x26 0x2 0x0>;
-			memory-region = <&q6_mem_regions>, <&mlo_global_mem0>;
+			memory-region = <&q6_mem_regions>,
+					<&q6_ipq5332_data>,
+					<&q6_qcn6432_data_1>,
+					<&mlo_global_mem0>;
 
 			upd-firmware-names = "IPQ5332/q6_fw1.mdt",
 					     "IPQ5332/q6_fw2.mdt";
 			q6_wcss_pd1: remoteproc_pd1 {
+#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
 				memory-region = <&q6_ipq5332_data>,
 						<&m3_dump>,
 						<&q6_etr_region>,
 						<&q6_ipq5332_caldb>,
 						<&mlo_global_mem0>;
+				status = "okay";
+#else
+				status = "disabled";
+#endif
 			};
 
 			q6_wcss_pd2: remoteproc_pd2 {
@@ -510,15 +556,15 @@
 				qcom,smem-state-names = "shutdown",
 							"stop",
 							"spawn";
+#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
 				memory-region = <&q6_qcn6432_data_1>,
 						<&m3_dump_qcn6432_1>,
 						<&q6_qcn6432_etr_1>,
 						<&q6_qcn6432_caldb_1>,
 						<&mlo_global_mem0>;
-#if defined(__RPROC_DISABLE_MPD_SUPPORT__)
-				status = "disabled";
-#else
 				status = "okay";
+#else
+				status = "disabled";
 #endif
 			};
 		};
@@ -789,10 +835,7 @@
 #if defined(__RPROC_DISABLE_MPD_SUPPORT__)
 	qcom,rproc = <&q6v5_wcss>;
 	dump-region = <&q6_ipq5332_data>,
-			<&m3_dump>,
-			<&q6_etr_region>,
-			<&q6_ipq5332_caldb>,
-			<&mlo_global_mem0>;
+		      <&mlo_global_mem0>;
 #else
 	qcom,multipd_arch;
 	qcom,rproc = <&q6_wcss_pd1>;
@@ -809,10 +852,8 @@
 	qcom,caldb-size = <0x500000>;
 #endif
 	qcom,board_id = <0x13>;
-	memory-region = <&q6_ipq5332_data>, <&q6_mem_regions>, <&m3_dump>,
-			<&mlo_global_mem0>, <&q6_etr_region>;
-	memory-region-names = "host-ddr-mem", "q6-region", "m3-dump",
-			      "mlo-global-mem", "q6-etr-dump";
+	memory-region = <&q6_ipq5332_data>, <&q6_mem_regions>, <&mlo_global_mem0>;
+	memory-region-names = "host-ddr-mem", "q6-region", "mlo-global-mem";
 	hw_link_id = <0 0>;
 	status = "okay";
 	qcom,wsi = <&wsi>;
@@ -844,10 +885,7 @@
 #if defined(__RPROC_DISABLE_MPD_SUPPORT__)
 	qcom,rproc = <&q6v5_wcss>;
 	dump-region = <&q6_qcn6432_data_1>,
-			<&m3_dump_qcn6432_1>,
-			<&q6_qcn6432_etr_1>,
-			<&q6_qcn6432_caldb_1>,
-			<&mlo_global_mem0>;
+		      <&mlo_global_mem0>;
 #else
 	qcom,multipd_arch;
 	qcom,rproc = <&q6_wcss_pd2>;
@@ -864,10 +902,8 @@
 	qcom,tgt-mem-mode = <0>;
 #endif
 	qcom,board_id = <0x060>;
-	memory-region = <&q6_qcn6432_data_1>, <&q6_mem_regions>, <&m3_dump_qcn6432_1>,
-			<&mlo_global_mem0>, <&q6_qcn6432_etr_1>;
-	memory-region-names = "host-ddr-mem", "q6-region", "m3-dump",
-			      "mlo-global-mem", "q6-etr-dump";
+	memory-region = <&q6_qcn6432_data_1>, <&q6_mem_regions>, <&mlo_global_mem0>;
+	memory-region-names = "host-ddr-mem", "q6-region", "mlo-global-mem";
 	qcom,wsi = <&wsi>;
 	qcom,wsi_index = <1>;
 	qcom,pci_slot_id = <0>;

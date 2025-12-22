@@ -750,19 +750,29 @@
 };
 #endif
 
+#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
 &mlo_global_mem0 {
 	reg = <0x0 0x9b300000 0x0 0x1800000>;
 	status = "okay";
 };
+#else
+&mlo_global_mem0 {
+#if defined(__IPQ_MEM_PROFILE_512_MB__)
+	reg = <0x0 0x96e00000 0x0 0x1800000>;
+	status = "okay";
+#else
+	reg = <0x0 0x9b500000 0x0 0x1800000>;
+	status = "okay";
+#endif
+};
+#endif
 
 /* 2G radio */
 &wifi0 {
 	qcom,rproc = <&q6v5_wcss>;
 	qcom,tgt-mem-mode = <0>;
-	memory-region = <&q6_region>, <&q6_region>, <&q6_ipq5424_data>, <&m3_dump>,
-			<&mlo_global_mem0>, <&q6_etr_region>;
-	memory-region-names = "q6-region", "q6-region-1", "host-ddr-mem", "m3-dump",
-			      "mlo-global-mem", "q6-etr-dump";
+	memory-region = <&q6_region>, <&q6_ipq5424_data>, <&mlo_global_mem0>;
+	memory-region-names = "q6-region", "host-ddr-mem", "mlo-global-mem";
 	qcom,wsi = <&wsi>;
 	qcom,wsi_index = <0>;
 	qcom,board_id = <0x10>;

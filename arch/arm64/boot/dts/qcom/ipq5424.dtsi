@@ -1031,11 +1031,13 @@
 					   <&wcss_smp2p_out 1>;
 			qcom,smem-state-names = "shutdown",
 						"stop";
-
 			memory-region = <&q6_region>,
+					<&q6_ipq5424_data>,
+#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
 					<&m3_dump>,
 					<&q6_etr_region>,
 					<&q6_ipq5424_caldb>,
+#endif
 					<&mlo_global_mem0>;
 			qcom,bootargs_smem = <507>;
 			qcom,bootargs_version = <2>;
@@ -2545,12 +2547,15 @@
 			qcom,smem-state-names = "shutdown",
 						"stop",
 						"spawn";
-#if defined(__RPROC_DISABLE_MPD_SUPPORT__)
+#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
 			dump-region = <&q6_ipq5424_data>,
 					<&m3_dump>,
 					<&q6_etr_region>,
 					<&q6_ipq5424_caldb>,
 					<&mlo_global_mem0>;
+#else
+			dump-region = <&q6_ipq5424_data>,
+				      <&mlo_global_mem0>;
 #endif
 			status = "disabled";
 		};
