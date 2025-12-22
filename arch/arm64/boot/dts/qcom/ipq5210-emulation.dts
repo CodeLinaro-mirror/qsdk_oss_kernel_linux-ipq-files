@@ -272,6 +272,7 @@
 			qcom,phy-mdio-addr = <8>;
 			phy-mode = "psgmii";
 			qcom,ppe-offload-disabled = <1>;
+			qcom,gem_port = <1>;
 		};
 
 		/* EDMA host driver configuration */
