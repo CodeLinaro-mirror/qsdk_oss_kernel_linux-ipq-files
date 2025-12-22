@@ -95,17 +95,6 @@
 		status = "disabled";
 	};
 
-	reserved-memory {
-		#address-cells = <2>;
-		#size-cells = <2>;
-		ranges;
-
-		tz@0x8a600000 {
-			reg = <0x0 0x8a700000 0x0 0x400000>;
-			no-map;
-		};
-	};
-
 	soc@0 {
 		acc0: clock-controller@f800000 {
 			compatible = "qcom,arm-cortex-acc";
