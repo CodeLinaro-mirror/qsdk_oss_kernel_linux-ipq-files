@@ -10,11 +10,13 @@
 #include <linux/init.h>
 #include <linux/err.h>
 #include <linux/of.h>
+#include <linux/panic_notifier.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/of_regulator.h>
 #include <linux/i2c.h>
 #include <linux/regmap.h>
+#include <linux/debugfs.h>
 #include <linux/time.h>
 #include "mp8899.h"
 
@@ -37,17 +39,60 @@ enum mp8899_regulators {
 };
 
 /**
+ * enum mp8899_reg_access - Register access permission types for debugfs
+ * @MP8899_REG_RW: Read-Write register (can be read and written)
+ * @MP8899_REG_RO: Read-Only register (can only be read)
+ * @MP8899_REG_WO: Write-Only register (can only be written)
+ *
+ * Defines access permissions for MP8899 registers exposed via debugfs
+ * interface. Used to prevent invalid operations on special registers.
+ */
+enum mp8899_reg_access {
+	MP8899_REG_RW,
+	MP8899_REG_RO,
+	MP8899_REG_WO,
+};
+
+/**
  * struct mp8899_regulator_info - MP8899 driver private data
  * @regmap: Regmap handle for I2C register access
  * @dev: Pointer to device structure
  * @rdesc: Pointer to array of regulator descriptors (dynamically allocated)
+ * @rdev: Array of regulator device pointers for all buck converters
+ * @debugfs_root: Root debugfs directory for this device instance
+ * @debug_reg_addr: Currently selected register address for generic debugfs access
+ * @panic_notifier: Notifier block for kernel panic handler registration
+ * @cached_voltage_uv: Array of last successfully set voltages in microvolts
+ * @voltage_cache_valid: Array of flags indicating if cached voltage is valid
  *
  * This structure holds all driver-specific data for an MP8899 PMIC instance.
+ * It maintains regulator state, debugfs interface, and voltage cache for
+ * atomic-safe panic handler operation.
  */
 struct mp8899_regulator_info {
 	struct regmap *regmap;
 	struct device *dev;
 	struct regulator_desc *rdesc;
+	struct regulator_dev *rdev[MP8899_MAX_REGULATORS];
+	struct dentry *debugfs_root;
+	unsigned int debug_reg_addr;
+	struct notifier_block panic_notifier;
+	unsigned int cached_voltage_uv[MP8899_MAX_REGULATORS];
+	bool voltage_cache_valid[MP8899_MAX_REGULATORS];
+};
+
+/**
+ * struct mp8899_debugfs_data - Helper structure for per-buck debugfs callbacks
+ * @info: Pointer to parent mp8899_regulator_info structure
+ * @buck_id: Buck converter ID (0-3 for BUCK1-BUCK4)
+ *
+ * This structure is used to pass buck-specific context to debugfs file
+ * operation callbacks, allowing each buck to have its own debugfs files
+ * while sharing the same callback functions.
+ */
+struct mp8899_debugfs_data {
+	struct mp8899_regulator_info *info;
+	int buck_id;
 };
 
 /**
@@ -90,6 +135,19 @@ static const unsigned int mp8899_current_limits[] = {
 	3000000,	/* 3A valley current for 2A output */
 	4200000,	/* 4.2A valley current for 3A output */
 	5000000,	/* 5A valley current for 4A output */
+};
+
+/* Register access permission table */
+static const u8 mp8899_reg_access_table[0x2E] = {
+	[0x00 ... 0x1A] = MP8899_REG_RW,  /* BUCK_CTL1-6 + SYSTEM1-3 */
+	[0x1B] = MP8899_REG_RO,           /* MTP_CODE - read-only */
+	[0x1C] = MP8899_REG_RO,           /* MTP_REVISION - read-only */
+	/* 0x1D: MTP_PASSWORD - blocked completely (too dangerous) */
+	[0x1E] = MP8899_REG_RO,           /* MTP_PROGRAM - read-only */
+	[0x1F] = MP8899_REG_RO,           /* STATUS (read-only) */
+	[0x20] = MP8899_REG_WO,           /* CLEAR (write-only) */
+	[0x21] = MP8899_REG_RO,           /* SYSTEM4 (read-only) */
+	[0x2D] = MP8899_REG_RO,           /* PARALLEL (read-only) */
 };
 
 /**
@@ -193,6 +251,7 @@ static int mp8899_set_voltage_sel(struct regulator_dev *rdev, unsigned int sel)
 {
 	struct mp8899_regulator_info *info = rdev_get_drvdata(rdev);
 	int buck_id = rdev_get_id(rdev);
+	int voltage_uv;
 	u8 regs[3];
 	int ret;
 
@@ -224,7 +283,15 @@ static int mp8899_set_voltage_sel(struct regulator_dev *rdev, unsigned int sel)
 		return ret;
 	}
 
-	dev_dbg(info->dev, "Buck%d: Voltage setting complete: hw_sel=%u [OK]\n", buck_id + 1, sel);
+	/* Cache the successfully set voltage for panic handler */
+	voltage_uv = regulator_list_voltage_linear_range(rdev, sel);
+	if (voltage_uv > 0) {
+		info->cached_voltage_uv[buck_id] = voltage_uv;
+		info->voltage_cache_valid[buck_id] = true;
+		dev_dbg(info->dev, "Buck%d: Cached voltage %duV\n", buck_id + 1, voltage_uv);
+	}
+
+	dev_dbg(info->dev, "Buck%d: Voltage setting complete: hw_sel=%u ✓\n", buck_id + 1, sel);
 
 	return 0;
 }
@@ -304,6 +371,227 @@ static int mp8899_get_error_flags(struct regulator_dev *rdev, unsigned int *flag
 
 	return 0;
 }
+
+/**
+ * mp8899_panic_handler() - Dump last set voltages during kernel panic
+ * @nb: Notifier block
+ * @action: Notifier action (unused)
+ * @data: Notifier data (unused)
+ *
+ * This is a 100% atomic-safe panic handler that dumps the last successfully
+ * set voltage for each buck converter. It uses only cached values from
+ * info->cached_voltage_uv[] array - NO I2C operations or regmap reads are
+ * performed, completely eliminating any scheduling in atomic context issues.
+ *
+ * The voltage cache is updated in mp8899_set_voltage_sel() after each
+ * successful voltage change, ensuring the panic dump reflects the actual
+ * last configured voltages.
+ *
+ * Return: NOTIFY_DONE
+ */
+static int mp8899_panic_handler(struct notifier_block *nb,
+				unsigned long action, void *data)
+{
+	struct mp8899_regulator_info *info;
+	int i;
+
+	info = container_of(nb, struct mp8899_regulator_info, panic_notifier);
+
+	/* Print cached last set voltages for each buck converter */
+	for (i = 0; i < MP8899_MAX_REGULATORS; i++) {
+		if (info->voltage_cache_valid[i]) {
+			pr_emerg("BUCK%d: Last set voltage = %d.%03dV\n",
+				 i + 1,
+				 info->cached_voltage_uv[i] / 1000000,
+				 (info->cached_voltage_uv[i] / 1000) % 1000);
+		} else {
+			pr_emerg("BUCK%d: Last set voltage = UNKNOWN (not set since boot)\n",
+				 i + 1);
+		}
+	}
+	return NOTIFY_DONE;
+}
+
+/*
+ * Generic register read/write debugfs interface
+ * Allows hardware team to access any MP8899 register for characterization
+ */
+
+/* Validate register address */
+static bool mp8899_is_valid_reg(unsigned int reg)
+{
+	/* Block MTP_PASSWORD (0x1D) - too dangerous to expose */
+	if (reg == 0x1D)
+		return false;
+
+	/* Valid ranges: 0x00-0x21, 0x2D */
+	return (reg <= 0x21 || reg == 0x2D);
+}
+
+/* Get register access type */
+static enum mp8899_reg_access mp8899_get_reg_access(unsigned int reg)
+{
+	return mp8899_reg_access_table[reg];
+}
+
+/* Debugfs: Read currently selected register address */
+static ssize_t mp8899_debugfs_reg_addr_read(struct file *file, char __user *user_buf,
+					    size_t count, loff_t *ppos)
+{
+	struct mp8899_regulator_info *info = file->private_data;
+	char buf[32];
+	int len;
+
+	len = snprintf(buf, sizeof(buf), "0x%02x\n", info->debug_reg_addr);
+	return simple_read_from_buffer(user_buf, count, ppos, buf, len);
+}
+
+/* Debugfs: Write register address */
+static ssize_t mp8899_debugfs_reg_addr_write(struct file *file,
+					     const char __user *user_buf,
+					     size_t count, loff_t *ppos)
+{
+	struct mp8899_regulator_info *info = file->private_data;
+	unsigned int reg_addr;
+	size_t buf_size;
+	char buf[32];
+	int ret;
+
+	buf_size = min(count, sizeof(buf) - 1);
+	if (copy_from_user(buf, user_buf, buf_size))
+		return -EFAULT;
+	buf[buf_size] = '\0';
+
+	ret = kstrtouint(buf, 0, &reg_addr);
+	if (ret)
+		return ret;
+
+	/* Validate register address */
+	if (!mp8899_is_valid_reg(reg_addr)) {
+		dev_err(info->dev, "Invalid register address 0x%02x (valid: 0x00-0x21, 0x2D)\n",
+			reg_addr);
+		return -EINVAL;
+	}
+
+	info->debug_reg_addr = reg_addr;
+	dev_dbg(info->dev, "Register address set to 0x%02x\n", reg_addr);
+
+	return count;
+}
+
+/**
+ * mp8899_debugfs_reg_addr_fops - File operations for reg_addr debugfs file
+ *
+ * Provides read/write access to select register address for generic access.
+ * Write sets the target register address, read shows current selection.
+ * Valid addresses: 0x00-0x21, 0x2D.
+ */
+static const struct file_operations mp8899_debugfs_reg_addr_fops = {
+	.open = simple_open,
+	.read = mp8899_debugfs_reg_addr_read,
+	.write = mp8899_debugfs_reg_addr_write,
+	.llseek = default_llseek,
+};
+
+/* Debugfs: Read register value */
+static ssize_t mp8899_debugfs_reg_value_read(struct file *file, char __user *user_buf,
+					     size_t count, loff_t *ppos)
+{
+	struct mp8899_regulator_info *info = file->private_data;
+	unsigned int reg_addr, reg_val;
+	enum mp8899_reg_access access;
+	int len, ret;
+	char buf[64];
+
+	reg_addr = info->debug_reg_addr;
+
+	/* Check access permissions */
+	access = mp8899_get_reg_access(reg_addr);
+	if (access == MP8899_REG_WO) {
+		len = snprintf(buf,
+			       sizeof(buf),
+			       "Register 0x%02x = 0x00 (write-only register)\n",
+			       reg_addr);
+		dev_warn(info->dev, "Attempted read from write-only register 0x%02x\n", reg_addr);
+		return simple_read_from_buffer(user_buf, count, ppos, buf, len);
+	}
+
+	/* Read register value */
+	ret = regmap_read(info->regmap, reg_addr, &reg_val);
+	if (ret) {
+		len = snprintf(buf,
+			       sizeof(buf),
+			       "Error: Failed to read register 0x%02x: %d\n",
+			       reg_addr,
+			       ret);
+		return simple_read_from_buffer(user_buf, count, ppos, buf, len);
+	}
+
+	len = snprintf(buf, sizeof(buf), "Register 0x%02x = 0x%02x\n", reg_addr, reg_val);
+	return simple_read_from_buffer(user_buf, count, ppos, buf, len);
+}
+
+/* Debugfs: Write register value */
+static ssize_t mp8899_debugfs_reg_value_write(struct file *file,
+					      const char __user *user_buf,
+					      size_t count, loff_t *ppos)
+{
+	struct mp8899_regulator_info *info = file->private_data;
+	unsigned int reg_addr, reg_val;
+	enum mp8899_reg_access access;
+	size_t buf_size;
+	char buf[32];
+	int ret;
+
+	reg_addr = info->debug_reg_addr;
+
+	/* Check access permissions */
+	access = mp8899_get_reg_access(reg_addr);
+	if (access == MP8899_REG_RO) {
+		dev_err(info->dev, "Cannot write to read-only register 0x%02x\n", reg_addr);
+		return -EPERM;
+	}
+
+	buf_size = min(count, sizeof(buf) - 1);
+	if (copy_from_user(buf, user_buf, buf_size))
+		return -EFAULT;
+	buf[buf_size] = '\0';
+
+	ret = kstrtouint(buf, 0, &reg_val);
+	if (ret)
+		return ret;
+
+	/* Validate value is 8-bit */
+	if (reg_val > 0xFF) {
+		dev_err(info->dev, "Invalid register value 0x%x (must be 0x00-0xFF)\n", reg_val);
+		return -EINVAL;
+	}
+
+	/* Write register value */
+	ret = regmap_write(info->regmap, reg_addr, reg_val);
+	if (ret) {
+		dev_err(info->dev, "Failed to write register 0x%02x: %d\n", reg_addr, ret);
+		return ret;
+	}
+
+	dev_info(info->dev, "Register 0x%02x = 0x%02x (written)\n", reg_addr, reg_val);
+
+	return count;
+}
+
+/**
+ * mp8899_debugfs_reg_value_fops - File operations for reg_value debugfs file
+ *
+ * Provides read/write access to register value at address selected via reg_addr.
+ * Respects register access permissions (RO/WO/RW) and provides warnings for
+ * dangerous operations (MTP programming).
+ */
+static const struct file_operations mp8899_debugfs_reg_value_fops = {
+	.open = simple_open,
+	.read = mp8899_debugfs_reg_value_read,
+	.write = mp8899_debugfs_reg_value_write,
+	.llseek = default_llseek,
+};
 
 /* Forward declaration */
 static int mp8899_parse_cb(struct device_node *np,
@@ -497,6 +785,41 @@ static void mp8899_parse_dt(struct device *dev,
 	of_node_put(np);
 }
 
+/* Initialize debugfs for reg_addr and reg_value only */
+static void mp8899_debugfs_init(struct mp8899_regulator_info *info,
+				struct i2c_client *client)
+{
+	char name[16];
+
+	/* Create root debugfs directory: /sys/kernel/debug/mp8899-<bus>-<addr> */
+	snprintf(name, sizeof(name), "mp8899-%d-%04x",
+		 client->adapter->nr, client->addr);
+	info->debugfs_root = debugfs_create_dir(name, NULL);
+	if (IS_ERR_OR_NULL(info->debugfs_root)) {
+		dev_warn(info->dev, "Failed to create debugfs root directory\n");
+		info->debugfs_root = NULL;
+		return;
+	}
+
+	/* Create generic register access files at root level */
+	debugfs_create_file("reg_addr", 0644, info->debugfs_root, info,
+			    &mp8899_debugfs_reg_addr_fops);
+	debugfs_create_file("reg_value", 0644, info->debugfs_root, info,
+			    &mp8899_debugfs_reg_value_fops);
+}
+
+/* Cleanup debugfs */
+/**
+ * mp8899_debugfs_exit() - Cleanup debugfs interface
+ * @info: Pointer to mp8899_regulator_info structure
+ *
+ * Removes all debugfs entries created for the MP8899 device.
+ */
+static void mp8899_debugfs_exit(struct mp8899_regulator_info *info)
+{
+	debugfs_remove_recursive(info->debugfs_root);
+}
+
 /**
  * mp8899_identify_device() - Verify MP8899 device presence
  * @info: Pointer to mp8899_regulator_info structure
@@ -616,11 +939,46 @@ static int mp8899_i2c_probe(struct i2c_client *client)
 					     PTR_ERR(rdev),
 					     "Failed to register regulator %d\n",
 					     i);
+
+		info->rdev[i] = rdev;
 	}
 
-	dev_info(dev, "MP8899 PMIC regulator driver registered successfully\n");
+	/* Initialize debugfs interface */
+	mp8899_debugfs_init(info, client);
+
+	/* Register panic notifier for PMIC state dump */
+	info->panic_notifier.notifier_call = mp8899_panic_handler;
+	info->panic_notifier.priority = 0;
+	ret = atomic_notifier_chain_register(&panic_notifier_list, &info->panic_notifier);
+	if (ret)
+		dev_info(dev, "Failed to register panic notifier: %d\n", ret);
+
+	dev_info(dev, "MP8899 regulator driver registered successfully\n");
 
 	return 0;
+}
+
+/**
+ * mp8899_i2c_remove() - I2C driver remove function
+ * @client: I2C client device
+ *
+ * Cleanup function called when the driver is unloaded:
+ * 1. Unregister panic handler from notifier chain
+ * 2. Cleanup debugfs interface
+ *
+ * Return: 0 on success
+ */
+static void mp8899_i2c_remove(struct i2c_client *client)
+{
+	struct mp8899_regulator_info *info = i2c_get_clientdata(client);
+
+	/* Unregister panic handler */
+	atomic_notifier_chain_unregister(&panic_notifier_list, &info->panic_notifier);
+
+	/* Cleanup debugfs */
+	mp8899_debugfs_exit(info);
+
+	dev_info(&client->dev, "MP8899 PMIC regulator driver removed\n");
 }
 
 static const struct of_device_id mp8899_of_match[] = {
@@ -642,6 +1000,7 @@ static struct i2c_driver mp8899_regulator_driver = {
 		.of_match_table = mp8899_of_match,
 	},
 	.probe = mp8899_i2c_probe,
+	.remove = mp8899_i2c_remove,
 	.id_table = mp8899_id,
 };
 
