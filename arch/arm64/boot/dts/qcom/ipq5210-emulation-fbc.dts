@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 /*
- * IPQ5200 Emulation FBC board device tree source
+ * IPQ5210 Emulation FBC board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
@@ -8,11 +8,11 @@
 
 /dts-v1/;
 
-#include "ipq5200.dtsi"
+#include "ipq5210.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. IPQ5200-EMULATION-FBC";
-	compatible = "qcom,ipq5200-emulation", "qcom,ipq5200";
+	model = "Qualcomm Technologies, Inc. IPQ5210-EMULATION-FBC";
+	compatible = "qcom,ipq5210-emulation", "qcom,ipq5210";
 
 	/* Timer freq for rumi = timer freq / 150 */
 	clocks {

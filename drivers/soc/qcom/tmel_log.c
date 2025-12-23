@@ -379,7 +379,7 @@ static const struct of_device_id tmel_log_match_tbl[] = {
 	{.compatible = "qcom,tmel-log-ipq5424",
 	 .data = &tmellog_ipq5424_data,
 	},
-	{.compatible = "qcom,tmel-log-ipq5200",
+	{.compatible = "qcom,tmel-log-ipq5210",
 	 .data = &tmellog_ipq5424_data,
 	},
 	{.compatible = "qcom,tmel-log-ipq9574",

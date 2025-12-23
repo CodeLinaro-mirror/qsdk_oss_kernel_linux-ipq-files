@@ -50,7 +50,7 @@
 		.intr_detection_width = 2,	\
 	}
 
-static const struct pinctrl_pin_desc ipq5200_pins[] = {
+static const struct pinctrl_pin_desc ipq5210_pins[] = {
 	PINCTRL_PIN(0, "GPIO_0"),
 	PINCTRL_PIN(1, "GPIO_1"),
 	PINCTRL_PIN(2, "GPIO_2"),
@@ -164,7 +164,7 @@ DECLARE_MSM_GPIO_PINS(51);
 DECLARE_MSM_GPIO_PINS(52);
 DECLARE_MSM_GPIO_PINS(53);
 
-enum ipq5200_functions {
+enum ipq5210_functions {
 	msm_mux_gpio,
 	msm_mux__,
 };
@@ -180,11 +180,11 @@ static const char * const gpio_groups[] = {
 	"gpio50", "gpio51", "gpio52", "gpio53",
 };
 
-static const struct pinfunction ipq5200_functions[] = {
+static const struct pinfunction ipq5210_functions[] = {
 	MSM_PIN_FUNCTION(gpio),
 };
 
-static const struct msm_pingroup ipq5200_groups[] = {
+static const struct msm_pingroup ipq5210_groups[] = {
 	PINGROUP(0, _, _, _, _, _, _, _, _, _),
 	PINGROUP(1, _, _, _, _, _, _, _, _, _),
 	PINGROUP(2, _, _, _, _, _, _, _, _, _),
@@ -241,47 +241,47 @@ static const struct msm_pingroup ipq5200_groups[] = {
 	PINGROUP(53, _, _, _, _, _, _, _, _, _),
 };
 
-static const struct msm_pinctrl_soc_data ipq5200_pinctrl = {
-	.pins = ipq5200_pins,
-	.npins = ARRAY_SIZE(ipq5200_pins),
-	.functions = ipq5200_functions,
-	.nfunctions = ARRAY_SIZE(ipq5200_functions),
-	.groups = ipq5200_groups,
-	.ngroups = ARRAY_SIZE(ipq5200_groups),
+static const struct msm_pinctrl_soc_data ipq5210_pinctrl = {
+	.pins = ipq5210_pins,
+	.npins = ARRAY_SIZE(ipq5210_pins),
+	.functions = ipq5210_functions,
+	.nfunctions = ARRAY_SIZE(ipq5210_functions),
+	.groups = ipq5210_groups,
+	.ngroups = ARRAY_SIZE(ipq5210_groups),
 	.ngpios = 54,
 };
 
-static int ipq5200_pinctrl_probe(struct platform_device *pdev)
+static int ipq5210_pinctrl_probe(struct platform_device *pdev)
 {
-	return msm_pinctrl_probe(pdev, &ipq5200_pinctrl);
+	return msm_pinctrl_probe(pdev, &ipq5210_pinctrl);
 }
 
-static const struct of_device_id ipq5200_pinctrl_of_match[] = {
-	{ .compatible = "qcom,ipq5200-tlmm", },
+static const struct of_device_id ipq5210_pinctrl_of_match[] = {
+	{ .compatible = "qcom,ipq5210-tlmm", },
 	{ },
 };
-MODULE_DEVICE_TABLE(of, ipq5200_pinctrl_of_match);
+MODULE_DEVICE_TABLE(of, ipq5210_pinctrl_of_match);
 
-static struct platform_driver ipq5200_pinctrl_driver = {
+static struct platform_driver ipq5210_pinctrl_driver = {
 	.driver = {
-		.name = "ipq5200-tlmm",
-		.of_match_table = ipq5200_pinctrl_of_match,
+		.name = "ipq5210-tlmm",
+		.of_match_table = ipq5210_pinctrl_of_match,
 	},
-	.probe = ipq5200_pinctrl_probe,
+	.probe = ipq5210_pinctrl_probe,
 	.remove = msm_pinctrl_remove,
 };
 
-static int __init ipq5200_pinctrl_init(void)
+static int __init ipq5210_pinctrl_init(void)
 {
-	return platform_driver_register(&ipq5200_pinctrl_driver);
+	return platform_driver_register(&ipq5210_pinctrl_driver);
 }
-arch_initcall(ipq5200_pinctrl_init);
+arch_initcall(ipq5210_pinctrl_init);
 
-static void __exit ipq5200_pinctrl_exit(void)
+static void __exit ipq5210_pinctrl_exit(void)
 {
-	platform_driver_unregister(&ipq5200_pinctrl_driver);
+	platform_driver_unregister(&ipq5210_pinctrl_driver);
 }
-module_exit(ipq5200_pinctrl_exit);
+module_exit(ipq5210_pinctrl_exit);
 
-MODULE_DESCRIPTION("QTI IPQ5200 TLMM driver");
+MODULE_DESCRIPTION("QTI IPQ5210 TLMM driver");
 MODULE_LICENSE("GPL");

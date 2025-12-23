@@ -4,8 +4,8 @@
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
-#ifndef _DT_BINDINGS_RESET_IPQ_GCC_IPQ5200_H
-#define _DT_BINDINGS_RESET_IPQ_GCC_IPQ5200_H
+#ifndef _DT_BINDINGS_RESET_IPQ_GCC_IPQ5210_H
+#define _DT_BINDINGS_RESET_IPQ_GCC_IPQ5210_H
 
 #define GCC_QUPV3_BCR				0
 #define GCC_USB_BCR				1
