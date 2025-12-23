@@ -51,7 +51,7 @@ struct net_bridge_ip_to_mac {
 	int ifindex;
 	bool shared_mac;
 	struct net_bridge_mcast *brmctx;
-	struct timer_list timer;
+	unsigned long time;
 	struct rcu_head rcu;
 };
 
@@ -108,11 +108,10 @@ struct br_mcast_host_info {
 	union nf_inet_addr src_list[BR_MCAST_SRC_ENT_LIMIT];
 };
 
-int br_mcast_offload_map_add(struct net_bridge_mcast *brmctx,
-			     const struct br_ip *host,
-			     const unsigned char *mac,
-			     int ifindex,
-			     uint16_t vid);
+void br_mcast_offload_map_add(struct net_bridge_mcast_port *pmctx, struct net_bridge_mcast *brmctx,
+		struct sk_buff *skb,
+		const unsigned char *mac,
+		uint16_t vid);
 int br_mcast_offload_ip_map_lookup(struct net_bridge_mcast *brmctx,
 				   const struct br_ip *host,
 				   int ifindex, uint16_t vid,
@@ -181,6 +180,9 @@ bool br_mcast_rule_check_ip4(struct net_bridge *br, __be32 group);
 #if IS_ENABLED(CONFIG_IPV6)
 bool br_mcast_rule_check_ip6(struct net_bridge *br, const struct in6_addr *group);
 #endif
+bool br_mcast_offload_should_force_flood(struct net_bridge *br, struct sk_buff *skb,
+					 struct net_bridge_mdb_entry *mdst);
+
 int br_mcast_rule_add(struct net_bridge *br, __be16 proto,
 		      const void *group, size_t len, u8 action);
 int br_mcast_rule_del(struct net_bridge *br, __be16 proto,
