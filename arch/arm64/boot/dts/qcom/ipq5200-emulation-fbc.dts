@@ -14,14 +14,14 @@
 	model = "Qualcomm Technologies, Inc. IPQ5200-EMULATION-FBC";
 	compatible = "qcom,ipq5200-emulation", "qcom,ipq5200";
 
-	/*Timer freq for rumi = timer freq / 100*/
+	/* Timer freq for rumi = timer freq / 150 */
 	clocks {
 		sleep_clk: sleep-clk {
-			clock-frequency = <320>;
+			clock-frequency = <213>;
 		};
 
 		xo: xo {
-			clock-frequency = <240000>;
+			clock-frequency = <160000>;
 		};
 	};
 
@@ -34,13 +34,13 @@
 	};
 
 	soc@0 {
-		/*Timer freq for rumi = timer freq / 100*/
+		/* Timer freq for rumi = timer freq / 150 */
 		timer {
-			clock-frequency = <240000>;
+			clock-frequency = <160000>;
 		};
 
 		timer@b120000 {
-			clock-frequency = <240000>;
+			clock-frequency = <160000>;
 		};
 
 		qupv3: geniqup@1ac0000 {
