@@ -136,6 +136,7 @@ static struct clk_regmap *gcc_ipq5200_dummy_clks[] = {
 	[GCC_NSSCC_CLK] = DEFINE_DUMMY_CLK(gcc_nsscc),
 	[GCC_NSSNOC_SNOC_CLK] = DEFINE_DUMMY_CLK(gcc_nssnoc_snoc),
 	[GCC_NSSNOC_SNOC_1_CLK] = DEFINE_DUMMY_CLK(gcc_nssnoc_snoc_1),
+	[GCC_QRNG_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_qrng_ahb_clk),
 };
 
 static const struct qcom_reset_map gcc_ipq5200_resets[] = {
@@ -176,6 +177,7 @@ static const struct qcom_reset_map gcc_ipq5200_resets[] = {
 	[GCC_UNIPHY0_XPCS_ARES] = { 0x17050, 2 },
 	[GCC_UNIPHY1_XPCS_ARES] = { 0x17060, 2 },
 	[GCC_UNIPHY2_XPCS_ARES] = { 0x17070, 2 },
+	[GCC_QRNG_BCR] = { 0x13020, 0 },
 };
 
 static const struct of_device_id gcc_ipq5200_match_table[] = {

@@ -138,6 +138,13 @@
 		ranges = <0 0 0 0xffffffff>;
 		dma-ranges;
 
+		rng: rng@4c3000 {
+			compatible = "qcom,ipq5210-trng", "qcom,trng";
+			reg = <0x004c3000 0x1000>;
+			clocks = <&gcc GCC_QRNG_AHB_CLK>;
+			clock-names = "core";
+		};
+
 		pcie0_phy: phy@84000 {
 			compatible = "qcom,ipq5200-qmp-gen3x1-pcie-phy",
 				     "qcom,ipq9574-qmp-gen3x1-pcie-phy";
