@@ -596,9 +596,20 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 
-			tz-log-buf-addr@720 {
-				compatible = "qcom,msm-imem-tz-log-buf-addr";
-				reg = <0x720 4>;
+			/*
+			 * First 4 bytes contains the Diag buffer address
+			 * Second 4 bytes contains the Diag buffer size
+			 */
+			tfa_diag_buf: tfa-diag-buf@720 {
+				reg = <0x720 8>;
+			};
+
+			/*
+			 * First 4 bytes contains the Diag buffer address
+			 * Second 4 bytes contains the Diag buffer size
+			 */
+			optee_diag_buf: optee-diag-buf@730 {
+				reg = <0x730 8>;
 			};
 		};
 
@@ -845,6 +856,13 @@
 	psci {
 		compatible = "arm,psci-1.0";
 		method = "smc";
+	};
+
+	qti,tfa-optee-log {
+		compatible = "qti,tfa-optee-log";
+		interrupts = <GIC_SPI 267 IRQ_TYPE_EDGE_RISING>;
+		tfa-diag-info =<&tfa_diag_buf>;
+		optee-diag-info =<&optee_diag_buf>;
 	};
 
 	ctx-save {
