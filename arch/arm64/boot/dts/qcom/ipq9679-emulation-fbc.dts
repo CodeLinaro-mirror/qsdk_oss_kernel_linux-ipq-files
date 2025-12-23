@@ -47,22 +47,6 @@
 		stdout-path = "serial0";
 	};
 
-	reserved-memory {
-		#address-cells = <2>;
-		#size-cells = <2>;
-		ranges;
-
-		tfa@0x8a600000 {
-			reg = <0x0 0x8a600000 0x0 0x80000>;
-			no-map;
-		};
-
-		optee@0x8a680000 {
-			reg = <0x0 0x8a680000 0x0 0x280000>;
-			no-map;
-		};
-	};
-
 	soc@0 {
 		qupv3: geniqup@1ac0000 {
 			status = "okay";

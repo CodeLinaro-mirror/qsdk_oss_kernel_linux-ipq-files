@@ -205,6 +205,44 @@
 		#size-cells = <2>;
 		ranges;
 
+		smem@8a800000 {
+			compatible = "qcom,smem";
+			reg = <0x0 0x8a100000 0x0 0x40000>;
+			no-map;
+
+			hwlocks = <&tcsr_mutex 3>;
+		};
+
+		bootloader@8a200000 {
+			reg = <0x0 0x8a200000 0x0 0x400000>;
+			no-map;
+		};
+
+		tfa@8a600000 {
+			reg = <0x0 0x8a600000 0x0 0x80000>;
+			no-map;
+		};
+
+		optee@8a680000 {
+			reg = <0x0 0x8a680000 0x0 0x280000>;
+			no-map;
+		};
+
+		prime_mem: prime-region@8a900000  {
+			reg = <0x0 0x8a900000  0x0 0x100000>;
+			no-map;
+		};
+
+		q6_cdsp_dtb_mem: q6-cdsp-dtb-region@8aa00000 {
+			reg = <0x0 0x8aa00000 0x0 0x80000>;
+			no-map;
+		};
+
+		cdsp_mem: cdsp-region@8ab00000 {
+			reg = <0x0 0x8ab00000 0x0 0x2000000>;
+			no-map;
+		};
+
 		tmc_etr_region: tmc_etr_dump@0 {
 			no-map;
 			status = "disabled";
