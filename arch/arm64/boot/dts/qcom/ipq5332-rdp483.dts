@@ -640,7 +640,7 @@
 
 		nss-macsec0 {
 			compatible = "qcom,nss-macsec";
-			phy_addr = <12>;
+			phy_addr = <4>;
 			mdiobus = <&mdio>;
 		};
 
