@@ -603,7 +603,6 @@
 		function = "gpio";
 		drive-strength = <8>;
 		bias-pull-up;
-		output-low;
 	};
 
 	pcie1_default_state: pcie1-default-state {
@@ -611,7 +610,6 @@
 		function = "gpio";
 		drive-strength = <8>;
 		bias-pull-up;
-		output-low;
 	};
 
 	sfp_pins: sfp-state {
