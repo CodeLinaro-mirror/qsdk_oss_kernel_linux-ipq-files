@@ -602,8 +602,13 @@
 
 &wifi0 {
 	qcom,rproc = <&q6v5_wcss>;
+#if !defined(__IPQ_MEM_PROFILE_256_MB__)
+	memory-region = <&q6_region>, <&q6_ipq5424_data>, <&mlo_global_mem0>;
+	memory-region-names = "q6-region", "host-ddr-mem", "mlo-global-mem";
+#else
 	memory-region = <&q6_region>, <&q6_region>, <&mlo_global_mem0>;
 	memory-region-names = "q6-region", "q6-region-1", "mlo-global-mem";
+#endif
 	qcom,wsi = <&wsi>;
 	qcom,wsi_index = <0>;
 	qcom,board_id = <0x14>;
