@@ -6,6 +6,7 @@
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
+#include <dt-bindings/clock/qcom,ipq9650-cmn-pll.h>
 #include <dt-bindings/clock/qcom,ipq9650-gcc.h>
 #include <dt-bindings/clock/qcom,ipq9650-nsscc.h>
 #include <dt-bindings/reset/qcom,ipq9650-gcc.h>
@@ -31,17 +32,18 @@
 			#clock-cells = <0>;
 		};
 
-		cmn_pll_nss_clk_462m: cmn-pll-nss-clk-462m {
-			compatible = "fixed-clock";
-			#clock-cells = <0>;
-		};
-
-		cmn_pll_nss_clk_750m: cmn-pll-nss-clk-750m {
-			compatible = "fixed-clock";
-			#clock-cells = <0>;
-		};
-
 		gcc_gpll0_out_aux: gcc-gpll0-out-aux {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+		};
+
+		ref_48mhz_clk: ref-48mhz-clk {
+			compatible = "fixed-factor-clock";
+			clocks = <&xo_clk>;
+			#clock-cells = <0>;
+		};
+
+		xo_clk: xo-clk {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
 		};
@@ -351,6 +353,18 @@
 				clock-output-names = "gcc_pcie4_pipe_clk_src";
 				#clock-cells = <0>;
 			};
+		};
+
+		cmn_pll: clock-controller@9b000 {
+			compatible = "qcom,ipq9650-cmn-pll";
+			reg = <0x0009b000 0x800>;
+			clocks = <&ref_48mhz_clk>,
+				 <&gcc GCC_CMN_12GPLL_AHB_CLK>,
+				 <&gcc GCC_CMN_12GPLL_SYS_CLK>;
+			clock-names = "ref", "ahb", "sys";
+			#clock-cells = <1>;
+			assigned-clocks = <&cmn_pll IPQ9650_CMN_PLL_CLK>;
+			assigned-clock-rates-u64 = /bits/ 64 <12000000000>;
 		};
 
 		pcie3_phy: phy@b4000 {
@@ -1341,8 +1355,8 @@
 			compatible = "qcom,ipq9650-nsscc";
 			reg = <0x29b00000 0x100000>;
 			clocks = <&xo>,
-				 <&cmn_pll_nss_clk_750m>,
-				 <&cmn_pll_nss_clk_462m>,
+				 <&cmn_pll IPQ9650_NSS_CLK>,
+				 <&cmn_pll IPQ9650_PPE_CLK>,
 				 <&gcc_gpll0_out_aux>,
 				 <0>,
 				 <0>,
