@@ -148,7 +148,8 @@ struct eht_snapshot *br_mcast_offload_eht_collect_snapshot(struct net_bridge_por
 							   __be16 proto);
 void br_mcast_offload_eht_snapshot_free(struct eht_snapshot *snapshot);
 int br_mcast_offload_mdb_fill_eht_hosts_from_snapshot(struct sk_buff *skb,
-						      struct eht_snapshot *snapshot);
+						      struct eht_snapshot *snapshot,
+						      u32 *idx);
 
 /* MDB atomic notifier */
 void br_mcast_offload_mdb_register_notify(struct notifier_block *nb);
