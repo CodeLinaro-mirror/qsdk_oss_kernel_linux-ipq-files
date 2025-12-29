@@ -1936,7 +1936,7 @@ static const struct of_device_id ctx_save_of_table[] = {
 		.compatible = "qti,ctxt-save-ipq9574",
 	},
 	{
-		.compatible = "qti,ctxt-save-ipq9679",
+		.compatible = "qti,ctxt-save-ipq9650",
 	},
 	{}
 };
