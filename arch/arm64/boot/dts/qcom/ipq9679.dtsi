@@ -12,6 +12,8 @@
 #include <dt-bindings/reset/qcom,ipq9679-nsscc.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/mailbox/qcom-ipcc.h>
+#include <dt-bindings/mailbox/qcom-ipcc-ipq9679.h>
 
 / {
 	#address-cells = <2>;
@@ -205,7 +207,7 @@
 		#size-cells = <2>;
 		ranges;
 
-		smem@8a800000 {
+		smem@8a100000 {
 			compatible = "qcom,smem";
 			reg = <0x0 0x8a100000 0x0 0x40000>;
 			no-map;
@@ -1190,6 +1192,39 @@
 			};
 		};
 
+		remoteproc_primess: remoteproc@14400000 {
+			#size-cells = <0x02>;
+			#address-cells = <0x02>;
+			compatible = "qcom,ipq9679-primess-pas";
+
+			reg = <0x14400000 0xfe410>,
+			      <0x40000 0x10000>,
+			      <0x7f400 0x150>,
+			      <0x7f600 0x10c>,
+			      <0x80000 0x40000>;
+			reg-names = "primess",
+				    "pdmem",
+				    "iu0-csr",
+				    "iuss-cmn",
+				    "mlmem";
+
+			interrupts-extended = <&intc GIC_SPI 687 IRQ_TYPE_EDGE_RISING>,
+					      <&intc GIC_SPI 688 IRQ_TYPE_EDGE_RISING>,
+					      <&intc GIC_SPI 689 IRQ_TYPE_EDGE_RISING>,
+					      <&intc GIC_SPI 690 IRQ_TYPE_EDGE_RISING>,
+					      <&intc GIC_SPI 691 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "task-done",
+					  "error",
+					  "misc",
+					  "boot-done",
+					  "wdog";
+
+			clocks = <&gcc GCC_PRIME_CORE_CLK>;
+			clock-names = "core-clk";
+
+			memory-region = <&prime_mem>;
+		};
+
 		apps_iommu: iommu@15000000 {
 			compatible = "arm,smmu-v2";
 			reg = <0x15000000 0x40000>;
@@ -1232,6 +1267,56 @@
 			#global-interrupts = <1>;
 
 			status = "disabled";
+		};
+
+		remoteproc_cdsp: remoteproc@24000000 {
+			compatible = "qcom,ipq9679-cdsp-pas";
+			reg = <0x26008000 0x14000>, /* Turing CC Regs */
+			      <0x26080000 0x1F000>, /* Turing TCSR */
+			      <0x26300000 0x100000>; /* Turing Q6SS */
+			reg-names = "turing_cc", "tcsr", "q6ss";
+
+			/* Inputs from turing */
+			interrupts-extended = <&intc GIC_SPI 447 IRQ_TYPE_EDGE_RISING>,
+					      <&cdsp_smp2p_in 0 IRQ_TYPE_EDGE_RISING>,
+					      <&cdsp_smp2p_in 1 IRQ_TYPE_EDGE_RISING>,
+					      <&cdsp_smp2p_in 2 IRQ_TYPE_EDGE_RISING>,
+					      <&cdsp_smp2p_in 3 IRQ_TYPE_EDGE_RISING>,
+					      <&cdsp_smp2p_in 7 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "wdog",
+					  "fatal",
+					  "ready",
+					  "handover",
+					  "stop-ack",
+					  "shutdown-ack";
+
+			memory-region = <&cdsp_mem &q6_cdsp_dtb_mem>;
+
+			/* Outputs to turing */
+			qcom,smem-states = <&cdsp_smp2p_out 0>;
+			qcom,smem-state-names = "stop";
+
+			remoteproc_cdsp_glink: glink-edge {
+				qcom,remote-pid = <5>;
+				transport = "smem";
+				mboxes = <&ipcc IPCC_MPROC_NSP
+					  IPCC_MPROC_SIGNAL_GLINK_QMP>;
+				mbox-names = "cdsp_smem";
+				interrupt-parent = <&ipcc>;
+				interrupts = <IPCC_MPROC_NSP
+					      IPCC_MPROC_SIGNAL_GLINK_QMP
+					      IRQ_TYPE_EDGE_RISING>;
+
+				label = "cdsp";
+				qcom,glink-label = "cdsp";
+
+				qcom,cdsp_qrtr {
+					qcom,glink-channels = "IPCRTR";
+					qcom,intents = <0x800  5
+							0x2000 3
+							0x4400 2>;
+				};
+			};
 		};
 
 		nsscc: clock-controller@29b00000 {
@@ -2261,5 +2346,27 @@
 	qcom,test@0 {
 		compatible = "qcom,testmhi";
 		qcom,wlan-ramdump-dynamic = <0x600000>;
+	};
+
+	qcom,smp2p-cdsp {
+		compatible = "qcom,smp2p";
+		qcom,smem = <94>, <432>;
+		interrupt-parent = <&ipcc>;
+		interrupts = <IPCC_MPROC_NSP IPCC_MPROC_SIGNAL_SMP2P
+			      IRQ_TYPE_EDGE_RISING>;
+		mboxes = <&ipcc IPCC_MPROC_NSP IPCC_MPROC_SIGNAL_SMP2P>;
+		qcom,local-pid = <0>;
+		qcom,remote-pid = <5>;
+
+		cdsp_smp2p_out: master-kernel {
+			qcom,entry-name = "master-kernel";
+			#qcom,smem-state-cells = <1>;
+		};
+
+		cdsp_smp2p_in: slave-kernel {
+			qcom,entry-name = "slave-kernel";
+			interrupt-controller;
+			#interrupt-cells = <2>;
+		};
 	};
 };
