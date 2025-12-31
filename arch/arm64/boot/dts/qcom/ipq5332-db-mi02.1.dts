@@ -514,6 +514,10 @@
 	};
 };
 
+&qcom_test_userpd2 {
+	status = "okay";
+};
+
 &wifi0 {
 	qcom,multipd_arch;
 	qcom,rproc = <&q6_wcss_pd1>;

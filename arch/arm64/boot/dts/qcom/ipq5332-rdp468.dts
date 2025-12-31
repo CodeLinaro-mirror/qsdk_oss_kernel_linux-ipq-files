@@ -414,6 +414,12 @@
 #endif
 };
 
+&qcom_test_userpd1 {
+#if defined(__IPQ_MEM_PROFILE_256_MB__)
+	status = "disabled";
+#endif
+};
+
 &wifi0 {
 	led-gpio = <&tlmm 36 GPIO_ACTIVE_HIGH>;
 	qcom,rproc = <&q6v5_wcss>;

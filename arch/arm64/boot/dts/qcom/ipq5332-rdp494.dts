@@ -749,6 +749,10 @@
 	};
 };
 
+&qcom_test_userpd2 {
+	status = "okay";
+};
+
 &hs_m31phy_0 {
 	status = "okay";
 };
