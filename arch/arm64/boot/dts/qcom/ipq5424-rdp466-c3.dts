@@ -519,7 +519,6 @@
 	status = "okay";
 };
 
-
 &qcn9224_pcie2 {
 	status = "okay";
 };
