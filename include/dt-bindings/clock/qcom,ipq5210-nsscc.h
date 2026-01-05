@@ -3,8 +3,8 @@
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
-#ifndef _DT_BINDINGS_CLK_QCOM_NSS_CC_IPQ5200_H
-#define _DT_BINDINGS_CLK_QCOM_NSS_CC_IPQ5200_H
+#ifndef _DT_BINDINGS_CLK_QCOM_NSS_CC_IPQ5210_H
+#define _DT_BINDINGS_CLK_QCOM_NSS_CC_IPQ5210_H
 
 #define	NSS_CC_PPE_CLK_SRC			0
 #define	NSS_CC_PPE_SWITCH_IPE_CLK		1

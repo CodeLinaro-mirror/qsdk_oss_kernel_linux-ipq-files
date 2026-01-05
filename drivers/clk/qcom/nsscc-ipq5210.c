@@ -12,8 +12,8 @@
 #include <linux/of.h>
 #include <linux/regmap.h>
 
-#include <dt-bindings/clock/qcom,ipq5200-nsscc.h>
-#include <dt-bindings/reset/qcom,ipq5200-nsscc.h>
+#include <dt-bindings/clock/qcom,ipq5210-nsscc.h>
+#include <dt-bindings/reset/qcom,ipq5210-nsscc.h>
 
 #include "clk-alpha-pll.h"
 #include "clk-branch.h"
@@ -1981,7 +1981,7 @@ static struct clk_branch nss_cc_nssnoc_nss_csr_clk = {
 	},
 };
 
-static struct clk_regmap *nss_cc_ipq5200_clocks[] = {
+static struct clk_regmap *nss_cc_ipq5210_clocks[] = {
 	[NSS_CC_PPE_CLK_SRC] = &nss_cc_ppe_clk_src.clkr,
 	[NSS_CC_PPE_SWITCH_IPE_CLK] = &nss_cc_ppe_switch_ipe_clk.clkr,
 	[NSS_CC_PPE_SWITCH_BTQ_CLK] = &nss_cc_ppe_switch_btq_clk.clkr,
@@ -2080,7 +2080,7 @@ static struct clk_regmap *nss_cc_ipq5200_clocks[] = {
 	[NSS_CC_NSSNOC_NSS_CSR_CLK] = &nss_cc_nssnoc_nss_csr_clk.clkr,
 };
 
-static const struct qcom_reset_map nss_cc_ipq5200_resets[] = {
+static const struct qcom_reset_map nss_cc_ipq5210_resets[] = {
 	[NSS_CC_PPE_BCR] = { 0x3e8 },
 	[NSS_CC_PPE_SWITCH_IPE_CLK_ARES] = { 0x424, 2 },
 	[NSS_CC_PPE_SWITCH_BTQ_CLK_ARES] = { 0x42c, 2 },
@@ -2133,7 +2133,7 @@ static const struct qcom_reset_map nss_cc_ipq5200_resets[] = {
 	[NSS_CC_DEBUG_CLK_ARES] = { 0x770, 2 },
 };
 
-static const struct regmap_config nss_cc_ipq5200_regmap_config = {
+static const struct regmap_config nss_cc_ipq5210_regmap_config = {
 	.reg_bits = 32,
 	.reg_stride = 4,
 	.val_bits = 32,
@@ -2141,30 +2141,30 @@ static const struct regmap_config nss_cc_ipq5200_regmap_config = {
 	.fast_io = true,
 };
 
-static const struct qcom_cc_desc nss_cc_ipq5200_desc = {
-	.config = &nss_cc_ipq5200_regmap_config,
-	.clks = nss_cc_ipq5200_clocks,
-	.num_clks = ARRAY_SIZE(nss_cc_ipq5200_clocks),
-	.resets = nss_cc_ipq5200_resets,
-	.num_resets = ARRAY_SIZE(nss_cc_ipq5200_resets),
+static const struct qcom_cc_desc nss_cc_ipq5210_desc = {
+	.config = &nss_cc_ipq5210_regmap_config,
+	.clks = nss_cc_ipq5210_clocks,
+	.num_clks = ARRAY_SIZE(nss_cc_ipq5210_clocks),
+	.resets = nss_cc_ipq5210_resets,
+	.num_resets = ARRAY_SIZE(nss_cc_ipq5210_resets),
 };
 
-static const struct of_device_id nss_cc_ipq5200_match_table[] = {
-	{ .compatible = "qcom,ipq5200-nsscc" },
+static const struct of_device_id nss_cc_ipq5210_match_table[] = {
+	{ .compatible = "qcom,ipq5210-nsscc" },
 	{ }
 };
-MODULE_DEVICE_TABLE(of, nss_cc_ipq5200_match_table);
+MODULE_DEVICE_TABLE(of, nss_cc_ipq5210_match_table);
 
-static int nss_cc_ipq5200_probe(struct platform_device *pdev)
+static int nss_cc_ipq5210_probe(struct platform_device *pdev)
 {
 	struct regmap *regmap;
 	int ret;
 
-	regmap = qcom_cc_map(pdev, &nss_cc_ipq5200_desc);
+	regmap = qcom_cc_map(pdev, &nss_cc_ipq5210_desc);
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
-	ret = qcom_cc_really_probe(&pdev->dev, &nss_cc_ipq5200_desc, regmap);
+	ret = qcom_cc_really_probe(&pdev->dev, &nss_cc_ipq5210_desc, regmap);
 	if (ret) {
 		dev_err(&pdev->dev,
 			"Failed to register NSS CC clocks with error: %d\n", ret);
@@ -2176,25 +2176,25 @@ static int nss_cc_ipq5200_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static struct platform_driver nss_cc_ipq5200_driver = {
-	.probe = nss_cc_ipq5200_probe,
+static struct platform_driver nss_cc_ipq5210_driver = {
+	.probe = nss_cc_ipq5210_probe,
 	.driver = {
-		.name = "qcom,ipq5200-nsscc",
-		.of_match_table = nss_cc_ipq5200_match_table,
+		.name = "qcom,ipq5210-nsscc",
+		.of_match_table = nss_cc_ipq5210_match_table,
 	},
 };
 
-static int __init nss_cc_ipq5200_init(void)
+static int __init nss_cc_ipq5210_init(void)
 {
-	return platform_driver_register(&nss_cc_ipq5200_driver);
+	return platform_driver_register(&nss_cc_ipq5210_driver);
 }
-core_initcall(nss_cc_ipq5200_init);
+core_initcall(nss_cc_ipq5210_init);
 
-static void __exit nss_cc_ipq5200_exit(void)
+static void __exit nss_cc_ipq5210_exit(void)
 {
-	platform_driver_unregister(&nss_cc_ipq5200_driver);
+	platform_driver_unregister(&nss_cc_ipq5210_driver);
 }
-module_exit(nss_cc_ipq5200_exit);
+module_exit(nss_cc_ipq5210_exit);
 
-MODULE_DESCRIPTION("Qualcomm Technologies, Inc. NSSCC IPQ5200 Driver");
+MODULE_DESCRIPTION("Qualcomm Technologies, Inc. NSSCC IPQ5210 Driver");
 MODULE_LICENSE("GPL v2");

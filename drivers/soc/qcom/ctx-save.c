@@ -1924,7 +1924,7 @@ static int ctx_save_probe(struct platform_device *pdev)
 
 static const struct of_device_id ctx_save_of_table[] = {
 	{
-		.compatible = "qti,ctxt-save-ipq5200",
+		.compatible = "qti,ctxt-save-ipq5210",
 	},
 	{
 		.compatible = "qti,ctxt-save-ipq5332",

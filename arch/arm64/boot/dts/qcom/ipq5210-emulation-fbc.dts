@@ -1,21 +1,18 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 /*
- * IPQ5200 Emulation board device tree source
+ * IPQ5210 Emulation FBC board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 /dts-v1/;
 
-#include "ipq5200.dtsi"
+#include "ipq5210.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. IPQ5200-EMULATION";
-	compatible = "qcom,ipq5200-emulation", "qcom,ipq5200";
-
-	/delete-node/ firmware;
-	/delete-node/ ctx-save;
+	model = "Qualcomm Technologies, Inc. IPQ5210-EMULATION-FBC";
+	compatible = "qcom,ipq5210-emulation", "qcom,ipq5210";
 
 	/* Timer freq for rumi = timer freq / 150 */
 	clocks {
@@ -33,59 +30,10 @@
 	};
 
 	chosen {
-		linux,initrd-end = <0x98000000>;
-		linux,initrd-start = <0x95000000>;
-		bootargs = "root=/dev/ram0 rw init=/init clk_ignore_unused earlycon";
 		stdout-path = "serial0";
 	};
 
-	cpus: cpus {
-		CPU0: cpu@0 {
-			enable-method = "qcom,a53-cortex-acc";
-			qcom,acc = <&acc0>;
-		};
-
-		CPU1: cpu@1 {
-			enable-method = "qcom,a53-cortex-acc";
-			qcom,acc = <&acc1>;
-		};
-
-		CPU2: cpu@2 {
-			enable-method = "qcom,a53-cortex-acc";
-			qcom,acc = <&acc2>;
-		};
-
-		CPU3: cpu@3 {
-			enable-method = "qcom,a53-cortex-acc";
-			qcom,acc = <&acc3>;
-		};
-	};
-
-	memory@80000000 {
-		reg = <0x0 0x80000000 0x0 0x40000000>;
-	};
-
 	soc@0 {
-		acc0: clock-controller@b188000 {
-			compatible = "qcom,arm-cortex-acc";
-			reg = <0xb188000 0x1000>;
-		};
-
-		acc1: clock-controller@b198000 {
-			compatible = "qcom,arm-cortex-acc";
-			reg = <0xb198000 0x1000>;
-		};
-
-		acc2:clock-controller@b1a8000 {
-			compatible = "qcom,arm-cortex-acc";
-			reg = <0xb1a8000 0x1000>;
-		};
-
-		acc3:clock-controller@b1b8000 {
-			compatible = "qcom,arm-cortex-acc";
-			reg = <0xb1b8000 0x1000>;
-		};
-
 		/* Timer freq for rumi = timer freq / 150 */
 		timer {
 			clock-frequency = <160000>;
@@ -187,9 +135,14 @@
 				};
 			};
 		};
-	};
 
-	psci {
-		status = "disabled";
 	};
+};
+
+&qmp_tmel {
+	status = "okay";
+};
+
+&tmelcom {
+	status = "okay";
 };

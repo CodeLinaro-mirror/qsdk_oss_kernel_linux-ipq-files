@@ -11,8 +11,8 @@
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 
-#include <dt-bindings/clock/qcom,ipq5200-gcc.h>
-#include <dt-bindings/reset/qcom,ipq5200-gcc.h>
+#include <dt-bindings/clock/qcom,ipq5210-gcc.h>
+#include <dt-bindings/reset/qcom,ipq5210-gcc.h>
 
 #include "clk-alpha-pll.h"
 #include "clk-branch.h"
@@ -88,7 +88,7 @@ static const struct clk_ops clk_dummy_ops = {
 	 },                                              \
 	 })
 
-static struct clk_regmap *gcc_ipq5200_dummy_clks[] = {
+static struct clk_regmap *gcc_ipq5210_dummy_clks[] = {
 	[GPLL0] = DEFINE_DUMMY_CLK(gpll0),
 	[GCC_QUPV3_AHB_MST_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_ahb_mst),
 	[GCC_QUPV3_AHB_SLV_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_ahb_slv),
@@ -139,7 +139,7 @@ static struct clk_regmap *gcc_ipq5200_dummy_clks[] = {
 	[GCC_QRNG_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_qrng_ahb_clk),
 };
 
-static const struct qcom_reset_map gcc_ipq5200_resets[] = {
+static const struct qcom_reset_map gcc_ipq5210_resets[] = {
 	[GCC_QUPV3_BCR] = { 0x01000, 0 },
 	[GCC_USB_BCR] = { 0x2C000, 0 },
 	[GCC_QUSB2_0_PHY_BCR] = { 0x2C068, 0 },
@@ -180,13 +180,13 @@ static const struct qcom_reset_map gcc_ipq5200_resets[] = {
 	[GCC_QRNG_BCR] = { 0x13020, 0 },
 };
 
-static const struct of_device_id gcc_ipq5200_match_table[] = {
-	{ .compatible = "qcom,ipq5200-gcc" },
+static const struct of_device_id gcc_ipq5210_match_table[] = {
+	{ .compatible = "qcom,ipq5210-gcc" },
 	{ }
 };
-MODULE_DEVICE_TABLE(of, gcc_ipq5200_match_table);
+MODULE_DEVICE_TABLE(of, gcc_ipq5210_match_table);
 
-static const struct regmap_config gcc_ipq5200_regmap_config = {
+static const struct regmap_config gcc_ipq5210_regmap_config = {
 	.reg_bits       = 32,
 	.reg_stride     = 4,
 	.val_bits       = 32,
@@ -194,25 +194,25 @@ static const struct regmap_config gcc_ipq5200_regmap_config = {
 	.fast_io        = true,
 };
 
-static const struct qcom_cc_desc gcc_ipq5200_desc = {
-	.config = &gcc_ipq5200_regmap_config,
-	.clks = gcc_ipq5200_dummy_clks,
-	.num_clks = ARRAY_SIZE(gcc_ipq5200_dummy_clks),
-	.resets = gcc_ipq5200_resets,
-	.num_resets = ARRAY_SIZE(gcc_ipq5200_resets),
+static const struct qcom_cc_desc gcc_ipq5210_desc = {
+	.config = &gcc_ipq5210_regmap_config,
+	.clks = gcc_ipq5210_dummy_clks,
+	.num_clks = ARRAY_SIZE(gcc_ipq5210_dummy_clks),
+	.resets = gcc_ipq5210_resets,
+	.num_resets = ARRAY_SIZE(gcc_ipq5210_resets),
 };
 
-static int gcc_ipq5200_probe(struct platform_device *pdev)
+static int gcc_ipq5210_probe(struct platform_device *pdev)
 {
 	struct regmap *regmap;
-	struct qcom_cc_desc ipq5200_desc = gcc_ipq5200_desc;
+	struct qcom_cc_desc ipq5210_desc = gcc_ipq5210_desc;
 	int ret;
 
-	regmap = qcom_cc_map(pdev, &ipq5200_desc);
+	regmap = qcom_cc_map(pdev, &ipq5210_desc);
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
-	ret = qcom_cc_really_probe(&pdev->dev, &ipq5200_desc, regmap);
+	ret = qcom_cc_really_probe(&pdev->dev, &ipq5210_desc, regmap);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to register GCC clocks ret=%d\n", ret);
 		return ret;
@@ -223,25 +223,25 @@ static int gcc_ipq5200_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static struct platform_driver gcc_ipq5200_driver = {
-	.probe = gcc_ipq5200_probe,
+static struct platform_driver gcc_ipq5210_driver = {
+	.probe = gcc_ipq5210_probe,
 	.driver = {
-		.name   = "qcom,gcc-ipq5200",
-		.of_match_table = gcc_ipq5200_match_table,
+		.name   = "qcom,gcc-ipq5210",
+		.of_match_table = gcc_ipq5210_match_table,
 	},
 };
 
-static int __init gcc_ipq5200_init(void)
+static int __init gcc_ipq5210_init(void)
 {
-	return platform_driver_register(&gcc_ipq5200_driver);
+	return platform_driver_register(&gcc_ipq5210_driver);
 }
-core_initcall(gcc_ipq5200_init);
+core_initcall(gcc_ipq5210_init);
 
-static void __exit gcc_ipq5200_exit(void)
+static void __exit gcc_ipq5210_exit(void)
 {
-	platform_driver_unregister(&gcc_ipq5200_driver);
+	platform_driver_unregister(&gcc_ipq5210_driver);
 }
-module_exit(gcc_ipq5200_exit);
+module_exit(gcc_ipq5210_exit);
 
-MODULE_DESCRIPTION("Qualcomm Technologies, Inc. GCC IPQ5200 Driver");
+MODULE_DESCRIPTION("Qualcomm Technologies, Inc. GCC IPQ5210 Driver");
 MODULE_LICENSE("GPLv2");
