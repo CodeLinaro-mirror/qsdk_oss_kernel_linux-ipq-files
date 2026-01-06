@@ -406,8 +406,8 @@
 	};
 };
 
-#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
 &q6v5_wcss {
+#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
 #ifndef __IPQ_MEM_PROFILE_256_MB__
 	q6_wcss_pd1: remoteproc_pd1 {
 		memory-region = <&q6_ipq5332_data>,
@@ -422,14 +422,21 @@
 		     status = "disabled";
 	};
 #endif
-};
+#else
+#if defined(__IPQ_MEM_PROFILE_256_MB__)
+	memory-region = <&mlo_global_mem0>;
 #endif
+#endif
+};
 
 &wifi0 {
 	led-gpio = <&tlmm 36 GPIO_ACTIVE_HIGH>;
 #if defined(__RPROC_DISABLE_MPD_SUPPORT__)
 	qcom,rproc = <&q6v5_wcss>;
-	dump-region = <&q6_ipq5332_data>,
+	dump-region =
+#if !defined(__IPQ_MEM_PROFILE_256_MB__)
+		<&q6_ipq5332_data>,
+#endif
 		<&mlo_global_mem0>;
 #else
 	qcom,rproc = <&q6_wcss_pd1>;
@@ -437,8 +444,10 @@
 	qcom,multipd_arch;
 #endif
 	qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
+#if !defined(__IPQ_MEM_PROFILE_256_MB__)
 	memory-region = <&q6_region>, <&q6_ipq5332_data>, <&mlo_global_mem0>;
 	memory-region-names = "q6-region", "host-ddr-mem", "mlo-global-mem";
+#endif
 	qcom,wsi = <&wsi>;
 	qcom,wsi_index = <0>;
 	qcom,board_id = <0x16>;

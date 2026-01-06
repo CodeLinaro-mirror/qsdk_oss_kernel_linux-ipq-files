@@ -616,24 +616,15 @@
 	};
 };
 
-#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
-&q6v5_wcss {
-	q6_wcss_pd1: remoteproc_pd1 {
-		memory-region = <&q6_ipq5332_data>,
-				<&m3_dump>,
-				<&q6_etr_region>,
-				<&q6_caldb_region>;
-	};
-};
-
-#endif
-
 &wifi0 {
 	led-gpio = <&tlmm 36 GPIO_ACTIVE_HIGH>;
 #if defined(__RPROC_DISABLE_MPD_SUPPORT__)
 	qcom,rproc = <&q6v5_wcss>;
-	dump-region = <&q6_ipq5332_data>,
-		      <&mlo_global_mem0>;
+	dump-region =
+#if !defined(__IPQ_MEM_PROFILE_256_MB__)
+			<&q6_ipq5332_data>,
+#endif
+			<&mlo_global_mem0>;
 #else
 	qcom,rproc = <&q6_wcss_pd1>;
 	qcom,rproc_rpd = <&q6v5_wcss>;

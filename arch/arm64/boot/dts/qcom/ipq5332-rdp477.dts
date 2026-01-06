@@ -574,10 +574,6 @@
 			q6_wcss_pd1: remoteproc_pd1 {
 #if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
 			memory-region = <&q6_ipq5332_data>,
-#ifndef __IPQ_MEM_PROFILE_256_MB__
-					<&m3_dump>, <&q6_etr_region>,
-					<&q6_ipq5332_caldb>,
-#endif
 					<&mlo_global_mem0>;
 				status = "ok";
 #else
@@ -605,11 +601,6 @@
 							"spawn";
 #if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
 				memory-region = <&q6_qcn6432_data_1>,
-#ifndef __IPQ_MEM_PROFILE_256_MB__
-						<&m3_dump_qcn6432_1>,
-						<&q6_qcn6432_etr_1>,
-						<&q6_qcn6432_caldb_1>,
-#endif
 						<&mlo_global_mem0>;
 				status = "ok";
 #else

@@ -762,7 +762,7 @@
 			memory-region = <&q6_mem_regions>,
 					<&q6_ipq5332_data>,
 					<&q6_qcn6432_data_1>,
-#ifdef __IPQ_MEM_PROFILE_256_MB__
+#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
 					<&m3_dump>,
 					<&q6_qcn6432_data_1>,
 					<&m3_dump_qcn6432_1>,

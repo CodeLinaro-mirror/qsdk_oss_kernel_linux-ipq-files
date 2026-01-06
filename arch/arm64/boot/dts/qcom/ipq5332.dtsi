@@ -2502,7 +2502,9 @@
 			qcom,smem-state-names = "shutdown",
 						"stop";
 			memory-region = <&q6_region>,
+#if !defined(__IPQ_MEM_PROFILE_256_MB__)
 					<&q6_ipq5332_data>,
+#endif
 					<&mlo_global_mem0>;
 			qcom,bootargs_smem = <507>;
 			qcom,bootargs_version = <2>;

@@ -69,9 +69,13 @@
 	*/
 
 	reserved-memory {
-
+#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
+		/delete-node/ q6_ipq5332_data@4b500000;
+		/delete-node/ mlo_global_mem_0@0x4db00000;
+#else
 		/delete-node/ q6_ipq5332_data@4b300000;
 		/delete-node/ mlo_global_mem_0@54900000;
+#endif
 		/delete-node/ wcnss@4a900000;
 
 		q6_mem_regions: q6_mem_regions@4A900000  {
@@ -137,13 +141,14 @@
 	 */
 
 	reserved-memory {
-
+#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
 		/delete-node/ q6_ipq5332_data@4b500000;
-		/delete-node/ m3_dump@4cc00000;
-		/delete-node/ q6_etr_dump@1;
 		/delete-node/ mlo_global_mem_0@0x4db00000;
+#else
+		/delete-node/ q6_ipq5332_data@4b300000;
+		/delete-node/ mlo_global_mem_0@54900000;
+#endif
 		/delete-node/ wcnss@4a900000;
-		/delete-node/ q6_caldb_region@4ce00000;
 
 		tz@4a600000 {
 			status = "okay";
@@ -151,37 +156,22 @@
 
 		q6_mem_regions: q6_mem_regions@4A900000  {
 			no-map;
-			reg = <0x0 0x4a900000 0x0 0x2100000>;
+			reg = <0x0 0x4a900000 0x0 0x1500000>;
 		};
 
-		q6_code_data: q6_code_data@4A900000 {
+		q6_ipq5332_data: q6_ipq5332_data@4be00000 {
 			no-map;
-			reg = <0x0 0x4a900000 0x0 0x1400000>;
+			reg = <0x0 0x4be00000 0x0 0xe00000>;
 		};
 
-		q6_ipq5332_data: q6_ipq5332_data@4BD00000 {
+		q6_qcn6432_data_1: q6_qcn6432_data_1@4cc00000 {
 			no-map;
-			reg = <0x0 0x4BD00000 0x0 0xD00000>;
+			reg = <0x0 0x4cc00000 0x0 0xf00000>;
 		};
 
-		m3_dump: m3_dump@4CA00000 {
+		mlo_global_mem0: mlo_global_mem_0@4db00000 {
 			no-map;
-			reg = <0x0 0x4CA00000 0x0 0x100000>;
-		};
-
-		q6_qcn6432_data_1: q6_qcn6432_data_1@4CE00000 {
-			no-map;
-			reg = <0x0 0x4CE00000 0x0 0xE00000>;
-		};
-
-		m3_dump_qcn6432_1: m3_dump_qcn6432_1@4DC00000 {
-			no-map;
-			reg = <0x0 0x4DC00000 0x0 0x100000>;
-		};
-
-		mlo_global_mem0: mlo_global_mem_0@4E000000 {
-			no-map;
-			reg = <0x0 0x4E000000 0x0 0x900000>;
+			reg = <0x0 0x4db00000 0x0 0x900000>;
 		};
 	};
 
@@ -238,8 +228,13 @@
 	*/
 	reserved-memory {
 
+#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
+		/delete-node/ q6_ipq5332_data@4b500000;
+		/delete-node/ mlo_global_mem_0@0x4db00000;
+#else
 		/delete-node/ q6_ipq5332_data@4b300000;
 		/delete-node/ mlo_global_mem_0@54900000;
+#endif
 		/delete-node/ wcnss@4a900000;
 
 		q6_mem_regions: q6_mem_regions@4A900000  {
@@ -591,20 +586,13 @@
 			memory-region = <&q6_mem_regions>,
 					<&q6_ipq5332_data>,
 					<&q6_qcn6432_data_1>,
-#ifdef __IPQ_MEM_PROFILE_256_MB__
-					<&m3_dump>,
-					<&m3_dump_qcn6432_1>,
-#endif
 					<&mlo_global_mem0>;
 
 			upd-firmware-names = "IPQ5332/q6_fw1.mdt",
 					     "IPQ5332/q6_fw2.mdt";
 			q6_wcss_pd1: remoteproc_pd1 {
 #if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
-			memory-region = <&q6_ipq5332_data>, <&m3_dump>,
-#ifndef __IPQ_MEM_PROFILE_256_MB__
-					<&q6_etr_region>, <&q6_ipq5332_caldb>,
-#endif
+			memory-region = <&q6_ipq5332_data>,
 					<&mlo_global_mem0>;
 				status = "ok";
 #else
@@ -633,11 +621,6 @@
 							"spawn";
 #if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
 				memory-region = <&q6_qcn6432_data_1>,
-						<&m3_dump_qcn6432_1>,
-#ifndef __IPQ_MEM_PROFILE_256_MB__
-						<&q6_qcn6432_etr_1>,
-						<&q6_qcn6432_caldb_1>,
-#endif
 						<&mlo_global_mem0>;
 				status = "ok";
 #else
@@ -817,15 +800,8 @@
     qcom,caldb-size = <0x300000>;
 #endif
     qcom,board_id = <0x45>;
-#ifdef __IPQ_MEM_PROFILE_256_MB__
-    memory-region = <&q6_ipq5332_data>, <&q6_mem_regions>, <&m3_dump>,
-		    <&mlo_global_mem0>;
-    memory-region-names = "host-ddr-mem", "q6-region", "m3-dump",
-			  "mlo-global-mem";
-#else
     memory-region = <&q6_ipq5332_data>, <&q6_mem_regions>, <&mlo_global_mem0>;
     memory-region-names = "host-ddr-mem", "q6-region", "mlo-global-mem";
-#endif
     qcom,wsi = <&wsi>;
     qcom,wsi_index  = <0>;
     status = "okay";
@@ -876,15 +852,8 @@
 #endif
     qcom,umac-irq-reset-addr = <0x18000884>;
     qcom,board_id = <0x52>;
-#ifndef __IPQ_MEM_PROFILE_256_MB__
     memory-region = <&q6_qcn6432_data_1>, <&q6_mem_regions>, <&mlo_global_mem0>;
     memory-region-names = "host-ddr-mem", "q6-region", "mlo-global-mem";
-#else
-    memory-region = <&q6_qcn6432_data_1>, <&q6_mem_regions>, <&m3_dump_qcn6432_1>,
-		    <&mlo_global_mem0>;
-    memory-region-names = "host-ddr-mem", "q6-region", "m3-dump",
-			  "mlo-global-mem";
-#endif
     qcom,pci_slot_id = <1>;
     qcom,wsi = <&wsi>;
     qcom,wsi_index = <1>;
