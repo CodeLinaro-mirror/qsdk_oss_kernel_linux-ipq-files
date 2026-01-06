@@ -78,5 +78,6 @@
 #define GCC_QPIC_IO_MACRO_CLK		68
 #define GCC_QUPV3_I2C0_CLK		69
 #define GCC_QUPV3_I2C1_CLK		70
+#define GCC_PRIME_CORE_CLK		71
 
 #endif
