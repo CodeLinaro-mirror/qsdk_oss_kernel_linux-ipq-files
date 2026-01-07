@@ -429,11 +429,6 @@
 	status = "okay";
 };
 
-#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
-&userpd_1 {
-	status = "okay";
-};
-#endif
 
 &spi1 {
 	pinctrl-0 = <&qup_spi1_default>;
