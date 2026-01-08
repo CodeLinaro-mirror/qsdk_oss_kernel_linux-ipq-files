@@ -19,6 +19,38 @@
 	model = "Qualcomm Technologies, Inc. IPQ5424 RDP492";
 	compatible = "qcom,ipq5424-rdp492", "qcom,ipq5424";
 
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		/delete-node/ mlo_global_mem_0@9b500000;
+
+		qcn9625_pcie1: qcn9625_pcie1@1 {
+			no-map;
+			size = <0x0 0x03200000>;
+			alignment = <0x0 0x100000>;
+		};
+
+		qcn9625_pcie2: qcn9625_pcie2@2 {
+			no-map;
+			size = <0x0 0x03200000>;
+			alignment = <0x0 0x100000>;
+		};
+
+		qcn9625_pcie3: qcn9625_pcie3@3 {
+			no-map;
+			size = <0x0 0x03200000>;
+			alignment = <0x0 0x100000>;
+		};
+
+		mlo_global_mem0: mlo_global_mem_0@0 {
+			no-map;
+			size = <0x0 0x1200000>;
+			alignment = <0x0 0x100000>;
+		};
+	};
+
 	soc@0 {
 		/delete-node/ apc-gpio-regulator;
 
@@ -430,6 +462,22 @@
 
 		qcom,mhi@1 {
 			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9625_pcie1>, <&mlo_global_mem0>;
+			memory-region-names = "host-ddr-mem", "mlo-global-mem";
+			qcom,board_id = <0x1>;
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+				};
+
+				port@1 {
+					reg = <1>;
+				};
+			};
 		};
 	};
 };
@@ -447,6 +495,22 @@
 
 		qcom,mhi@2 {
 			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9625_pcie2>, <&mlo_global_mem0>;
+			memory-region-names = "host-ddr-mem", "mlo-global-mem";
+			qcom,board_id = <0x4>;
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+				};
+
+				port@1 {
+					reg = <1>;
+				};
+			};
 		};
 	};
 };
@@ -464,6 +528,22 @@
 
 		qcom,mhi@3 {
 			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9625_pcie3>, <&mlo_global_mem0>;
+			memory-region-names = "host-ddr-mem", "mlo-global-mem";
+			qcom,board_id = <0x2>;
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+				};
+
+				port@1 {
+					reg = <1>;
+				};
+			};
 		};
 	};
 };
