@@ -159,7 +159,7 @@
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <16>;
 			phy-mode = "usxgmii";
-			qcom,ppe-offload-disabled = <1>;
+			qcom,ppe-offload-disabled = <0>;
 		};
 
 		dp2 {
@@ -172,7 +172,7 @@
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <16>;
 			phy-mode = "usxgmii";
-			qcom,ppe-offload-disabled = <1>;
+			qcom,ppe-offload-disabled = <0>;
 		};
 
 		dp3 {
@@ -185,7 +185,7 @@
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <16>;
 			phy-mode = "usxgmii";
-			qcom,ppe-offload-disabled = <1>;
+			qcom,ppe-offload-disabled = <0>;
 		};
 
 		dp4 {
@@ -198,7 +198,7 @@
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <16>;
 			phy-mode = "usxgmii";
-			qcom,ppe-offload-disabled = <1>;
+			qcom,ppe-offload-disabled = <0>;
 		};
 
 		dp5 {
@@ -211,7 +211,7 @@
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <16>;
 			phy-mode = "usxgmii";
-			qcom,ppe-offload-disabled = <1>;
+			qcom,ppe-offload-disabled = <0>;
 		};
 
 		dp6 {
@@ -224,7 +224,7 @@
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <16>;
 			phy-mode = "usxgmii";
-			qcom,ppe-offload-disabled = <1>;
+			qcom,ppe-offload-disabled = <0>;
 		};
 
 		edma@2ad00000 {
