@@ -11,8 +11,8 @@
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 
-#include <dt-bindings/clock/qcom,ipq9679-gcc.h>
-#include <dt-bindings/reset/qcom,ipq9679-gcc.h>
+#include <dt-bindings/clock/qcom,ipq9650-gcc.h>
+#include <dt-bindings/reset/qcom,ipq9650-gcc.h>
 
 #include "clk-alpha-pll.h"
 #include "clk-branch.h"
@@ -88,7 +88,7 @@ static const struct clk_ops clk_dummy_ops = {
 	 },                                              \
 	 })
 
-static struct clk_regmap *gcc_ipq9679_dummy_clks[] = {
+static struct clk_regmap *gcc_ipq9650_dummy_clks[] = {
 	[GCC_QUPV3_AHB_MST_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_ahb_mst),
 	[GCC_QUPV3_AHB_SLV_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_ahb_slv),
 	[GCC_QUPV3_UART0_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_uart0),
@@ -162,7 +162,7 @@ static struct clk_regmap *gcc_ipq9679_dummy_clks[] = {
 	[GCC_QUPV3_I2C1_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_i2c1),
 };
 
-static const struct qcom_reset_map gcc_ipq9679_resets[] = {
+static const struct qcom_reset_map gcc_ipq9650_resets[] = {
 	[GCC_QUPV3_BCR] = { 0x01000, 0 },
 	[GCC_UNIPHY0_BCR] = { 0x17044, 0 },
 	[GCC_UNIPHY1_BCR] = { 0x17054, 0 },
@@ -228,13 +228,13 @@ static const struct qcom_reset_map gcc_ipq9679_resets[] = {
 	[GCC_PCIE4_AUX_ARES] = { 0x25020, 2 },
 };
 
-static const struct of_device_id gcc_ipq9679_match_table[] = {
-	{ .compatible = "qcom,ipq9679-gcc" },
+static const struct of_device_id gcc_ipq9650_match_table[] = {
+	{ .compatible = "qcom,ipq9650-gcc" },
 	{ }
 };
-MODULE_DEVICE_TABLE(of, gcc_ipq9679_match_table);
+MODULE_DEVICE_TABLE(of, gcc_ipq9650_match_table);
 
-static const struct regmap_config gcc_ipq9679_regmap_config = {
+static const struct regmap_config gcc_ipq9650_regmap_config = {
 	.reg_bits       = 32,
 	.reg_stride     = 4,
 	.val_bits       = 32,
@@ -242,38 +242,38 @@ static const struct regmap_config gcc_ipq9679_regmap_config = {
 	.fast_io        = true,
 };
 
-static const struct qcom_cc_desc gcc_ipq9679_dummy_desc = {
-	.config = &gcc_ipq9679_regmap_config,
-	.clks = gcc_ipq9679_dummy_clks,
-	.num_clks = ARRAY_SIZE(gcc_ipq9679_dummy_clks),
-	.resets = gcc_ipq9679_resets,
-	.num_resets = ARRAY_SIZE(gcc_ipq9679_resets),
+static const struct qcom_cc_desc gcc_ipq9650_dummy_desc = {
+	.config = &gcc_ipq9650_regmap_config,
+	.clks = gcc_ipq9650_dummy_clks,
+	.num_clks = ARRAY_SIZE(gcc_ipq9650_dummy_clks),
+	.resets = gcc_ipq9650_resets,
+	.num_resets = ARRAY_SIZE(gcc_ipq9650_resets),
 };
 
-static int gcc_ipq9679_probe(struct platform_device *pdev)
+static int gcc_ipq9650_probe(struct platform_device *pdev)
 {
-	return qcom_cc_probe(pdev, &gcc_ipq9679_dummy_desc);
+	return qcom_cc_probe(pdev, &gcc_ipq9650_dummy_desc);
 }
 
-static struct platform_driver gcc_ipq9679_driver = {
-	.probe = gcc_ipq9679_probe,
+static struct platform_driver gcc_ipq9650_driver = {
+	.probe = gcc_ipq9650_probe,
 	.driver = {
-		.name   = "qcom,gcc-ipq9679",
-		.of_match_table = gcc_ipq9679_match_table,
+		.name   = "qcom,gcc-ipq9650",
+		.of_match_table = gcc_ipq9650_match_table,
 	},
 };
 
-static int __init gcc_ipq9679_init(void)
+static int __init gcc_ipq9650_init(void)
 {
-	return platform_driver_register(&gcc_ipq9679_driver);
+	return platform_driver_register(&gcc_ipq9650_driver);
 }
-core_initcall(gcc_ipq9679_init);
+core_initcall(gcc_ipq9650_init);
 
-static void __exit gcc_ipq9679_exit(void)
+static void __exit gcc_ipq9650_exit(void)
 {
-	platform_driver_unregister(&gcc_ipq9679_driver);
+	platform_driver_unregister(&gcc_ipq9650_driver);
 }
-module_exit(gcc_ipq9679_exit);
+module_exit(gcc_ipq9650_exit);
 
-MODULE_DESCRIPTION("Qualcomm Technologies, Inc. GCC IPQ9679 Driver");
+MODULE_DESCRIPTION("Qualcomm Technologies, Inc. GCC IPQ9650 Driver");
 MODULE_LICENSE("GPLv2");

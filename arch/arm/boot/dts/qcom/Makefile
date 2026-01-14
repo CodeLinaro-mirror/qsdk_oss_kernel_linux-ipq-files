@@ -79,8 +79,8 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	ipq9574-db-al02-c2.dtb \
 	ipq9574-db-al02-c3.dtb \
 	ipq9574-rdp475-c1.dtb \
-	ipq9679-emulation.dtb \
-	ipq9679-emulation-fbc.dtb \
+	ipq9650-emulation.dtb \
+	ipq9650-emulation-fbc.dtb \
 	ipq5332-rdp441.dtb \
 	ipq5332-rdp441-qca81xx.dtb \
 	ipq5332-rdp441-qca81xx-i2c.dtb \

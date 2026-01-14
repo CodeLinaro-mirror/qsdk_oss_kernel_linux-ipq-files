@@ -3,8 +3,8 @@
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
-#ifndef __DT_BINDINGS_MAILBOX_IPCC_IPQ9679_H
-#define __DT_BINDINGS_MAILBOX_IPCC_IPQ9679_H
+#ifndef __DT_BINDINGS_MAILBOX_IPCC_IPQ9650_H
+#define __DT_BINDINGS_MAILBOX_IPCC_IPQ9650_H
 
 /* Physical client IDs */
 #define IPCC_MPROC_TZ		0

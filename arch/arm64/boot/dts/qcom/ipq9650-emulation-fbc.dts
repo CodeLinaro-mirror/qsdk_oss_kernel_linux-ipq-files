@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 /*
- * IPQ9679 Emulation board device tree source
+ * IPQ9650 Emulation board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
@@ -8,11 +8,11 @@
 
 /dts-v1/;
 
-#include "ipq9679.dtsi"
+#include "ipq9650.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. IPQ9679-EMULATION-FBC";
-	compatible = "qcom,ipq9679-emulation-fbc", "qcom,ipq9679";
+	model = "Qualcomm Technologies, Inc. IPQ9650-EMULATION-FBC";
+	compatible = "qcom,ipq9650-emulation-fbc", "qcom,ipq9650";
 
 	/* Timer freq for rumi = timer freq / 200 */
 	clocks {
