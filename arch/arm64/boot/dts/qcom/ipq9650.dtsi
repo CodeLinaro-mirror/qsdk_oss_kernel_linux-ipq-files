@@ -2085,10 +2085,25 @@
 							group@0 {
 								/* L0 SP */
 								sp = <26>;
-								sp_loop_pri = <16>;
+								sp_loop_pri = <12>;
 								sp_max_pri = <1>;
 								/* cpri cdrr epri edrr */
 								cfg = <0 26 0 26>;
+							};
+
+							group@1 {
+								/* SSID groups with 4 priorities on L1 */
+								sp = <38>;
+								sp_loop_pri = <4>;
+								/* cpri cdrr epri edrr */
+								cfg = <0 38 0 38>;
+							};
+
+							group@2 {
+								sp = <42>;
+								sp_loop_pri = <3>;
+								/* cpri cdrr epri edrr */
+								cfg = <0 42 0 42>;
 							};
 						};
 
@@ -2132,7 +2147,7 @@
 								ucast_queue = <216>;
 								ucast_loop_pri = <8>;
 								ucast_max_pri = <8>;
-								cfg = <40 0 216 0 216>;
+								cfg = <42 0 216 0 216>;
 							};
 
 							group@5 {
@@ -2140,13 +2155,13 @@
 								ucast_queue = <224>;
 								ucast_loop_pri = <8>;
 								ucast_max_pri = <8>;
-								cfg = <41 0 224 0 224>;
+								cfg = <43 0 224 0 224>;
 							};
 
 							group@6 {
 								/* IGSRAM for DDRQ DS to WAN with 1 priority. */
 								ucast_queue = <232>;
-								cfg = <42 0 232 0 232>;
+								cfg = <44 0 232 0 232>;
 							};
 						};
 					};
