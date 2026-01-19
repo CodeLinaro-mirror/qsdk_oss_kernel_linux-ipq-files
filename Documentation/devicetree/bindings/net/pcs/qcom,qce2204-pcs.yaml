@@ -1,0 +1,98 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/net/pcs/qcom,qce2204-pcs.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Qualcomm QCE2204 PCS
+
+maintainers:
+  - Lei Wei <quic_leiwei@quicinc.com>
+
+description:
+  QCE2204 have two PCS devices named as PCS0 and PCS1, which support the
+  interface mode SGMII, 2500BASE-X, 10G-BASER and USXGMII mode to connect
+  with MAC5 and MAC0. They are accessible over the Ethernet MDIO bus.
+
+properties:
+  compatible:
+    const: qcom,qce2204-pcs
+
+  reg:
+    maxItems: 1
+
+  clocks:
+    items:
+      - description: PCS system clock
+      - description: PCS RX clock
+      - description: PCS TX clock
+      - description: XPCS XGMII RX clock
+      - description: XPCS XGMII TX clock
+
+  clock-names:
+    items:
+      - const: sys
+      - const: rx
+      - const: tx
+      - const: xgmii_rx
+      - const: xgmii_tx
+
+  resets:
+    items:
+      - description: PCS system reset
+      - description: PCS RX reset
+      - description: PCS TX reset
+      - description: XPCS XGMII RX reset
+      - description: XPCS XGMII TX reset
+      - description: XPCS reset
+
+  reset-names:
+    items:
+      - const: sys
+      - const: rx
+      - const: tx
+      - const: xgmii_rx
+      - const: xgmii_tx
+      - const: xpcs
+
+  '#clock-cells':
+    const: 1
+
+required:
+  - compatible
+  - reg
+  - clocks
+  - clock-names
+  - resets
+  - reset-names
+  - '#clock-cells'
+
+additionalProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/clock/qcom,qce2204-nsscc.h>
+    #include <dt-bindings/reset/qcom,qce2204-nsscc.h>
+
+    mdio {
+        #address-cells = <1>;
+        #size-cells = <0>;
+        ethernet-phy@6 {
+            compatible = "qcom,qce2204-pcs";
+            reg = <6>;
+            clocks = <&qce2204_nsscc QCE2204_NSSCC_SRDS1_SYS_CLK>,
+                     <&qce2204_nsscc QCE2204_NSSCC_MAC1_SRDS1_CH0_RX_CLK>,
+                     <&qce2204_nsscc QCE2204_NSSCC_MAC1_SRDS1_CH0_RX_CLK>,
+                     <&qce2204_nsscc QCE2204_NSSCC_MAC0_1_SRDS1_CH0_XGMII_RX_CLK>,
+                     <&qce2204_nsscc QCE2204_NSSCC_MAC0_1_SRDS1_CH0_XGMII_TX_CLK>;
+            clock-names = "sys", "rx", "tx", "xgmii_rx", "xgmii_tx";
+            resets = <&qce2204_nsscc QCE2204_NSSCC_SRDS1_SYS_ARES>,
+                     <&qce2204_nsscc QCE2204_NSSCC_MAC1_SRDS1_CH0_RX_ARES>,
+                     <&qce2204_nsscc QCE2204_NSSCC_MAC1_SRDS1_CH0_TX_ARES>,
+                     <&qce2204_nsscc QCE2204_NSSCC_MAC0_1_SRDS1_CH0_XGMII_RX_ARES>,
+                     <&qce2204_nsscc QCE2204_NSSCC_MAC0_1_SRDS1_CH0_XGMII_TX_ARES>,
+                     <&qce2204_nsscc QCE2204_NSSCC_SRDS1_XPCS_ARES>;
+            reset-names = "sys", "rx", "tx", "xgmii_rx", "xgmii_tx", "xpcs";
+            #clock-cells = <0x1>;
+        };
+    };

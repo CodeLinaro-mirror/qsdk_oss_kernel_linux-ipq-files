@@ -57,15 +57,10 @@
 #define QCE2204_PORT_RESET_TX				"tx"
 #define QCE2204_PORT_RESET_RX				"rx"
 
-/* QCE2204 switch port speeds */
-enum {
-	QCE2204_PORT_SPEED_10M = 0,
-	QCE2204_PORT_SPEED_100M = 1,
-	QCE2204_PORT_SPEED_1000M = 2,
-	QCE2204_PORT_SPEED_2500M = 3,
-	QCE2204_PORT_SPEED_5000M = 4,
-	QCE2204_PORT_SPEED_10000M = 5,
-	QCE2204_PORT_SPEED_ERR = 7,
+/* QCE2204 port MAC types */
+enum qce2204_port_mac_type {
+	QCE2204_PORT_MAC_TYPE_GMAC = 0,
+	QCE2204_PORT_MAC_TYPE_XGMAC = 1,
 };
 
 /* QCE2204 Hardware Module Base Addresses */
@@ -143,6 +138,24 @@ struct qce2204_port_ppe_res {
 };
 
 /**
+ * struct qce2204_ppe_port - Per-port PPE configuration and statistics
+ * @port: Port number
+ * @priv: Pointer to QCE2204 private data
+ * @mac_type: MAC type (GMAC or XGMAC) for this port
+ * @gmib_read: Delayed work for GMIB statistics polling
+ * @gmib_stats: GMIB statistics array (for GMAC ports)
+ * @gmib_stats_lock: Mutex to protect GMIB statistics
+ */
+struct qce2204_ppe_port {
+	int port;
+	struct qce2204_priv *priv;
+	enum qce2204_port_mac_type mac_type;
+	struct delayed_work gmib_read;
+	u64 *gmib_stats;
+	struct mutex gmib_stats_lock;
+};
+
+/**
  * struct qce2204_priv - QCE2204 switch private data
  * @ds: DSA switch structure
  * @dev: Device pointer
@@ -164,6 +177,8 @@ struct qce2204_port_ppe_res {
  * @core_reset: Switch core reset controller
  * @port_clks: Per-port clock resources
  * @port_resets: Per-port reset resources
+ * @ppe_port: Per-port PPE configuration and statistics
+ * @pcs: Array of PCS handles from independent PCS driver
  * @ppe_offload: PPE hardware offload enabled
  * @max_frame_size: Maximum frame size from device tree
  * @reg_base_offset: Base offset for register addresses
@@ -174,7 +189,6 @@ struct qce2204_priv {
 	struct regmap *regmap;
 	struct mii_bus *bus;
 	int addr;
-	struct phylink_pcs *pcs[QCE2204_NUM_PORTS];
 	struct mutex reg_mutex;
 	u32 port_enabled_map;
 	u8 cpu_port;
@@ -196,6 +210,12 @@ struct qce2204_priv {
 	struct qce2204_port_clk port_clks[QCE2204_NUM_PORTS];
 	struct qce2204_port_reset port_resets[QCE2204_NUM_PORTS];
 	struct qce2204_port_ppe_res port_ppe_res[QCE2204_NUM_PORTS];
+
+	/* Per-port PPE configuration and statistics */
+	struct qce2204_ppe_port ppe_port[QCE2204_NUM_PORTS];
+
+	/* PCS instances for CPU ports */
+	struct phylink_pcs *pcs[QCE2204_NUM_CPU_PORTS];
 
 	/* Device tree properties */
 	bool ppe_offload;
@@ -234,20 +254,10 @@ void qce2204_ppe_write(struct qce2204_priv *priv, u32 reg, u32 val);
 
 /* Port management functions */
 void qce2204_port_set_status(struct qce2204_priv *priv, int port, int enable);
+int qce2204_port_mac_init(struct qce2204_priv *priv);
 
-/**
- * struct qce2204_mib_desc - MIB counter descriptor
- * @size: Size of counter in registers (1 or 2)
- * @offset: Register offset from port MIB base
- * @name: Counter name string for ethtool
- */
-struct qce2204_mib_desc {
-	u8 size;
-	u8 offset;
-	const char *name;
-};
-
-/* MIB counter descriptor array */
-extern const struct qce2204_mib_desc qce2204_mib[];
+/* PCS functions */
+struct phylink_pcs *pcs_qce2204_create(struct device *dev, void __iomem *base, int port);
+void pcs_qce2204_destroy(struct phylink_pcs *pcs);
 
 #endif /* __QCE2204_H */

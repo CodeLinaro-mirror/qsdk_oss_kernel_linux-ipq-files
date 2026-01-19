@@ -21,6 +21,7 @@
 #include "qce2204.h"
 #include "qce2204_ppe.h"
 #include "qce2204_ppe_regs.h"
+#include "qce2204_ppe_mac.h"
 
 /**
  * qce2204_port_alloc_ppe_resources - Allocate PPE resources for a port
@@ -102,19 +103,6 @@ void qce2204_port_free_ppe_resources(struct qce2204_priv *priv, int port)
 	res->allocated = false;
 }
 
-/* MIB counters */
-static const struct qce2204_mib_desc qce2204_mib_desc[] = {
-	{ 8, 0x00, "TxOctets" },
-	{ 4, 0x08, "TxDropPkts" },
-	{ 4, 0x0c, "TxBroadcastPkts" },
-	{ 4, 0x10, "TxMulticastPkts" },
-	{ 8, 0x18, "RxOctets" },
-	{ 4, 0x20, "RxDropPkts" },
-	{ 4, 0x24, "RxBroadcastPkts" },
-	{ 4, 0x28, "RxMulticastPkts" },
-};
-
-#define QCE2204_MIB_SIZE	ARRAY_SIZE(qce2204_mib_desc)
 
 /* MDIO register access */
 static inline void qce2204_addr_split(u32 regaddr, u16 *reg_low, u16 *reg_mid, u16 *reg_high)
@@ -239,6 +227,12 @@ static int qce2204_setup(struct dsa_switch *ds)
 	ret = qce2204_ppe_hw_init(priv);
 	if (ret) {
 		dev_err(priv->dev, "PPE init failed: %d\n", ret);
+		return ret;
+	}
+
+	ret = qce2204_port_mac_init(priv);
+	if (ret) {
+		dev_err(priv->dev, "Port MAC init failed: %d\n", ret);
 		return ret;
 	}
 
@@ -456,64 +450,6 @@ static void qce2204_port_fast_age(struct dsa_switch *ds, int port)
 {
 }
 
-static void qce2204_phylink_get_caps(struct dsa_switch *ds, int port,
-					     struct phylink_config *config)
-{
-	__set_bit(PHY_INTERFACE_MODE_INTERNAL, config->supported_interfaces);
-	__set_bit(PHY_INTERFACE_MODE_GMII, config->supported_interfaces);
-	__set_bit(PHY_INTERFACE_MODE_SGMII, config->supported_interfaces);
-	__set_bit(PHY_INTERFACE_MODE_2500BASEX, config->supported_interfaces);
-	__set_bit(PHY_INTERFACE_MODE_10GBASER, config->supported_interfaces);
-	config->mac_capabilities = MAC_ASYM_PAUSE | MAC_SYM_PAUSE |
-				   MAC_10 | MAC_100 | MAC_1000FD |
-				   MAC_2500FD | MAC_5000FD | MAC_10000FD;
-}
-
-static void qce2204_phylink_mac_config(struct dsa_switch *ds, int port,
-					       unsigned int mode,
-					       const struct phylink_link_state *state)
-{
-}
-
-static void qce2204_phylink_mac_link_down(struct dsa_switch *ds, int port,
-						  unsigned int mode,
-						  phy_interface_t interface)
-{
-	struct qce2204_priv *priv = ds->priv;
-	qce2204_port_set_status(priv, port, 0);
-}
-
-static void qce2204_phylink_mac_link_up(struct dsa_switch *ds, int port,
-						unsigned int mode,
-						phy_interface_t interface,
-						struct phy_device *phydev,
-						int speed, int duplex,
-						bool tx_pause, bool rx_pause)
-{
-	struct qce2204_priv *priv = ds->priv;
-	qce2204_port_set_status(priv, port, 1);
-}
-
-static void qce2204_get_strings(struct dsa_switch *ds, int port, u32 stringset, uint8_t *data)
-{
-	int i;
-
-	if (stringset != ETH_SS_STATS)
-		return;
-	for (i = 0; i < QCE2204_MIB_SIZE; i++)
-		strscpy(data + i * ETH_GSTRING_LEN, qce2204_mib_desc[i].name, ETH_GSTRING_LEN);
-}
-
-static void qce2204_get_ethtool_stats(struct dsa_switch *ds, int port, uint64_t *data)
-{
-	memset(data, 0, QCE2204_MIB_SIZE * sizeof(uint64_t));
-}
-
-static int qce2204_get_sset_count(struct dsa_switch *ds, int port, int sset)
-{
-	return (sset == ETH_SS_STATS) ? QCE2204_MIB_SIZE : 0;
-}
-
 static int qce2204_port_change_mtu(struct dsa_switch *ds, int port, int new_mtu)
 {
 	struct qce2204_priv *priv = ds->priv;
@@ -555,6 +491,7 @@ static int qce2204_set_mac_eee(struct dsa_switch *ds, int port, struct ethtool_e
 
 static const struct dsa_switch_ops qce2204_switch_ops = {
 	.phylink_get_caps	= qce2204_phylink_get_caps,
+	.phylink_mac_select_pcs	= qce2204_phylink_mac_select_pcs,
 	.phylink_mac_config	= qce2204_phylink_mac_config,
 	.phylink_mac_link_down	= qce2204_phylink_mac_link_down,
 	.phylink_mac_link_up	= qce2204_phylink_mac_link_up,
@@ -745,8 +682,10 @@ static void qce2204_mdio_remove(struct mdio_device *mdiodev)
 {
 	struct qce2204_priv *priv = dev_get_drvdata(&mdiodev->dev);
 
-	if (priv && priv->ds)
+	if (priv && priv->ds) {
 		dsa_unregister_switch(priv->ds);
+		qce2204_port_mac_deinit(priv);
+	}
 
 	qce2204_cleanup_port_clocks_resets(priv);
 	qce2204_cleanup_switch_clocks_resets(priv);
