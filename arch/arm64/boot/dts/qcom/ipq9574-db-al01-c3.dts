@@ -96,28 +96,40 @@
 					port@0 {
 						port_id = <1>;
 						phy_address = <16>;
+						phy-handle = <&phy0>;
+						phy-mode = "psgmii";
 					};
 					port@1 {
 						port_id = <2>;
 						phy_address = <17>;
+						phy-handle = <&phy1>;
+						phy-mode = "psgmii";
 					};
 					port@2 {
 						port_id = <3>;
 						phy_address = <18>;
+						phy-handle = <&phy2>;
+						phy-mode = "psgmii";
 					};
 					port@3 {
 						port_id = <4>;
 						phy_address = <19>;
+						phy-handle = <&phy3>;
+						phy-mode = "psgmii";
 					};
 					port@4 {
 						port_id = <5>;
 						phy_address = <8>;
 						ethernet-phy-ieee802.3-c45;
+						phy-handle = <&phy4>;
+						phy-mode = "usxgmii";
 					};
 					port@5 {
 						port_id = <6>;
 						phy_address = <0>;
 						ethernet-phy-ieee802.3-c45;
+						phy-handle = <&phy5>;
+						phy-mode = "usxgmii";
 					};
 				};
 			};
@@ -129,10 +141,7 @@
 			qcom,id = <1>;
 			reg = <0x3a001000 0x200>;
 			qcom,mactype = <0>;
-			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
-			qcom,phy-mdio-addr = <16>;
-			phy-mode = "psgmii";
 		};
 
 		dp2 {
@@ -141,10 +150,7 @@
 			qcom,id = <2>;
 			reg = <0x3a001200 0x200>;
 			qcom,mactype = <0>;
-			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
-			qcom,phy-mdio-addr = <17>;
-			phy-mode = "psgmii";
 		};
 
 		dp3 {
@@ -153,10 +159,7 @@
 			qcom,id = <3>;
 			reg = <0x3a001400 0x200>;
 			qcom,mactype = <0>;
-			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
-			qcom,phy-mdio-addr = <18>;
-			phy-mode = "psgmii";
 		};
 
 		dp4 {
@@ -165,10 +168,7 @@
 			qcom,id = <4>;
 			reg = <0x3a001600 0x200>;
 			qcom,mactype = <0>;
-			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
-			qcom,phy-mdio-addr = <19>;
-			phy-mode = "psgmii";
 		};
 
 		dp5 {
@@ -177,10 +177,7 @@
 			qcom,id = <5>;
 			reg = <0x3a510000 0x4000>;
 			qcom,mactype = <1>;
-			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
-			qcom,phy-mdio-addr = <8>;
-			phy-mode = "usxgmii";
 		};
 
 		dp6 {
@@ -189,10 +186,7 @@
 			qcom,id = <6>;
 			reg = <0x3a514000 0x4000>;
 			qcom,mactype = <1>;
-			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
-			qcom,phy-mdio-addr = <0>;
-			phy-mode = "usxgmii";
 		};
 
 		/* EDMA host driver configuration for the board */
