@@ -556,7 +556,7 @@
 					pins = "gpio5";
 					function = "qspi_clk";
 					drive-strength = <8>;
-					bias-pull-down;
+					bias-disable;
 				};
 
 				qspi_cs {
@@ -570,7 +570,7 @@
 					pins = "gpio0", "gpio1", "gpio2", "gpio3";
 					function = "qspi_data";
 					drive-strength = <8>;
-					bias-pull-down;
+					bias-pull-up;
 				};
 			};
 		};
@@ -652,6 +652,15 @@
 				interrupts = <GIC_SPI 342 IRQ_TYPE_LEVEL_HIGH>;
 				assigned-clocks = <&gcc GCC_QUPV3_I2C1_CLK>;
 				assigned-clock-rates = <64000000>;
+				status = "disabled";
+			};
+
+			uart1: serial@1a98000 {
+				compatible = "qcom,geni-debug-uart";
+				reg = <0x01a98000 0x4000>;
+				clocks = <&gcc GCC_QUPV3_UART1_CLK>;
+				clock-names = "se";
+				interrupts = <GIC_SPI 380 IRQ_TYPE_LEVEL_HIGH>;
 				status = "disabled";
 			};
 		};
