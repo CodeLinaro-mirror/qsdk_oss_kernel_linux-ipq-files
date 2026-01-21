@@ -445,9 +445,11 @@ static ssize_t mini_dump_read(struct file *file, char __user *buf,
 		seg_num ++;
 		pending = segment->size;
 
+		pr_debug("Minidump: Segment name : %s and addr %lx\n",
+				segment->name, segment->addr);
 		ret = copy_to_user(buf, (const void *)(uintptr_t)segment->addr, pending);
 		if (ret) {
-			pr_info("\n Minidump: copy_to_user error");
+			pr_err("\n Minidump: copy_to_user error");
 			return 0;
 		}
 
