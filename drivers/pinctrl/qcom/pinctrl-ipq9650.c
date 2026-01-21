@@ -55,7 +55,7 @@
 		.nfuncs = 12,                                         \
 	}
 
-static const struct pinctrl_pin_desc ipq9679_pins[] = {
+static const struct pinctrl_pin_desc ipq9650_pins[] = {
 	PINCTRL_PIN(0, "GPIO_0"),
 	PINCTRL_PIN(1, "GPIO_1"),
 	PINCTRL_PIN(2, "GPIO_2"),
@@ -169,7 +169,7 @@ DECLARE_MSM_GPIO_PINS(51);
 DECLARE_MSM_GPIO_PINS(52);
 DECLARE_MSM_GPIO_PINS(53);
 
-enum ipq9679_functions {
+enum ipq9650_functions {
 	msm_mux_gpio,
 	msm_mux_atest_char_start,
 	msm_mux_atest_char_status0,
@@ -828,7 +828,7 @@ static const char *const tsn_groups[] = {
 	"gpio50",
 };
 
-static const struct pinfunction ipq9679_functions[] = {
+static const struct pinfunction ipq9650_functions[] = {
 	MSM_PIN_FUNCTION(gpio),
 	MSM_PIN_FUNCTION(atest_char_start),
 	MSM_PIN_FUNCTION(atest_char_status0),
@@ -960,7 +960,7 @@ static const struct pinfunction ipq9679_functions[] = {
 	MSM_PIN_FUNCTION(tsn),
 };
 
-static const struct msm_pingroup ipq9679_groups[] = {
+static const struct msm_pingroup ipq9650_groups[] = {
 	[0] = PINGROUP(0, sdc_data, qspi_data, _, _, _, _, _, _, _, _, _),
 	[1] = PINGROUP(1, sdc_data, qspi_data, _, _, _, _, _, _, _, _, _),
 	[2] = PINGROUP(2, sdc_data, qspi_data, _, _, _, _, _, _, _, _, _),
@@ -1017,48 +1017,48 @@ static const struct msm_pingroup ipq9679_groups[] = {
 	[53] = PINGROUP(53, pcie2_wake, qup_se6_l1, qup_se0_l5, audio_pri0, audio_pri0, qdss_cti_trig_in_a0, _, atest_tic_en, _, _, _),
 };
 
-static const struct msm_pinctrl_soc_data ipq9679_tlmm = {
-	.pins = ipq9679_pins,
-	.npins = ARRAY_SIZE(ipq9679_pins),
-	.functions = ipq9679_functions,
-	.nfunctions = ARRAY_SIZE(ipq9679_functions),
-	.groups = ipq9679_groups,
-	.ngroups = ARRAY_SIZE(ipq9679_groups),
+static const struct msm_pinctrl_soc_data ipq9650_tlmm = {
+	.pins = ipq9650_pins,
+	.npins = ARRAY_SIZE(ipq9650_pins),
+	.functions = ipq9650_functions,
+	.nfunctions = ARRAY_SIZE(ipq9650_functions),
+	.groups = ipq9650_groups,
+	.ngroups = ARRAY_SIZE(ipq9650_groups),
 	.ngpios = 54,
 	.egpio_func = 11,
 };
 
-static const struct of_device_id ipq9679_tlmm_of_match[] = {
-	{ .compatible = "qcom,ipq9679-tlmm", .data = &ipq9679_tlmm },
+static const struct of_device_id ipq9650_tlmm_of_match[] = {
+	{ .compatible = "qcom,ipq9650-tlmm", .data = &ipq9650_tlmm },
 	{},
 };
 
-static int ipq9679_tlmm_probe(struct platform_device *pdev)
+static int ipq9650_tlmm_probe(struct platform_device *pdev)
 {
-	return msm_pinctrl_probe(pdev, &ipq9679_tlmm);
+	return msm_pinctrl_probe(pdev, &ipq9650_tlmm);
 }
 
-static struct platform_driver ipq9679_tlmm_driver = {
+static struct platform_driver ipq9650_tlmm_driver = {
 	.driver = {
-		.name = "ipq9679-tlmm",
-		.of_match_table = ipq9679_tlmm_of_match,
+		.name = "ipq9650-tlmm",
+		.of_match_table = ipq9650_tlmm_of_match,
 	},
-	.probe = ipq9679_tlmm_probe,
+	.probe = ipq9650_tlmm_probe,
 	.remove = msm_pinctrl_remove,
 };
 
-static int __init ipq9679_tlmm_init(void)
+static int __init ipq9650_tlmm_init(void)
 {
-	return platform_driver_register(&ipq9679_tlmm_driver);
+	return platform_driver_register(&ipq9650_tlmm_driver);
 }
-arch_initcall(ipq9679_tlmm_init);
+arch_initcall(ipq9650_tlmm_init);
 
-static void __exit ipq9679_tlmm_exit(void)
+static void __exit ipq9650_tlmm_exit(void)
 {
-	platform_driver_unregister(&ipq9679_tlmm_driver);
+	platform_driver_unregister(&ipq9650_tlmm_driver);
 }
-module_exit(ipq9679_tlmm_exit);
+module_exit(ipq9650_tlmm_exit);
 
-MODULE_DESCRIPTION("QTI ipq9679 TLMM driver");
+MODULE_DESCRIPTION("QTI ipq9650 TLMM driver");
 MODULE_LICENSE("GPL");
-MODULE_DEVICE_TABLE(of, ipq9679_tlmm_of_match);
+MODULE_DEVICE_TABLE(of, ipq9650_tlmm_of_match);

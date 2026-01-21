@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 /*
- * IPQ9679 device tree source
+ * IPQ9650 device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
-#include <dt-bindings/clock/qcom,ipq9679-gcc.h>
-#include <dt-bindings/clock/qcom,ipq9679-nsscc.h>
-#include <dt-bindings/reset/qcom,ipq9679-gcc.h>
-#include <dt-bindings/reset/qcom,ipq9679-nsscc.h>
+#include <dt-bindings/clock/qcom,ipq9650-gcc.h>
+#include <dt-bindings/clock/qcom,ipq9650-nsscc.h>
+#include <dt-bindings/reset/qcom,ipq9650-gcc.h>
+#include <dt-bindings/reset/qcom,ipq9650-nsscc.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/mailbox/qcom-ipcc.h>
-#include <dt-bindings/mailbox/qcom-ipcc-ipq9679.h>
+#include <dt-bindings/mailbox/qcom-ipcc-ipq9650.h>
 
 / {
 	#address-cells = <2>;
@@ -152,7 +152,7 @@
 	};
 
 	ctx-save {
-		compatible = "qti,ctxt-save-ipq9679";
+		compatible = "qti,ctxt-save-ipq9650";
 	};
 
 	firmware {
@@ -162,7 +162,7 @@
 		};
 
 		scm {
-			compatible = "qcom,scm-ipq9679", "qcom,scm";
+			compatible = "qcom,scm-ipq9650", "qcom,scm";
 			qcom,dload-mode = <&tcsr 0x240fc>;
 		};
 	};
@@ -259,7 +259,7 @@
 		dma-ranges;
 
 		pcie0_phy: phy@84000 {
-			compatible = "qcom,ipq9679-qmp-gen3x1-pcie-phy",
+			compatible = "qcom,ipq9650-qmp-gen3x1-pcie-phy",
 				     "qcom,ipq9574-qmp-gen3x1-pcie-phy";
 			reg = <0x00084000 0x1c0>; /* Serdes PLL */
 			#address-cells = <1>;
@@ -303,7 +303,7 @@
 		};
 
 		pcie4_phy: phy@8c000 {
-			compatible = "qcom,ipq9679-qmp-gen3x1-pcie-phy",
+			compatible = "qcom,ipq9650-qmp-gen3x1-pcie-phy",
 				     "qcom,ipq9574-qmp-gen3x1-pcie-phy";
 			reg = <0x0008c000 0x1c0>; /* Serdes PLL */
 			#address-cells = <1>;
@@ -347,7 +347,7 @@
 		};
 
 		pcie3_phy: phy@b4000 {
-			compatible = "qcom,ipq9679-qmp-gen3x2-pcie-phy",
+			compatible = "qcom,ipq9650-qmp-gen3x2-pcie-phy",
 				     "qcom,ipq9574-qmp-gen3x2-pcie-phy";
 			reg = <0x000b4000 0x1c0>; /* Serdes PLL */
 			#address-cells = <1>;
@@ -393,7 +393,7 @@
 		};
 
 		pcie1_phy: phy@f4000 {
-			compatible = "qcom,ipq9679-qmp-gen3x2-pcie-phy",
+			compatible = "qcom,ipq9650-qmp-gen3x2-pcie-phy",
 				     "qcom,ipq9574-qmp-gen3x2-pcie-phy";
 			reg = <0x000f4000 0x1c0>; /* Serdes PLL */
 			#address-cells = <1>;
@@ -439,7 +439,7 @@
 		};
 
 		pcie2_phy: phy@fc000 {
-			compatible = "qcom,ipq9679-qmp-gen3x2-pcie-phy",
+			compatible = "qcom,ipq9650-qmp-gen3x2-pcie-phy",
 				     "qcom,ipq9574-qmp-gen3x2-pcie-phy";
 			reg = <0x000fc000 0x1c0>; /* Serdes PLL PCIE_2_CFG_QSERDES_PLL_QSERDES_PLL_G3X2_QMP_PLL */
 			#address-cells = <1>;
@@ -485,7 +485,7 @@
 		};
 
 		tlmm: pinctrl@1000000 {
-			compatible = "qcom,ipq9679-tlmm";
+			compatible = "qcom,ipq9650-tlmm";
 			reg = <0x01000000 0x300000>;
 			interrupts = <GIC_SPI 84 IRQ_TYPE_LEVEL_HIGH>;
 			gpio-controller;
@@ -569,7 +569,7 @@
 		};
 
 		gcc: clock-controller@1800000 {
-			compatible = "qcom,ipq9679-gcc";
+			compatible = "qcom,ipq9650-gcc";
 			reg = <0x01800000 0x40000>;
 
 			clocks = <&xo>,
@@ -586,7 +586,7 @@
 		};
 
 		tcsr: syscon@1938004 {
-			compatible = "qcom,tcsr-ipq9679", "syscon";
+			compatible = "qcom,tcsr-ipq9650", "syscon";
 			reg = <0x01938004 0x35ffc>;
 		};
 
@@ -650,7 +650,7 @@
 		};
 
 		ipcc: mailbox@1b03000 {
-			compatible = "qcom,ipq9679-ipcc", "qcom,ipcc";
+			compatible = "qcom,ipq9650-ipcc", "qcom,ipcc";
 			reg = <0x01b03000 0x1000>;
 			interrupts = <GIC_SPI 445 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-controller;
@@ -659,7 +659,7 @@
 		};
 
 		system-cache-controller@4000000 {
-			compatible = "qcom,ipq9679-llcc";
+			compatible = "qcom,ipq9650-llcc";
 			reg = <0x04000000 0x200000>, <0x04000000 0x200000>;
 			reg-names = "llcc_base", "llcc_broadcast_base";
 			interrupts = <GIC_SPI 68 IRQ_TYPE_LEVEL_HIGH>;
@@ -1026,7 +1026,7 @@
 		};
 
 		sdhc: mmc@7804000 {
-			compatible = "qcom,ipq9679-sdhci", "qcom,sdhci-msm-v5";
+			compatible = "qcom,ipq9650-sdhci", "qcom,sdhci-msm-v5";
 			reg = <0x07804000 0x1000>, <0x07805000 0x1000>;
 
 			interrupts = <GIC_SPI 116 IRQ_TYPE_LEVEL_HIGH>,
@@ -1042,7 +1042,7 @@
 		};
 
 		imem: sram@8600000 {
-			compatible = "qcom,ipq9679-imem", "qcom,imem";
+			compatible = "qcom,ipq9650-imem", "qcom,imem";
 			reg = <0x08600000 0x1000>;
 			ranges = <0 0x08600000 0x1000>;
 
@@ -1080,7 +1080,7 @@
 		};
 
 		qpic_nand: nand@79b0000 {
-			compatible = "qcom,ipq9679-nand";
+			compatible = "qcom,ipq9650-nand";
 			reg = <0x79b0000 0x10000>;
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -1126,7 +1126,7 @@
 		};
 
 		watchdog: watchdog@f410000 {
-			compatible = "qcom,apss-wdt-ipq9679", "qcom,kpss-wdt";
+			compatible = "qcom,apss-wdt-ipq9650", "qcom,kpss-wdt";
 			reg = <0x0f410000 0x1000>;
 			interrupts = <GIC_SPI 0 IRQ_TYPE_EDGE_RISING>;
 			clocks = <&sleep_clk>;
@@ -1195,7 +1195,7 @@
 		remoteproc_primess: remoteproc@14400000 {
 			#size-cells = <0x02>;
 			#address-cells = <0x02>;
-			compatible = "qcom,ipq9679-primess-pas";
+			compatible = "qcom,ipq9650-primess-pas";
 
 			reg = <0x14400000 0xfe410>,
 			      <0x40000 0x10000>,
@@ -1270,7 +1270,7 @@
 		};
 
 		remoteproc_cdsp: remoteproc@24000000 {
-			compatible = "qcom,ipq9679-cdsp-pas";
+			compatible = "qcom,ipq9650-cdsp-pas";
 			reg = <0x26008000 0x14000>, /* Turing CC Regs */
 			      <0x26080000 0x1F000>, /* Turing TCSR */
 			      <0x26300000 0x100000>; /* Turing Q6SS */
@@ -1320,7 +1320,7 @@
 		};
 
 		nsscc: clock-controller@29b00000 {
-			compatible = "qcom,ipq9679-nsscc";
+			compatible = "qcom,ipq9650-nsscc";
 			reg = <0x29b00000 0x100000>;
 			clocks = <&xo>,
 				 <&cmn_pll_nss_clk_750m>,
@@ -1348,7 +1348,7 @@
 		};
 
 		pcie3: pcie@30000000 {
-			compatible = "qcom,pcie-ipq9679";
+			compatible = "qcom,pcie-ipq9650";
 			reg =  <0x30000000 0xf1d>,
 			       <0x30000f20 0xa8>,
 			       <0x30001000 0x1000>,
@@ -1430,7 +1430,7 @@
 		};
 
 		pcie2: pcie@40000000 {
-			compatible = "qcom,pcie-ipq9679";
+			compatible = "qcom,pcie-ipq9650";
 			reg =  <0x40000000 0xf1d>,
 			       <0x40000f20 0xa8>,
 			       <0x40001000 0x1000>,
@@ -1513,7 +1513,7 @@
 		};
 
 		pcie1: pcie@50000000 {
-			compatible = "qcom,pcie-ipq9679";
+			compatible = "qcom,pcie-ipq9650";
 			reg =  <0x50000000 0xf1d>,
 			       <0x50000f20 0xa8>,
 			       <0x50001000 0x1000>,
@@ -1595,7 +1595,7 @@
 		};
 
 		pcie4: pcie@60000000 {
-			compatible = "qcom,pcie-ipq9679";
+			compatible = "qcom,pcie-ipq9650";
 			reg =  <0x60000000 0xf1d>,
 			       <0x60000f20 0xa8>,
 			       <0x60001000 0x1000>,
@@ -1677,7 +1677,7 @@
 		};
 
 		pcie0: pcie@70000000 {
-			compatible = "qcom,pcie-ipq9679";
+			compatible = "qcom,pcie-ipq9650";
 			reg =  <0x70000000 0xf1d>,
 			       <0x70000f20 0xa8>,
 			       <0x70001000 0x1000>,

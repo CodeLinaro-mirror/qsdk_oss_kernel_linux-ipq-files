@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 /*
- * IPQ9679 Memory device tree source
+ * IPQ5210 Memory device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
@@ -14,8 +14,8 @@
 	 * |         |              |                         |
 	 * +---------+--------------+-------------------------+
 	 * |         |              |                         |
-	 * | QCN9625 |    DYNAMIC   |          50MB           |
-	 * | PCIe2   |              |                         |
+	 * | QCN9224 |    DYNAMIC   |          50MB           |
+	 * | PCIe0   |              |                         |
 	 * |         |              |                         |
 	 * +---------+--------------+-------------------------+
 	 * |         |              |                         |
@@ -37,7 +37,7 @@
 		#size-cells = <2>;
 		ranges;
 
-		qcn9625_pcie2: qcn9625_pcie2@2 {
+		qcn9224_pcie0: qcn9224_pcie0@0 {
 			no-map;
 			size = <0x0 0x03200000>;
 			alignment = <0x0 0x100000>;

@@ -4,8 +4,8 @@
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
-#ifndef _DT_BINDINGS_RESET_IPQ_GCC_IPQ9679_H
-#define _DT_BINDINGS_RESET_IPQ_GCC_IPQ9679_H
+#ifndef _DT_BINDINGS_RESET_IPQ_GCC_IPQ9650_H
+#define _DT_BINDINGS_RESET_IPQ_GCC_IPQ9650_H
 
 #define GCC_QUPV3_BCR				0
 #define GCC_UNIPHY0_BCR				1
