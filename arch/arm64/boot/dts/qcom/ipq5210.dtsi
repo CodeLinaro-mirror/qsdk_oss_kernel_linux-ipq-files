@@ -292,10 +292,10 @@
 			spi0: spi@1a80000 {
 				compatible = "qcom,geni-spi";
 				reg = <0x1a80000 0x4000>;
-				clocks = <&gcc GCC_QUPV3_SPI0_CLK>;
+				clocks = <&gcc GCC_QUPV3_WRAP_SE0_CLK>;
 				clock-names = "se";
 				interrupts = <GIC_SPI 138 IRQ_TYPE_LEVEL_HIGH>;
-				assigned-clocks = <&gcc GCC_QUPV3_SPI0_CLK>;
+				assigned-clocks = <&gcc GCC_QUPV3_WRAP_SE0_CLK>;
 				assigned-clock-rates = <50000000>;
 				status = "disabled";
 			};
@@ -303,7 +303,7 @@
 			uart1: serial@1a84000 {
 				compatible = "qcom,geni-debug-uart";
 				reg = <0x1a84000 0x4000>;
-				clocks = <&gcc GCC_QUPV3_UART1_CLK>;
+				clocks = <&gcc GCC_QUPV3_WRAP_SE1_CLK>;
 				clock-names = "se";
 				interrupts = <GIC_SPI 139 IRQ_TYPE_LEVEL_HIGH>;
 				status = "disabled";
@@ -312,11 +312,11 @@
 			i2c0: i2c@1a88000 {
 				compatible = "qcom,geni-i2c";
 				reg = <0x1a88000 0x4000>;
-				clocks = <&gcc GCC_QUPV3_I2C0_CLK>;
+				clocks = <&gcc GCC_QUPV3_WRAP_SE2_CLK>;
 				clock-names = "se";
 				clock-frequency = <400000>;
 				interrupts = <GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>;
-				assigned-clocks = <&gcc GCC_QUPV3_I2C0_CLK>;
+				assigned-clocks = <&gcc GCC_QUPV3_WRAP_SE2_CLK>;
 				assigned-clock-rates = <64000000>;
 				status = "disabled";
 			};
@@ -324,11 +324,11 @@
 			i2c1: i2c@1a8c000 {
 				compatible = "qcom,geni-i2c";
 				reg = <0x1a8c000 0x4000>;
-				clocks = <&gcc GCC_QUPV3_I2C1_CLK>;
+				clocks = <&gcc GCC_QUPV3_WRAP_SE3_CLK>;
 				clock-names = "se";
 				clock-frequency = <400000>;
 				interrupts = <GIC_SPI 141 IRQ_TYPE_LEVEL_HIGH>;
-				assigned-clocks = <&gcc GCC_QUPV3_I2C1_CLK>;
+				assigned-clocks = <&gcc GCC_QUPV3_WRAP_SE3_CLK>;
 				assigned-clock-rates = <64000000>;
 				status = "disabled";
 			};
