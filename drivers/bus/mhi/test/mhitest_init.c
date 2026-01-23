@@ -52,8 +52,8 @@ void mhitest_remove_mplat(struct mhitest_platform *temp)
 
 void mhitest_free_mplat(struct mhitest_platform *temp)
 {
-	devm_kfree(&temp->plat_dev->dev, temp);
 	mhitest_remove_mplat(temp);
+	devm_kfree(&temp->plat_dev->dev, temp);
 }
 
 struct mhitest_platform *get_mhitest_mplat_by_pcidev(struct pci_dev *pci_dev)

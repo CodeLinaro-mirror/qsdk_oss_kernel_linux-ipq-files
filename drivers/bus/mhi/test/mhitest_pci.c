@@ -1788,6 +1788,7 @@ static const struct pci_device_id mhitest_pci_id_table[] = {
 	{QTI_PCI_VENDOR_ID, QCN92XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
 	{QTI_PCI_VENDOR_ID, QCN96XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
 	{QTI_PCI_VENDOR_ID, QCN95XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
+	{}
 };
 
 struct pci_driver mhitest_pci_driver = {
