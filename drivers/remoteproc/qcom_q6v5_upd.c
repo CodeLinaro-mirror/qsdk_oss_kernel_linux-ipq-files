@@ -38,6 +38,7 @@ struct upd_ops {
 struct user_pd {
 	struct device *dev;
 	struct rproc *rproc;
+	struct notifier_block rproc_nb;
 	struct notifier_block rproc_atomic_nb;
 	void *ssr_notifier;
 	void *ssr_atomic_notifier;
@@ -64,6 +65,7 @@ struct user_pd {
 	s8 pd_asid;
 	bool running;
 	bool autostart;
+	bool needs_recovery;
 	const struct upd_ops *ops;
 };
 
@@ -476,25 +478,25 @@ static int upd_alloc_memory_region(struct user_pd *upd)
 {
 	struct reserved_mem *rmem = NULL;
 	struct device_node *node;
-	struct device *dev = upd->dev;
 
-	node = of_parse_phandle(dev->of_node, "memory-region", 0);
+	dev_info(upd->rproc->dev.parent, "Using rproc memory region\n");
+	node = of_parse_phandle(upd->rproc->dev.parent->of_node, "memory-region", 0);
 	if (node)
 		rmem = of_reserved_mem_lookup(node);
 
 	of_node_put(node);
 
 	if (!rmem) {
-		dev_err(dev, "unable to acquire memory-region\n");
+		dev_err(upd->dev, "unable to acquire memory-region\n");
 		return -EINVAL;
 	}
 
 	upd->mem_phys = rmem->base;
 	upd->mem_reloc = rmem->base;
 	upd->mem_size = rmem->size;
-	upd->mem_region = devm_ioremap_wc(dev, upd->mem_phys, upd->mem_size);
+	upd->mem_region = devm_ioremap_wc(upd->dev, upd->mem_phys, upd->mem_size);
 	if (!upd->mem_region) {
-		dev_err(dev, "unable to map memory region: %pa+%pa\n",
+		dev_err(upd->dev, "unable to map memory region: %pa+%pa\n",
 			&rmem->base, &rmem->size);
 		return -EBUSY;
 	}
@@ -521,6 +523,50 @@ static int q6v5_upd_rproc_atomic_notifier_cb(struct notifier_block *nb,
 		return NOTIFY_DONE;
 	}
 
+	return NOTIFY_DONE;
+}
+
+static int q6v5_upd_rproc_notifier_cb(struct notifier_block *nb,
+				      unsigned long action, void *data)
+{
+	struct user_pd *upd = container_of(nb, struct user_pd, rproc_nb);
+	int ret;
+
+	dev_info(upd->dev, "Received event %lu for rproc: %s\n",
+		 action, upd->rproc->name);
+
+	switch (action) {
+	case QCOM_SSR_BEFORE_SHUTDOWN:
+		if (upd->running) {
+			dev_info(upd->dev, "SSR: userpd is running,"
+				 "setting recovery flag and stopping\n");
+			upd->needs_recovery = true;
+			ret = __q6v5_stop_user_pd(upd);
+			if (ret)
+				dev_err(upd->dev, "SSR: Failed to stop userpd,"
+					"ret = %d\n", ret);
+		}
+		return NOTIFY_OK;
+
+	case QCOM_SSR_AFTER_POWERUP:
+		if (upd->needs_recovery) {
+			dev_info(upd->dev, "SSR: Recovery flag set,"
+				 "restarting userpd\n");
+			ret = __q6v5_start_user_pd(upd);
+			if (ret)
+				dev_err(upd->dev, "SSR: Failed to restart "
+					"userpd, ret = %d\n", ret);
+			upd->needs_recovery = false;
+		}
+		return NOTIFY_OK;
+
+	case QCOM_SSR_AFTER_SHUTDOWN:
+		fallthrough;
+	case QCOM_SSR_BEFORE_POWERUP:
+		fallthrough;
+	default:
+		break;
+	}
 	return NOTIFY_DONE;
 }
 
@@ -605,6 +651,7 @@ static int q6v5_upd_probe(struct platform_device *pdev)
 
 	upd->dev = &pdev->dev;
 	upd->autostart = true;
+	upd->needs_recovery = false;
 
 	if (of_property_read_u32(upd->dev->of_node, "qcom,rproc",
 				 &rproc_phandle)) {
@@ -632,6 +679,16 @@ static int q6v5_upd_probe(struct platform_device *pdev)
 	if (IS_ERR(upd->ssr_atomic_notifier)) {
 		dev_err(upd->dev, "Failed to register SSR atomic notifier\n");
 		return PTR_ERR(upd->ssr_atomic_notifier);
+	}
+
+	upd->rproc_nb.notifier_call = q6v5_upd_rproc_notifier_cb;
+	upd->rproc_nb.priority = 0;
+
+	upd->ssr_notifier = qcom_register_ssr_notifier(upd->rproc->name,
+						       &upd->rproc_nb);
+	if (IS_ERR(upd->ssr_notifier)) {
+		dev_err(upd->dev, "Failed to register SSR notifier\n");
+		return PTR_ERR(upd->ssr_notifier);
 	}
 
 	ret = upd_alloc_memory_region(upd);
@@ -678,6 +735,7 @@ static int q6v5_upd_remove(struct platform_device *pdev)
 
 	qcom_unregister_ssr_atomic_notifier(upd->ssr_atomic_notifier,
 					    &upd->rproc_atomic_nb);
+	qcom_unregister_ssr_notifier(upd->ssr_notifier, &upd->rproc_nb);
 
 	return 0;
 }
@@ -687,9 +745,9 @@ static const struct upd_ops ipq5424_upd_ops = {
 };
 
 static const struct upd_ops ipq5332_upd_ops = {
-	.mdt_load = qcom_mdt_load_no_init,
+	.mdt_load = qcom_mdt_load,
 	.powerup_scm = qcom_scm_pas_auth_and_reset,
-	.powerup_scm = qcom_scm_pas_shutdown,
+	.powerdown_scm = qcom_scm_pas_shutdown,
 };
 
 static const struct of_device_id q6v5_upd_of_match[] = {
