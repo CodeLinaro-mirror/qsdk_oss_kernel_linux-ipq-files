@@ -138,6 +138,67 @@
 		ranges = <0 0 0 0xffffffff>;
 		dma-ranges;
 
+		efuse@a4000 {
+			compatible = "qcom,qfprom";
+			reg = <0xA4000 0x741>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			s11: s11@3dd {
+				reg = <0x3dd 0x1>;
+				bits = <4 4>;
+			};
+
+			s12: s12@3de {
+				reg = <0x3de 0x1>;
+				bits = <0 4>;
+			};
+
+			s13: s13@3de {
+				reg = <0x3de 0x1>;
+				bits = <4 4>;
+			};
+
+			s14: s14@3e5 {
+				reg = <0x3e5 0x2>;
+				bits = <7 4>;
+			};
+
+			s15: s15@3e6 {
+				reg = <0x3e6 0x1>;
+				bits = <3 4>;
+			};
+
+			tsens_mode: mode@419 {
+				reg = <0x419 0x1>;
+				bits = <0 3>;
+			};
+
+			tsens_base0: base0@419 {
+				reg = <0x419 0x2>;
+				bits = <3 10>;
+			};
+
+			tsens_base1: base1@41a {
+				reg = <0x41a 0x2>;
+				bits = <5 10>;
+			};
+		};
+
+		tsens: thermal-sensor@4a9000 {
+			compatible = "qcom,ipq5210-tsens";
+			reg = <0x4a9000 0x1000>,
+			      <0x4a8000 0x1000>;
+			nvmem-cells = <&tsens_mode>, <&tsens_base0>, <&tsens_base1>,
+				      <&s11>, <&s12>, <&s13>, <&s14>, <&s15>;
+			nvmem-cell-names = "mode", "base0", "base1", "s11",
+					   "s12", "s13", "s14", "s15";
+			interrupts = <GIC_SPI 52 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "combined";
+			#thermal-sensor-cells = <1>;
+			status = "disabled";
+		};
+
 		rng: rng@4c3000 {
 			compatible = "qcom,ipq5210-trng", "qcom,trng";
 			reg = <0x004c3000 0x1000>;
@@ -1414,5 +1475,77 @@
 		memory-region = <&minidump_mem>;
 		qcom,imem = <&imem>;
 		minidump-level = <2>;
+	};
+
+	thermal_zones: thermal-zones {
+		ethphy-thermal {
+			polling-delay-passive = <0>;
+			polling-delay = <0>;
+			thermal-sensors = <&tsens 11>;
+
+			trips {
+				ethphy-critical {
+					temperature = <120000>;
+					hysteresis = <9000>;
+					type = "critical";
+				};
+			};
+		};
+
+		pon-uniphy-thermal {
+			polling-delay-passive = <0>;
+			polling-delay = <0>;
+			thermal-sensors = <&tsens 12>;
+
+			trips {
+				pon-uniphy-critical {
+					temperature = <120000>;
+					hysteresis = <9000>;
+					type = "critical";
+				};
+			};
+		};
+
+		nss-top-thermal {
+			polling-delay-passive = <0>;
+			polling-delay = <0>;
+			thermal-sensors = <&tsens 13>;
+
+			trips {
+				nss-top-critical {
+					temperature = <120000>;
+					hysteresis = <9000>;
+					type = "critical";
+				};
+			};
+		};
+
+		a53ss-cm-dist-ts-0-thermal {
+			polling-delay-passive = <0>;
+			polling-delay = <0>;
+			thermal-sensors = <&tsens 14>;
+
+			trips {
+				a53ss-cm-dist-ts-0-critical {
+					temperature = <120000>;
+					hysteresis = <9000>;
+					type = "critical";
+				};
+			};
+		};
+
+		a53ss-cm-dist-ts-1-thermal {
+			polling-delay-passive = <0>;
+			polling-delay = <0>;
+			thermal-sensors = <&tsens 15>;
+
+			trips {
+				a53ss-cm-dist-ts-1-critical {
+					temperature = <120000>;
+					hysteresis = <9000>;
+					type = "critical";
+				};
+			};
+		};
 	};
 };
