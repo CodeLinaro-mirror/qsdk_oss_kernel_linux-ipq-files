@@ -1064,8 +1064,10 @@ static int qce2204_ppe_config_qm(struct qce2204_priv *priv)
 									   queue_cfg[i].ceil & 0x3FF);
 				QCE2204_PPE_AC_UNICAST_QUEUE_SET_THRESHOLD_HI(unicast_queue_cfg,
 									   (queue_cfg[i].ceil >> 10) & 0x3);
-				QCE2204_PPE_AC_UNICAST_QUEUE_SET_GRN_RESUME(unicast_queue_cfg,
-									    queue_cfg[i].resume_offset);
+				QCE2204_PPE_AC_UNICAST_QUEUE_SET_GRN_RESUME_LO(unicast_queue_cfg,
+									    queue_cfg[i].resume_offset & 0x3FF);
+				QCE2204_PPE_AC_UNICAST_QUEUE_SET_GRN_RESUME_HI(unicast_queue_cfg,
+									    (queue_cfg[i].resume_offset >> 10) & 0x3);
 
 				ret = regmap_bulk_write(priv->regmap, reg,
 							unicast_queue_cfg,

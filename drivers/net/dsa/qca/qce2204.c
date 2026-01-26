@@ -610,6 +610,12 @@ static int qce2204_mdio_probe(struct mdio_device *mdiodev)
 
 	dev_info(dev, "QCE2204 MDIO device at address %d\n", mdiodev->addr);
 
+	ret = qce2204_ahb_clk_set_rate(priv, QCE2204_AHB_CLK_RATE_104M);
+	if (ret) {
+		dev_err(dev, "Failed to set ahb clock to 104Mhz: %d\n", ret);
+		return ret;
+	}
+
 	ret = qce2204_init_switch_clocks_resets(priv);
 	if (ret) {
 		dev_err(dev, "Failed to init switch clocks/resets: %d\n", ret);

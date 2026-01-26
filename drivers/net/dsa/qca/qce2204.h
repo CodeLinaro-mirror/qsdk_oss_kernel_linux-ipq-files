@@ -40,6 +40,12 @@
 #define QCE2204_NUM_PORT_CLOCKS				2
 #define QCE2204_NUM_PORT_RESETS				2
 
+/* AHB clk rate for QCE2204 */
+#define QCE2204_AHB_CLK_RATE_104M			104000000
+
+/* AHB clock name */
+#define QCE2204_CLK_AHB				"ahb"
+
 /* Switch-level clock names */
 #define QCE2204_CLK_CORE				"core"
 #define QCE2204_CLK_IPE					"ipe"
@@ -169,6 +175,7 @@ struct qce2204_ppe_port {
  * @switch_id: Switch chip ID
  * @switch_revision: Switch chip revision
  * @reset_gpio: GPIO for hardware reset
+ * @ahb_clk: AHB clock
  * @core_clk: Switch core clock
  * @ipe_clk: Switch IPE clock
  * @btq_clk: Switch BTQ clock
@@ -198,6 +205,9 @@ struct qce2204_priv {
 	/* Reset resources */
 	struct gpio_desc *reset_gpio;
 	struct reset_control *core_reset;
+
+	/* AHB clock */
+	struct clk *ahb_clk;
 
 	/* Switch-level clocks */
 	struct clk *core_clk;
@@ -233,6 +243,7 @@ int qce2204_init_switch_clocks_resets(struct qce2204_priv *priv);
 void qce2204_cleanup_switch_clocks_resets(struct qce2204_priv *priv);
 int qce2204_init_port_clocks_resets(struct qce2204_priv *priv);
 void qce2204_cleanup_port_clocks_resets(struct qce2204_priv *priv);
+int qce2204_ahb_clk_set_rate(struct qce2204_priv *priv, unsigned long rate);
 
 /* Internal clock and reset management functions (used by qce2204_clk.c) */
 int qce2204_get_clocks(struct qce2204_priv *priv);

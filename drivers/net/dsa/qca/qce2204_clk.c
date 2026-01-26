@@ -439,3 +439,28 @@ void qce2204_cleanup_port_clocks_resets(struct qce2204_priv *priv)
 
 	dev_info(priv->dev, "Port clocks and resets cleaned up\n");
 }
+
+/* Update ahb clock rate */
+int qce2204_ahb_clk_set_rate(struct qce2204_priv *priv, unsigned long rate)
+{
+	struct device *dev = priv->dev;
+	int ret;
+
+	priv->ahb_clk = devm_clk_get(dev, QCE2204_CLK_AHB);
+	if (IS_ERR(priv->ahb_clk)) {
+		ret = PTR_ERR(priv->ahb_clk);
+		if (ret != -EPROBE_DEFER)
+			dev_err(dev, "Failed to get ahb clock: %d\n", ret);
+		return ret;
+	}
+
+	ret = clk_set_rate(priv->ahb_clk, rate);
+	if (ret < 0) {
+		dev_err(dev, "Failed to set AHB clock rate to %lu Hz: %d\n", rate, ret);
+		return ret;
+	}
+
+	dev_info(dev, "Set AHB clock rate to %lu Hz\n", rate);
+	return 0;
+}
+
