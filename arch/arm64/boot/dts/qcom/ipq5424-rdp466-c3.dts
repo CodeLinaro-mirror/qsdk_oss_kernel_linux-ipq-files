@@ -519,11 +519,6 @@
 	status = "okay";
 };
 
-#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
-&userpd_1 {
-	status = "okay";
-};
-#endif
 
 &qcn9224_pcie2 {
 	status = "okay";

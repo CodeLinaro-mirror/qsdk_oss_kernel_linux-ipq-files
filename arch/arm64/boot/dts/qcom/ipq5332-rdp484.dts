@@ -514,19 +514,12 @@
 
 &wifi0 {
 	led-gpio = <&tlmm 36 GPIO_ACTIVE_HIGH>;
-#if defined(__RPROC_DISABLE_MPD_SUPPORT__)
 	qcom,rproc = <&q6v5_wcss>;
 	dump-region = <&q6_ipq5332_data>,
 		      <&mlo_global_mem0>;
-#else
-	qcom,multipd_arch;
-	qcom,rproc = <&q6_wcss_pd1>;
-	qcom,rproc_rpd = <&q6v5_wcss>;
-#endif
 	qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
 	memory-region = <&q6_region>, <&q6_ipq5332_data>, <&mlo_global_mem0>;
 	memory-region-names = "q6-region",  "host-ddr-mem", "mlo-global-mem";
-
 	qcom,wsi = <&wsi>;
 	qcom,wsi_index = <0>;
 	qcom,board_id = <0x12>;

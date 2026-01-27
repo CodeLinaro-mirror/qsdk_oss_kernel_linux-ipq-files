@@ -2477,11 +2477,8 @@
 		};
 
 		q6v5_wcss: remoteproc@d100000 {
-#if defined(__RPROC_DISABLE_MPD_SUPPORT__)
 			compatible ="qcom,ipq5332-q6v5-wcss-sec";
-#else
-			compatible = "qcom,ipq5332-q6-mpd";
-#endif
+
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges;
@@ -2537,9 +2534,7 @@
 				qcom,smem-state-names = "shutdown",
 							"stop",
 							"spawn";
-#if defined(__RPROC_DISABLE_MPD_SUPPORT__)
 				status = "disabled";
-#endif
 			};
 		};
 	};

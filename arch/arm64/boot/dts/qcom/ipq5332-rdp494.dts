@@ -69,13 +69,8 @@
 	*/
 
 	reserved-memory {
-#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
-		/delete-node/ q6_ipq5332_data@4b500000;
-		/delete-node/ mlo_global_mem_0@0x4db00000;
-#else
 		/delete-node/ q6_ipq5332_data@4b300000;
 		/delete-node/ mlo_global_mem_0@54900000;
-#endif
 		/delete-node/ wcnss@4a900000;
 
 		q6_mem_regions: q6_mem_regions@4A900000  {
@@ -141,13 +136,8 @@
 	 */
 
 	reserved-memory {
-#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
-		/delete-node/ q6_ipq5332_data@4b500000;
-		/delete-node/ mlo_global_mem_0@0x4db00000;
-#else
 		/delete-node/ q6_ipq5332_data@4b300000;
 		/delete-node/ mlo_global_mem_0@54900000;
-#endif
 		/delete-node/ wcnss@4a900000;
 
 		tz@4a600000 {
@@ -228,13 +218,8 @@
 	*/
 	reserved-memory {
 
-#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
-		/delete-node/ q6_ipq5332_data@4b500000;
-		/delete-node/ mlo_global_mem_0@0x4db00000;
-#else
 		/delete-node/ q6_ipq5332_data@4b300000;
 		/delete-node/ mlo_global_mem_0@54900000;
-#endif
 		/delete-node/ wcnss@4a900000;
 
 		q6_mem_regions: q6_mem_regions@4A900000  {
@@ -593,13 +578,7 @@
 			upd-firmware-names = "IPQ5332/q6_fw1.mdt",
 					     "IPQ5332/q6_fw2.mdt";
 			q6_wcss_pd1: remoteproc_pd1 {
-#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
-			memory-region = <&q6_ipq5332_data>,
-					<&mlo_global_mem0>;
-				status = "ok";
-#else
 				status = "disabled";
-#endif
 			};
 
 			q6_wcss_pd2: remoteproc_pd2 {
@@ -621,13 +600,7 @@
 				qcom,smem-state-names = "shutdown",
 							"stop",
 							"spawn";
-#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
-				memory-region = <&q6_qcn6432_data_1>,
-						<&mlo_global_mem0>;
-				status = "ok";
-#else
 				status = "disabled";
-#endif
 			};
 		};
 	};
@@ -780,15 +753,9 @@
 	status = "okay";
 };
 &wifi0 {
-#if defined(__RPROC_DISABLE_MPD_SUPPORT__)
     qcom,rproc = <&q6v5_wcss>;
     dump-region = <&q6_ipq5332_data>,
 		  <&mlo_global_mem0>;
-#else
-    qcom,multipd_arch;
-    qcom,rproc = <&q6_wcss_pd1>;
-    qcom,rproc_rpd = <&q6v5_wcss>;
-#endif
     qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
     qcom,bdf-addr = <0x4BD00000 0x4BD00000 0x4BD00000 0x0 0x0 0x0>;
     qcom,caldb-addr = <0x4D400000 0x4D000000 0x0 0x0 0x0 0x0>;
@@ -831,15 +798,9 @@
 };
 
 &wifi1 {
-#if defined(__RPROC_DISABLE_MPD_SUPPORT__)
     qcom,rproc = <&q6v5_wcss>;
     dump-region = <&q6_qcn6432_data_1>,
 		  <&mlo_global_mem0>;
-#else
-    qcom,multipd_arch;
-    qcom,rproc = <&q6_wcss_pd2>;
-    qcom,rproc_rpd = <&q6v5_wcss>;
-#endif
     qcom,userpd-subsys-name = "q6v5_wcss_userpd2";
     qcom,bdf-addr = <0x4D900000 0x4D300000 0x4CE00000 0x0 0x0 0x0>;
     qcom,caldb-addr = <0x4F000000 0x4E500000 0x0 0x0 0x0 0x0>;

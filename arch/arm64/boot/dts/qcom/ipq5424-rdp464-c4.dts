@@ -567,11 +567,6 @@
 	status = "disabled";
 };
 
-#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
-&userpd_1 {
-	status = "disabled";
-};
-#endif
 
 &tlmm {
 	gpio_leds_default: gpio-leds-default-state {
