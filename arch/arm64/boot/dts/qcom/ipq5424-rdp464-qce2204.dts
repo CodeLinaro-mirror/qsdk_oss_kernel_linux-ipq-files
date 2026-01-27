@@ -40,6 +40,12 @@
 			clock-frequency = <312500000>;
 			#clock-cells = <0>;
 		};
+
+		qce2204_uniphy1_ppe_250m: qce2204-uniphy1-ppe-250m {
+			compatible = "fixed-clock";
+			clock-frequency = <250000000>;
+			#clock-cells = <0>;
+		};
 	};
 
 	soc@0 {
@@ -186,12 +192,10 @@
 
 		mdio@90000 {
 			/* GPIO36 is for port 1 QCA81xx PHY */
-			/* GPIO37 is for port 2 QCA81xx PHY */
-			/* GPIO18 is for huntington switch */
+			/* GPIO37 is for huntington switch */
 			phy-reset-gpio = <
 				&tlmm 36 GPIO_ACTIVE_LOW
 				&tlmm 37 GPIO_ACTIVE_LOW
-				&tlmm 18 GPIO_ACTIVE_LOW
 			>;
 
 			/* Delete properties from ipq5424-rdp-common.dtsi */
@@ -306,7 +310,10 @@
 					      "xgmii_rx",
 					      "xgmii_tx",
 					      "xpcs";
+				initial_mode = "10gbase-r";
 				#clock-cells = <1>;
+				assigned-clocks = <&qce2204_cc QCE2204_NSSCC_SRDS1_SYS_CLK>;
+				assigned-clock-rates = <25000000>;
 			};
 
 			/* Clock controller */
@@ -316,14 +323,18 @@
 				#clock-cells = <1>;
 				#reset-cells = <1>;
 				clocks = <&qce2204_xo>,
+					 <0>,
+					 <0>,
 					 <&qce2204_pcs QCE2204_PCS_RX_CLK>,
 					 <&qce2204_pcs QCE2204_PCS_TX_CLK>,
+					 <&qce2204_uniphy1_ppe_250m>,
 					 <0>,
 					 <0>,
 					 <0>,
-					<&qce2204_uniphy1_rx_312p5m>,
-					<&qce2204_uniphy1_tx_312p5m>;
+					 <&qce2204_uniphy1_tx_312p5m>;
 				clock-names = "xo",
+					      "uniphy0_rx",
+					      "uniphy0_tx",
 					      "uniphy1_rx",
 					      "uniphy1_tx",
 					      "uniphy1_ppe_250m",
@@ -331,10 +342,18 @@
 					      "uniphy0_tx_312p5m",
 					      "uniphy1_rx_312p5m",
 					      "uniphy1_tx_312p5m";
+				assigned-clocks = <&qce2204_cc QCE2204_NSSCC_SRDS0_RX_MUX_SEL>,
+					      <&qce2204_cc QCE2204_NSSCC_SRDS0_TX_MUX_SEL>,
+					      <&qce2204_cc QCE2204_NSSCC_SRDS0_XGMII_RX_MUX_SEL>,
+					      <&qce2204_cc QCE2204_NSSCC_SRDS0_XGMII_TX_MUX_SEL>;
+				assigned-clock-parents = <&qce2204_cc QCE2204_NSSCC_MAC5_RX_DIV_CLK_SRC>,
+					      <&qce2204_cc QCE2204_NSSCC_MAC5_TX_DIV_CLK_SRC>,
+					      <&qce2204_cc QCE2204_NSSCC_MAC5_RX_DIV_CLK_SRC>,
+					      <&qce2204_cc QCE2204_NSSCC_MAC5_TX_DIV_CLK_SRC>;
 			};
 
 			switch0@7 {
-				compatible = "qca,qce2204";
+				compatible = "qcom,qce2204";
 				#address-cells = <1>;
 				#size-cells = <0>;
 				reg = <0x7>;
@@ -366,14 +385,14 @@
 						dsa-tag-protocol = "qca_8021q";
 						phy-mode = "10gbase-r";
 						pcsphy-handle = <&qce2204_pcs>;
-						clocks = <&qce2204_cc QCE2204_NSSCC_MAC0_RX_CLK>,
-							 <&qce2204_cc QCE2204_NSSCC_MAC0_TX_CLK>;
-						clock-names = "rx",
-							      "tx";
-						resets = <&qce2204_cc QCE2204_NSSCC_MAC0_RX_ARES>,
-							 <&qce2204_cc QCE2204_NSSCC_MAC0_TX_ARES>;
-						reset-names = "rx",
-							      "tx";
+						clocks = <&qce2204_cc QCE2204_NSSCC_MAC0_TX_CLK>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC0_RX_CLK>;
+						clock-names = "tx",
+							      "rx";
+						resets = <&qce2204_cc QCE2204_NSSCC_MAC0_TX_ARES>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC0_RX_ARES>;
+						reset-names = "tx",
+							      "rx";
 						fixed-link {
 							speed = <10000>;
 							full-duplex;
@@ -386,14 +405,14 @@
 						label = "lan1";
 						phy-handle = <&phy0>;
 						phy-mode = "internal";
-						clocks = <&qce2204_cc QCE2204_NSSCC_MAC1_RX_CLK>,
-							 <&qce2204_cc QCE2204_NSSCC_MAC1_TX_CLK>;
-						clock-names = "rx",
-							      "tx";
-						resets = <&qce2204_cc QCE2204_NSSCC_MAC1_RX_ARES>,
-							 <&qce2204_cc QCE2204_NSSCC_MAC1_TX_ARES>;
-						reset-names = "rx",
-							      "tx";
+						clocks = <&qce2204_cc QCE2204_NSSCC_MAC1_TX_CLK>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC1_RX_CLK>;
+						clock-names = "tx",
+							      "rx";
+						resets = <&qce2204_cc QCE2204_NSSCC_MAC1_TX_ARES>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC1_RX_ARES>;
+						reset-names = "tx",
+							      "rx";
 					};
 
 					port@2 {
@@ -401,14 +420,14 @@
 						label = "lan2";
 						phy-handle = <&phy1>;
 						phy-mode = "internal";
-						clocks = <&qce2204_cc QCE2204_NSSCC_MAC2_RX_CLK>,
-							 <&qce2204_cc QCE2204_NSSCC_MAC2_TX_CLK>;
-						clock-names = "rx",
-							      "tx";
-						resets = <&qce2204_cc QCE2204_NSSCC_MAC2_RX_ARES>,
-							 <&qce2204_cc QCE2204_NSSCC_MAC2_TX_ARES>;
-						reset-names = "rx",
-							      "tx";
+						clocks = <&qce2204_cc QCE2204_NSSCC_MAC2_TX_CLK>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC2_RX_CLK>;
+						clock-names = "tx",
+							      "rx";
+						resets = <&qce2204_cc QCE2204_NSSCC_MAC2_TX_ARES>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC2_RX_ARES>;
+						reset-names = "tx",
+							      "rx";
 					};
 
 					port@3 {
@@ -416,14 +435,14 @@
 						label = "lan3";
 						phy-handle = <&phy2>;
 						phy-mode = "internal";
-						clocks = <&qce2204_cc QCE2204_NSSCC_MAC3_RX_CLK>,
-							 <&qce2204_cc QCE2204_NSSCC_MAC3_TX_CLK>;
-						clock-names = "rx",
-							      "tx";
-						resets = <&qce2204_cc QCE2204_NSSCC_MAC3_RX_ARES>,
-							 <&qce2204_cc QCE2204_NSSCC_MAC3_TX_ARES>;
-						reset-names = "rx",
-							      "tx";
+						clocks = <&qce2204_cc QCE2204_NSSCC_MAC3_TX_CLK>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC3_RX_CLK>;
+						clock-names = "tx",
+							      "rx";
+						resets = <&qce2204_cc QCE2204_NSSCC_MAC3_TX_ARES>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC3_RX_ARES>;
+						reset-names = "tx",
+							      "rx";
 					};
 
 					port@4 {
@@ -431,14 +450,14 @@
 						label = "lan4";
 						phy-handle = <&phy3>;
 						phy-mode = "internal";
-						clocks = <&qce2204_cc QCE2204_NSSCC_MAC4_RX_CLK>,
-							 <&qce2204_cc QCE2204_NSSCC_MAC4_TX_CLK>;
-						clock-names = "rx",
-							      "tx";
-						resets = <&qce2204_cc QCE2204_NSSCC_MAC4_RX_ARES>,
-							 <&qce2204_cc QCE2204_NSSCC_MAC4_TX_ARES>;
-						reset-names = "rx",
-							      "tx";
+						clocks = <&qce2204_cc QCE2204_NSSCC_MAC4_TX_CLK>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC4_RX_CLK>;
+						clock-names = "tx",
+							      "rx";
+						resets = <&qce2204_cc QCE2204_NSSCC_MAC4_TX_ARES>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC4_RX_ARES>;
+						reset-names = "tx",
+							      "rx";
 					};
 				};
 			};
@@ -447,14 +466,10 @@
 				reg = <8>;
 				compatible ="ethernet-phy-ieee802.3-c45";
 			};
-
-			ethernet-phy@9 {
-				reg = <12>;
-				compatible ="ethernet-phy-ieee802.3-c45";
-			};
 		};
 
 		ess-instance {
+			num_devices = <0x2>;
 #ifdef __CONFIG_IO_COHERENCY__
 			dma-coherent;
 #endif
@@ -466,8 +481,8 @@
 				switch_lan_bmp = <0xc>; /* lan port bitmap */
 				switch_wan_bmp = <0x2>; /* wan port bitmap */
 				switch_mac_mode = <0xd>; /* mac mode for uniphy instance0*/
-				switch_mac_mode1 = <0xd>; /* mac mode for uniphy instance1*/
-				switch_mac_mode2 = <0xe>; /* mac mode for uniphy instance2*/
+				switch_mac_mode1 = <0xe>; /* mac mode for uniphy instance1*/
+				switch_mac_mode2 = <0xff>; /* mac mode for uniphy instance2*/
 
 				qcom,port_phyinfo {
 					port@0 {
@@ -477,13 +492,19 @@
 					};
 					port@1 {
 						port_id = <2>;
-						phy_address = <12>;
-						ethernet-phy-ieee802.3-c45;
-					};
-					port@2 {
-						/delete-property/ port_mac_sel;
 						forced-speed = <10000>;
+						forced-duplex = <1>;
+						switch_external {
+							switch_handle = <&switch1>;
+							switch_cpu_port = <0>;
+						};
+						fixed-link {
+							speed = <10000>;
+							full-duplex;
+							pause;
+						};
 					};
+					/delete-node/ port@2;
 				};
 			};
 
@@ -535,7 +556,7 @@
 			phy-mode = "usxgmii";
 		};
 
-		dp2 {
+		gmac2:dp2 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
 #ifdef __CONFIG_IO_COHERENCY__
@@ -544,21 +565,6 @@
 			qcom,id = <2>;
 			reg = <0x3A504000 0x4000>;
 			qcom,mactype = <1>;
-			local-mac-address = [000000000000];
-			qcom,phy-mdio-addr = <12>;
-			qcom,link-poll = <1>;
-			phy-mode = "usxgmii";
-		};
-
-		gmac2:dp3 {
-			device_type = "network";
-			compatible = "qcom,nss-dp";
-#ifdef __CONFIG_IO_COHERENCY__
-			dma-coherent;
-#endif
-			qcom,id = <3>;
-			reg = <0x3a001400 0x200>;
-			qcom,mactype = <0>;
 			local-mac-address = [000000000000];
 			qcom,mht-dev = <1>;
 			qcom,is_switch_connected = <1>;
