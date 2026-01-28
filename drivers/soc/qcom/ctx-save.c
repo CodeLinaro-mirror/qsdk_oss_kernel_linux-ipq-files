@@ -74,6 +74,7 @@ struct minidump_metadata_list {
 #endif /* CONFIG_QCA_MINIDUMP */
 
 ctx_save_tlv_msg_t tlv_msg;
+u32 minidump_version_lvl;
 
 #ifdef CONFIG_QCA_MINIDUMP
 struct minidump_metadata {
@@ -444,9 +445,11 @@ static ssize_t mini_dump_read(struct file *file, char __user *buf,
 		seg_num ++;
 		pending = segment->size;
 
+		pr_debug("Minidump: Segment name : %s and addr %lx\n",
+				segment->name, segment->addr);
 		ret = copy_to_user(buf, (const void *)(uintptr_t)segment->addr, pending);
 		if (ret) {
-			pr_info("\n Minidump: copy_to_user error");
+			pr_err("\n Minidump: copy_to_user error");
 			return 0;
 		}
 
@@ -1435,15 +1438,22 @@ static int ctx_save_fill_log_dump_tlv(void)
 #endif /* CONFIG_QCA_MINIDUMP */
 	uname = utsname();
 
-	struct minidump_tlv_info uname_tlv;
+	if (minidump_version_lvl != 2) {
+		ret_val = ctx_save_add_tlv(QCA_WDT_LOG_DUMP_TYPE_UNAME,
+					   sizeof(*uname),
+					   (unsigned char *)uname);
+	} else {
 
-	uname_tlv.start = (uint64_t)(uintptr_t)__pa(uname);
-	uname_tlv.size = sizeof(*uname);
-	uname_tlv.crashtype = MINIDUMP_CRASH_TYPE_DEFAULT;
+		struct minidump_tlv_info uname_tlv;
 
-	ret_val = ctx_save_add_tlv(QCA_WDT_LOG_DUMP_TYPE_UNAME,
-			    sizeof(uname_tlv),
-			    (unsigned char *)&uname_tlv);
+		uname_tlv.start = (uint64_t)(uintptr_t)__pa(uname);
+		uname_tlv.size = sizeof(*uname);
+		uname_tlv.crashtype = MINIDUMP_CRASH_TYPE_DEFAULT;
+
+		ret_val = ctx_save_add_tlv(QCA_WDT_LOG_DUMP_TYPE_UNAME,
+					   sizeof(uname_tlv),
+					   (unsigned char *)&uname_tlv);
+	}
 	if (ret_val)
 		return ret_val;
 
@@ -1724,7 +1734,6 @@ static int ctx_save_probe(struct platform_device *pdev)
 {
 	void *scm_regsave;
 	struct device_node *of_node = pdev->dev.of_node;
-	u32 minidump_offset = 0;
 	size_t tlv_msg_offset = 0;
 #ifdef CONFIG_QCA_MINIDUMP
 	struct device_node *node;
@@ -1810,9 +1819,9 @@ static int ctx_save_probe(struct platform_device *pdev)
 #endif /* CONFIG_QCA_MINIDUMP */
 
 	spin_lock_init(&tlv_msg.spinlock);
-	of_property_read_u32(of_node, "minidump-level", &minidump_offset);
+	of_property_read_u32(of_node, "minidump-level", &minidump_version_lvl);
 
-	if (minidump_offset != 2)
+	if (minidump_version_lvl != 2)
 		tlv_msg_offset = 500 * SZ_1K;
 	else
 		tlv_msg_offset = 489 * SZ_1K;

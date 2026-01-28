@@ -1,0 +1,90 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * IPQ9650 RDP board common device tree source
+ *
+ * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ */
+
+/dts-v1/;
+
+#include "ipq9650.dtsi"
+
+/ {
+	aliases {
+		serial0 = &uart1;
+	};
+
+	chosen {
+		stdout-path = "serial0";
+	};
+
+	soc@0 {
+		qupv3: geniqup@1ac0000 {
+			status = "okay";
+
+			uart1: serial@1a98000 {
+				pinctrl-0 = <&qup_uart1_default>;
+				pinctrl-names = "default";
+				status = "okay";
+			};
+		};
+	};
+};
+
+&sleep_clk {
+	clock-frequency = <32000>;
+};
+
+&xo {
+	clock-frequency = <24000000>;
+};
+
+&tlmm {
+	qup_spi0_default: qup-spi0-default-state {
+		qup_spi0_clk {
+			pins = "gpio6";
+			function = "qup_se0_l2";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+
+		qup_spi0_cs {
+			pins = "gpio7";
+			function = "qup_se0_l3";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+
+		qup_spi0_miso {
+			pins = "gpio8";
+			function = "qup_se0_l0";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+
+		qup_spi0_mosi {
+			pins = "gpio9";
+			function = "qup_se0_l1";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+	};
+
+	qup_uart1_default: qup-uart1-default-state {
+		qup_uart1_tx: tx-pins {
+			pins = "gpio44";
+			function = "qup_se6_l3";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+
+		qup_uart1_rx: rx-pins {
+			pins = "gpio43";
+			function = "qup_se6_l2";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+	};
+
+};

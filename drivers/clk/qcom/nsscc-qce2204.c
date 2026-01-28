@@ -305,6 +305,23 @@ static struct clk_rcg2 nsscc_switch_core_clk_src = {
 	},
 };
 
+static struct clk_regmap_div nsscc_switch_core_div_clk_src = {
+	.reg = 0x8,
+	.shift = 0,
+	.width = 4,
+	.clkr = {
+		.hw.init = &(const struct clk_init_data) {
+			.name = "nsscc_switch_core_div_clk_src",
+			.parent_hws = (const struct clk_hw *[]) {
+				&nsscc_switch_core_clk_src.clkr.hw,
+			},
+			.num_parents = 1,
+			.flags = CLK_SET_RATE_PARENT,
+			.ops = &clk_regmap_div_ops,
+		},
+	},
+};
+
 static struct clk_branch nsscc_switch_core_clk = {
 	.halt_reg = 0x10,
 	.halt_check = BRANCH_HALT,
@@ -498,8 +515,11 @@ static struct clk_branch nsscc_xgmac0_ptp_ref_clk = {
 		.enable_mask = BIT(0),
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_xgmac0_ptp_ref_clk",
-			.parent_data = nsscc_xo_data,
-			.num_parents = ARRAY_SIZE(nsscc_xo_data),
+			.parent_hws = (const struct clk_hw *[]) {
+				&nsscc_switch_core_div_clk_src.clkr.hw,
+			},
+			.num_parents = 1,
+			.flags = CLK_SET_RATE_PARENT,
 			.ops = &clk_branch2_prepare_ops,
 		},
 	},
@@ -513,8 +533,11 @@ static struct clk_branch nsscc_xgmac1_ptp_ref_clk = {
 		.enable_mask = BIT(0),
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_xgmac1_ptp_ref_clk",
-			.parent_data = nsscc_xo_data,
-			.num_parents = ARRAY_SIZE(nsscc_xo_data),
+			.parent_hws = (const struct clk_hw *[]) {
+				&nsscc_switch_core_div_clk_src.clkr.hw,
+			},
+			.num_parents = 1,
+			.flags = CLK_SET_RATE_PARENT,
 			.ops = &clk_branch2_prepare_ops,
 		},
 	},
@@ -555,7 +578,7 @@ static struct clk_rcg2 nsscc_mac0_tx_clk_src = {
 static struct clk_regmap_div nsscc_mac0_tx_div_clk_src = {
 	.reg = 0x80,
 	.shift = 0,
-	.width = 4,
+	.width = 9,
 	.clkr = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac0_tx_div_clk_src",
@@ -621,7 +644,7 @@ static struct clk_rcg2 nsscc_mac0_rx_clk_src = {
 static struct clk_regmap_div nsscc_mac0_rx_div_clk_src = {
 	.reg = 0x9c,
 	.shift = 0,
-	.width = 4,
+	.width = 9,
 	.clkr = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac0_rx_div_clk_src",
@@ -708,9 +731,30 @@ static struct clk_regmap_div nsscc_mac1_srds1_ch0_xgmii_rx_div_clk_src = {
 	.clkr = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac1_srds1_ch0_xgmii_rx_div_clk_src",
-			.parent_data = nsscc_port1_3_rx_data,
-			.num_parents = ARRAY_SIZE(nsscc_port1_3_rx_data),
+			.parent_hws = (const struct clk_hw *[]) {
+				&nsscc_mac1_tx_clk_src.clkr.hw,
+			},
+			.num_parents = 1,
+			.flags = CLK_SET_RATE_PARENT,
 			.ops = &clk_regmap_div_ops,
+		},
+	},
+};
+
+static struct clk_regmap_mux nsscc_srds1_rx_mux_sel = {
+	.reg = 0x300,
+	.shift = 15,
+	.width = 1,
+	.clkr = {
+		.hw.init = &(const struct clk_init_data) {
+			.name = "nsscc_srds1_rx_mux_sel",
+			.parent_hws = (const struct clk_hw *[]) {
+				&nsscc_mac0_rx_div_clk_src.clkr.hw,
+				&nsscc_mac1_tx_div_clk_src.clkr.hw,
+			},
+			.num_parents = 2,
+			.flags = CLK_SET_RATE_PARENT,
+			.ops = &clk_regmap_mux_closest_ops,
 		},
 	},
 };
@@ -724,7 +768,7 @@ static struct clk_branch nsscc_mac1_srds1_ch0_rx_clk = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac1_srds1_ch0_rx_clk",
 			.parent_hws = (const struct clk_hw *[]) {
-				&nsscc_mac1_srds1_ch0_xgmii_rx_div_clk_src.clkr.hw,
+				&nsscc_srds1_rx_mux_sel.clkr.hw,
 			},
 			.num_parents = 1,
 			.flags = CLK_SET_RATE_PARENT,
@@ -769,6 +813,24 @@ static struct clk_branch nsscc_mac1_gephy0_tx_clk = {
 	},
 };
 
+static struct clk_regmap_mux nsscc_srds1_xgmii_rx_mux_sel = {
+	.reg = 0x300,
+	.shift = 13,
+	.width = 1,
+	.clkr = {
+		.hw.init = &(const struct clk_init_data) {
+			.name = "nsscc_srds1_xgmii_rx_mux_sel",
+			.parent_hws = (const struct clk_hw *[]) {
+				&nsscc_mac0_rx_div_clk_src.clkr.hw,
+				&nsscc_mac1_srds1_ch0_xgmii_rx_div_clk_src.clkr.hw,
+			},
+			.num_parents = 2,
+			.flags = CLK_SET_RATE_PARENT,
+			.ops = &clk_regmap_mux_closest_ops,
+		},
+	},
+};
+
 static struct clk_branch nsscc_mac0_1_srds1_ch0_xgmii_rx_clk = {
 	.halt_reg = 0xd8,
 	.halt_check = BRANCH_HALT,
@@ -778,7 +840,7 @@ static struct clk_branch nsscc_mac0_1_srds1_ch0_xgmii_rx_clk = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac0_1_srds1_ch0_xgmii_rx_clk",
 			.parent_hws = (const struct clk_hw *[]) {
-				&nsscc_mac1_srds1_ch0_xgmii_rx_div_clk_src.clkr.hw,
+				&nsscc_srds1_xgmii_rx_mux_sel.clkr.hw,
 			},
 			.num_parents = 1,
 			.flags = CLK_SET_RATE_PARENT,
@@ -824,9 +886,31 @@ static struct clk_regmap_div nsscc_mac1_srds1_ch0_xgmii_tx_div_clk_src = {
 	.clkr = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac1_srds1_ch0_xgmii_tx_div_clk_src",
-			.parent_data = nsscc_port1_3_tx_data,
-			.num_parents = ARRAY_SIZE(nsscc_port1_3_tx_data),
+			.parent_hws = (const struct clk_hw *[]) {
+				&nsscc_mac1_rx_clk_src.clkr.hw,
+			},
+			.num_parents = 1,
+			.flags = CLK_SET_RATE_PARENT,
 			.ops = &clk_regmap_div_ops,
+		},
+	},
+};
+
+/* SRDS1 Mux Clocks */
+static struct clk_regmap_mux nsscc_srds1_tx_mux_sel = {
+	.reg = 0x300,
+	.shift = 14,
+	.width = 1,
+	.clkr = {
+		.hw.init = &(const struct clk_init_data) {
+			.name = "nsscc_srds1_tx_mux_sel",
+			.parent_hws = (const struct clk_hw *[]) {
+				&nsscc_mac0_tx_div_clk_src.clkr.hw,
+				&nsscc_mac1_rx_div_clk_src.clkr.hw,
+			},
+			.num_parents = 2,
+			.flags = CLK_SET_RATE_PARENT,
+			.ops = &clk_regmap_mux_closest_ops,
 		},
 	},
 };
@@ -840,7 +924,7 @@ static struct clk_branch nsscc_mac1_srds1_ch0_tx_clk = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac1_srds1_ch0_tx_clk",
 			.parent_hws = (const struct clk_hw *[]) {
-				&nsscc_mac1_srds1_ch0_xgmii_tx_div_clk_src.clkr.hw,
+				&nsscc_srds1_tx_mux_sel.clkr.hw,
 			},
 			.num_parents = 1,
 			.flags = CLK_SET_RATE_PARENT,
@@ -885,6 +969,24 @@ static struct clk_branch nsscc_mac1_gephy0_rx_clk = {
 	},
 };
 
+static struct clk_regmap_mux nsscc_srds1_xgmii_tx_mux_sel = {
+	.reg = 0x300,
+	.shift = 12,
+	.width = 1,
+	.clkr = {
+		.hw.init = &(const struct clk_init_data) {
+			.name = "nsscc_srds1_xgmii_tx_mux_sel",
+			.parent_hws = (const struct clk_hw *[]) {
+				&nsscc_mac0_tx_div_clk_src.clkr.hw,
+				&nsscc_mac1_srds1_ch0_xgmii_tx_div_clk_src.clkr.hw,
+			},
+			.num_parents = 2,
+			.flags = CLK_SET_RATE_PARENT,
+			.ops = &clk_regmap_mux_closest_ops,
+		},
+	},
+};
+
 static struct clk_branch nsscc_mac0_1_srds1_ch0_xgmii_tx_clk = {
 	.halt_reg = 0x108,
 	.halt_check = BRANCH_HALT,
@@ -894,7 +996,7 @@ static struct clk_branch nsscc_mac0_1_srds1_ch0_xgmii_tx_clk = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac0_1_srds1_ch0_xgmii_tx_clk",
 			.parent_hws = (const struct clk_hw *[]) {
-				&nsscc_mac1_srds1_ch0_xgmii_tx_div_clk_src.clkr.hw,
+				&nsscc_srds1_xgmii_tx_mux_sel.clkr.hw,
 			},
 			.num_parents = 1,
 			.flags = CLK_SET_RATE_PARENT,
@@ -940,8 +1042,11 @@ static struct clk_regmap_div nsscc_mac2_srds1_ch1_xgmii_rx_div_clk_src = {
 	.clkr = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac2_srds1_ch1_xgmii_rx_div_clk_src",
-			.parent_data = nsscc_port1_3_rx_data,
-			.num_parents = ARRAY_SIZE(nsscc_port1_3_rx_data),
+			.parent_hws = (const struct clk_hw *[]) {
+				&nsscc_mac2_tx_clk_src.clkr.hw,
+			},
+			.num_parents = 1,
+			.flags = CLK_SET_RATE_PARENT,
 			.ops = &clk_regmap_div_ops,
 		},
 	},
@@ -956,7 +1061,7 @@ static struct clk_branch nsscc_mac2_srds1_ch1_rx_clk = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac2_srds1_ch1_rx_clk",
 			.parent_hws = (const struct clk_hw *[]) {
-				&nsscc_mac2_srds1_ch1_xgmii_rx_div_clk_src.clkr.hw,
+				&nsscc_mac2_tx_div_clk_src.clkr.hw,
 			},
 			.num_parents = 1,
 			.flags = CLK_SET_RATE_PARENT,
@@ -1056,8 +1161,11 @@ static struct clk_regmap_div nsscc_mac2_srds1_ch1_xgmii_tx_div_clk_src = {
 	.clkr = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac2_srds1_ch1_xgmii_tx_div_clk_src",
-			.parent_data = nsscc_port1_3_tx_data,
-			.num_parents = ARRAY_SIZE(nsscc_port1_3_tx_data),
+			.parent_hws = (const struct clk_hw *[]) {
+				&nsscc_mac2_rx_clk_src.clkr.hw,
+			},
+			.num_parents = 1,
+			.flags = CLK_SET_RATE_PARENT,
 			.ops = &clk_regmap_div_ops,
 		},
 	},
@@ -1072,7 +1180,7 @@ static struct clk_branch nsscc_mac2_srds1_ch1_tx_clk = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac2_srds1_ch1_tx_clk",
 			.parent_hws = (const struct clk_hw *[]) {
-				&nsscc_mac2_srds1_ch1_xgmii_tx_div_clk_src.clkr.hw,
+				&nsscc_mac2_rx_div_clk_src.clkr.hw,
 			},
 			.num_parents = 1,
 			.flags = CLK_SET_RATE_PARENT,
@@ -1172,8 +1280,11 @@ static struct clk_regmap_div nsscc_mac3_srds1_ch2_xgmii_rx_div_clk_src = {
 	.clkr = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac3_srds1_ch2_xgmii_rx_div_clk_src",
-			.parent_data = nsscc_port1_3_rx_data,
-			.num_parents = ARRAY_SIZE(nsscc_port1_3_rx_data),
+			.parent_hws = (const struct clk_hw *[]) {
+				&nsscc_mac3_tx_clk_src.clkr.hw,
+			},
+			.num_parents = 1,
+			.flags = CLK_SET_RATE_PARENT,
 			.ops = &clk_regmap_div_ops,
 		},
 	},
@@ -1188,7 +1299,7 @@ static struct clk_branch nsscc_mac3_srds1_ch2_rx_clk = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac3_srds1_ch2_rx_clk",
 			.parent_hws = (const struct clk_hw *[]) {
-				&nsscc_mac3_srds1_ch2_xgmii_rx_div_clk_src.clkr.hw,
+				&nsscc_mac3_tx_div_clk_src.clkr.hw,
 			},
 			.num_parents = 1,
 			.flags = CLK_SET_RATE_PARENT,
@@ -1288,8 +1399,11 @@ static struct clk_regmap_div nsscc_mac3_srds1_ch2_xgmii_tx_div_clk_src = {
 	.clkr = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac3_srds1_ch2_xgmii_tx_div_clk_src",
-			.parent_data = nsscc_port1_3_tx_data,
-			.num_parents = ARRAY_SIZE(nsscc_port1_3_tx_data),
+			.parent_hws = (const struct clk_hw *[]) {
+				&nsscc_mac3_rx_clk_src.clkr.hw,
+			},
+			.num_parents = 1,
+			.flags = CLK_SET_RATE_PARENT,
 			.ops = &clk_regmap_div_ops,
 		},
 	},
@@ -1304,7 +1418,7 @@ static struct clk_branch nsscc_mac3_srds1_ch2_tx_clk = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac3_srds1_ch2_tx_clk",
 			.parent_hws = (const struct clk_hw *[]) {
-				&nsscc_mac3_srds1_ch2_xgmii_tx_div_clk_src.clkr.hw,
+				&nsscc_mac3_rx_div_clk_src.clkr.hw,
 			},
 			.num_parents = 1,
 			.flags = CLK_SET_RATE_PARENT,
@@ -1404,8 +1518,11 @@ static struct clk_regmap_div nsscc_mac4_srds1_ch3_xgmii_rx_div_clk_src = {
 	.clkr = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac4_srds1_ch3_xgmii_rx_div_clk_src",
-			.parent_data = nsscc_port4_rx_data,
-			.num_parents = ARRAY_SIZE(nsscc_port4_rx_data),
+			.parent_hws = (const struct clk_hw *[]) {
+				&nsscc_mac4_tx_clk_src.clkr.hw,
+			},
+			.num_parents = 1,
+			.flags = CLK_SET_RATE_PARENT,
 			.ops = &clk_regmap_div_ops,
 		},
 	},
@@ -1420,7 +1537,7 @@ static struct clk_branch nsscc_mac4_srds1_ch3_rx_clk = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac4_srds1_ch3_rx_clk",
 			.parent_hws = (const struct clk_hw *[]) {
-				&nsscc_mac4_srds1_ch3_xgmii_rx_div_clk_src.clkr.hw,
+				&nsscc_mac4_tx_div_clk_src.clkr.hw,
 			},
 			.num_parents = 1,
 			.flags = CLK_SET_RATE_PARENT,
@@ -1520,8 +1637,11 @@ static struct clk_regmap_div nsscc_mac4_srds1_ch3_xgmii_tx_div_clk_src = {
 	.clkr = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac4_srds1_ch3_xgmii_tx_div_clk_src",
-			.parent_data = nsscc_port4_tx_data,
-			.num_parents = ARRAY_SIZE(nsscc_port4_tx_data),
+			.parent_hws = (const struct clk_hw *[]) {
+				&nsscc_mac4_rx_clk_src.clkr.hw,
+			},
+			.num_parents = 1,
+			.flags = CLK_SET_RATE_PARENT,
 			.ops = &clk_regmap_div_ops,
 		},
 	},
@@ -1536,7 +1656,7 @@ static struct clk_branch nsscc_mac4_srds1_ch3_tx_clk = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac4_srds1_ch3_tx_clk",
 			.parent_hws = (const struct clk_hw *[]) {
-				&nsscc_mac4_srds1_ch3_xgmii_tx_div_clk_src.clkr.hw,
+				&nsscc_mac4_rx_div_clk_src.clkr.hw,
 			},
 			.num_parents = 1,
 			.flags = CLK_SET_RATE_PARENT,
@@ -1615,7 +1735,7 @@ static struct clk_rcg2 nsscc_mac5_tx_clk_src = {
 static struct clk_regmap_div nsscc_mac5_tx_div_clk_src = {
 	.reg = 0x218,
 	.shift = 0,
-	.width = 4,
+	.width = 9,
 	.clkr = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac5_tx_div_clk_src",
@@ -1647,6 +1767,24 @@ static struct clk_branch nsscc_mac5_tx_clk = {
 	},
 };
 
+static struct clk_regmap_mux nsscc_srds0_tx_mux_sel = {
+	.reg = 0x300,
+	.shift = 18,
+	.width = 1,
+	.clkr = {
+		.hw.init = &(const struct clk_init_data) {
+			.name = "nsscc_srds0_tx_mux_sel",
+			.parent_hws = (const struct clk_hw *[]) {
+				&nsscc_mac4_rx_div_clk_src.clkr.hw,
+				&nsscc_mac5_tx_div_clk_src.clkr.hw,
+			},
+			.num_parents = 2,
+			.flags = CLK_SET_RATE_PARENT,
+			.ops = &clk_regmap_mux_closest_ops,
+		},
+	},
+};
+
 static struct clk_branch nsscc_mac5_tx_srds0_clk = {
 	.halt_reg = 0x224,
 	.halt_check = BRANCH_HALT,
@@ -1656,11 +1794,30 @@ static struct clk_branch nsscc_mac5_tx_srds0_clk = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac5_tx_srds0_clk",
 			.parent_hws = (const struct clk_hw *[]) {
-				&nsscc_mac5_tx_div_clk_src.clkr.hw,
+				&nsscc_srds0_tx_mux_sel.clkr.hw,
 			},
 			.num_parents = 1,
 			.flags = CLK_SET_RATE_PARENT,
 			.ops = &clk_branch2_prepare_ops,
+		},
+	},
+};
+
+/* SRDS0 Mux Clocks */
+static struct clk_regmap_mux nsscc_srds0_xgmii_tx_mux_sel = {
+	.reg = 0x300,
+	.shift = 16,
+	.width = 1,
+	.clkr = {
+		.hw.init = &(const struct clk_init_data) {
+			.name = "nsscc_srds0_xgmii_tx_mux_sel",
+			.parent_hws = (const struct clk_hw *[]) {
+				&nsscc_mac4_srds1_ch3_xgmii_tx_div_clk_src.clkr.hw,
+				&nsscc_mac5_tx_div_clk_src.clkr.hw,
+			},
+			.num_parents = 2,
+			.flags = CLK_SET_RATE_PARENT,
+			.ops = &clk_regmap_mux_closest_ops,
 		},
 	},
 };
@@ -1674,7 +1831,7 @@ static struct clk_branch nsscc_mac5_tx_srds0_ch0_xgmii_clk = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac5_tx_srds0_ch0_xgmii_clk",
 			.parent_hws = (const struct clk_hw *[]) {
-				&nsscc_mac5_tx_div_clk_src.clkr.hw,
+				&nsscc_srds0_xgmii_tx_mux_sel.clkr.hw,
 			},
 			.num_parents = 1,
 			.flags = CLK_SET_RATE_PARENT,
@@ -1699,7 +1856,7 @@ static struct clk_rcg2 nsscc_mac5_rx_clk_src = {
 static struct clk_regmap_div nsscc_mac5_rx_div_clk_src = {
 	.reg = 0x238,
 	.shift = 0,
-	.width = 4,
+	.width = 9,
 	.clkr = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac5_rx_div_clk_src",
@@ -1731,6 +1888,24 @@ static struct clk_branch nsscc_mac5_rx_clk = {
 	},
 };
 
+static struct clk_regmap_mux nsscc_srds0_rx_mux_sel = {
+	.reg = 0x300,
+	.shift = 19,
+	.width = 1,
+	.clkr = {
+		.hw.init = &(const struct clk_init_data) {
+			.name = "nsscc_srds0_rx_mux_sel",
+			.parent_hws = (const struct clk_hw *[]) {
+				&nsscc_mac4_tx_div_clk_src.clkr.hw,
+				&nsscc_mac5_rx_div_clk_src.clkr.hw,
+			},
+			.num_parents = 2,
+			.flags = CLK_SET_RATE_PARENT,
+			.ops = &clk_regmap_mux_closest_ops,
+		},
+	},
+};
+
 static struct clk_branch nsscc_mac5_rx_srds0_clk = {
 	.halt_reg = 0x244,
 	.halt_check = BRANCH_HALT,
@@ -1740,11 +1915,29 @@ static struct clk_branch nsscc_mac5_rx_srds0_clk = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac5_rx_srds0_clk",
 			.parent_hws = (const struct clk_hw *[]) {
-				&nsscc_mac5_rx_div_clk_src.clkr.hw,
+				&nsscc_srds0_rx_mux_sel.clkr.hw,
 			},
 			.num_parents = 1,
 			.flags = CLK_SET_RATE_PARENT,
 			.ops = &clk_branch2_prepare_ops,
+		},
+	},
+};
+
+static struct clk_regmap_mux nsscc_srds0_xgmii_rx_mux_sel = {
+	.reg = 0x300,
+	.shift = 17,
+	.width = 1,
+	.clkr = {
+		.hw.init = &(const struct clk_init_data) {
+			.name = "nsscc_srds0_xgmii_rx_mux_sel",
+			.parent_hws = (const struct clk_hw *[]) {
+				&nsscc_mac4_srds1_ch3_xgmii_rx_div_clk_src.clkr.hw,
+				&nsscc_mac5_rx_div_clk_src.clkr.hw,
+			},
+			.num_parents = 2,
+			.flags = CLK_SET_RATE_PARENT,
+			.ops = &clk_regmap_mux_closest_ops,
 		},
 	},
 };
@@ -1758,7 +1951,7 @@ static struct clk_branch nsscc_mac5_rx_srds0_ch0_xgmii_clk = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "nsscc_mac5_rx_srds0_ch0_xgmii_clk",
 			.parent_hws = (const struct clk_hw *[]) {
-				&nsscc_mac5_rx_div_clk_src.clkr.hw,
+				&nsscc_srds0_xgmii_rx_mux_sel.clkr.hw,
 			},
 			.num_parents = 1,
 			.flags = CLK_SET_RATE_PARENT,
@@ -2245,6 +2438,7 @@ static struct clk_regmap *nsscc_qce2204_clocks[] = {
 	[QCE2204_NSSCC_SWITCH_MAC3_CLK] = &nsscc_switch_mac3_clk.clkr,
 	[QCE2204_NSSCC_SWITCH_MAC4_CLK] = &nsscc_switch_mac4_clk.clkr,
 	[QCE2204_NSSCC_SWITCH_MAC5_CLK] = &nsscc_switch_mac5_clk.clkr,
+	[QCE2204_NSSCC_SWITCH_CORE_DIV_CLK_SRC] = &nsscc_switch_core_div_clk_src.clkr,
 	[QCE2204_NSSCC_XGMAC0_PTP_REF_CLK] = &nsscc_xgmac0_ptp_ref_clk.clkr,
 	[QCE2204_NSSCC_XGMAC1_PTP_REF_CLK] = &nsscc_xgmac1_ptp_ref_clk.clkr,
 	[QCE2204_NSSCC_APB_BRIDGE_CLK] = &nsscc_apb_bridge_clk.clkr,
@@ -2349,59 +2543,71 @@ static struct clk_regmap *nsscc_qce2204_clocks[] = {
 	[QCE2204_NSSCC_TS_SLEEP_CLK] = &nsscc_ts_sleep_clk.clkr,
 	[QCE2204_NSSCC_DEBUG_DIV_CLK_SRC] = &nsscc_debug_div_clk_src.clkr,
 	[QCE2204_NSSCC_DEBUG_CLK] = &nsscc_debug_clk.clkr,
+	[QCE2204_NSSCC_SRDS0_RX_MUX_SEL] = &nsscc_srds0_rx_mux_sel.clkr,
+	[QCE2204_NSSCC_SRDS0_TX_MUX_SEL] = &nsscc_srds0_tx_mux_sel.clkr,
+	[QCE2204_NSSCC_SRDS0_XGMII_RX_MUX_SEL] = &nsscc_srds0_xgmii_rx_mux_sel.clkr,
+	[QCE2204_NSSCC_SRDS0_XGMII_TX_MUX_SEL] = &nsscc_srds0_xgmii_tx_mux_sel.clkr,
+	[QCE2204_NSSCC_SRDS1_RX_MUX_SEL] = &nsscc_srds1_rx_mux_sel.clkr,
+	[QCE2204_NSSCC_SRDS1_TX_MUX_SEL] = &nsscc_srds1_tx_mux_sel.clkr,
+	[QCE2204_NSSCC_SRDS1_XGMII_RX_MUX_SEL] = &nsscc_srds1_xgmii_rx_mux_sel.clkr,
+	[QCE2204_NSSCC_SRDS1_XGMII_TX_MUX_SEL] = &nsscc_srds1_xgmii_tx_mux_sel.clkr,
 };
 
 static const struct qcom_reset_map nsscc_qce2204_resets[] = {
 	[QCE2204_NSSCC_SWITCH_CORE_BCR] = { 0x314, 0 },
-	[QCE2204_NSSCC_SWITCH_CORE_ARES] = { 0x14, 2 },
+	[QCE2204_NSSCC_SWITCH_CORE_ARES] = { 0x10, 2 },
 	[QCE2204_NSSCC_SWITCH_IPE_ARES] = { 0x18, 2 },
 	[QCE2204_NSSCC_SWITCH_BTQ_ARES] = { 0x20, 2 },
-	[QCE2204_NSSCC_SWITCH_MAC0_ARES] = { 0x34, 2 },
-	[QCE2204_NSSCC_SWITCH_MAC1_ARES] = { 0x3c, 2 },
-	[QCE2204_NSSCC_SWITCH_MAC2_ARES] = { 0x44, 2 },
-	[QCE2204_NSSCC_SWITCH_MAC3_ARES] = { 0x4c, 2 },
-	[QCE2204_NSSCC_SWITCH_MAC4_ARES] = { 0x54, 2 },
-	[QCE2204_NSSCC_SWITCH_MAC5_ARES] = { 0x5c, 2 },
+	[QCE2204_NSSCC_SWITCH_CFG_ARES] = { 0x28, 2 },
+	[QCE2204_NSSCC_SWITCH_MAC0_ARES] = { 0x30, 2 },
+	[QCE2204_NSSCC_SWITCH_MAC1_ARES] = { 0x38, 2 },
+	[QCE2204_NSSCC_SWITCH_MAC2_ARES] = { 0x40, 2 },
+	[QCE2204_NSSCC_SWITCH_MAC3_ARES] = { 0x48, 2 },
+	[QCE2204_NSSCC_SWITCH_MAC4_ARES] = { 0x50, 2 },
+	[QCE2204_NSSCC_SWITCH_MAC5_ARES] = { 0x58, 2 },
+	[QCE2204_NSSCC_XGMAC0_PTP_REF_ARES] = { 0x60, 2 },
+	[QCE2204_NSSCC_XGMAC1_PTP_REF_ARES] = { 0x68, 2 },
+	[QCE2204_NSSCC_APB_BRIDGE_ARES] = { 0x70, 2 },
 	[QCE2204_NSSCC_MAC0_TX_ARES] = { 0x88, 2 },
 	[QCE2204_NSSCC_MAC0_TX_SRDS1_ARES] = { 0x8c, 2 },
-	[QCE2204_NSSCC_MAC0_RX_ARES] = { 0xa8, 2 },
-	[QCE2204_NSSCC_MAC0_RX_SRDS1_ARES] = { 0xac, 2 },
+	[QCE2204_NSSCC_MAC0_RX_ARES] = { 0xa4, 2 },
+	[QCE2204_NSSCC_MAC0_RX_SRDS1_ARES] = { 0xa8, 2 },
+	[QCE2204_NSSCC_MAC1_SRDS1_CH0_RX_ARES] = { 0xcc, 2 },
 	[QCE2204_NSSCC_MAC1_TX_ARES] = { 0xd0, 2 },
 	[QCE2204_NSSCC_MAC1_GEPHY0_TX_ARES] = { 0xd4, 2 },
-	[QCE2204_NSSCC_MAC1_SRDS1_CH0_RX_ARES] = { 0xcc, 2 },
-	[QCE2204_NSSCC_MAC1_SRDS1_CH0_XGMII_RX_ARES] = { 0xd8, 2 },
+	[QCE2204_NSSCC_MAC0_1_SRDS1_CH0_XGMII_RX_ARES] = { 0xd8, 2 },
+	[QCE2204_NSSCC_MAC1_SRDS1_CH0_TX_ARES] = { 0xf8, 2 },
 	[QCE2204_NSSCC_MAC1_RX_ARES] = { 0xfc, 2 },
 	[QCE2204_NSSCC_MAC1_GEPHY0_RX_ARES] = { 0x104, 2 },
-	[QCE2204_NSSCC_MAC1_SRDS1_CH0_TX_ARES] = { 0xf8, 2 },
-	[QCE2204_NSSCC_MAC1_SRDS1_CH0_XGMII_TX_ARES] = { 0x108, 2 },
+	[QCE2204_NSSCC_MAC0_1_SRDS1_CH0_XGMII_TX_ARES] = { 0x108, 2 },
+	[QCE2204_NSSCC_MAC2_SRDS1_CH1_RX_ARES] = { 0x128, 2 },
 	[QCE2204_NSSCC_MAC2_TX_ARES] = { 0x12c, 2 },
 	[QCE2204_NSSCC_MAC2_GEPHY1_TX_ARES] = { 0x130, 2 },
-	[QCE2204_NSSCC_MAC2_SRDS1_CH1_RX_ARES] = { 0x128, 2 },
 	[QCE2204_NSSCC_MAC2_SRDS1_CH1_XGMII_RX_ARES] = { 0x134, 2 },
+	[QCE2204_NSSCC_MAC2_SRDS1_CH1_TX_ARES] = { 0x150, 2 },
 	[QCE2204_NSSCC_MAC2_RX_ARES] = { 0x154, 2 },
 	[QCE2204_NSSCC_MAC2_GEPHY1_RX_ARES] = { 0x158, 2 },
-	[QCE2204_NSSCC_MAC2_SRDS1_CH1_TX_ARES] = { 0x150, 2 },
 	[QCE2204_NSSCC_MAC2_SRDS1_CH1_XGMII_TX_ARES] = { 0x15c, 2 },
+	[QCE2204_NSSCC_MAC3_SRDS1_CH2_RX_ARES] = { 0x17c, 2 },
 	[QCE2204_NSSCC_MAC3_TX_ARES] = { 0x180, 2 },
 	[QCE2204_NSSCC_MAC3_GEPHY2_TX_ARES] = { 0x184, 2 },
-	[QCE2204_NSSCC_MAC3_SRDS1_CH2_RX_ARES] = { 0x17c, 2 },
 	[QCE2204_NSSCC_MAC3_SRDS1_CH2_XGMII_RX_ARES] = { 0x188, 2 },
+	[QCE2204_NSSCC_MAC3_SRDS1_CH2_TX_ARES] = { 0x1a8, 2 },
 	[QCE2204_NSSCC_MAC3_RX_ARES] = { 0x1ac, 2 },
 	[QCE2204_NSSCC_MAC3_GEPHY2_RX_ARES] = { 0x1b0, 2 },
-	[QCE2204_NSSCC_MAC3_SRDS1_CH2_TX_ARES] = { 0x1a8, 2 },
 	[QCE2204_NSSCC_MAC3_SRDS1_CH2_XGMII_TX_ARES] = { 0x1b4, 2 },
+	[QCE2204_NSSCC_MAC4_SRDS1_CH3_RX_ARES] = { 0x1d0, 2 },
 	[QCE2204_NSSCC_MAC4_TX_ARES] = { 0x1d4, 2 },
 	[QCE2204_NSSCC_MAC4_GEPHY3_TX_ARES] = { 0x1d8, 2 },
-	[QCE2204_NSSCC_MAC4_SRDS1_CH3_RX_ARES] = { 0x1d0, 2 },
 	[QCE2204_NSSCC_MAC4_SRDS1_CH3_XGMII_RX_ARES] = { 0x1dc, 2 },
+	[QCE2204_NSSCC_MAC4_SRDS1_CH3_TX_ARES] = { 0x1fc, 2 },
 	[QCE2204_NSSCC_MAC4_RX_ARES] = { 0x200, 2 },
 	[QCE2204_NSSCC_MAC4_GEPHY3_RX_ARES] = { 0x204, 2 },
-	[QCE2204_NSSCC_MAC4_SRDS1_CH3_TX_ARES] = { 0x1fc, 2 },
 	[QCE2204_NSSCC_MAC4_SRDS1_CH3_XGMII_TX_ARES] = { 0x208, 2 },
 	[QCE2204_NSSCC_MAC5_TX_ARES] = { 0x220, 2 },
 	[QCE2204_NSSCC_MAC5_TX_SRDS0_ARES] = { 0x224, 2 },
 	[QCE2204_NSSCC_MAC5_TX_SRDS0_CH0_XGMII_ARES] = { 0x228, 2 },
-	[QCE2204_NSSCC_MAC5_RX_ARES] = { 0x240, 2 },
+	[QCE2204_NSSCC_MAC5_RX_ARES] = { 0x23c, 2 },
 	[QCE2204_NSSCC_MAC5_RX_SRDS0_ARES] = { 0x244, 2 },
 	[QCE2204_NSSCC_MAC5_RX_SRDS0_CH0_XGMII_ARES] = { 0x248, 2 },
 	[QCE2204_NSSCC_AHB_ARES] = { 0x258, 2 },
@@ -2418,7 +2624,9 @@ static const struct qcom_reset_map nsscc_qce2204_resets[] = {
 	[QCE2204_NSSCC_GEPHY1_SYS_ARES] = { 0x28c, 2 },
 	[QCE2204_NSSCC_GEPHY2_SYS_ARES] = { 0x290, 2 },
 	[QCE2204_NSSCC_GEPHY3_SYS_ARES] = { 0x294, 2 },
-	[QCE2204_NSSCC_SEC_CTRL_ARES] = { 0x2b4, 2 },
+	[QCE2204_NSSCC_KDF_ARES] = { 0x298, 2 },
+	[QCE2204_NSSCC_TSENS_EXT_ARES] = { 0x2a0, 2 },
+	[QCE2204_NSSCC_SEC_CTRL_ARES] = { 0x2b0, 2 },
 	[QCE2204_NSSCC_SEC_CTRL_SENSE_ARES] = { 0x2b8, 2 },
 	[QCE2204_NSSCC_SLEEP_ARES] = { 0x2cc, 2 },
 	[QCE2204_NSSCC_TS_SLEEP_ARES] = { 0x2d0, 2 },

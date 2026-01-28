@@ -19,6 +19,16 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	qcom-apq8084-mtp.dtb \
 	ipq5210-emulation.dtb \
 	ipq5210-emulation-fbc.dtb \
+	ipq5210-rdp497.dtb \
+	ipq5210-rdp498.dtb \
+	ipq5210-rdp499.dtb \
+	ipq5210-rdp500.dtb \
+	ipq5210-rdp501.dtb \
+	ipq5210-rdp502.dtb \
+	ipq5210-rdp503.dtb \
+	ipq5210-rdp504.dtb \
+	ipq5210-db-hm01.1.dtb \
+	ipq5210-db-hm02.1.dtb \
 	ipq5424-rdp464.dtb \
 	ipq5424-rdp464-c2.dtb \
 	ipq5424-rdp464-c3.dtb \
@@ -71,6 +81,7 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	ipq9574-rdp475.dtb \
 	ipq9574-rdp475-qca81xx-i2c.dtb \
 	ipq9574-rdp475-qca81xx.dtb \
+	ipq9574-rdp475-qce1204.dtb \
 	ipq9574-rdp476.dtb \
 	ipq9574-db-al01-c1.dtb \
 	ipq9574-db-al01-c2.dtb \
@@ -81,9 +92,13 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	ipq9574-rdp475-c1.dtb \
 	ipq9650-emulation.dtb \
 	ipq9650-emulation-fbc.dtb \
+	ipq9650-rdp488.dtb \
+	ipq9650-rdp489.dtb \
+	ipq9650-rdp506.dtb \
 	ipq5332-rdp441.dtb \
 	ipq5332-rdp441-qca81xx.dtb \
 	ipq5332-rdp441-qca81xx-i2c.dtb \
+	ipq5332-rdp441-qce2204.dtb \
 	ipq5332-rdp442.dtb \
 	ipq5332-rdp446.dtb \
 	ipq5332-rdp468.dtb \

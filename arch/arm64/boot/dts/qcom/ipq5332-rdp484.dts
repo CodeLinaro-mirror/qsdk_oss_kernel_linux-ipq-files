@@ -157,6 +157,11 @@
 							switch_handle = <&switch1>;
 							switch_cpu_port = <0>;
 						};
+						fixed-link {
+							speed = <2500>;
+							full-duplex;
+							pause;
+						};
 					};
 					port@1 {
 						port_id = <2>;
@@ -254,7 +259,6 @@
 			reg = <0x3a500000 0x4000>;
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
-			phy-mode = "sgmii";
 			qcom,mht-dev = <1>;
 		};
 

@@ -153,6 +153,9 @@
 
 	ctx-save {
 		compatible = "qti,ctxt-save-ipq9650";
+		memory-region = <&minidump_mem>;
+		qcom,imem = <&imem>;
+		minidump-level = <2>;
 	};
 
 	firmware {
@@ -248,6 +251,10 @@
 		tmc_etr_region: tmc_etr_dump@0 {
 			no-map;
 			status = "disabled";
+		};
+
+		minidump_mem: minidump_mem@0 {
+			no-map;
 		};
 	};
 
@@ -549,7 +556,7 @@
 					pins = "gpio5";
 					function = "qspi_clk";
 					drive-strength = <8>;
-					bias-pull-down;
+					bias-disable;
 				};
 
 				qspi_cs {
@@ -563,7 +570,7 @@
 					pins = "gpio0", "gpio1", "gpio2", "gpio3";
 					function = "qspi_data";
 					drive-strength = <8>;
-					bias-pull-down;
+					bias-pull-up;
 				};
 			};
 		};
@@ -645,6 +652,15 @@
 				interrupts = <GIC_SPI 342 IRQ_TYPE_LEVEL_HIGH>;
 				assigned-clocks = <&gcc GCC_QUPV3_I2C1_CLK>;
 				assigned-clock-rates = <64000000>;
+				status = "disabled";
+			};
+
+			uart1: serial@1a98000 {
+				compatible = "qcom,geni-debug-uart";
+				reg = <0x01a98000 0x4000>;
+				clocks = <&gcc GCC_QUPV3_UART1_CLK>;
+				clock-names = "se";
+				interrupts = <GIC_SPI 380 IRQ_TYPE_LEVEL_HIGH>;
 				status = "disabled";
 			};
 		};
@@ -1123,6 +1139,8 @@
 			#redistributor-regions = <1>;
 			redistributor-stride = <0x0 0x20000>;
 			interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH>;
+			mbi-ranges = <800 160>;
+			msi-controller;
 		};
 
 		watchdog: watchdog@f410000 {
@@ -1372,9 +1390,8 @@
 					<0 0 0 3 &intc 0 507 IRQ_TYPE_LEVEL_HIGH>, /* int_c */
 					<0 0 0 4 &intc 0 508 IRQ_TYPE_LEVEL_HIGH>; /* int_d */
 
-			interrupts = <GIC_SPI 504 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI 496 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "global_irq", "msi";
+			interrupts = <GIC_SPI 504 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "global_irq";
 
 			clocks = <&gcc GCC_PCIE3_AXI_M_CLK>,
 				 <&gcc GCC_PCIE3_AXI_S_CLK>,
@@ -1420,6 +1437,8 @@
 				      "ahb",
 				      "aux";
 
+			msi-parent = <&intc>;
+
 			pinctrl-0 = <&pcie3_default_state>;
 			pinctrl-names = "default";
 
@@ -1455,9 +1474,8 @@
 					<0 0 0 3 &intc 0 481 IRQ_TYPE_LEVEL_HIGH>, /* int_c */
 					<0 0 0 4 &intc 0 482 IRQ_TYPE_LEVEL_HIGH>; /* int_d */
 
-			interrupts = <GIC_SPI 478 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI 470 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "global_irq", "msi";
+			interrupts = <GIC_SPI 478 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "global_irq";
 
 			clocks = <&gcc GCC_PCIE2_AXI_M_CLK>,
 				 <&gcc GCC_PCIE2_AXI_S_CLK>,
@@ -1503,6 +1521,8 @@
 				      "ahb",
 				      "aux";
 
+			msi-parent = <&intc>;
+
 			pinctrl-0 = <&pcie2_default_state>;
 			pinctrl-names = "default";
 
@@ -1537,9 +1557,8 @@
 					<0 0 0 3 &intc 0 466 IRQ_TYPE_LEVEL_HIGH>, /* int_c */
 					<0 0 0 4 &intc 0 467 IRQ_TYPE_LEVEL_HIGH>; /* int_d */
 
-			interrupts = <GIC_SPI 463 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI 455 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "global_irq", "msi";
+			interrupts = <GIC_SPI 463 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "global_irq";
 
 			clocks = <&gcc GCC_PCIE1_AXI_M_CLK>,
 				 <&gcc GCC_PCIE1_AXI_S_CLK>,
@@ -1585,6 +1604,8 @@
 				      "ahb",
 				      "aux";
 
+			msi-parent = <&intc>;
+
 			pinctrl-0 = <&pcie1_default_state>;
 			pinctrl-names = "default";
 
@@ -1619,9 +1640,8 @@
 					<0 0 0 3 &intc 0 522 IRQ_TYPE_LEVEL_HIGH>, /* int_c */
 					<0 0 0 4 &intc 0 523 IRQ_TYPE_LEVEL_HIGH>; /* int_d */
 
-			interrupts = <GIC_SPI 519 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI 511 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "global_irq", "msi";
+			interrupts = <GIC_SPI 519 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "global_irq";
 
 			clocks = <&gcc GCC_PCIE4_AXI_M_CLK>,
 				 <&gcc GCC_PCIE4_AXI_S_CLK>,
@@ -1667,6 +1687,8 @@
 				      "ahb",
 				      "aux";
 
+			msi-parent = <&intc>;
+
 			pinctrl-0 = <&pcie4_default_state>;
 			pinctrl-names = "default";
 
@@ -1701,9 +1723,8 @@
 					<0 0 0 3 &intc 0 436 IRQ_TYPE_LEVEL_HIGH>, /* int_c */
 					<0 0 0 4 &intc 0 437 IRQ_TYPE_LEVEL_HIGH>; /* int_d */
 
-			interrupts = <GIC_SPI 433 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI 425 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "global_irq", "msi";
+			interrupts = <GIC_SPI 433 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "global_irq";
 
 			clocks = <&gcc GCC_PCIE0_AXI_M_CLK>,
 				 <&gcc GCC_PCIE0_AXI_S_CLK>,
@@ -1748,6 +1769,8 @@
 				      "axi_s_sticky",
 				      "ahb",
 				      "aux";
+
+			msi-parent = <&intc>;
 
 			pinctrl-0 = <&pcie0_default_state>;
 			pinctrl-names = "default";
@@ -2078,10 +2101,25 @@
 							group@0 {
 								/* L0 SP */
 								sp = <26>;
-								sp_loop_pri = <16>;
+								sp_loop_pri = <12>;
 								sp_max_pri = <1>;
 								/* cpri cdrr epri edrr */
 								cfg = <0 26 0 26>;
+							};
+
+							group@1 {
+								/* SSID groups with 4 priorities on L1 */
+								sp = <38>;
+								sp_loop_pri = <4>;
+								/* cpri cdrr epri edrr */
+								cfg = <0 38 0 38>;
+							};
+
+							group@2 {
+								sp = <42>;
+								sp_loop_pri = <3>;
+								/* cpri cdrr epri edrr */
+								cfg = <0 42 0 42>;
 							};
 						};
 
@@ -2125,7 +2163,7 @@
 								ucast_queue = <216>;
 								ucast_loop_pri = <8>;
 								ucast_max_pri = <8>;
-								cfg = <40 0 216 0 216>;
+								cfg = <42 0 216 0 216>;
 							};
 
 							group@5 {
@@ -2133,13 +2171,13 @@
 								ucast_queue = <224>;
 								ucast_loop_pri = <8>;
 								ucast_max_pri = <8>;
-								cfg = <41 0 224 0 224>;
+								cfg = <43 0 224 0 224>;
 							};
 
 							group@6 {
 								/* IGSRAM for DDRQ DS to WAN with 1 priority. */
 								ucast_queue = <232>;
-								cfg = <42 0 232 0 232>;
+								cfg = <44 0 232 0 232>;
 							};
 						};
 					};

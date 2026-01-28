@@ -1,0 +1,372 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/net/dsa/qce2204.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Qualcomm QCE2204 Ethernet Switch
+
+maintainers:
+  - Qualcomm Innovation Center, Inc.
+
+description: |
+  The Qualcomm QCE2204 is a 6-port Ethernet switch with integrated Packet Processing
+  Engine (PPE) supporting advanced features including hardware offload, QoS, and
+  multi-gigabit speeds. It features four 2.5G LAN ports with internal PHYs and two
+  10G ports (CPU and WAN) with SerDes interfaces.
+
+  The QCE2204 is accessed via MDIO and typically uses the following MDIO address layout:
+    - Address 0-3: Internal PHYs (GEPHY0-3) for ports 1-4
+    - Address 4-5: PCS (Physical Coding Sublayer) devices for ports 0 and 5
+    - Address 6: Clock controller (NSSCC)
+    - Address 7: DSA switch with PPE
+
+  The switch supports multiple PHY interface modes including internal PHY, GMII, SGMII,
+  2500BASE-X, and 10GBASE-R. It uses QCA header tagging for CPU port communication.
+
+properties:
+  compatible:
+    const: qcom,qce2204
+
+  reg:
+    maxItems: 1
+    description: MDIO address of the switch (typically 7)
+
+  clocks:
+    minItems: 5
+    maxItems: 5
+    description: |
+      Switch-level clocks from the NSSCC clock controller:
+        - core: Switch core clock
+        - ipe: Ingress Packet Engine clock
+        - btq: Buffer/Traffic Queue clock
+        - cfg: Configuration clock
+        - apb: APB bridge clock
+
+  clock-names:
+    items:
+      - const: core
+      - const: ipe
+      - const: btq
+      - const: cfg
+      - const: apb
+
+  resets:
+    maxItems: 1
+    description: Core reset controller
+
+  reset-names:
+    items:
+      - const: core
+
+  reset-gpios:
+    maxItems: 1
+    description: GPIO-based reset line (optional)
+
+  qcom,ppe-offload:
+    type: boolean
+    description: |
+      Enable PPE (Packet Processing Engine) hardware offload features including
+      L2/L3 forwarding, QoS, and traffic management.
+
+  qcom,max-frame-size:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    minimum: 64
+    maximum: 9728
+    default: 1518
+    description: |
+      Maximum frame size in bytes including L2 header, VLAN tag, and FCS.
+      Valid range is 64-9728 bytes.
+
+$ref: dsa.yaml#
+
+patternProperties:
+  "^(ethernet-)?ports$":
+    type: object
+    patternProperties:
+      "^(ethernet-)?port@[0-5]$":
+        type: object
+        description: Ethernet switch ports
+
+        $ref: dsa-port.yaml#
+
+        properties:
+          clocks:
+            minItems: 2
+            maxItems: 2
+            description: |
+              MAC-level TX and RX clocks from NSSCC for this port.
+              These control the MAC interface timing.
+
+          clock-names:
+            items:
+              - const: tx
+              - const: rx
+
+          resets:
+            minItems: 2
+            maxItems: 2
+            description: MAC-level TX and RX reset controllers
+
+          reset-names:
+            items:
+              - const: tx
+              - const: rx
+
+          pcs-handle:
+            $ref: /schemas/types.yaml#/definitions/phandle
+            description: |
+              Reference to PCS device for this port. Typically used for:
+                - Port 0: UNIPHY1 PCS (MDIO address 5)
+                - Port 5: UNIPHY0 PCS (MDIO address 4)
+
+        unevaluatedProperties: false
+
+oneOf:
+  - required:
+      - ports
+  - required:
+      - ethernet-ports
+
+required:
+  - compatible
+  - reg
+  - clocks
+  - clock-names
+
+unevaluatedProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/gpio/gpio.h>
+    #include <dt-bindings/clock/qcom,qce2204-nsscc.h>
+    #include <dt-bindings/reset/qcom,qce2204-nsscc.h>
+
+    mdio {
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        /* PHY Package containing all 4 internal GEPHYs */
+        ethernet-phy-package@0 {
+            compatible = "qcom,qce2204-package";
+            reg = <0>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            /* Internal PHYs for ports 1-4 with GEPHY-specific clocks */
+            phy0: ethernet-phy@0 {
+                reg = <0>;
+                clocks = <&nsscc QCE2204_NSSCC_MAC1_GEPHY0_TX_CLK>,
+                         <&nsscc QCE2204_NSSCC_MAC1_GEPHY0_RX_CLK>,
+                         <&nsscc QCE2204_NSSCC_GEPHY0_SYS_CLK>;
+                clock-names = "tx", "rx", "sys";
+                resets = <&nsscc QCE2204_NSSCC_GEPHY0_SYS_ARES>;
+                reset-names = "sys";
+            };
+
+            phy1: ethernet-phy@1 {
+                reg = <1>;
+                clocks = <&nsscc QCE2204_NSSCC_MAC2_GEPHY1_TX_CLK>,
+                         <&nsscc QCE2204_NSSCC_MAC2_GEPHY1_RX_CLK>,
+                         <&nsscc QCE2204_NSSCC_GEPHY1_SYS_CLK>;
+                clock-names = "tx", "rx", "sys";
+                resets = <&nsscc QCE2204_NSSCC_GEPHY1_SYS_ARES>;
+                reset-names = "sys";
+            };
+
+            phy2: ethernet-phy@2 {
+                reg = <2>;
+                clocks = <&nsscc QCE2204_NSSCC_MAC3_GEPHY2_TX_CLK>,
+                         <&nsscc QCE2204_NSSCC_MAC3_GEPHY2_RX_CLK>,
+                         <&nsscc QCE2204_NSSCC_GEPHY2_SYS_CLK>;
+                clock-names = "tx", "rx", "sys";
+                resets = <&nsscc QCE2204_NSSCC_GEPHY2_SYS_ARES>;
+                reset-names = "sys";
+            };
+
+            phy3: ethernet-phy@3 {
+                reg = <3>;
+                clocks = <&nsscc QCE2204_NSSCC_MAC4_GEPHY3_TX_CLK>,
+                         <&nsscc QCE2204_NSSCC_MAC4_GEPHY3_RX_CLK>,
+                         <&nsscc QCE2204_NSSCC_GEPHY3_SYS_CLK>;
+                clock-names = "tx", "rx", "sys";
+                resets = <&nsscc QCE2204_NSSCC_GEPHY3_SYS_ARES>;
+                reset-names = "sys";
+            };
+        };
+
+        /* PCS devices for ports 0 and 5 with SerDes clocks */
+        pcs_uniphy0: pcs@4 {
+            compatible = "qcom,qce2204-pcs";
+            reg = <4>;
+            clocks = <&nsscc QCE2204_NSSCC_MAC5_TX_SRDS0_CLK>,
+                     <&nsscc QCE2204_NSSCC_MAC5_RX_SRDS0_CLK>,
+                     <&nsscc QCE2204_NSSCC_SRDS0_SYS_CLK>;
+            clock-names = "tx", "rx", "sys";
+            resets = <&nsscc QCE2204_NSSCC_SRDS0_SYS_ARES>;
+            reset-names = "sys";
+        };
+
+        pcs_uniphy1: pcs@5 {
+            compatible = "qcom,qce2204-pcs";
+            reg = <5>;
+            clocks = <&nsscc QCE2204_NSSCC_MAC0_TX_SRDS1_CLK>,
+                     <&nsscc QCE2204_NSSCC_MAC0_RX_SRDS1_CLK>,
+                     <&nsscc QCE2204_NSSCC_SRDS1_SYS_CLK>;
+            clock-names = "tx", "rx", "sys";
+            resets = <&nsscc QCE2204_NSSCC_SRDS1_SYS_ARES>;
+            reset-names = "sys";
+        };
+
+        /* Clock controller */
+        nsscc: clock-controller@6 {
+            compatible = "qcom,qce2204-nsscc";
+            reg = <6>;
+            #clock-cells = <1>;
+            #reset-cells = <1>;
+            clocks = <&xo_board>,
+                     <&uniphy1_rx>, <&uniphy1_tx>,
+                     <&uniphy1_ppe_250m>,
+                     <&uniphy0_rx_312p5m>, <&uniphy0_tx_312p5m>,
+                     <&uniphy1_rx_312p5m>, <&uniphy1_tx_312p5m>;
+            clock-names = "xo",
+                          "uniphy1_rx", "uniphy1_tx",
+                          "uniphy1_ppe_250m",
+                          "uniphy0_rx_312p5m", "uniphy0_tx_312p5m",
+                          "uniphy1_rx_312p5m", "uniphy1_tx_312p5m";
+        };
+
+        /* QCE2204 DSA Switch */
+        switch@7 {
+            compatible = "qcom,qce2204";
+            reg = <7>;
+
+            clocks = <&nsscc QCE2204_NSSCC_SWITCH_CORE_CLK>,
+                     <&nsscc QCE2204_NSSCC_SWITCH_IPE_CLK>,
+                     <&nsscc QCE2204_NSSCC_SWITCH_BTQ_CLK>,
+                     <&nsscc QCE2204_NSSCC_SWITCH_CFG_CLK>,
+                     <&nsscc QCE2204_NSSCC_APB_BRIDGE_CLK>;
+            clock-names = "core", "ipe", "btq", "cfg", "apb";
+
+            resets = <&nsscc QCE2204_NSSCC_SWITCH_CORE_BCR>;
+            reset-names = "core";
+
+            reset-gpios = <&tlmm 42 GPIO_ACTIVE_LOW>;
+
+            qcom,ppe-offload;
+            qcom,max-frame-size = <9728>;
+
+            ports {
+                #address-cells = <1>;
+                #size-cells = <0>;
+
+                /* CPU port - 10G with UNIPHY1 */
+                port@0 {
+                    reg = <0>;
+                    label = "cpu";
+                    ethernet = <&gmac0>;
+                    phy-mode = "10gbase-r";
+                    pcs-handle = <&pcs_uniphy1>;
+
+                    clocks = <&nsscc QCE2204_NSSCC_MAC0_TX_CLK>,
+                             <&nsscc QCE2204_NSSCC_MAC0_RX_CLK>;
+                    clock-names = "tx", "rx";
+
+                    resets = <&nsscc QCE2204_NSSCC_MAC0_TX_ARES>,
+                             <&nsscc QCE2204_NSSCC_MAC0_RX_ARES>;
+                    reset-names = "tx", "rx";
+
+                    fixed-link {
+                        speed = <10000>;
+                        full-duplex;
+                    };
+                };
+
+                /* LAN port 1 - 2.5G with internal PHY */
+                port@1 {
+                    reg = <1>;
+                    label = "lan1";
+                    phy-mode = "internal";
+                    phy-handle = <&phy0>;
+
+                    clocks = <&nsscc QCE2204_NSSCC_MAC1_TX_CLK>,
+                             <&nsscc QCE2204_NSSCC_MAC1_RX_CLK>;
+                    clock-names = "tx", "rx";
+
+                    resets = <&nsscc QCE2204_NSSCC_MAC1_TX_ARES>,
+                             <&nsscc QCE2204_NSSCC_MAC1_RX_ARES>;
+                    reset-names = "tx", "rx";
+                };
+
+                /* LAN port 2 - 2.5G with internal PHY */
+                port@2 {
+                    reg = <2>;
+                    label = "lan2";
+                    phy-mode = "internal";
+                    phy-handle = <&phy1>;
+
+                    clocks = <&nsscc QCE2204_NSSCC_MAC2_TX_CLK>,
+                             <&nsscc QCE2204_NSSCC_MAC2_RX_CLK>;
+                    clock-names = "tx", "rx";
+
+                    resets = <&nsscc QCE2204_NSSCC_MAC2_TX_ARES>,
+                             <&nsscc QCE2204_NSSCC_MAC2_RX_ARES>;
+                    reset-names = "tx", "rx";
+                };
+
+                /* LAN port 3 - 2.5G with internal PHY */
+                port@3 {
+                    reg = <3>;
+                    label = "lan3";
+                    phy-mode = "internal";
+                    phy-handle = <&phy2>;
+
+                    clocks = <&nsscc QCE2204_NSSCC_MAC3_TX_CLK>,
+                             <&nsscc QCE2204_NSSCC_MAC3_RX_CLK>;
+                    clock-names = "tx", "rx";
+
+                    resets = <&nsscc QCE2204_NSSCC_MAC3_TX_ARES>,
+                             <&nsscc QCE2204_NSSCC_MAC3_RX_ARES>;
+                    reset-names = "tx", "rx";
+                };
+
+                /* LAN port 4 - 2.5G with internal PHY */
+                port@4 {
+                    reg = <4>;
+                    label = "lan4";
+                    phy-mode = "internal";
+                    phy-handle = <&phy3>;
+
+                    clocks = <&nsscc QCE2204_NSSCC_MAC4_TX_CLK>,
+                             <&nsscc QCE2204_NSSCC_MAC4_RX_CLK>;
+                    clock-names = "tx", "rx";
+
+                    resets = <&nsscc QCE2204_NSSCC_MAC4_TX_ARES>,
+                             <&nsscc QCE2204_NSSCC_MAC4_RX_ARES>;
+                    reset-names = "tx", "rx";
+                };
+
+                /* WAN port - 10G with UNIPHY0 */
+                port@5 {
+                    reg = <5>;
+                    label = "wan";
+                    phy-mode = "10gbase-r";
+                    pcs-handle = <&pcs_uniphy0>;
+
+                    clocks = <&nsscc QCE2204_NSSCC_MAC5_TX_CLK>,
+                             <&nsscc QCE2204_NSSCC_MAC5_RX_CLK>;
+                    clock-names = "tx", "rx";
+
+                    resets = <&nsscc QCE2204_NSSCC_MAC5_TX_ARES>,
+                             <&nsscc QCE2204_NSSCC_MAC5_RX_ARES>;
+                    reset-names = "tx", "rx";
+
+                    fixed-link {
+                        speed = <10000>;
+                        full-duplex;
+                    };
+                };
+            };
+        };
+    };

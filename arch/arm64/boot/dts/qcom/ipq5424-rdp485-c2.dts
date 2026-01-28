@@ -58,7 +58,7 @@
 		};
 
 		mdio@90000 {
-			ethernet-phy@4 {
+			phy4: ethernet-phy@4 {
 				reg = <0>;
 				 compatible ="ethernet-phy-ieee802.3-c45";
 			};
@@ -99,6 +99,8 @@
 						port_id = <2>;
 						phy_address = <0>;
 						ethernet-phy-ieee802.3-c45;
+						phy-handle = <&phy4>;
+						phy-mode = "usxgmii";
 					};
 				};
 			};
@@ -136,9 +138,6 @@
 			reg = <0x3A504000 0x4000>;
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
-			qcom,phy-mdio-addr = <0>;
-			qcom,link-poll = <1>;
-			phy-mode = "usxgmii";
 		};
 
 		gmac2:dp3 {
@@ -153,7 +152,6 @@
 			local-mac-address = [000000000000];
 			qcom,mht-dev = <1>;
 			qcom,is_switch_connected = <1>;
-			phy-mode = "sgmii";
 			qcom,ppe-offload-disabled = <1>;
 		};
 

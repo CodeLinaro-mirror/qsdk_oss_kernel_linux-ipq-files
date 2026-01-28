@@ -154,6 +154,11 @@
 							switch_handle = <&switch1>;
 							switch_cpu_port = <0>;
 						};
+						fixed-link {
+							speed = <2500>;
+							full-duplex;
+							pause;
+						};
 					};
 				};
 			};
