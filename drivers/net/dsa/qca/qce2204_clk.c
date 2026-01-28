@@ -72,6 +72,14 @@ int qce2204_enable_clocks(struct qce2204_priv *priv)
 		return ret;
 	}
 
+	/* Set switch core clock rate to 250M from serdes1 */
+	ret = clk_set_rate(priv->core_clk, 250000000);
+	if (ret) {
+		dev_err(dev, "Failed to set switch core clock rate to 250MHz: %d\n", ret);
+		clk_disable_unprepare(priv->core_clk);
+		return ret;
+	}
+
 	ret = clk_prepare_enable(priv->ipe_clk);
 	if (ret) {
 		dev_err(dev, "Failed to enable IPE clock: %d\n", ret);
@@ -370,13 +378,21 @@ int qce2204_init_port_clocks_resets(struct qce2204_priv *priv)
 		return 0;
 	}
 
-	for (port = 0; port < QCE2204_NUM_PORTS; port++) {
-		char port_name[16];
-
-		snprintf(port_name, sizeof(port_name), "port@%d", port);
-		port_np = of_get_child_by_name(ports_np, port_name);
-		if (!port_np)
+	for_each_available_child_of_node(ports_np, port_np) {
+		/* Get port number from reg property */
+		ret = of_property_read_u32(port_np, "reg", &port);
+		if (ret) {
+			dev_err(dev, "Failed to get port number from node %pOFn: %d\n",
+				port_np, ret);
+			of_node_put(port_np);
 			continue;
+		}
+
+		if (port >= QCE2204_NUM_PORTS) {
+			dev_err(dev, "Invalid port number %d in device tree\n", port);
+			of_node_put(port_np);
+			continue;
+		}
 
 		/* Try to get per-port clocks */
 		ret = qce2204_get_port_clocks(priv, port, port_np);
@@ -407,8 +423,6 @@ int qce2204_init_port_clocks_resets(struct qce2204_priv *priv)
 				return ret;
 			}
 		}
-
-		of_node_put(port_np);
 	}
 
 	of_node_put(ports_np);
@@ -463,4 +477,3 @@ int qce2204_ahb_clk_set_rate(struct qce2204_priv *priv, unsigned long rate)
 	dev_info(dev, "Set AHB clock rate to %lu Hz\n", rate);
 	return 0;
 }
-

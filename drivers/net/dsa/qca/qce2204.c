@@ -47,12 +47,6 @@ int qce2204_port_alloc_ppe_resources(struct qce2204_priv *priv, int port)
 		return 0;
 	}
 
-	/* Only user ports (1-4) need resource allocation */
-	if (port < 1 || port > 4) {
-		dev_err(priv->dev, "Invalid user port %d\n", port);
-		return -EINVAL;
-	}
-
 	res = &priv->port_ppe_res[port];
 
 	/* Skip if already allocated */
