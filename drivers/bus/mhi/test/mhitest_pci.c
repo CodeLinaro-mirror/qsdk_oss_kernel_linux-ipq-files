@@ -52,7 +52,8 @@
 #define PCIE_LOCAL_REG_END			0x1E03FFF
 
 #define WINDOW_SHIFT				19
-#define WINDOW_VALUE_MASK			0x3f
+#define QCN9224_WINDOW_VALUE_MASK		0x3f
+#define QCN9625_WINDOW_VALUE_MASK		0x7f
 #define WINDOW_ENABLE_BIT			0x40000000
 #define MAX_UNWINDOWED_ADDRESS			0x80000
 #define WINDOW_START				MAX_UNWINDOWED_ADDRESS
@@ -67,6 +68,10 @@ static DEFINE_SPINLOCK(pci_reg_window_lock);
 bool autostart = true;
 module_param(autostart, bool, 0);
 MODULE_PARM_DESC(autostart, "Do need to power up mhi during module load?");
+
+bool pblsbl_debug = true;
+module_param(pblsbl_debug, bool, 0);
+MODULE_PARM_DESC(pblsbl_debug, "Do need to dump pbl/sbl debug logs if mhi doesn't come up?");
 
 /* Timeout, to print boot debug logs, in seconds */
 int boot_debug_timeout = 7;
@@ -1163,12 +1168,25 @@ static int mhitest_get_bar_remap_ctrl_offset(struct mhitest_platform *mplat,
 
 static int mhitest_pci_select_window(struct mhitest_platform *mplat, u32 addr)
 {
-	u32 window = (addr >> WINDOW_SHIFT) & WINDOW_VALUE_MASK;
-	u32 prev_window = 0, curr_window = 0, prev_cleared_window = 0;
+	u32 window = 0, prev_window = 0, curr_window = 0, prev_cleared_window = 0;
 	volatile u32 write_val, read_val = 0;
 	u32 bar_remap_ctrl_offset = 0;
 	int retry = 0;
 	void __iomem *bar = NULL;
+
+	switch (mplat->device_id) {
+	case QCN92XX_DEVICE_ID:
+		window = (addr >> WINDOW_SHIFT) & QCN9224_WINDOW_VALUE_MASK;
+		break;
+	case QCN95XX_DEVICE_ID:
+	case QCN96XX_DEVICE_ID:
+		window = (addr >> WINDOW_SHIFT) & QCN9625_WINDOW_VALUE_MASK;
+		break;
+
+	default:
+		pr_err("Unknown device type 0x%lx\n", mplat->device_id);
+		return -ENODEV;
+	}
 
 	if (!mplat || !mplat->bar) {
 		pr_err("mplat is NULL or bar not assigned\n");
@@ -1204,13 +1222,13 @@ static int mhitest_pci_select_window(struct mhitest_platform *mplat, u32 addr)
 	read_val = readl_relaxed(bar + bar_remap_ctrl_offset);
 
 	/* If value written is not yet reflected, wait till it is reflected */
-	while ((read_val != write_val) && (retry < 10)) {
+	while ((read_val != write_val) && (retry < 100)) {
 		mdelay(1);
 		read_val = readl_relaxed(bar + bar_remap_ctrl_offset);
 		retry++;
 	}
 
-	if (retry >= 10 && read_val != write_val)
+	if (retry >= 100 && read_val != write_val)
 		pr_err("retry count: %d", retry);
 
 	return 0;
@@ -1514,16 +1532,9 @@ static void mhitest_boot_debug_timeout_hdlr(struct timer_list *timer)
 	struct mhitest_platform *mplat = from_timer(mplat, timer,
 						    boot_debug_timer);
 
-	if (!mplat)
-		return;
-
-	if (mplat->running)
-		return;
-
-	if (MHITEST_IN_MISSION_MODE(mplat->mhi_ctrl->ee))
-		return;
-
-	if (mhi_scan_rddm_cookie(mplat->mhi_ctrl, DEVICE_RDDM_COOKIE))
+	if (!pblsbl_debug || !mplat || !mplat->mhi_ctrl || mplat->running ||
+	    MHITEST_IN_MISSION_MODE(mplat->mhi_ctrl->ee) ||
+	    mhi_scan_rddm_cookie(mplat->mhi_ctrl, DEVICE_RDDM_COOKIE))
 		return;
 
 	pr_debug("Dump MHI/PBL/SBL debug data every %ds during MHI power on\n",
@@ -1773,8 +1784,10 @@ int mhitest_pci_start_mhi(struct mhitest_platform *mplat)
 
 out1:
 	if (ret == -ETIMEDOUT) {
-		if (!mhi_scan_rddm_cookie(mplat->mhi_ctrl, DEVICE_RDDM_COOKIE))
+		if (!mhi_scan_rddm_cookie(mplat->mhi_ctrl, DEVICE_RDDM_COOKIE)) {
+			mhi_debug_reg_dump(mplat->mhi_ctrl);
 			mhitest_pci_dump_bl_sram_mem(mplat);
+		}
 	}
 
 	pr_debug("Exit-Error\n");
