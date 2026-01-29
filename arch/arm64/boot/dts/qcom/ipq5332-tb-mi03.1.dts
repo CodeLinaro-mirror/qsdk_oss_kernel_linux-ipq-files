@@ -849,6 +849,10 @@
 	status = "okay";
 };
 
+&qcom_test_userpd2 {
+	status = "okay";
+};
+
 &wifi0 {
 	qcom,rproc = <&q6v5_wcss>;
 	dump-region = <&q6_ipq5332_data>,

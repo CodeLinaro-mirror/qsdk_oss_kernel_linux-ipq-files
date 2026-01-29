@@ -615,6 +615,10 @@
 	};
 };
 
+&qcom_test_userpd2 {
+	status = "okay";
+};
+
 &pwm {
 	pinctrl-0 = <&pwm_pins>;
 	pinctrl-names = "default";
