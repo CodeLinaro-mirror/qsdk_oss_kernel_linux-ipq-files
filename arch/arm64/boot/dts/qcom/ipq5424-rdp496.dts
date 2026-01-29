@@ -515,7 +515,6 @@
 	status = "okay";
 };
 
-
 &tlmm {
 	gpio_leds_default: gpio-leds-default-state {
 		pins = "gpio42";

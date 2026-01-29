@@ -551,6 +551,9 @@
 	status = "disabled";
 };
 
+&qcom_test_userpd1 {
+	status = "disabled";
+};
 
 &tlmm {
 	gpio_leds_default: gpio-leds-default-state {

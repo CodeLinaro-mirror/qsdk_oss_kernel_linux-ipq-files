@@ -428,10 +428,6 @@
 	status = "okay";
 };
 
-&userpd_1 {
-	status = "okay";
-};
-
 &tlmm {
 	qup_i2c0_default: qup-i2c0-default-state {
 		qup_i2c0_scl {
