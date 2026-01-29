@@ -108,6 +108,17 @@ struct br_mcast_host_info {
 	union nf_inet_addr src_list[BR_MCAST_SRC_ENT_LIMIT];
 };
 
+/*
+ * Global per-bridge context data-structures.
+ */
+struct br_mcast_global_params {
+	union nf_inet_addr g_exclude_srcs[BR_MCAST_SRC_ENT_LIMIT];
+	struct br_ip g_ip_list[BR_MCAST_SRC_ENT_LIMIT];
+	struct br_mcast_host_info g_hosts[BR_MCAST_SRC_ENT_LIMIT];
+	union nf_inet_addr g_consolidated_srcs[BR_MCAST_SRC_ENT_LIMIT];
+	struct br_mcast_event g_grp_event;
+};
+
 void br_mcast_offload_map_add(struct net_bridge_mcast_port *pmctx, struct net_bridge_mcast *brmctx,
 		struct sk_buff *skb,
 		const unsigned char *mac,
