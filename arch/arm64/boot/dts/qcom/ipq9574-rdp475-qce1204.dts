@@ -88,7 +88,8 @@
 				#size-cells = <0>;
 				reg = <0>;
 				qcom,package-mode = "qusgmii";
-				clocks = <&qce2204_cc QCE2204_NSSCC_MAC1_SRDS1_CH0_TX_CLK>,
+				clocks =<&qce2204_cc QCE2204_NSSCC_SRDS1_SYS_CLK>,
+					<&qce2204_cc QCE2204_NSSCC_MAC1_SRDS1_CH0_TX_CLK>,
 					<&qce2204_cc QCE2204_NSSCC_MAC1_SRDS1_CH0_RX_CLK>,
 					<&qce2204_cc QCE2204_NSSCC_MAC0_1_SRDS1_CH0_XGMII_TX_CLK>,
 					<&qce2204_cc QCE2204_NSSCC_MAC0_1_SRDS1_CH0_XGMII_RX_CLK>,
@@ -105,7 +106,8 @@
 					<&qce2204_cc QCE2204_NSSCC_MAC4_SRDS1_CH3_XGMII_TX_CLK>,
 					<&qce2204_cc QCE2204_NSSCC_MAC4_SRDS1_CH3_XGMII_RX_CLK>,
 					<&qce2204_cc QCE2204_NSSCC_AHB_CLK>;
-				clock-names = "ch0_gmii_tx_clk",
+				clock-names = "pcs_sys_clk",
+					"ch0_gmii_tx_clk",
 					"ch0_gmii_rx_clk",
 					"ch0_xgmii_tx_clk",
 					"ch0_xgmii_rx_clk",
@@ -124,6 +126,8 @@
 					"ahb_clk";
 
 				resets =
+					<&qce2204_cc
+					 QCE2204_NSSCC_SRDS1_SYS_ARES>,
 					<&qce2204_cc
 					 QCE2204_NSSCC_MAC1_SRDS1_CH0_TX_ARES>,
 					<&qce2204_cc
@@ -207,7 +211,8 @@
 					<&qce2204_cc
 					 QCE2204_NSSCC_MAC5_RX_ARES>;
 
-				reset-names = "ch0_gmii_tx_reset",
+				reset-names = "pcs_sys_reset",
+					"ch0_gmii_tx_reset",
 					"ch0_gmii_rx_reset",
 					"ch0_xgmii_tx_reset",
 					"ch0_xgmii_rx_reset",
