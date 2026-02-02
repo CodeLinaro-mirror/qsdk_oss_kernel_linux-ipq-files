@@ -24,6 +24,7 @@
 #include "reset.h"
 
 #define QCE2204_CLK_REG_BASE		0x6800000
+#define QCE2204_CLK_SWITCH_CORE_REG	0x314
 
 enum {
 	DT_XO,
@@ -2554,7 +2555,7 @@ static struct clk_regmap *nsscc_qce2204_clocks[] = {
 };
 
 static const struct qcom_reset_map nsscc_qce2204_resets[] = {
-	[QCE2204_NSSCC_SWITCH_CORE_BCR] = { 0x314, 0 },
+	[QCE2204_NSSCC_SWITCH_CORE_BCR] = { QCE2204_CLK_SWITCH_CORE_REG, 0 },
 	[QCE2204_NSSCC_SWITCH_CORE_ARES] = { 0x10, 2 },
 	[QCE2204_NSSCC_SWITCH_IPE_ARES] = { 0x18, 2 },
 	[QCE2204_NSSCC_SWITCH_BTQ_ARES] = { 0x20, 2 },
@@ -2658,6 +2659,11 @@ static int nsscc_qce2204_probe(struct mdio_device *mdiodev)
 	regmap = devm_regmap_init(&mdiodev->dev, NULL, mdiodev, &nsscc_qce2204_regmap_config);
 	if (IS_ERR(regmap))
 		return dev_err_probe(&mdiodev->dev, PTR_ERR(regmap), "Failed to init regmap\n");
+
+	/* Assert the switch clocks except APB clock for power save. */
+	ret = regmap_set_bits(regmap, QCE2204_CLK_SWITCH_CORE_REG, BIT(0));
+	if (ret)
+		return dev_err_probe(&mdiodev->dev, ret, "Failed to assert switch clocks\n");
 
 	ret = qcom_cc_really_probe(&mdiodev->dev, &nsscc_qce2204_desc, regmap);
 	if (ret)
