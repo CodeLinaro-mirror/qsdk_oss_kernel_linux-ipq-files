@@ -434,7 +434,7 @@ static int lm_get_license_in_tlv(struct lm_svc_ctx *svc, bool rescan) {
 		}
 	}
 
-	lic_info_buf = kmalloc(MAX_LICENSE_INFO_SIZE, GFP_KERNEL);
+	lic_info_buf = kzalloc(MAX_LICENSE_INFO_SIZE, GFP_KERNEL);
 	if(!lic_info_buf)
 		return -ENOMEM;
 
