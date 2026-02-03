@@ -21,6 +21,9 @@ struct qce2204_priv;
 /* PPE queue scheduler priority number */
 #define QCE2204_PPE_QUEUE_SCH_PRI_NUM			8
 
+/* PPE CPU code num */
+#define QCE2204_PPE_CPU_CODE_NUM			256
+
 /* PPE internal priority and hash numbers */
 #define QCE2204_PPE_QUEUE_INTER_PRI_NUM			16
 #define QCE2204_PPE_QUEUE_HASH_NUM			256

@@ -60,9 +60,9 @@ static const struct qce2204_ppe_qm_queue_config qce2204_ppe_qm_queue_config[] = 
 		.dynamic	= true,
 	},
 	{
-		/* Multicast queues 256-299 */
+		/* Multicast queues 256-291 */
 		.queue_start	= 256,
-		.queue_end	= 299,
+		.queue_end	= 291,
 		.prealloc_buf	= 0,
 		.ceil		= 250,
 		.weight		= 0,
@@ -513,7 +513,8 @@ static int qce2204_ppe_scheduler_l1_queue_map_set(struct qce2204_priv *priv,
 	flow_map_val[0] = val;
 
 	/* Set Word 1 fields using new macros */
-	QCE2204_PPE_L1_FLOW_MAP_SET_C_DRR_ID(flow_map_val, scheduler_cfg.drr_node_id);
+	QCE2204_PPE_L1_FLOW_MAP_SET_C_DRR_ID_LO(flow_map_val, scheduler_cfg.drr_node_id & 0x3);
+	QCE2204_PPE_L1_FLOW_MAP_SET_C_DRR_ID_HI(flow_map_val, (scheduler_cfg.drr_node_id >> 2) & 0xf);
 	QCE2204_PPE_L1_FLOW_MAP_SET_E_DRR_ID(flow_map_val, scheduler_cfg.drr_node_id);
 	QCE2204_PPE_L1_FLOW_MAP_SET_C_DRR_CREDIT_UNIT(flow_map_val, scheduler_cfg.unit_is_packet);
 	QCE2204_PPE_L1_FLOW_MAP_SET_E_DRR_CREDIT_UNIT(flow_map_val, scheduler_cfg.unit_is_packet);
@@ -1293,10 +1294,20 @@ static int qce2204_ppe_queue_dest_init(struct qce2204_priv *priv)
 
 		pri_max = res_end - res_start;
 
-		/* Redirect ARP reply with max priority on CPU port */
 		if (port_id == 0) {
+			/* Initialize the queue base for all CPU codes */
 			memset(&queue_dst, 0, sizeof(queue_dst));
+			queue_dst.cpu_code_en = true;
+			for (index = 0; index < QCE2204_PPE_CPU_CODE_NUM; index++) {
+				queue_dst.cpu_code = index;
+				ret = qce2204_ppe_queue_ucast_base_set(priv, queue_dst,
+									   q_base, 0);
+				if (ret)
+					return ret;
+			}
 
+			/* Redirect ARP reply with max priority on CPU port */
+			memset(&queue_dst, 0, sizeof(queue_dst));
 			queue_dst.cpu_code_en = true;
 			queue_dst.cpu_code = 101;
 			ret = qce2204_ppe_queue_ucast_base_set(priv, queue_dst,
@@ -1883,7 +1894,9 @@ int qce2204_setup_cpu_port_athtag(struct qce2204_priv *priv)
 	struct qce2204_ppe_athtag_dst_port_mapping_cfg dst_cfg = {};
 	struct qce2204_ppe_eg_vp_athtag_cfg tx_cfg = {};
 	struct qce2204_ppe_eg_gen_ctrl_cfg hdrt_cfg = {};
-	int ret, port;
+	struct dsa_switch *ds = priv->ds;
+	struct dsa_port *dp;
+	int ret;
 
 	/* Enable AthTag RX on CPU port (downlink) */
 	rx_cfg.athtag_type = QCE2204_ATHTAG_TYPE;
@@ -1894,12 +1907,12 @@ int qce2204_setup_cpu_port_athtag(struct qce2204_priv *priv)
 	if (ret)
 		return ret;
 
-	/* Enable destination port mapping for panel ports 1-4 */
-	for (port = 1; port <= 4; port++) {
+	/* Enable destination port mapping for panel ports */
+	dsa_switch_for_each_user_port(dp, ds) {
 		dst_cfg.dest_info_valid = true;
-		dst_cfg.dest_info = QCE2204_PPE_DEST_INFO(QCE2204_PPE_DEST_INFO_PORT_ID, port);
+		dst_cfg.dest_info = QCE2204_PPE_DEST_INFO(QCE2204_PPE_DEST_INFO_PORT_ID, dp->index);
 
-		ret = qce2204_ppe_athtag_dst_port_mapping_set(priv, port, &dst_cfg);
+		ret = qce2204_ppe_athtag_dst_port_mapping_set(priv, dp->index, &dst_cfg);
 		if (ret)
 			return ret;
 	}
@@ -1938,7 +1951,9 @@ int qce2204_teardown_cpu_port_athtag(struct qce2204_priv *priv)
 	struct qce2204_ppe_athtag_dst_port_mapping_cfg dst_cfg = {};
 	struct qce2204_ppe_eg_vp_athtag_cfg tx_cfg = {};
 	struct qce2204_ppe_eg_gen_ctrl_cfg hdrt_cfg = {};
-	int ret, port;
+	struct dsa_switch *ds = priv->ds;
+	struct dsa_port *dp;
+	int ret;
 
 	/* Disable AthTag RX on CPU port */
 	rx_cfg.athtag_type = 0;
@@ -1949,12 +1964,12 @@ int qce2204_teardown_cpu_port_athtag(struct qce2204_priv *priv)
 	if (ret)
 		return ret;
 
-	/* Clear destination port mapping validity for panel ports 1-4 */
-	for (port = 1; port <= 4; port++) {
+	/* Clear destination port mapping validity for panel ports */
+	dsa_switch_for_each_user_port(dp, ds) {
 		dst_cfg.dest_info_valid = false;
 		dst_cfg.dest_info = 0;
 
-		ret = qce2204_ppe_athtag_dst_port_mapping_set(priv, port, &dst_cfg);
+		ret = qce2204_ppe_athtag_dst_port_mapping_set(priv, dp->index, &dst_cfg);
 		if (ret)
 			return ret;
 	}
@@ -2506,7 +2521,7 @@ int qce2204_setup_8021q_tagging(struct qce2204_priv *priv, int port)
 	struct qce2204_port_ppe_res *port_res;
 	int ret;
 
-	if (port < 1 || port > 4) {
+	if (port >= QCE2204_NUM_PORTS) {
 		dev_err(priv->dev, "Invalid port %d for 8021Q tagging\n", port);
 		return -EINVAL;
 	}
@@ -2621,7 +2636,7 @@ int qce2204_teardown_8021q_tagging(struct qce2204_priv *priv, int port)
 	struct qce2204_port_ppe_res *port_res;
 	int ret;
 
-	if (port < 1 || port > 4) {
+	if (port >= QCE2204_NUM_PORTS) {
 		dev_err(priv->dev, "Invalid port %d for 8021Q tagging\n", port);
 		return -EINVAL;
 	}
