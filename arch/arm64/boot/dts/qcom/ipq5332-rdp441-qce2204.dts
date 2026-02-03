@@ -226,7 +226,38 @@
 				};
 			};
 
-			qce2204_pcs: ethernet-phy@5 {
+			/* uniphy0 */
+			qce2204_pcs0: ethernet-phy@4 {
+				compatible = "qcom,qce2204-pcs";
+				reg = <4>;
+				clocks = <&qce2204_cc QCE2204_NSSCC_SRDS0_SYS_CLK>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC5_RX_SRDS0_CLK>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC5_TX_SRDS0_CLK>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC5_RX_SRDS0_CH0_XGMII_CLK>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC5_TX_SRDS0_CH0_XGMII_CLK>;
+				clock-names = "sys",
+					      "rx",
+					      "tx",
+					      "xgmii_rx",
+					      "xgmii_tx";
+				resets = <&qce2204_cc QCE2204_NSSCC_SRDS0_SYS_ARES>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC5_RX_SRDS0_ARES>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC5_TX_SRDS0_ARES>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC5_RX_SRDS0_CH0_XGMII_ARES>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC5_TX_SRDS0_CH0_XGMII_ARES>,
+					 <&qce2204_cc QCE2204_NSSCC_SRDS0_XPCS_ARES>;
+				reset-names = "sys",
+					      "rx",
+					      "tx",
+					      "xgmii_rx",
+					      "xgmii_tx",
+					      "xpcs";
+				initial_mode = "usxgmii";
+				#clock-cells = <1>;
+			};
+
+			/* uniphy1 */
+			qce2204_pcs1: ethernet-phy@5 {
 				compatible = "qcom,qce2204-pcs";
 				reg = <5>;
 				clocks = <&qce2204_cc QCE2204_NSSCC_SRDS1_SYS_CLK>,
@@ -264,10 +295,10 @@
 				#clock-cells = <1>;
 				#reset-cells = <1>;
 				clocks = <&qce2204_xo>,
-					 <0>,
-					 <0>,
-					 <&qce2204_pcs QCE2204_PCS_RX_CLK>,
-					 <&qce2204_pcs QCE2204_PCS_TX_CLK>,
+					 <&qce2204_pcs0 QCE2204_PCS_RX_CLK>,
+					 <&qce2204_pcs0 QCE2204_PCS_TX_CLK>,
+					 <&qce2204_pcs1 QCE2204_PCS_RX_CLK>,
+					 <&qce2204_pcs1 QCE2204_PCS_TX_CLK>,
 					 <&qce2204_uniphy1_ppe_250m>,
 					 <0>,
 					 <0>,
@@ -283,6 +314,14 @@
 					      "uniphy0_tx_312p5m",
 					      "uniphy1_rx_312p5m",
 					      "uniphy1_tx_312p5m";
+				assigned-clocks = <&qce2204_cc QCE2204_NSSCC_SRDS0_RX_MUX_SEL>,
+						  <&qce2204_cc QCE2204_NSSCC_SRDS0_TX_MUX_SEL>,
+						  <&qce2204_cc QCE2204_NSSCC_SRDS0_XGMII_RX_MUX_SEL>,
+						  <&qce2204_cc QCE2204_NSSCC_SRDS0_XGMII_TX_MUX_SEL>;
+				assigned-clock-parents = <&qce2204_cc QCE2204_NSSCC_MAC5_RX_DIV_CLK_SRC>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC5_TX_DIV_CLK_SRC>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC5_RX_DIV_CLK_SRC>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC5_TX_DIV_CLK_SRC>;
 			};
 
 			switch0@7 {
@@ -317,7 +356,7 @@
 						ethernet = <&gmac2>;
 						dsa-tag-protocol = "qca_8021q";
 						phy-mode = "10gbase-r";
-						pcsphy-handle = <&qce2204_pcs>;
+						pcsphy-handle = <&qce2204_pcs1>;
 						clocks = <&qce2204_cc QCE2204_NSSCC_MAC0_RX_CLK>,
 							 <&qce2204_cc QCE2204_NSSCC_MAC0_TX_CLK>;
 						clock-names = "rx",
@@ -392,7 +431,28 @@
 						reset-names = "rx",
 							      "tx";
 					};
+
+					port@5 {
+						reg = <5>;
+						label = "lan5";
+						phy-handle = <&phy4>;
+						pcsphy-handle = <&qce2204_pcs0>;
+						phy-mode = "usxgmii";
+						clocks = <&qce2204_cc QCE2204_NSSCC_MAC5_RX_CLK>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC5_TX_CLK>;
+						clock-names = "rx",
+							      "tx";
+						resets = <&qce2204_cc QCE2204_NSSCC_MAC5_RX_ARES>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC5_TX_ARES>;
+						reset-names = "rx",
+							      "tx";
+					};
 				};
+			};
+
+			phy4: ethernet-phy@12 {
+				reg = <12>;
+				compatible ="ethernet-phy-ieee802.3-c45";
 			};
 		};
 
@@ -432,7 +492,7 @@
 				pinctrl-0 = <&sfp_pins>;
 				pinctrl-names = "default";
 				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
-				switch_lan_bmp = <0x2>; /* lan port bitmap */
+				switch_lan_bmp = <0x0>; /* lan port bitmap */
 				switch_wan_bmp = <0x4>; /* wan port bitmap */
 				switch_mac_mode = <0xff>; /* mac mode for uniphy instance0*/
 				switch_mac_mode1 = <0xe>; /* mac mode for uniphy instance1*/
@@ -460,7 +520,7 @@
 				switch_mac_mode = <0xe>; /* mac mode for uniphy instance0 */
 				switch_mac_mode1 = <0xff>; /* mac mode1 for uniphy instance1 */
 				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
-				switch_lan_bmp = <0x1e>; /* lan port bitmap */
+				switch_lan_bmp = <0x3e>; /* lan port bitmap */
 				switch_wan_bmp = <0x0>;  /* wan port bitmap */
 
 				qcom,port_phyinfo {
@@ -487,6 +547,11 @@
 					port@4 {
 						port_id = <4>;
 						phy_address = <3>;
+						ethernet-phy-ieee802.3-c45;
+					};
+					port@5 {
+						port_id = <5>;
+						phy_address = <12>;
 						ethernet-phy-ieee802.3-c45;
 					};
 				};
