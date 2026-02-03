@@ -226,7 +226,7 @@ int qce2204_get_port_resets(struct qce2204_priv *priv, int port,
 	struct device *dev = priv->dev;
 	int ret;
 
-	priv->port_resets[port].tx_reset = of_reset_control_get_by_index(port_np, 0);
+	priv->port_resets[port].tx_reset = of_reset_control_get_exclusive(port_np, QCE2204_PORT_RESET_TX);
 	if (IS_ERR(priv->port_resets[port].tx_reset)) {
 		ret = PTR_ERR(priv->port_resets[port].tx_reset);
 		if (ret != -EPROBE_DEFER)
@@ -234,7 +234,7 @@ int qce2204_get_port_resets(struct qce2204_priv *priv, int port,
 		return ret;
 	}
 
-	priv->port_resets[port].rx_reset = of_reset_control_get_by_index(port_np, 1);
+	priv->port_resets[port].rx_reset = of_reset_control_get_exclusive(port_np, QCE2204_PORT_RESET_RX);
 	if (IS_ERR(priv->port_resets[port].rx_reset)) {
 		ret = PTR_ERR(priv->port_resets[port].rx_reset);
 		if (ret != -EPROBE_DEFER)
