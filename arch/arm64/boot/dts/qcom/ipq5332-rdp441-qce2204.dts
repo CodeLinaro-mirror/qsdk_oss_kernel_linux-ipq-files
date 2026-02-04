@@ -42,6 +42,12 @@
 			clock-frequency = <312500000>;
 			#clock-cells = <0>;
 		};
+
+		qce2204_uniphy1_ppe_250m: qce2204-uniphy1-ppe-250m {
+			compatible = "fixed-clock";
+			clock-frequency = <250000000>;
+			#clock-cells = <0>;
+		};
 	};
 
 	aliases {
@@ -245,7 +251,10 @@
 					      "xgmii_rx",
 					      "xgmii_tx",
 					      "xpcs";
+				initial_mode = "10gbase-r";
 				#clock-cells = <1>;
+				assigned-clocks = <&qce2204_cc QCE2204_NSSCC_SRDS1_SYS_CLK>;
+				assigned-clock-rates = <25000000>;
 			};
 
 			/* Clock controller */
@@ -255,14 +264,18 @@
 				#clock-cells = <1>;
 				#reset-cells = <1>;
 				clocks = <&qce2204_xo>,
+					 <0>,
+					 <0>,
 					 <&qce2204_pcs QCE2204_PCS_RX_CLK>,
 					 <&qce2204_pcs QCE2204_PCS_TX_CLK>,
+					 <&qce2204_uniphy1_ppe_250m>,
 					 <0>,
 					 <0>,
 					 <0>,
-					<&qce2204_uniphy1_rx_312p5m>,
-					<&qce2204_uniphy1_tx_312p5m>;
+					 <&qce2204_uniphy1_tx_312p5m>;
 				clock-names = "xo",
+					      "uniphy0_rx",
+					      "uniphy0_tx",
 					      "uniphy1_rx",
 					      "uniphy1_tx",
 					      "uniphy1_ppe_250m",
@@ -273,7 +286,7 @@
 			};
 
 			switch0@7 {
-				compatible = "qca,qce2204";
+				compatible = "qcom,qce2204";
 				#address-cells = <1>;
 				#size-cells = <0>;
 				reg = <0x7>;
@@ -412,12 +425,6 @@
 			};
 		};
 
-		sfp0: sfp@0 {
-			status = "okay";
-			compatible = "qcom,nss-phy";
-			i2c-bus = <&blsp1_i2c1>;
-		};
-
 		ess-instance {
 			num_devices = <0x2>;
 
@@ -427,24 +434,19 @@
 				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
 				switch_lan_bmp = <0x2>; /* lan port bitmap */
 				switch_wan_bmp = <0x4>; /* wan port bitmap */
-				switch_mac_mode = <0xe>; /* mac mode for uniphy instance0*/
+				switch_mac_mode = <0xff>; /* mac mode for uniphy instance0*/
 				switch_mac_mode1 = <0xe>; /* mac mode for uniphy instance1*/
 				switch_mac_mode2 = <0xff>; /* mac mode for uniphy instance2*/
 
 				qcom,port_phyinfo {
 					port@0 {
-						port_id = <1>;
+						port_id = <2>;
 						forced-speed = <10000>;
 						forced-duplex = <1>;
 						switch_external {
 							switch_handle = <&switch1>;
 							switch_cpu_port = <0>;
 						};
-					};
-					port@1 {
-						port_id = <2>;
-						media-type = "sfp"; /* fiber mode */
-						i2c-bus = <&blsp1_i2c1>;
 					};
 				};
 			};
@@ -492,22 +494,10 @@
 			};
 		};
 
-		dp1 {
+		gmac2:dp1 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
 			qcom,id = <2>;
-			reg = <0x3a504000 0x4000>;
-			qcom,mactype = <1>;
-			local-mac-address = [000000000000];
-			i2c-bus = <&blsp1_i2c1>;
-			qcom,link-poll = <1>;
-			phy-mode = "sgmii";
-		};
-
-		gmac2:dp2 {
-			device_type = "network";
-			compatible = "qcom,nss-dp";
-			qcom,id = <1>;
 			reg = <0x3a500000 0x4000>;
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
@@ -654,13 +644,6 @@
 	pinctrl-0 = <&serial_1_pins>;
 	pinctrl-names = "default";
 	status = "disabled";
-};
-
-&blsp1_i2c1 {
-	clock-frequency  = <400000>;
-	pinctrl-0 = <&i2c_1_pins>;
-	pinctrl-names = "default";
-	status = "okay";
 };
 
 &sleep_clk {
@@ -951,13 +934,6 @@
 	serial_1_pins: serial1-pinmux {
 		pins = "gpio33", "gpio34", "gpio35", "gpio36";
 		function = "blsp1_uart2";
-		drive-strength = <8>;
-		bias-pull-up;
-	};
-
-	i2c_1_pins: i2c-1-state {
-		pins = "gpio29", "gpio30";
-		function = "blsp1_i2c0";
 		drive-strength = <8>;
 		bias-pull-up;
 	};
