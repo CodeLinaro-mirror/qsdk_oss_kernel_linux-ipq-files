@@ -105,7 +105,9 @@
 					<&qce2204_cc QCE2204_NSSCC_MAC4_SRDS1_CH3_RX_CLK>,
 					<&qce2204_cc QCE2204_NSSCC_MAC4_SRDS1_CH3_XGMII_TX_CLK>,
 					<&qce2204_cc QCE2204_NSSCC_MAC4_SRDS1_CH3_XGMII_RX_CLK>,
-					<&qce2204_cc QCE2204_NSSCC_AHB_CLK>;
+					<&qce2204_cc QCE2204_NSSCC_AHB_CLK>,
+					<&qce2204_uniphy1_rx_312p5m>,
+					<&qce2204_uniphy1_tx_312p5m>;
 				clock-names = "pcs_sys_clk",
 					"ch0_gmii_tx_clk",
 					"ch0_gmii_rx_clk",
@@ -123,7 +125,9 @@
 					"ch3_gmii_rx_clk",
 					"ch3_xgmii_tx_clk",
 					"ch3_xgmii_rx_clk",
-					"ahb_clk";
+					"ahb_clk",
+					"tx_parent",
+					"rx_parent";
 
 				resets =
 					<&qce2204_cc
@@ -258,8 +262,10 @@
 					reg = <0x0>;
 					clocks = <&qce2204_cc QCE2204_NSSCC_MAC1_GEPHY0_TX_CLK>,
 						<&qce2204_cc QCE2204_NSSCC_MAC1_GEPHY0_RX_CLK>,
-						<&qce2204_cc QCE2204_NSSCC_GEPHY0_SYS_CLK>;
-					clock-names = "tx_clk", "rx_clk", "sys_clk";
+						<&qce2204_cc QCE2204_NSSCC_GEPHY0_SYS_CLK>,
+						<&qce2204_cc QCE2204_NSSCC_MAC1_TX_CLK_SRC>,
+						<&qce2204_cc QCE2204_NSSCC_MAC1_RX_CLK_SRC>;
+					clock-names = "tx_clk", "rx_clk", "sys_clk", "tx_src_clk", "rx_src_clk";
 
 					resets = <&qce2204_cc QCE2204_NSSCC_MAC1_GEPHY0_TX_ARES>,
 						<&qce2204_cc QCE2204_NSSCC_MAC1_GEPHY0_RX_ARES>,
@@ -271,8 +277,10 @@
 					reg = <0x1>;
 					clocks = <&qce2204_cc QCE2204_NSSCC_MAC2_GEPHY1_TX_CLK>,
 						<&qce2204_cc QCE2204_NSSCC_MAC2_GEPHY1_RX_CLK>,
-						<&qce2204_cc QCE2204_NSSCC_GEPHY1_SYS_CLK>;
-					clock-names = "tx_clk", "rx_clk", "sys_clk";
+						<&qce2204_cc QCE2204_NSSCC_GEPHY1_SYS_CLK>,
+						<&qce2204_cc QCE2204_NSSCC_MAC2_TX_CLK_SRC>,
+						<&qce2204_cc QCE2204_NSSCC_MAC2_RX_CLK_SRC>;
+					clock-names = "tx_clk", "rx_clk", "sys_clk", "tx_src_clk", "rx_src_clk";
 
 					resets = <&qce2204_cc QCE2204_NSSCC_MAC2_GEPHY1_TX_ARES>,
 						<&qce2204_cc QCE2204_NSSCC_MAC2_GEPHY1_RX_ARES>,
@@ -284,8 +292,10 @@
 					reg = <0x2>;
 					clocks = <&qce2204_cc QCE2204_NSSCC_MAC3_GEPHY2_TX_CLK>,
 						<&qce2204_cc QCE2204_NSSCC_MAC3_GEPHY2_RX_CLK>,
-						<&qce2204_cc QCE2204_NSSCC_GEPHY2_SYS_CLK>;
-					clock-names = "tx_clk", "rx_clk", "sys_clk";
+						<&qce2204_cc QCE2204_NSSCC_GEPHY2_SYS_CLK>,
+						<&qce2204_cc QCE2204_NSSCC_MAC3_TX_CLK_SRC>,
+						<&qce2204_cc QCE2204_NSSCC_MAC3_RX_CLK_SRC>;
+					clock-names = "tx_clk", "rx_clk", "sys_clk", "tx_src_clk", "rx_src_clk";
 
 					resets = <&qce2204_cc QCE2204_NSSCC_MAC3_GEPHY2_TX_ARES>,
 						<&qce2204_cc QCE2204_NSSCC_MAC3_GEPHY2_RX_ARES>,
@@ -297,8 +307,10 @@
 					reg = <0x3>;
 					clocks = <&qce2204_cc QCE2204_NSSCC_MAC4_GEPHY3_TX_CLK>,
 						<&qce2204_cc QCE2204_NSSCC_MAC4_GEPHY3_RX_CLK>,
-						<&qce2204_cc QCE2204_NSSCC_GEPHY3_SYS_CLK>;
-					clock-names = "tx_clk", "rx_clk", "sys_clk";
+						<&qce2204_cc QCE2204_NSSCC_GEPHY3_SYS_CLK>,
+						<&qce2204_cc QCE2204_NSSCC_MAC4_TX_CLK_SRC>,
+						<&qce2204_cc QCE2204_NSSCC_MAC4_RX_CLK_SRC>;
+					clock-names = "tx_clk", "rx_clk", "sys_clk", "tx_src_clk", "rx_src_clk";
 
 					resets = <&qce2204_cc QCE2204_NSSCC_MAC4_GEPHY3_TX_ARES>,
 						<&qce2204_cc QCE2204_NSSCC_MAC4_GEPHY3_RX_ARES>,
@@ -318,16 +330,29 @@
 				reg = <6>;
 				#clock-cells = <1>;
 				#reset-cells = <1>;
-				clocks = <&qce2204_xo>, <0>, <0>, <0>,
-					<0>, <0>,
-					<&qce2204_uniphy1_rx_312p5m>,
-					<&qce2204_uniphy1_tx_312p5m>;
-				clock-names = "xo", "uniphy1_rx",
-					"uniphy1_tx", "uniphy1_ppe_250m",
+				clocks = <&qce2204_xo>,
+					 <0>, <0>,
+					 <0>, <0>,
+					 <0>,
+					 <0>, <0>,
+					 <&qce2204_uniphy1_rx_312p5m>,
+					 <&qce2204_uniphy1_tx_312p5m>;
+				clock-names = "xo",
+					"uniphy0_rx", "uniphy0_tx",
+					"uniphy1_rx", "uniphy1_tx",
+					"uniphy1_ppe_250m",
 					"uniphy0_rx_312p5m",
 					"uniphy0_tx_312p5m",
 					"uniphy1_rx_312p5m",
 					"uniphy1_tx_312p5m";
+				assigned-clocks = <&qce2204_cc QCE2204_NSSCC_SRDS1_RX_MUX_SEL>,
+					<&qce2204_cc QCE2204_NSSCC_SRDS1_TX_MUX_SEL>,
+					<&qce2204_cc QCE2204_NSSCC_SRDS1_XGMII_RX_MUX_SEL>,
+					<&qce2204_cc QCE2204_NSSCC_SRDS1_XGMII_TX_MUX_SEL>;
+				assigned-clock-parents = <&qce2204_cc QCE2204_NSSCC_MAC1_TX_DIV_CLK_SRC>,
+					<&qce2204_cc QCE2204_NSSCC_MAC1_RX_DIV_CLK_SRC>,
+					<&qce2204_cc QCE2204_NSSCC_MAC1_SRDS1_CH0_XGMII_RX_DIV_CLK_SRC>,
+					<&qce2204_cc QCE2204_NSSCC_MAC1_SRDS1_CH0_XGMII_TX_DIV_CLK_SRC>;
 			};
 		};
 
