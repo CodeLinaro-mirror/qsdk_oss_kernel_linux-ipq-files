@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * IPQ9650 DB JU01 board device tree source
+ *
+ * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ */
+
+/dts-v1/;
+
+#include "ipq9650-rdp-common.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. IPQ9650 DB JU01";
+	compatible = "qcom,ipq9650-db-ju01", "qcom,ipq9650";
+
+	soc@0 {
+		qupv3: geniqup@1ac0000 {
+			status = "okay";
+
+			spi0: spi@1a80000 {
+				pinctrl-0 = <&qup_spi0_default>;
+				pinctrl-names = "default";
+				status = "okay";
+
+				flash@0 {
+					compatible = "spansion,s25fs128s1", "jedec,spi-nor";
+					#address-cells = <1>;
+					#size-cells = <1>;
+					reg = <0>;
+					spi-max-frequency = <50000000>;
+				};
+			};
+		};
+	};
+};
+
+&qpic_bam {
+	status = "okay";
+};
+
+&qpic_nand {
+	status = "okay";
+};
