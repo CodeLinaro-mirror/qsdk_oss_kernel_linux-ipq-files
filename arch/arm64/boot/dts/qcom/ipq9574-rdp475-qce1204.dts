@@ -165,55 +165,7 @@
 					<&qce2204_cc
 					 QCE2204_NSSCC_MAC4_SRDS1_CH3_XGMII_RX_ARES>,
 					<&qce2204_cc
-					 QCE2204_NSSCC_SRDS1_XPCS_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_SWITCH_BTQ_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_SWITCH_CFG_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_SWITCH_CORE_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_SWITCH_IPE_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_SWITCH_MAC0_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_SWITCH_MAC1_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_SWITCH_MAC2_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_SWITCH_MAC3_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_SWITCH_MAC4_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_SWITCH_MAC5_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_XGMAC0_PTP_REF_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_XGMAC1_PTP_REF_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_MAC0_TX_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_MAC0_RX_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_MAC1_TX_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_MAC1_RX_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_MAC2_TX_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_MAC2_RX_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_MAC3_TX_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_MAC3_RX_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_MAC4_TX_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_MAC4_RX_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_MAC5_TX_ARES>,
-					<&qce2204_cc
-					 QCE2204_NSSCC_MAC5_RX_ARES>;
+					 QCE2204_NSSCC_SRDS1_XPCS_ARES>;
 
 				reset-names = "pcs_sys_reset",
 					"ch0_gmii_tx_reset",
@@ -232,31 +184,8 @@
 					"ch3_gmii_rx_reset",
 					"ch3_xgmii_tx_reset",
 					"ch3_xgmii_rx_reset",
-					"xpcs",
-					"switch_btq_reset",
-					"switch_cfg_reset",
-					"switch_core_reset",
-					"switch_ipe_reset",
-					"switch_mac0_reset",
-					"switch_mac1_reset",
-					"switch_mac2_reset",
-					"switch_mac3_reset",
-					"switch_mac4_reset",
-					"switch_mac5_reset",
-					"xgmac0_ptp_ref_reset",
-					"xgmac1_ptp_ref_reset",
-					"mac0_tx_reset",
-					"mac0_rx_reset",
-					"mac1_tx_reset",
-					"mac1_rx_reset",
-					"mac2_tx_reset",
-					"mac2_rx_reset",
-					"mac3_tx_reset",
-					"mac3_rx_reset",
-					"mac4_tx_reset",
-					"mac4_rx_reset",
-					"mac5_tx_reset",
-					"mac5_rx_reset";
+					"xpcs";
+
 				phy0: ethernet-phy@0 {
 					compatible ="ethernet-phy-ieee802.3-c45";
 					reg = <0x0>;
