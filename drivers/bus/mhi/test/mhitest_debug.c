@@ -79,12 +79,20 @@ static int mhitest_read_pbl_ram_info(struct mhitest_platform *mplat,
 		return ret;
 	}
 
+	/* Check for 4-byte alignment - addresses must be aligned to 4-byte boundary
+	 */
+	if (tcsr_debug_reg0_val & 0x3) {
+		pr_err("TCSR_DEBUG_REG0 value 0x%x is not 4-byte aligned\n",
+		       tcsr_debug_reg0_val);
+		return -EINVAL;
+	}
+
 	/* Read the pbl_err_to_host_type structure using sizeof(u32) for field offsets */
 	ret = mhitest_pci_reg_read(mplat,
 				  tcsr_debug_reg0_val,
 				  (u32 *)&pbl_err_info.magic_cookie);
 	if (ret != 0) {
-		pr_err("Failed to read magic_cookie\n");
+		pr_err("Failed to read magic_cookie at address 0x%x\n", tcsr_debug_reg0_val);
 		return ret;
 	}
 
