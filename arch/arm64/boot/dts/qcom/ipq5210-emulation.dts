@@ -382,3 +382,7 @@
 &xo_clk {
 	clock-frequency = <48000000>;
 };
+
+&cmn_pll {
+	status = "disabled";
+};
