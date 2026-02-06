@@ -1805,6 +1805,11 @@
 			compatible = "qcom,scm-ipq5210", "qcom,scm";
 			qcom,dload-mode = <&tcsr 0x25100>;
 		};
+
+		optee {
+			compatible = "linaro,optee-tz";
+			method = "smc";
+		};
 	};
 
 	tmel-log {
