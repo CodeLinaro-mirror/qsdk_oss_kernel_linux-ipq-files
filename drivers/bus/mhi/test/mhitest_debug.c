@@ -431,9 +431,6 @@ static int mhitest_debug_read_misc_data(struct mhitest_platform *mplat,
 				     QCN9625_PCIE_PCIE_LOCAL_REG_REMAP_BAR_CTRL,
 				     &pbl_sbl_err->remap_bar_ctrl);
 		mhitest_pci_reg_read(mplat,
-				     QCN9224_WLAON_SOC_RESET_CAUSE_SHADOW_REG,
-				     &pbl_sbl_err->soc_rc_shadow_reg);
-		mhitest_pci_reg_read(mplat,
 				     QCN9224_PCIE_PCIE_PARF_LTSSM,
 				     &pbl_sbl_err->parf_ltssm);
 		mhitest_pci_reg_read(mplat,
