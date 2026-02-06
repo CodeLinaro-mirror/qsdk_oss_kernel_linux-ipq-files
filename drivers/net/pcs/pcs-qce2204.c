@@ -109,7 +109,6 @@
 #define XPCS_MII_AN_INTR_STS			0x8002
 #define XPCS_USXG_AN_LINK_STS			BIT(14)
 #define XPCS_USXG_AN_SPEED_MASK			GENMASK(12, 10)
-#define XPCS_AN_INTR_CMPLT			BIT(0)
 #define XPCS_USXG_AN_SPEED_10			0
 #define XPCS_USXG_AN_SPEED_100			1
 #define XPCS_USXG_AN_SPEED_1000			2
@@ -581,14 +580,11 @@ static int qce2204_pcs_config_10g_mode(struct qce2204_pcs *qce2204,
 	}
 
 	if (ifmode == PHY_INTERFACE_MODE_USXGMII) {
-		/* Enable XPCS auto-negotiation complete interrupt, using mii-8bit
-		 * and TX configureation of MAC side for USXGMII.
-		 */
+		/* Configure mii-8bit and TX configuration of MAC side for USXGMII */
 		ret = mdiodev_c45_modify(qce2204->mdiodev, MDIO_MMD_VEND2,
 					 XPCS_MII_AN_CTRL,
-					 (XPCS_MII_BIT_CONTROL | XPCS_TX_CONFIG |
-					 XPCS_AN_INTR_EN),
-					 (XPCS_MII_BIT_CONTROL | XPCS_AN_INTR_EN));
+					 (XPCS_MII_BIT_CONTROL | XPCS_TX_CONFIG),
+					 XPCS_MII_BIT_CONTROL);
 		if (ret)
 			return ret;
 
@@ -823,7 +819,7 @@ static int qce2204_pcs_link_up_10g_mode(struct qce2204_pcs *qce2204,
 					phy_interface_t ifmode,
 					int speed, int duplex)
 {
-	int ret, val, xpcs_speed, i;
+	int ret, xpcs_speed, i;
 	unsigned long rate;
 
 	switch (speed) {
@@ -857,27 +853,6 @@ static int qce2204_pcs_link_up_10g_mode(struct qce2204_pcs *qce2204,
 	}
 
 	if (ifmode == PHY_INTERFACE_MODE_USXGMII) {
-		/* Wait XPCS auto-negotiation complete
-		 * enable inband autoneg and pcs_get_state method will ensure
-		 * XPCS autoneg compelete and link up, then autoneg interrupt is not needed.
-		 */
-		ret = read_poll_timeout(mdiodev_c45_read, val,
-					(val & XPCS_AN_INTR_CMPLT),
-					1000, 100000, true, qce2204->mdiodev,
-					MDIO_MMD_VEND2, XPCS_MII_AN_INTR_STS);
-		if (ret) {
-			dev_err(&qce2204->mdiodev->dev, "XPCS auto-negotiation complete timeout.\n");
-			return ret;
-		}
-
-		/* Clear XPCS auto-negotiation complete interrupt */
-		ret = mdiodev_c45_modify(qce2204->mdiodev, MDIO_MMD_VEND2, XPCS_MII_AN_INTR_STS,
-					 XPCS_AN_INTR_CMPLT, 0);
-		if (ret) {
-			dev_err(&qce2204->mdiodev->dev, "Failed to clear XPCS auto-negotiation complete interrupt.\n");
-			return ret;
-		}
-
 		/* Set XPCS speed */
 		ret = mdiodev_c45_modify(qce2204->mdiodev, MDIO_MMD_VEND2, XPCS_MII_CTRL,
 					 XPCS_SPEED_MASK, xpcs_speed | XPCS_DUPLEX_FULL);
