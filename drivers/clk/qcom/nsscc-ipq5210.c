@@ -58,95 +58,117 @@ enum {
 	P_PORT5_TX_CLK,
 };
 
-static const struct parent_map nss_cc_parent_map_0[] = {
+static const struct parent_map nss_cc_parent_map_ppe_cfg[] = {
 	{ P_XO, 0 },
 	{ P_GCC_GPLL0_OUT_AUX, 2 },
+};
+
+static const struct parent_map nss_cc_parent_map_ppe[] = {
+	{ P_XO, 0 },
 	{ P_CMN_PLL_NSS_CLK_429M, 6 },
 };
 
-static const struct clk_parent_data nss_cc_ppe_parent_data_0[] = {
+static const struct clk_parent_data nss_cc_ppe_parent_data_ppe_cfg[] = {
 	{ .index = DT_XO },
 	{ .index = DT_GCC_GPLL0_OUT_AUX },
+};
+
+static const struct clk_parent_data nss_cc_ppe_parent_data_ppe[] = {
+	{ .index = DT_XO },
 	{ .index = DT_CMN_PLL_NSS_CLK_429M },
 };
 
 static const struct clk_parent_data nss_cc_ppe_parent_data_eip[] = {
 	{ .index = DT_XO },
-	{ .index = DT_GCC_GPLL0_OUT_AUX },
-	{ .index = DT_CMN_PLL_NSS_CLK_429M },
 	{ .index = DT_CMN_PLL_NSS_CLK_375M },
 };
 
-static const struct parent_map nss_cc_parent_map_1[] = {
+static const struct parent_map nss_cc_parent_map_port1_3_rx[] = {
 	{ P_XO, 0 },
-	{ P_GCC_GPLL0_OUT_AUX, 2 },
 	{ P_UNIPHY0_NSS_RX_CLK, 3 },
-	{ P_UNIPHY0_NSS_TX_CLK, 4 },
-	{ P_CMN_PLL_NSS_CLK_429M, 6 },
 };
 
-static const struct parent_map nss_cc_parent_map_4[] = {
+static const struct parent_map nss_cc_parent_map_port1_3_tx[] = {
+	{ P_XO, 0 },
+	{ P_UNIPHY0_NSS_TX_CLK, 4 },
+};
+
+static const struct parent_map nss_cc_parent_map_port4_rx[] = {
 	{ P_XO, 0 },
 	{ P_EPHY_RX_CLK, 1 },
-	{ P_GCC_GPLL0_OUT_AUX, 2 },
 	{ P_UNIPHY0_NSS_RX_CLK, 3 },
-	{ P_UNIPHY0_NSS_TX_CLK, 4 },
-	{ P_EPHY_TX_CLK, 5 },
-	{ P_CMN_PLL_NSS_CLK_429M, 6 },
 };
 
-static const struct clk_parent_data gcc_xo_ephy_gcc_gpll0_out_aux_uniphy0_gcc_rx_tx_cmn_pll_nss_clk_429m[] = {
+static const struct parent_map nss_cc_parent_map_port4_tx[] = {
+	{ P_XO, 0 },
+	{ P_UNIPHY0_NSS_TX_CLK, 4 },
+	{ P_EPHY_TX_CLK, 5 },
+};
+
+static const struct clk_parent_data gcc_xo_ephy_uniphy0_rx[] = {
 	{ .index = DT_XO },
 	{ .fw_name = "ephy_rx_clk" },
-	{ .index = DT_GCC_GPLL0_OUT_AUX },
 	{ .fw_name = "uniphy0_gcc_rx_clk" },
+};
+
+static const struct clk_parent_data gcc_xo_ephy_uniphy0_tx[] = {
+	{ .index = DT_XO },
 	{ .fw_name = "uniphy0_gcc_tx_clk" },
 	{ .fw_name = "ephy_tx_clk" },
-	{ .index = DT_CMN_PLL_NSS_CLK_429M },
 };
 
-
-static const struct clk_parent_data gcc_xo_gcc_gpll0_out_aux_uniphy0_gcc_rx_tx_cmn_pll_nss_clk_429m[] = {
+static const struct clk_parent_data gcc_xo_uniphy0_gcc_rx[] = {
 	{ .index = DT_XO },
-	{ .index = DT_GCC_GPLL0_OUT_AUX },
 	{ .fw_name = "uniphy0_gcc_rx_clk" },
-	{ .fw_name = "uniphy0_gcc_tx_clk" },
-	{ .index = DT_CMN_PLL_NSS_CLK_429M },
 };
 
-static const struct parent_map nss_cc_parent_map_2[] = {
+static const struct clk_parent_data gcc_xo_uniphy0_gcc_tx[] = {
+	{ .index = DT_XO },
+	{ .fw_name = "uniphy0_gcc_tx_clk" },
+};
+
+static const struct parent_map nss_cc_parent_map_port5_rx[] = {
 	{ P_XO, 0 },
 	{ P_EPHY_RX_CLK, 1 },
-	{ P_GCC_GPLL0_OUT_AUX, 2 },
 	{ P_UNIPHY1_NSS_RX_CLK, 3 },
-	{ P_UNIPHY1_NSS_TX_CLK, 4 },
-	{ P_EPHY_TX_CLK, 5 },
-	{ P_CMN_PLL_NSS_CLK_429M, 6 },
 };
 
-static const struct clk_parent_data gcc_xo_ephy_gcc_gpll0_out_aux_uniphy1_gcc_rx_tx[] = {
+static const struct parent_map nss_cc_parent_map_port5_tx[] = {
+	{ P_XO, 0 },
+	{ P_UNIPHY1_NSS_TX_CLK, 4 },
+	{ P_EPHY_TX_CLK, 5 },
+};
+
+static const struct clk_parent_data gcc_xo_ephy_uniphy1_rx[] = {
 	{ .index = DT_XO },
 	{ .fw_name = "ephy_rx_clk" },
-	{ .index = DT_GCC_GPLL0_OUT_AUX },
 	{ .fw_name = "uniphy1_gcc_rx_clk" },
+};
+
+static const struct clk_parent_data gcc_xo_ephy_uniphy1_tx[] = {
+	{ .index = DT_XO },
 	{ .fw_name = "uniphy1_gcc_tx_clk" },
 	{ .fw_name = "ephy_tx_clk" },
 };
 
-static const struct parent_map nss_cc_parent_map_3[] = {
+static const struct parent_map nss_cc_parent_map_port6_rx[] = {
 	{ P_XO, 0 },
-	{ P_GCC_GPLL0_OUT_AUX, 2 },
 	{ P_UNIPHY2_NSS_RX_CLK, 3 },
-	{ P_UNIPHY2_NSS_TX_CLK, 4 },
-	{ P_CMN_PLL_NSS_CLK_429M, 6 },
 };
 
-static const struct clk_parent_data gcc_xo_gcc_gpll0_out_aux_uniphy2_gcc_rx_tx_cmn_pll_nss_clk_429m[] = {
+static const struct parent_map nss_cc_parent_map_port6_tx[] = {
+	{ P_XO, 0 },
+	{ P_UNIPHY2_NSS_TX_CLK, 4 },
+};
+
+static const struct clk_parent_data gcc_xo_uniphy2_rx[] = {
 	{ .index = DT_XO },
-	{ .index = DT_GCC_GPLL0_OUT_AUX },
 	{ .fw_name = "uniphy2_gcc_rx_clk" },
+};
+
+static const struct clk_parent_data gcc_xo_uniphy2_tx[] = {
+	{ .index = DT_XO },
 	{ .fw_name = "uniphy2_gcc_tx_clk" },
-	{ .index = DT_CMN_PLL_NSS_CLK_429M },
 };
 
 static const struct freq_tbl ftbl_nss_cc_ppe_clk_src[] = {
@@ -155,21 +177,16 @@ static const struct freq_tbl ftbl_nss_cc_ppe_clk_src[] = {
 	{ }
 };
 
-static const struct freq_tbl ftbl_nss_cc_cfg_clk_src[] = {
-	F(100000000, P_GCC_GPLL0_OUT_AUX, 8, 0, 0),
-	{ }
-};
-
 static struct clk_rcg2 nss_cc_ppe_clk_src = {
 	.cmd_rcgr = 0x3ec,
 	.mnd_width = 0,
 	.hid_width = 5,
-	.parent_map = nss_cc_parent_map_0,
+	.parent_map = nss_cc_parent_map_ppe,
 	.freq_tbl = ftbl_nss_cc_ppe_clk_src,
 	.clkr.hw.init = &(const struct clk_init_data){
 		.name = "nss_cc_ppe_clk_src",
-		.parent_data = nss_cc_ppe_parent_data_0,
-		.num_parents = ARRAY_SIZE(nss_cc_ppe_parent_data_0),
+		.parent_data = nss_cc_ppe_parent_data_ppe,
+		.num_parents = ARRAY_SIZE(nss_cc_ppe_parent_data_ppe),
 		.flags = CLK_SET_RATE_PARENT,
 		.ops = &clk_rcg2_ops,
 	},
@@ -186,7 +203,7 @@ static struct clk_regmap_div nss_cc_xgmac0_ptp_ref_div_clk_src = {
 		},
 		.num_parents = 1,
 		.flags = CLK_SET_RATE_PARENT,
-		.ops = &clk_regmap_div_ro_ops,
+		.ops = &clk_regmap_div_ops,
 	},
 };
 
@@ -201,7 +218,7 @@ static struct clk_regmap_div nss_cc_xgmac1_ptp_ref_div_clk_src = {
 		},
 		.num_parents = 1,
 		.flags = CLK_SET_RATE_PARENT,
-		.ops = &clk_regmap_div_ro_ops,
+		.ops = &clk_regmap_div_ops,
 	},
 };
 
@@ -216,7 +233,7 @@ static struct clk_regmap_div nss_cc_xgmac2_ptp_ref_div_clk_src = {
 		},
 		.num_parents = 1,
 		.flags = CLK_SET_RATE_PARENT,
-		.ops = &clk_regmap_div_ro_ops,
+		.ops = &clk_regmap_div_ops,
 	},
 };
 
@@ -554,10 +571,9 @@ static const struct freq_conf ftbl_nss_cc_port1_rx_clk_src_125[] = {
 	C(P_UNIPHY0_NSS_RX_CLK, 1, 0, 0),
 };
 
-static const struct freq_multi_tbl ftbl_nss_cc_port1_rx_clk_src[] = {
+static const struct freq_multi_tbl ftbl_nss_cc_port1_3_rx_clk_src[] = {
 	FMS(24000000, P_XO, 1, 0, 0),
 	FM(25000000, ftbl_nss_cc_port1_rx_clk_src_25),
-	FMS(78125000, P_UNIPHY0_NSS_RX_CLK, 4, 0, 0),
 	FM(125000000, ftbl_nss_cc_port1_rx_clk_src_125),
 	FMS(156250000, P_UNIPHY0_NSS_RX_CLK, 2, 0, 0),
 	FMS(312500000, P_UNIPHY0_NSS_RX_CLK, 1, 0, 0),
@@ -568,12 +584,12 @@ static struct clk_rcg2 nss_cc_port1_rx_clk_src = {
 	.cmd_rcgr = 0x4b4,
 	.mnd_width = 0,
 	.hid_width = 5,
-	.parent_map = nss_cc_parent_map_1,
-	.freq_multi_tbl = ftbl_nss_cc_port1_rx_clk_src,
+	.parent_map = nss_cc_parent_map_port1_3_rx,
+	.freq_multi_tbl = ftbl_nss_cc_port1_3_rx_clk_src,
 	.clkr.hw.init = &(const struct clk_init_data){
 		.name = "nss_cc_port1_rx_clk_src",
-		.parent_data = gcc_xo_gcc_gpll0_out_aux_uniphy0_gcc_rx_tx_cmn_pll_nss_clk_429m,
-		.num_parents = ARRAY_SIZE(gcc_xo_gcc_gpll0_out_aux_uniphy0_gcc_rx_tx_cmn_pll_nss_clk_429m),
+		.parent_data = gcc_xo_uniphy0_gcc_rx,
+		.num_parents = ARRAY_SIZE(gcc_xo_uniphy0_gcc_rx),
 		.ops = &clk_rcg2_fm_ops,
 	},
 };
@@ -603,10 +619,9 @@ static const struct freq_conf ftbl_nss_cc_port1_tx_clk_src_125[] = {
 	C(P_UNIPHY0_NSS_TX_CLK, 1, 0, 0),
 };
 
-static const struct freq_multi_tbl ftbl_nss_cc_port1_tx_clk_src[] = {
+static const struct freq_multi_tbl ftbl_nss_cc_port1_3_tx_clk_src[] = {
 	FMS(24000000, P_XO, 1, 0, 0),
 	FM(25000000, ftbl_nss_cc_port1_tx_clk_src_25),
-	FMS(78125000, P_UNIPHY0_NSS_TX_CLK, 4, 0, 0),
 	FM(125000000, ftbl_nss_cc_port1_tx_clk_src_125),
 	FMS(156250000, P_UNIPHY0_NSS_TX_CLK, 2, 0, 0),
 	FMS(312500000, P_UNIPHY0_NSS_TX_CLK, 1, 0, 0),
@@ -617,12 +632,12 @@ static struct clk_rcg2 nss_cc_port1_tx_clk_src = {
 	.cmd_rcgr = 0x4c0,
 	.mnd_width = 0,
 	.hid_width = 5,
-	.parent_map = nss_cc_parent_map_1,
-	.freq_multi_tbl = ftbl_nss_cc_port1_tx_clk_src,
+	.parent_map = nss_cc_parent_map_port1_3_tx,
+	.freq_multi_tbl = ftbl_nss_cc_port1_3_tx_clk_src,
 	.clkr.hw.init = &(const struct clk_init_data){
 		.name = "nss_cc_port1_tx_clk_src",
-		.parent_data = gcc_xo_gcc_gpll0_out_aux_uniphy0_gcc_rx_tx_cmn_pll_nss_clk_429m,
-		.num_parents = ARRAY_SIZE(gcc_xo_gcc_gpll0_out_aux_uniphy0_gcc_rx_tx_cmn_pll_nss_clk_429m),
+		.parent_data = gcc_xo_uniphy0_gcc_tx,
+		.num_parents = ARRAY_SIZE(gcc_xo_uniphy0_gcc_tx),
 		.ops = &clk_rcg2_fm_ops,
 	},
 };
@@ -646,12 +661,12 @@ static struct clk_rcg2 nss_cc_port2_rx_clk_src = {
 	.cmd_rcgr = 0x4cc,
 	.mnd_width = 0,
 	.hid_width = 5,
-	.parent_map = nss_cc_parent_map_1,
-	.freq_multi_tbl = ftbl_nss_cc_port1_rx_clk_src,
+	.parent_map = nss_cc_parent_map_port1_3_rx,
+	.freq_multi_tbl = ftbl_nss_cc_port1_3_rx_clk_src,
 	.clkr.hw.init = &(const struct clk_init_data){
 		.name = "nss_cc_port2_rx_clk_src",
-		.parent_data = gcc_xo_gcc_gpll0_out_aux_uniphy0_gcc_rx_tx_cmn_pll_nss_clk_429m,
-		.num_parents = ARRAY_SIZE(gcc_xo_gcc_gpll0_out_aux_uniphy0_gcc_rx_tx_cmn_pll_nss_clk_429m),
+		.parent_data = gcc_xo_uniphy0_gcc_rx,
+		.num_parents = ARRAY_SIZE(gcc_xo_uniphy0_gcc_rx),
 		.ops = &clk_rcg2_fm_ops,
 	},
 };
@@ -675,12 +690,12 @@ static struct clk_rcg2 nss_cc_port2_tx_clk_src = {
 	.cmd_rcgr = 0x4d8,
 	.mnd_width = 0,
 	.hid_width = 5,
-	.parent_map = nss_cc_parent_map_1,
-	.freq_multi_tbl = ftbl_nss_cc_port1_tx_clk_src,
+	.parent_map = nss_cc_parent_map_port1_3_tx,
+	.freq_multi_tbl = ftbl_nss_cc_port1_3_tx_clk_src,
 	.clkr.hw.init = &(const struct clk_init_data){
 		.name = "nss_cc_port2_tx_clk_src",
-		.parent_data = gcc_xo_gcc_gpll0_out_aux_uniphy0_gcc_rx_tx_cmn_pll_nss_clk_429m,
-		.num_parents = ARRAY_SIZE(gcc_xo_gcc_gpll0_out_aux_uniphy0_gcc_rx_tx_cmn_pll_nss_clk_429m),
+		.parent_data = gcc_xo_uniphy0_gcc_tx,
+		.num_parents = ARRAY_SIZE(gcc_xo_uniphy0_gcc_tx),
 		.ops = &clk_rcg2_fm_ops,
 	},
 };
@@ -704,12 +719,12 @@ static struct clk_rcg2 nss_cc_port3_rx_clk_src = {
 	.cmd_rcgr = 0x4e4,
 	.mnd_width = 0,
 	.hid_width = 5,
-	.parent_map = nss_cc_parent_map_1,
-	.freq_multi_tbl = ftbl_nss_cc_port1_rx_clk_src,
+	.parent_map = nss_cc_parent_map_port1_3_rx,
+	.freq_multi_tbl = ftbl_nss_cc_port1_3_rx_clk_src,
 	.clkr.hw.init = &(const struct clk_init_data){
 		.name = "nss_cc_port3_rx_clk_src",
-		.parent_data = gcc_xo_gcc_gpll0_out_aux_uniphy0_gcc_rx_tx_cmn_pll_nss_clk_429m,
-		.num_parents = ARRAY_SIZE(gcc_xo_gcc_gpll0_out_aux_uniphy0_gcc_rx_tx_cmn_pll_nss_clk_429m),
+		.parent_data = gcc_xo_uniphy0_gcc_rx,
+		.num_parents = ARRAY_SIZE(gcc_xo_uniphy0_gcc_rx),
 		.ops = &clk_rcg2_fm_ops,
 	},
 };
@@ -733,12 +748,12 @@ static struct clk_rcg2 nss_cc_port3_tx_clk_src = {
 	.cmd_rcgr = 0x4f0,
 	.mnd_width = 0,
 	.hid_width = 5,
-	.parent_map = nss_cc_parent_map_1,
-	.freq_multi_tbl = ftbl_nss_cc_port1_tx_clk_src,
+	.parent_map = nss_cc_parent_map_port1_3_tx,
+	.freq_multi_tbl = ftbl_nss_cc_port1_3_tx_clk_src,
 	.clkr.hw.init = &(const struct clk_init_data){
 		.name = "nss_cc_port3_tx_clk_src",
-		.parent_data = gcc_xo_gcc_gpll0_out_aux_uniphy0_gcc_rx_tx_cmn_pll_nss_clk_429m,
-		.num_parents = ARRAY_SIZE(gcc_xo_gcc_gpll0_out_aux_uniphy0_gcc_rx_tx_cmn_pll_nss_clk_429m),
+		.parent_data = gcc_xo_uniphy0_gcc_tx,
+		.num_parents = ARRAY_SIZE(gcc_xo_uniphy0_gcc_tx),
 		.ops = &clk_rcg2_fm_ops,
 	},
 };
@@ -780,7 +795,6 @@ static const struct freq_conf ftbl_nss_cc_port4_rx_clk_src_312p5[] = {
 static const struct freq_multi_tbl ftbl_nss_cc_port4_rx_clk_src[] = {
 	FMS(24000000, P_XO, 1, 0, 0),
 	FM(25000000, ftbl_nss_cc_port4_rx_clk_src_25),
-	FMS(78125000, P_UNIPHY0_NSS_RX_CLK, 4, 0, 0),
 	FM(125000000, ftbl_nss_cc_port4_rx_clk_src_125),
 	FMS(156250000, P_UNIPHY0_NSS_RX_CLK, 2, 0, 0),
 	FM(312500000, ftbl_nss_cc_port4_rx_clk_src_312p5),
@@ -791,12 +805,12 @@ static struct clk_rcg2 nss_cc_port4_rx_clk_src = {
 	.cmd_rcgr = 0x4fc,
 	.mnd_width = 0,
 	.hid_width = 5,
-	.parent_map = nss_cc_parent_map_4,
+	.parent_map = nss_cc_parent_map_port4_rx,
 	.freq_multi_tbl = ftbl_nss_cc_port4_rx_clk_src,
 	.clkr.hw.init = &(const struct clk_init_data){
 		.name = "nss_cc_port4_rx_clk_src",
-		.parent_data = gcc_xo_ephy_gcc_gpll0_out_aux_uniphy0_gcc_rx_tx_cmn_pll_nss_clk_429m,
-		.num_parents = ARRAY_SIZE(gcc_xo_ephy_gcc_gpll0_out_aux_uniphy0_gcc_rx_tx_cmn_pll_nss_clk_429m),
+		.parent_data = gcc_xo_ephy_uniphy0_rx,
+		.num_parents = ARRAY_SIZE(gcc_xo_ephy_uniphy0_rx),
 		.ops = &clk_rcg2_fm_ops,
 	},
 };
@@ -838,7 +852,6 @@ static const struct freq_conf ftbl_nss_cc_port4_tx_clk_src_312p5[] = {
 static const struct freq_multi_tbl ftbl_nss_cc_port4_tx_clk_src[] = {
 	FMS(24000000, P_XO, 1, 0, 0),
 	FM(25000000, ftbl_nss_cc_port4_tx_clk_src_25),
-	FMS(78125000, P_UNIPHY0_NSS_TX_CLK, 4, 0, 0),
 	FM(125000000, ftbl_nss_cc_port4_tx_clk_src_125),
 	FMS(156250000, P_UNIPHY0_NSS_TX_CLK, 2, 0, 0),
 	FM(312500000, ftbl_nss_cc_port4_tx_clk_src_312p5),
@@ -849,12 +862,12 @@ static struct clk_rcg2 nss_cc_port4_tx_clk_src = {
 	.cmd_rcgr = 0x508,
 	.mnd_width = 0,
 	.hid_width = 5,
-	.parent_map = nss_cc_parent_map_4,
+	.parent_map = nss_cc_parent_map_port4_tx,
 	.freq_multi_tbl = ftbl_nss_cc_port4_tx_clk_src,
 	.clkr.hw.init = &(const struct clk_init_data){
 		.name = "nss_cc_port4_tx_clk_src",
-		.parent_data = gcc_xo_ephy_gcc_gpll0_out_aux_uniphy0_gcc_rx_tx_cmn_pll_nss_clk_429m,
-		.num_parents = ARRAY_SIZE(gcc_xo_ephy_gcc_gpll0_out_aux_uniphy0_gcc_rx_tx_cmn_pll_nss_clk_429m),
+		.parent_data = gcc_xo_ephy_uniphy0_tx,
+		.num_parents = ARRAY_SIZE(gcc_xo_ephy_uniphy0_tx),
 		.ops = &clk_rcg2_fm_ops,
 	},
 };
@@ -896,11 +909,39 @@ static const struct freq_conf ftbl_nss_cc_port5_rx_clk_src_312p5[] = {
 static const struct freq_multi_tbl ftbl_nss_cc_port5_rx_clk_src[] = {
 	FMS(24000000, P_XO, 1, 0, 0),
 	FM(25000000, ftbl_nss_cc_port5_rx_clk_src_25),
-	FMS(78125000, P_UNIPHY1_NSS_RX_CLK, 4, 0, 0),
 	FM(125000000, ftbl_nss_cc_port5_rx_clk_src_125),
 	FMS(156250000, P_UNIPHY1_NSS_RX_CLK, 2, 0, 0),
 	FM(312500000, ftbl_nss_cc_port5_rx_clk_src_312p5),
 	{ }
+};
+
+static struct clk_rcg2 nss_cc_port5_rx_clk_src = {
+	.cmd_rcgr = 0x514,
+	.mnd_width = 0,
+	.hid_width = 5,
+	.parent_map = nss_cc_parent_map_port5_rx,
+	.freq_multi_tbl = ftbl_nss_cc_port5_rx_clk_src,
+	.clkr.hw.init = &(const struct clk_init_data){
+		.name = "nss_cc_port5_rx_clk_src",
+		.parent_data = gcc_xo_ephy_uniphy1_rx,
+		.num_parents = ARRAY_SIZE(gcc_xo_ephy_uniphy1_rx),
+		.ops = &clk_rcg2_fm_ops,
+	},
+};
+
+static struct clk_regmap_div nss_cc_port5_rx_div_clk_src = {
+	.reg = 0x51c,
+	.shift = 0,
+	.width = 9,
+	.clkr.hw.init = &(const struct clk_init_data) {
+		.name = "nss_cc_port5_rx_div_clk_src",
+		.parent_hws = (const struct clk_hw*[]){
+			&nss_cc_port5_rx_clk_src.clkr.hw,
+		},
+		.num_parents = 1,
+		.flags = CLK_SET_RATE_PARENT,
+		.ops = &clk_regmap_div_ops,
+	},
 };
 
 static const struct freq_conf ftbl_nss_cc_port5_tx_clk_src_25[] = {
@@ -925,52 +966,22 @@ static const struct freq_conf ftbl_nss_cc_port5_tx_clk_src_312p5[] = {
 static const struct freq_multi_tbl ftbl_nss_cc_port5_tx_clk_src[] = {
 	FMS(24000000, P_XO, 1, 0, 0),
 	FM(25000000, ftbl_nss_cc_port5_tx_clk_src_25),
-	FMS(78125000, P_UNIPHY1_NSS_TX_CLK, 4, 0, 0),
 	FM(125000000, ftbl_nss_cc_port5_tx_clk_src_125),
 	FMS(156250000, P_UNIPHY1_NSS_TX_CLK, 2, 0, 0),
 	FM(312500000, ftbl_nss_cc_port5_tx_clk_src_312p5),
 	{ }
 };
 
-static struct clk_rcg2 nss_cc_port5_rx_clk_src = {
-	.cmd_rcgr = 0x514,
-	.mnd_width = 0,
-	.hid_width = 5,
-	.parent_map = nss_cc_parent_map_2,
-	.freq_multi_tbl = ftbl_nss_cc_port5_rx_clk_src,
-	.clkr.hw.init = &(const struct clk_init_data){
-		.name = "nss_cc_port5_rx_clk_src",
-		.parent_data = gcc_xo_ephy_gcc_gpll0_out_aux_uniphy1_gcc_rx_tx,
-		.num_parents = ARRAY_SIZE(gcc_xo_ephy_gcc_gpll0_out_aux_uniphy1_gcc_rx_tx),
-		.ops = &clk_rcg2_fm_ops,
-	},
-};
-
-static struct clk_regmap_div nss_cc_port5_rx_div_clk_src = {
-	.reg = 0x51c,
-	.shift = 0,
-	.width = 9,
-	.clkr.hw.init = &(const struct clk_init_data) {
-		.name = "nss_cc_port5_rx_div_clk_src",
-		.parent_hws = (const struct clk_hw*[]){
-			&nss_cc_port5_rx_clk_src.clkr.hw,
-		},
-		.num_parents = 1,
-		.flags = CLK_SET_RATE_PARENT,
-		.ops = &clk_regmap_div_ops,
-	},
-};
-
 static struct clk_rcg2 nss_cc_port5_tx_clk_src = {
 	.cmd_rcgr = 0x520,
 	.mnd_width = 0,
 	.hid_width = 5,
-	.parent_map = nss_cc_parent_map_2,
+	.parent_map = nss_cc_parent_map_port5_tx,
 	.freq_multi_tbl = ftbl_nss_cc_port5_tx_clk_src,
 	.clkr.hw.init = &(const struct clk_init_data){
 		.name = "nss_cc_port5_tx_clk_src",
-		.parent_data = gcc_xo_ephy_gcc_gpll0_out_aux_uniphy1_gcc_rx_tx,
-		.num_parents = ARRAY_SIZE(gcc_xo_ephy_gcc_gpll0_out_aux_uniphy1_gcc_rx_tx),
+		.parent_data = gcc_xo_ephy_uniphy1_tx,
+		.num_parents = ARRAY_SIZE(gcc_xo_ephy_uniphy1_tx),
 		.ops = &clk_rcg2_fm_ops,
 	},
 };
@@ -1003,7 +1014,6 @@ static const struct freq_conf ftbl_nss_cc_port6_rx_clk_src_125[] = {
 static const struct freq_multi_tbl ftbl_nss_cc_port6_rx_clk_src[] = {
 	FMS(24000000, P_XO, 1, 0, 0),
 	FM(25000000, ftbl_nss_cc_port6_rx_clk_src_25),
-	FMS(78125000, P_UNIPHY2_NSS_RX_CLK, 4, 0, 0),
 	FM(125000000, ftbl_nss_cc_port6_rx_clk_src_125),
 	FMS(156250000, P_UNIPHY2_NSS_RX_CLK, 2, 0, 0),
 	FMS(312500000, P_UNIPHY2_NSS_RX_CLK, 1, 0, 0),
@@ -1014,12 +1024,12 @@ static struct clk_rcg2 nss_cc_port6_rx_clk_src = {
 	.cmd_rcgr = 0x52c,
 	.mnd_width = 0,
 	.hid_width = 5,
-	.parent_map = nss_cc_parent_map_3,
+	.parent_map = nss_cc_parent_map_port6_rx,
 	.freq_multi_tbl = ftbl_nss_cc_port6_rx_clk_src,
 	.clkr.hw.init = &(const struct clk_init_data){
 		.name = "nss_cc_port6_rx_clk_src",
-		.parent_data = gcc_xo_gcc_gpll0_out_aux_uniphy2_gcc_rx_tx_cmn_pll_nss_clk_429m,
-		.num_parents = ARRAY_SIZE(gcc_xo_gcc_gpll0_out_aux_uniphy2_gcc_rx_tx_cmn_pll_nss_clk_429m),
+		.parent_data = gcc_xo_uniphy2_rx,
+		.num_parents = ARRAY_SIZE(gcc_xo_uniphy2_rx),
 		.ops = &clk_rcg2_fm_ops,
 	},
 };
@@ -1052,7 +1062,6 @@ static const struct freq_conf ftbl_nss_cc_port6_tx_clk_src_125[] = {
 static const struct freq_multi_tbl ftbl_nss_cc_port6_tx_clk_src[] = {
 	FMS(24000000, P_XO, 1, 0, 0),
 	FM(25000000, ftbl_nss_cc_port6_tx_clk_src_25),
-	FMS(78125000, P_UNIPHY2_NSS_TX_CLK, 4, 0, 0),
 	FM(125000000, ftbl_nss_cc_port6_tx_clk_src_125),
 	FMS(156250000, P_UNIPHY2_NSS_TX_CLK, 2, 0, 0),
 	FMS(312500000, P_UNIPHY2_NSS_TX_CLK, 1, 0, 0),
@@ -1063,12 +1072,12 @@ static struct clk_rcg2 nss_cc_port6_tx_clk_src = {
 	.cmd_rcgr = 0x538,
 	.mnd_width = 0,
 	.hid_width = 5,
-	.parent_map = nss_cc_parent_map_3,
+	.parent_map = nss_cc_parent_map_port6_tx,
 	.freq_multi_tbl = ftbl_nss_cc_port6_tx_clk_src,
 	.clkr.hw.init = &(const struct clk_init_data){
 		.name = "nss_cc_port6_tx_clk_src",
-		.parent_data = gcc_xo_gcc_gpll0_out_aux_uniphy2_gcc_rx_tx_cmn_pll_nss_clk_429m,
-		.num_parents = ARRAY_SIZE(gcc_xo_gcc_gpll0_out_aux_uniphy2_gcc_rx_tx_cmn_pll_nss_clk_429m),
+		.parent_data = gcc_xo_uniphy2_tx,
+		.num_parents = ARRAY_SIZE(gcc_xo_uniphy2_tx),
 		.ops = &clk_rcg2_fm_ops,
 	},
 };
@@ -1520,24 +1529,19 @@ static struct clk_branch nss_cc_uniphy_port6_tx_clk = {
 	},
 };
 
-static const struct parent_map nss_cc_parent_map_ephy_rx[] = {
-	{ P_PORT4_RX_CLK, 0 },
-	{ P_PORT5_RX_CLK, 1 },
-};
-
 static struct clk_regmap_mux nss_cc_ephy_rx_mux_clk_src = {
 	.reg = 0x610,
 	.shift = 0,
 	.width = 1,
-	.parent_map = nss_cc_parent_map_ephy_rx,
 	.clkr = {
-		.hw.init = &(struct clk_init_data){
+		.hw.init = &(const struct clk_init_data) {
 			.name = "nss_cc_ephy_rx_mux_clk_src",
 			.parent_hws = (const struct clk_hw*[]){
 				&nss_cc_port4_rx_div_clk_src.clkr.hw,
 				&nss_cc_port5_rx_div_clk_src.clkr.hw,
 			},
 			.num_parents = 2,
+			.flags = CLK_SET_RATE_PARENT | CLK_SET_RATE_NO_REPARENT,
 			.ops = &clk_regmap_mux_closest_ops,
 		},
 	},
@@ -1561,24 +1565,19 @@ static struct clk_branch nss_cc_ephy_rx_clk = {
 	},
 };
 
-static const struct parent_map nss_cc_parent_map_ephy_tx[] = {
-	{ P_PORT4_TX_CLK, 0 },
-	{ P_PORT5_TX_CLK, 1 },
-};
-
 static struct clk_regmap_mux nss_cc_ephy_tx_mux_clk_src = {
 	.reg = 0x614,
 	.shift = 0,
 	.width = 1,
-	.parent_map = nss_cc_parent_map_ephy_tx,
 	.clkr = {
-		.hw.init = &(struct clk_init_data){
+		.hw.init = &(const struct clk_init_data) {
 			.name = "nss_cc_ephy_tx_mux_clk_src",
 			.parent_hws = (const struct clk_hw*[]){
 				&nss_cc_port4_tx_div_clk_src.clkr.hw,
 				&nss_cc_port5_tx_div_clk_src.clkr.hw,
 			},
 			.num_parents = 2,
+			.flags = CLK_SET_RATE_PARENT | CLK_SET_RATE_NO_REPARENT,
 			.ops = &clk_regmap_mux_closest_ops,
 		},
 	},
@@ -1612,7 +1611,6 @@ static struct clk_regmap_div nss_cc_uniphy_port1_rx_div4_clk_src = {
 			&nss_cc_port1_rx_div_clk_src.clkr.hw,
 		},
 		.num_parents = 1,
-		.flags = CLK_SET_RATE_PARENT,
 		.ops = &clk_regmap_div_ops,
 	},
 };
@@ -1627,7 +1625,6 @@ static struct clk_regmap_div nss_cc_uniphy_port1_tx_div4_clk_src = {
 			&nss_cc_port1_tx_div_clk_src.clkr.hw,
 		},
 		.num_parents = 1,
-		.flags = CLK_SET_RATE_PARENT,
 		.ops = &clk_regmap_div_ops,
 	},
 };
@@ -1642,7 +1639,6 @@ static struct clk_regmap_div nss_cc_uniphy_port2_rx_div4_clk_src = {
 			&nss_cc_port2_rx_div_clk_src.clkr.hw,
 		},
 		.num_parents = 1,
-		.flags = CLK_SET_RATE_PARENT,
 		.ops = &clk_regmap_div_ops,
 	},
 };
@@ -1657,7 +1653,6 @@ static struct clk_regmap_div nss_cc_uniphy_port2_tx_div4_clk_src = {
 			&nss_cc_port2_tx_div_clk_src.clkr.hw,
 		},
 		.num_parents = 1,
-		.flags = CLK_SET_RATE_PARENT,
 		.ops = &clk_regmap_div_ops,
 	},
 };
@@ -1672,7 +1667,6 @@ static struct clk_regmap_div nss_cc_uniphy_port3_rx_div4_clk_src = {
 			&nss_cc_port3_rx_div_clk_src.clkr.hw,
 		},
 		.num_parents = 1,
-		.flags = CLK_SET_RATE_PARENT,
 		.ops = &clk_regmap_div_ops,
 	},
 };
@@ -1687,7 +1681,6 @@ static struct clk_regmap_div nss_cc_uniphy_port3_tx_div4_clk_src = {
 			&nss_cc_port3_tx_div_clk_src.clkr.hw,
 		},
 		.num_parents = 1,
-		.flags = CLK_SET_RATE_PARENT,
 		.ops = &clk_regmap_div_ops,
 	},
 };
@@ -1702,7 +1695,6 @@ static struct clk_regmap_div nss_cc_uniphy_port4_rx_div4_clk_src = {
 			&nss_cc_port4_rx_div_clk_src.clkr.hw,
 		},
 		.num_parents = 1,
-		.flags = CLK_SET_RATE_PARENT,
 		.ops = &clk_regmap_div_ops,
 	},
 };
@@ -1717,7 +1709,6 @@ static struct clk_regmap_div nss_cc_uniphy_port4_tx_div4_clk_src = {
 			&nss_cc_port4_tx_div_clk_src.clkr.hw,
 		},
 		.num_parents = 1,
-		.flags = CLK_SET_RATE_PARENT,
 		.ops = &clk_regmap_div_ops,
 	},
 };
@@ -1867,16 +1858,13 @@ static struct clk_branch nss_cc_uniphy_port4_tx_div4_clk = {
 };
 
 static const struct freq_tbl ftbl_nss_cc_eip_bfdcd_clk_src[] = {
-	F(429000000, P_CMN_PLL_NSS_CLK_429M, 1, 0, 0),
 	F(375000000, P_CMN_PLL_NSS_CLK_375M, 1, 0, 0),
 	{ }
 };
 
 static const struct parent_map nss_cc_parent_map_eip[] = {
 	{ P_XO, 0 },
-	{ P_GCC_GPLL0_OUT_AUX, 2 },
 	{ P_CMN_PLL_NSS_CLK_375M, 5 },
-	{ P_CMN_PLL_NSS_CLK_429M, 6 },
 };
 
 static struct clk_rcg2 nss_cc_eip_bfdcd_clk_src = {
@@ -1930,16 +1918,21 @@ static struct clk_branch nss_cc_nssnoc_eip_clk = {
 	},
 };
 
+static const struct freq_tbl ftbl_nss_cc_cfg_clk_ppe_cfg[] = {
+	F(100000000, P_GCC_GPLL0_OUT_AUX, 8, 0, 0),
+	{ }
+};
+
 static struct clk_rcg2 nss_cc_cfg_clk_src = {
 	.cmd_rcgr = 0x70c,
 	.mnd_width = 0,
 	.hid_width = 5,
-	.parent_map = nss_cc_parent_map_0,
-	.freq_tbl = ftbl_nss_cc_cfg_clk_src,
+	.parent_map = nss_cc_parent_map_ppe_cfg,
+	.freq_tbl = ftbl_nss_cc_cfg_clk_ppe_cfg,
 	.clkr.hw.init = &(const struct clk_init_data){
 		.name = "nss_cc_cfg_clk_src",
-		.parent_data = nss_cc_ppe_parent_data_0,
-		.num_parents = ARRAY_SIZE(nss_cc_ppe_parent_data_0),
+		.parent_data = nss_cc_ppe_parent_data_ppe_cfg,
+		.num_parents = ARRAY_SIZE(nss_cc_ppe_parent_data_ppe_cfg),
 		.flags = CLK_SET_RATE_PARENT,
 		.ops = &clk_rcg2_ops,
 	},
