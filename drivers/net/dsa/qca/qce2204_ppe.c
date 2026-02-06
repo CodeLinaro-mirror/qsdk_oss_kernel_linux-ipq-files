@@ -1434,20 +1434,26 @@ static int qce2204_ppe_rss_hash_init(struct qce2204_priv *priv)
 	return qce2204_ppe_rss_hash_config_set(priv, QCE2204_PPE_RSS_HASH_MODE_IPV6, hash_cfg);
 }
 
-
 /* Initialize bridge */
 static int qce2204_ppe_bridge_init(struct qce2204_priv *priv)
 {
-	u32 reg, mask, port_cfg[4], vsi_cfg[2];
+	struct dsa_switch *ds = priv->ds;
+	u32 reg, mask, bridge_cfg, port_cfg[4], vsi_cfg[2];
+	u8 user_ports_mask = dsa_user_ports(ds);
+	u8 cpu_ports_mask = dsa_cpu_ports(ds);
 	int ret, i;
 
 	for (i = 0; i < QCE2204_NUM_PORTS; i++) {
-		/* Configure CPU port0: Enable Bridge TX, Disable FDB learning */
-		mask = QCE2204_PPE_PORT_BRIDGE_TXMAC_EN;
-		ret = regmap_update_bits(priv->regmap,
-					 QCE2204_PPE_PORT_BRIDGE_CTRL_ADDR,
-					 mask,
-					 QCE2204_PPE_PORT_BRIDGE_TXMAC_EN);
+		/* Configure port bridge control register */
+		reg = QCE2204_PPE_PORT_BRIDGE_CTRL_ADDR + QCE2204_PPE_PORT_BRIDGE_CTRL_INC * i;
+
+		bridge_cfg = (i == priv->cpu_port) ?
+			FIELD_PREP(QCE2204_PPE_PORT_BRIDGE_ISOL_BITMAP, user_ports_mask) :
+			FIELD_PREP(QCE2204_PPE_PORT_BRIDGE_ISOL_BITMAP, (user_ports_mask & ~BIT(i)) | cpu_ports_mask);
+		bridge_cfg |= QCE2204_PPE_PORT_BRIDGE_TXMAC_EN;
+
+		mask = QCE2204_PPE_PORT_BRIDGE_ISOL_BITMAP | QCE2204_PPE_PORT_BRIDGE_TXMAC_EN;
+		ret = regmap_update_bits(priv->regmap, reg, mask, bridge_cfg);
 		if (ret)
 			return ret;
 
@@ -1493,7 +1499,9 @@ static int qce2204_ppe_bridge_init(struct qce2204_priv *priv)
 			return ret;
 	}
 
-	return 0;
+	/* Enable edit cpy/rdt cpu pkt */
+	return regmap_set_bits(priv->regmap, QCE2204_PPE_EG_BRIDGE_CONFIG_ADDR,
+			      QCE2204_PPE_EG_BRIDGE_CONFIG_PKT_L2_EDIT_EN);
 }
 
 /**
@@ -1668,7 +1676,7 @@ int qce2204_teardown_none_tag_vsi(struct qce2204_priv *priv)
 		if (ret) {
 			dev_err(priv->dev, "Failed to clear VSI for port %d: %d\n",
 				dp->index, ret);
-			/* Continue cleanup even on error */
+			return ret;
 		}
 	}
 
@@ -1684,6 +1692,156 @@ int qce2204_teardown_none_tag_vsi(struct qce2204_priv *priv)
 	}
 
 	dev_info(priv->dev, "None tag VSI configuration torn down\n");
+	return 0;
+}
+
+/**
+ * qce2204_setup_none_tag_rstp - Setup RSTP packet redirect for none tag mode
+ * @priv: QCE2204 private data
+ *
+ * Configures the PPE to intercept RSTP BPDUs (dst MAC 01:80:c2:00:00:00)
+ * from all user ports and redirect them to the CPU via a dedicated virtual
+ * port (QCE2204_PPE_RSTP_VP) with an Atheros tag type of
+ * QCE2204_RSTP_ATHTAG_TYPE so the CPU can distinguish RSTP frames from
+ * normal traffic.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int qce2204_setup_none_tag_rstp(struct qce2204_priv *priv)
+{
+	struct qce2204_ppe_acl_rule_cfg acl_cfg = {};
+	struct qce2204_ppe_l2_vp_port_post_cfg post_cfg = {};
+	struct qce2204_ppe_eg_vp_athtag_cfg tx_cfg = {};
+	struct qce2204_ppe_eg_gen_ctrl_cfg hdrt_cfg = {};
+	struct qce2204_ppe_port_athtag_rx_cfg rx_cfg = {};
+	struct dsa_switch *ds = priv->ds;
+	int ret;
+
+	dev_dbg(priv->dev, "Setting up none tag RSTP configuration\n");
+
+	/* Step 1: Configure ACL rule to match RSTP BPDUs from all user ports */
+	acl_cfg.is_delete = false;
+	acl_cfg.mac[0] = 0x01;
+	acl_cfg.mac[1] = 0x80;
+	acl_cfg.mac[2] = 0xc2;
+	acl_cfg.mac[3] = 0x00;
+	acl_cfg.mac[4] = 0x00;
+	acl_cfg.mac[5] = 0x00;
+	acl_cfg.hw_rule_type = 0;
+	acl_cfg.src_type = 0;
+	acl_cfg.src = dsa_user_ports(ds);
+	acl_cfg.dest_valid = true;
+	acl_cfg.dest_info = QCE2204_PPE_DEST_INFO(QCE2204_PPE_DEST_INFO_PORT_ID,
+						   QCE2204_PPE_RSTP_VP);
+	ret = qce2204_ppe_acl_rule_set(priv, QCE2204_PPE_RSTP_ACL,
+				       QCE2204_PPE_ACL_MAC_DA_RULE, &acl_cfg);
+	if (ret) {
+		dev_err(priv->dev, "Failed to set RSTP ACL rule: %d\n", ret);
+		return ret;
+	}
+
+	/* Step 2: Map RSTP virtual port to CPU physical port */
+	post_cfg.pport = QCE2204_CPU_PORT_ID;
+	ret = qce2204_ppe_l2_vp_port_post_set(priv, QCE2204_PPE_RSTP_VP, &post_cfg);
+	if (ret) {
+		dev_err(priv->dev, "Failed to set RSTP VP port post: %d\n", ret);
+		return ret;
+	}
+
+	/* Step 3: Enable Atheros tag insertion on RSTP virtual port */
+	tx_cfg.athtag_en = true;
+	ret = qce2204_ppe_eg_vp_athtag_set(priv, QCE2204_PPE_RSTP_VP, &tx_cfg);
+	if (ret) {
+		dev_err(priv->dev, "Failed to set RSTP VP athtag: %d\n", ret);
+		return ret;
+	}
+
+	/* Step 4: Set RSTP-specific Atheros header type */
+	hdrt_cfg.ath_type = QCE2204_RSTP_ATHTAG_TYPE;
+	ret = qce2204_ppe_eg_gen_ctrl_set(priv, &hdrt_cfg);
+	if (ret) {
+		dev_err(priv->dev, "Failed to set TX RSTP athtag type: %d\n", ret);
+		return ret;
+	}
+
+	/* Step 5: Update AthTag RX on CPU port */
+	rx_cfg.athtag_type = QCE2204_RSTP_ATHTAG_TYPE;
+	rx_cfg.athtag_en = true;
+	rx_cfg.version = 0;
+	ret = qce2204_ppe_port_athtag_rx_set(priv, QCE2204_CPU_PORT_ID, &rx_cfg);
+	if (ret) {
+		dev_err(priv->dev, "Failed to set RX RSTP athtag type: %d\n", ret);
+		return ret;
+	}
+
+	dev_dbg(priv->dev, "None tag RSTP configuration set up\n");
+	return 0;
+}
+
+/**
+ * qce2204_teardown_none_tag_rstp - Teardown RSTP packet redirect for none tag mode
+ * @priv: QCE2204 private data
+ *
+ * Reverses the configuration applied by qce2204_setup_none_tag_rstp():
+ * clears the RSTP ACL rule, resets the RSTP virtual port mapping, disables
+ * Atheros tag insertion on the RSTP virtual port, and restores the global
+ * Atheros header type to QCE2204_ATHTAG_TYPE.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int qce2204_teardown_none_tag_rstp(struct qce2204_priv *priv)
+{
+	struct qce2204_ppe_acl_rule_cfg acl_cfg = {};
+	struct qce2204_ppe_l2_vp_port_post_cfg post_cfg = {};
+	struct qce2204_ppe_eg_vp_athtag_cfg tx_cfg = {};
+	struct qce2204_ppe_eg_gen_ctrl_cfg hdrt_cfg = {};
+	struct qce2204_ppe_port_athtag_rx_cfg rx_cfg = {};
+	int ret;
+
+	dev_dbg(priv->dev, "Tearing down none tag RSTP configuration\n");
+
+	/* Step 1: Clear RSTP ACL rule (all-zero cfg deletes the entry) */
+	acl_cfg.is_delete = true;
+	ret = qce2204_ppe_acl_rule_set(priv, QCE2204_PPE_RSTP_ACL,
+				       QCE2204_PPE_ACL_MAC_DA_RULE, &acl_cfg);
+	if (ret) {
+		dev_err(priv->dev, "Failed to clear RSTP ACL rule: %d\n", ret);
+		return ret;
+	}
+
+	/* Step 2: Clear RSTP virtual port mapping */
+	ret = qce2204_ppe_l2_vp_port_post_set(priv, QCE2204_PPE_RSTP_VP, &post_cfg);
+	if (ret) {
+		dev_err(priv->dev, "Failed to clear RSTP VP port post: %d\n", ret);
+		return ret;
+	}
+
+	/* Step 3: Disable Atheros tag insertion on RSTP virtual port */
+	ret = qce2204_ppe_eg_vp_athtag_set(priv, QCE2204_PPE_RSTP_VP, &tx_cfg);
+	if (ret) {
+		dev_err(priv->dev, "Failed to clear RSTP VP athtag: %d\n", ret);
+		return ret;
+	}
+
+	/* Step 4: Restore global Atheros header type */
+	hdrt_cfg.ath_type = QCE2204_ATHTAG_TYPE;
+	ret = qce2204_ppe_eg_gen_ctrl_set(priv, &hdrt_cfg);
+	if (ret) {
+		dev_err(priv->dev, "Failed to restore TX athtag type: %d\n", ret);
+		return ret;
+	}
+
+	/* Step 5: Update AthTag RX on CPU port */
+	rx_cfg.athtag_type = QCE2204_ATHTAG_TYPE;
+	rx_cfg.athtag_en = true;
+	rx_cfg.version = 0;
+	ret = qce2204_ppe_port_athtag_rx_set(priv, QCE2204_CPU_PORT_ID, &rx_cfg);
+	if (ret) {
+		dev_err(priv->dev, "Failed to restore RX RSTP athtag type: %d\n", ret);
+		return ret;
+	}
+
+	dev_dbg(priv->dev, "None tag RSTP configuration torn down\n");
 	return 0;
 }
 
@@ -1925,32 +2083,9 @@ int qce2204_ppe_port_mru_set(struct qce2204_priv *priv,
  */
 int qce2204_setup_cpu_port_athtag(struct qce2204_priv *priv)
 {
-	struct qce2204_ppe_port_athtag_rx_cfg rx_cfg = {};
-	struct qce2204_ppe_athtag_dst_port_mapping_cfg dst_cfg = {};
 	struct qce2204_ppe_eg_vp_athtag_cfg tx_cfg = {};
 	struct qce2204_ppe_eg_gen_ctrl_cfg hdrt_cfg = {};
-	struct dsa_switch *ds = priv->ds;
-	struct dsa_port *dp;
 	int ret;
-
-	/* Enable AthTag RX on CPU port (downlink) */
-	rx_cfg.athtag_type = QCE2204_ATHTAG_TYPE;
-	rx_cfg.athtag_en = true;
-	rx_cfg.version = 0;
-
-	ret = qce2204_ppe_port_athtag_rx_set(priv, QCE2204_CPU_PORT_ID, &rx_cfg);
-	if (ret)
-		return ret;
-
-	/* Enable destination port mapping for panel ports */
-	dsa_switch_for_each_user_port(dp, ds) {
-		dst_cfg.dest_info_valid = true;
-		dst_cfg.dest_info = QCE2204_PPE_DEST_INFO(QCE2204_PPE_DEST_INFO_PORT_ID, dp->index);
-
-		ret = qce2204_ppe_athtag_dst_port_mapping_set(priv, dp->index, &dst_cfg);
-		if (ret)
-			return ret;
-	}
 
 	/* Enable AthTag TX insertion on CPU port (uplink), other fields unchanged (zero) */
 	tx_cfg.athtag_en = true;
@@ -1982,32 +2117,9 @@ int qce2204_setup_cpu_port_athtag(struct qce2204_priv *priv)
  */
 int qce2204_teardown_cpu_port_athtag(struct qce2204_priv *priv)
 {
-	struct qce2204_ppe_port_athtag_rx_cfg rx_cfg = {};
-	struct qce2204_ppe_athtag_dst_port_mapping_cfg dst_cfg = {};
 	struct qce2204_ppe_eg_vp_athtag_cfg tx_cfg = {};
 	struct qce2204_ppe_eg_gen_ctrl_cfg hdrt_cfg = {};
-	struct dsa_switch *ds = priv->ds;
-	struct dsa_port *dp;
 	int ret;
-
-	/* Disable AthTag RX on CPU port */
-	rx_cfg.athtag_type = 0;
-	rx_cfg.athtag_en = false;
-	rx_cfg.version = 0;
-
-	ret = qce2204_ppe_port_athtag_rx_set(priv, QCE2204_CPU_PORT_ID, &rx_cfg);
-	if (ret)
-		return ret;
-
-	/* Clear destination port mapping validity for panel ports */
-	dsa_switch_for_each_user_port(dp, ds) {
-		dst_cfg.dest_info_valid = false;
-		dst_cfg.dest_info = 0;
-
-		ret = qce2204_ppe_athtag_dst_port_mapping_set(priv, dp->index, &dst_cfg);
-		if (ret)
-			return ret;
-	}
 
 	/* Disable AthTag TX insertion on CPU port */
 	tx_cfg.athtag_en = false;
@@ -2024,6 +2136,33 @@ int qce2204_teardown_cpu_port_athtag(struct qce2204_priv *priv)
 	hdrt_cfg.ath_type = 0;
 
 	return qce2204_ppe_eg_gen_ctrl_set(priv, &hdrt_cfg);
+}
+
+/* Initialize athtag rx on CPU port */
+static int qce2204_ppe_athtag_init(struct qce2204_priv *priv)
+{
+	struct qce2204_ppe_athtag_dst_port_mapping_cfg dst_cfg = {};
+	struct qce2204_ppe_port_athtag_rx_cfg rx_cfg = {};
+	struct dsa_switch *ds = priv->ds;
+	struct dsa_port *dp;
+	int ret;
+
+	/* Setup destination port 1:1 mapping for panel ports */
+	dsa_switch_for_each_user_port(dp, ds) {
+		dst_cfg.dest_info_valid = true;
+		dst_cfg.dest_info = QCE2204_PPE_DEST_INFO(QCE2204_PPE_DEST_INFO_PORT_ID, dp->index);
+
+		ret = qce2204_ppe_athtag_dst_port_mapping_set(priv, dp->index, &dst_cfg);
+		if (ret)
+			return ret;
+	}
+
+	/* Enable AthTag RX on CPU port by default (downlink) */
+	rx_cfg.athtag_type = QCE2204_ATHTAG_TYPE;
+	rx_cfg.athtag_en = true;
+	rx_cfg.version = 0;
+
+	return qce2204_ppe_port_athtag_rx_set(priv, QCE2204_CPU_PORT_ID, &rx_cfg);
 }
 
 /**
@@ -2231,6 +2370,187 @@ int qce2204_ppe_vlan_eg_vlan_xlt_set(struct qce2204_priv *priv,
 
 	return regmap_bulk_write(priv->regmap, reg_addr, action_data,
 				 QCE2204_PPE_EG_VLAN_XLT_ACTION_INC / 4);
+}
+
+/**
+ * qce2204_ppe_l2_vp_port_post_set - Configure L2 VP port post table
+ * @priv: Driver private data
+ * @vport: Virtual port index
+ * @cfg: Configuration containing the physical port ID
+ *
+ * Writes PHYSICAL_PORT for the given virtual port in L2_VP_PORT_POST_TBL,
+ * then maps the virtual port's unicast queue base to the physical port's
+ * queue base so that traffic destined to @vport is scheduled on the
+ * correct physical port queues.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int qce2204_ppe_l2_vp_port_post_set(struct qce2204_priv *priv,
+				     u32 vport,
+				     struct qce2204_ppe_l2_vp_port_post_cfg *cfg)
+{
+	struct qce2204_ppe_queue_ucast_dest queue_dst = {};
+	u32 reg_addr;
+	u32 tbl_data[QCE2204_PPE_L2_VP_PORT_POST_TBL_INC / 4];
+	int q_base, q_end, ret;
+
+	if (!priv || !cfg)
+		return -EINVAL;
+
+	if (vport >= QCE2204_PPE_L2_VP_PORT_POST_TBL_ENTRIES)
+		return -EINVAL;
+
+	/* Step 1: Configure PHYSICAL_PORT in L2_VP_PORT_POST_TBL */
+	reg_addr = QCE2204_PPE_L2_VP_PORT_POST_TBL_ADDR +
+		   vport * QCE2204_PPE_L2_VP_PORT_POST_TBL_INC;
+
+	ret = regmap_bulk_read(priv->regmap, reg_addr, tbl_data,
+			       QCE2204_PPE_L2_VP_PORT_POST_TBL_INC / 4);
+	if (ret)
+		return ret;
+
+	QCE2204_PPE_L2_VP_PORT_POST_SET_PHYSICAL_PORT(tbl_data, cfg->pport);
+
+	ret = regmap_bulk_write(priv->regmap, reg_addr, tbl_data,
+				QCE2204_PPE_L2_VP_PORT_POST_TBL_INC / 4);
+	if (ret)
+		return ret;
+
+	/* Step 2: Get the unicast queue base for the physical port */
+	ret = qce2204_ppe_port_resource_get(priv, cfg->pport,
+					    QCE2204_PPE_RES_UCAST,
+					    &q_base, &q_end);
+	if (ret)
+		return ret;
+
+	/* Step 3: Map vport's queue base to the physical port's queue base */
+	queue_dst.dest_port = vport;
+
+	return qce2204_ppe_queue_ucast_base_set(priv, queue_dst, q_base, 0);
+}
+
+/**
+ * qce2204_ppe_acl_rule_set - Configure ACL rule, mask and action tables
+ * @priv: Driver private data
+ * @index: Table entry index
+ * @rule_type: ACL rule match type (e.g. QCE2204_PPE_ACL_MAC_DA_RULE)
+ * @cfg: Rule configuration; pass all-zero to delete the entry
+ *
+ * Writes the IPO rule, mask and action tables at the given index.
+ * When @cfg is all-zero all three table entries are cleared.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int qce2204_ppe_acl_rule_set(struct qce2204_priv *priv,
+			      u32 index,
+			      enum qce2204_ppe_acl_rule_type rule_type,
+			      struct qce2204_ppe_acl_rule_cfg *cfg)
+{
+	u32 rule_addr, mask_addr, action_addr;
+	u32 rule_data[QCE2204_PPE_IPO_MAC_DA_RULE_INC / 4];
+	u32 mask_data[QCE2204_PPE_IPO_MAC_DA_MASK_INC / 4];
+	u32 action_data[QCE2204_PPE_IPO_ACTION_INC / 4];
+	int ret;
+
+	if (!priv || !cfg)
+		return -EINVAL;
+
+	if (index >= QCE2204_PPE_IPO_MAC_DA_RULE_ENTRIES)
+		return -EINVAL;
+
+	rule_addr = QCE2204_PPE_IPO_RULE_ADDR +
+		    index * QCE2204_PPE_IPO_MAC_DA_RULE_INC;
+	mask_addr = QCE2204_PPE_IPO_MAC_DA_MASK_ADDR +
+		    index * QCE2204_PPE_IPO_MAC_DA_MASK_INC;
+	action_addr = QCE2204_PPE_IPO_ACTION_ADDR +
+		      index * QCE2204_PPE_IPO_ACTION_INC;
+
+	if (cfg->is_delete) {
+		memset(rule_data, 0, sizeof(rule_data));
+		memset(mask_data, 0, sizeof(mask_data));
+		memset(action_data, 0, sizeof(action_data));
+
+		ret = regmap_bulk_write(priv->regmap, rule_addr, rule_data,
+					QCE2204_PPE_IPO_MAC_DA_RULE_INC / 4);
+		if (ret)
+			return ret;
+
+		ret = regmap_bulk_write(priv->regmap, mask_addr, mask_data,
+					QCE2204_PPE_IPO_MAC_DA_MASK_INC / 4);
+		if (ret)
+			return ret;
+
+		return regmap_bulk_write(priv->regmap, action_addr, action_data,
+					 QCE2204_PPE_IPO_ACTION_INC / 4);
+	}
+
+	/* Configure rule table */
+	ret = regmap_bulk_read(priv->regmap, rule_addr, rule_data,
+			       QCE2204_PPE_IPO_MAC_DA_RULE_INC / 4);
+	if (ret)
+		return ret;
+
+	switch (rule_type) {
+	case QCE2204_PPE_ACL_MAC_DA_RULE:
+		/* MAC_DA[31:0] -> W0, MAC_DA[47:32] -> W1[15:0] */
+		QCE2204_PPE_IPO_MAC_DA_RULE_SET_MAC_DA(rule_data,
+			(u32)cfg->mac[2] << 24 | (u32)cfg->mac[3] << 16 |
+			(u32)cfg->mac[4] << 8  | (u32)cfg->mac[5]);
+		QCE2204_PPE_IPO_MAC_DA_RULE_SET_MAC_DA_HI(rule_data,
+			(u32)cfg->mac[0] << 8 | (u32)cfg->mac[1]);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	/* Common rule fields (shared across all IPO rule types) */
+	QCE2204_PPE_IPO_RULE_SET_INVERSE_EN(rule_data, cfg->inverse ? 1 : 0);
+	QCE2204_PPE_IPO_RULE_SET_RULE_TYPE(rule_data, cfg->hw_rule_type);
+	QCE2204_PPE_IPO_RULE_SET_SRC_TYPE(rule_data, cfg->src_type);
+	QCE2204_PPE_IPO_RULE_SET_SRC_LO(rule_data, cfg->src & 0x1);
+	QCE2204_PPE_IPO_RULE_SET_SRC_HI(rule_data, (cfg->src >> 1) & 0xFF);
+
+	ret = regmap_bulk_write(priv->regmap, rule_addr, rule_data,
+				QCE2204_PPE_IPO_MAC_DA_RULE_INC / 4);
+	if (ret)
+		return ret;
+
+	/* Configure mask table */
+	ret = regmap_bulk_read(priv->regmap, mask_addr, mask_data,
+			       QCE2204_PPE_IPO_MAC_DA_MASK_INC / 4);
+	if (ret)
+		return ret;
+
+	switch (rule_type) {
+	case QCE2204_PPE_ACL_MAC_DA_RULE:
+		/* Full MAC mask: all 48 bits set */
+		QCE2204_PPE_IPO_MAC_DA_MASK_SET_MAC_DA_MASK(mask_data,
+							     0xFFFFFFFF);
+		QCE2204_PPE_IPO_MAC_DA_MASK_SET_MAC_DA_MASK_HI(mask_data,
+								0xFFFF);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	ret = regmap_bulk_write(priv->regmap, mask_addr, mask_data,
+				QCE2204_PPE_IPO_MAC_DA_MASK_INC / 4);
+	if (ret)
+		return ret;
+
+	/* Configure action table */
+	ret = regmap_bulk_read(priv->regmap, action_addr, action_data,
+			       QCE2204_PPE_IPO_ACTION_INC / 4);
+	if (ret)
+		return ret;
+
+	QCE2204_PPE_IPO_ACTION_SET_DEST_INFO_CHANGE_EN(action_data,
+						cfg->dest_valid ? 1 : 0);
+	QCE2204_PPE_IPO_ACTION_SET_FWD_CMD(action_data, cfg->fwd_cmd);
+	QCE2204_PPE_IPO_ACTION_SET_DEST_INFO(action_data, cfg->dest_info);
+
+	return regmap_bulk_write(priv->regmap, action_addr, action_data,
+				 QCE2204_PPE_IPO_ACTION_INC / 4);
 }
 
 /**
@@ -2807,6 +3127,10 @@ int qce2204_ppe_hw_init(struct qce2204_priv *priv)
 		return ret;
 
 	ret = qce2204_ppe_bridge_init(priv);
+	if (ret)
+		return ret;
+
+	ret = qce2204_ppe_athtag_init(priv);
 	if (ret)
 		return ret;
 

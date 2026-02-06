@@ -631,9 +631,67 @@ int qce2204_ppe_port_vsi_set(struct qce2204_priv *priv,
 			      u32 port_id,
 			      struct qce2204_ppe_port_vsi_cfg *cfg);
 
+/* ACL Rule Configuration */
+
+/**
+ * enum qce2204_ppe_acl_rule_type - ACL rule match type
+ * @QCE2204_PPE_ACL_MAC_DA_RULE: Match on destination MAC address
+ */
+enum qce2204_ppe_acl_rule_type {
+	QCE2204_PPE_ACL_MAC_DA_RULE,
+};
+
+/**
+ * struct qce2204_ppe_acl_rule_cfg - ACL rule/mask/action configuration
+ * @mac: MAC address (used when rule_type is QCE2204_PPE_ACL_MAC_DA_RULE)
+ * @inverse: Invert match result (INVERSE_EN)
+ * @hw_rule_type: Hardware RULE_TYPE field value
+ * @src: Source port; if <= 64 is bitmap (src_type=0),
+ *           otherwise used directly as VP index (src_type = 1)
+ * @fwd_cmd: Forward command for IPO_ACTION
+ * @dest_valid: Enable destination info change (DEST_INFO_CHANGE_EN)
+ * @dest_info: Destination info value for IPO_ACTION
+ * @is_delete: Indicate delete or add
+ *
+ * When all fields are zero the corresponding rule/mask/action entries
+ * are cleared (delete operation).
+ */
+struct qce2204_ppe_acl_rule_cfg {
+	u8 mac[ETH_ALEN];
+	bool inverse;
+	u8 hw_rule_type;
+	u32 src_type;
+	u32 src;
+	u8 fwd_cmd;
+	bool dest_valid;
+	u16 dest_info;
+	bool is_delete;
+};
+
+int qce2204_ppe_acl_rule_set(struct qce2204_priv *priv,
+			      u32 index,
+			      enum qce2204_ppe_acl_rule_type rule_type,
+			      struct qce2204_ppe_acl_rule_cfg *cfg);
+
+/* L2 VP Port Post Configuration */
+
+/**
+ * struct qce2204_ppe_l2_vp_port_post_cfg - L2 VP port post table configuration
+ * @pport: Physical port ID mapped to this virtual port
+ */
+struct qce2204_ppe_l2_vp_port_post_cfg {
+	u8 pport;
+};
+
+int qce2204_ppe_l2_vp_port_post_set(struct qce2204_priv *priv,
+				     u32 vport,
+				     struct qce2204_ppe_l2_vp_port_post_cfg *cfg);
+
 /* DSA None Tag Support Functions */
 int qce2204_setup_none_tag_vsi(struct qce2204_priv *priv);
 int qce2204_teardown_none_tag_vsi(struct qce2204_priv *priv);
+int qce2204_setup_none_tag_rstp(struct qce2204_priv *priv);
+int qce2204_teardown_none_tag_rstp(struct qce2204_priv *priv);
 
 /* DSA 8021Q Support Functions */
 int qce2204_setup_8021q_global(struct qce2204_priv *priv);
