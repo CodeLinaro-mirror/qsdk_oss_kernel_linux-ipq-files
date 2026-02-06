@@ -325,13 +325,6 @@ int qce2204_init_switch_clocks_resets(struct qce2204_priv *priv)
 	struct device *dev = priv->dev;
 	int ret;
 
-	/* Get switch-level clocks */
-	ret = qce2204_get_clocks(priv);
-	if (ret) {
-		dev_err(dev, "Failed to get switch clocks: %d\n", ret);
-		return ret;
-	}
-
 	/* Get switch-level resets */
 	ret = qce2204_get_resets(priv);
 	if (ret) {
@@ -339,10 +332,10 @@ int qce2204_init_switch_clocks_resets(struct qce2204_priv *priv)
 		return ret;
 	}
 
-	/* Enable switch-level clocks */
-	ret = qce2204_enable_clocks(priv);
+	/* Get switch-level clocks */
+	ret = qce2204_get_clocks(priv);
 	if (ret) {
-		dev_err(dev, "Failed to enable switch clocks: %d\n", ret);
+		dev_err(dev, "Failed to get switch clocks: %d\n", ret);
 		return ret;
 	}
 
@@ -351,6 +344,13 @@ int qce2204_init_switch_clocks_resets(struct qce2204_priv *priv)
 	if (ret) {
 		dev_err(dev, "Failed to reset switch: %d\n", ret);
 		qce2204_disable_clocks(priv);
+		return ret;
+	}
+
+	/* Enable switch-level clocks */
+	ret = qce2204_enable_clocks(priv);
+	if (ret) {
+		dev_err(dev, "Failed to enable switch clocks: %d\n", ret);
 		return ret;
 	}
 
