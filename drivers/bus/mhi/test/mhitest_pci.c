@@ -1208,8 +1208,20 @@ static int mhitest_pci_select_window(struct mhitest_platform *mplat, u32 addr)
 
 	prev_window = readl_relaxed(bar + bar_remap_ctrl_offset);
 
-	/* Clear out last 6 bits of window register */
-	prev_cleared_window = prev_window & ~(0x3f);
+	/* Clear out last 6 or 7 bits of window register */
+	switch (mplat->device_id) {
+	case QCN92XX_DEVICE_ID:
+		prev_cleared_window = prev_window & ~(QCN9224_WINDOW_VALUE_MASK);
+		break;
+	case QCN95XX_DEVICE_ID:
+	case QCN96XX_DEVICE_ID:
+		prev_cleared_window = prev_window & ~(QCN9625_WINDOW_VALUE_MASK);
+		break;
+
+	default:
+		pr_err("Unknown device type 0x%lx\n", mplat->device_id);
+		return -ENODEV;
+	}
 
 	/* Write the new last 6 bits of window register. Only window 1 values
 	 * are changed. Window 2 and 3 are unaffected.
