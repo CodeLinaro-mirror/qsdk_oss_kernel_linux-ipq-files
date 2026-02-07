@@ -14,6 +14,7 @@
 
 #include <linux/bitfield.h>
 #include <linux/memblock.h>
+#include <linux/pci.h>
 #include <linux/pm_runtime.h>
 #include <linux/of.h>
 #include <linux/spinlock.h>
@@ -22,6 +23,7 @@
 #include <linux/elf.h>
 #include <linux/of_address.h>
 #include "commonmhitest.h"
+#include "../host/internal.h"
 
 #define QCN9000_DEFAULT_FW_FILE_NAME	"qcn9000/amss.bin"
 #define QCN9224_DEFAULT_FW_FILE_NAME	"qcn9224/amss.bin"
@@ -41,8 +43,7 @@
 
 #define MHISTATUS				0x48
 #define MHICTRL					0x38
-#define MHICTRL_RESET_MASK			0x2
-#define BHI_EXECENV				0x128
+#define QCN9625_BHI_EXECENV				0x128
 
 #define QCN9224_PCIE_REMAP_BAR_CTRL_OFFSET	0x310C
 #define QCN9625_PCIE_REMAP_BAR_CTRL_OFFSET	0x3278
@@ -64,6 +65,11 @@
 #define TIMEOUT_SAVE_DUMP_MS 300000
 
 static DEFINE_SPINLOCK(pci_reg_window_lock);
+
+#if IS_ENABLED(CONFIG_PCIEAER)
+#define RDDM_LINK_RECOVERY_RETRY		20
+#define RDDM_LINK_RECOVERY_RETRY_DELAY_MS	20
+#endif
 
 bool autostart = true;
 module_param(autostart, bool, 0);
@@ -1367,7 +1373,7 @@ void mhitest_q6_bcr_reset(struct mhitest_platform *mplat)
 	pr_info("Q6 bcr reset issued\n");
 
 	while (count >= 0) {
-		device_ee = readl_relaxed(mplat->bar + BHI_EXECENV);
+		device_ee = readl_relaxed(mplat->bar + QCN9625_BHI_EXECENV);
 		if (device_ee == MHI_EE_PBL) {
 			pr_info("Target switched to PBL, reset success, count: %d\n", count);
 			break;
@@ -2039,6 +2045,118 @@ void mhitest_pci_remove(struct pci_dev *pci_dev)
 	}
 }
 
+#if IS_ENABLED(CONFIG_PCIEAER)
+static const char *pcie_channel_state_to_string(pci_channel_state_t state)
+{
+	switch (state) {
+	case pci_channel_io_normal:
+		return "pci_channel_io_normal";
+	break;
+	case pci_channel_io_frozen:
+		return "pci_channel_io_frozen";
+	break;
+	case pci_channel_io_perm_failure:
+		return "pci_channel_io_perm_failure";
+	break;
+	}
+
+	return "Invalid state";
+}
+
+static pci_ers_result_t
+mhitest_pci_error_detected(struct pci_dev *pdev, pci_channel_state_t state)
+{
+	struct mhitest_platform *mplat;
+	int ret;
+
+	mplat = get_mhitest_mplat_by_pcidev(pdev);
+	if (!mplat) {
+		pr_err("Failed to get mhitest platform data\n");
+		return PCI_ERS_RESULT_DISCONNECT;
+	}
+
+	pr_info("%s pci channel state:%s\n", __func__, pcie_channel_state_to_string(state));
+	switch (state) {
+	/* Link down error */
+	case pci_channel_io_frozen:
+		ret = mhitest_pci_get_link_status(mplat);
+		if (ret) {
+			if (ret == PCIBIOS_DEVICE_NOT_FOUND) {
+				ret = pci_load_saved_state(pdev, mplat->pci_dev_default_state);
+				if (ret) {
+					pr_err("Failed to load the default state, ret:%d\n", ret);
+					return PCI_ERS_RESULT_DISCONNECT;
+				}
+				mplat->pci_dev_saved_state = pci_store_saved_state(pdev);
+				return PCI_ERS_RESULT_CAN_RECOVER;
+			}
+			pr_err("Failed to get pci link status:%d\n", ret);
+		}
+	break;
+	}
+
+	return PCI_ERS_RESULT_NONE;
+}
+
+static void mhitest_pci_resume(struct pci_dev *pdev)
+{
+	struct mhi_controller *mhi_ctrl;
+	struct mhitest_platform *mplat;
+	enum mhi_ee_type mhi_ee;
+	struct device *dev;
+	int retry = 0;
+	int ret;
+
+	mplat = get_mhitest_mplat_by_pcidev(pdev);
+	if (!mplat) {
+		pr_err("Failed to get mhitest platform data\n");
+		return;
+	}
+
+	ret = mhitest_pci_get_link_status(mplat);
+	if (ret) {
+		pr_err("Error not able to get pci link status:%d\n", ret);
+		return;
+	}
+
+	if (mplat->def_link_speed && mplat->def_link_width)
+		pr_info("AER Error recovered, now link is up");
+
+	pr_info("LINK RECOVERED - [%x:%04u:%02u:%02u] speed: GEN%d, width:x%d",
+		pdev->device,
+		pdev->bus->domain_nr,
+		pdev->bus->number,
+		PCI_SLOT(pdev->devfn),
+		mplat->def_link_speed,
+		mplat->def_link_width);
+
+	/* Restore the config space */
+	pci_load_and_free_saved_state(pdev, &mplat->pci_dev_saved_state);
+	pci_restore_state(pdev);
+
+	mhi_ctrl = mplat->mhi_ctrl;
+	dev = &mhi_ctrl->mhi_dev->dev;
+	pdev = to_pci_dev(mhi_ctrl->cntrl_dev);
+
+retry:
+	/*
+	 * After PCIe link resumes, 20 to 400 ms delay is observerved
+	 * before device moves to RDDM.
+	 */
+	msleep(RDDM_LINK_RECOVERY_RETRY_DELAY_MS);
+	mhi_ee = mhi_get_exec_env(mhi_ctrl);
+	if (mhi_ee == MHI_EE_RDDM) {
+		dev_info(dev, "Successfully moved to RDDM state\n");
+	} else if (retry++ < RDDM_LINK_RECOVERY_RETRY) {
+		goto retry;
+	} else {
+		dev_err(dev,
+			"Failed to move to RDDM state. Current EE state %s\n",
+			TO_MHI_EXEC_STR(mhi_ee));
+	}
+}
+#endif
+
 static const struct pci_device_id mhitest_pci_id_table[] = {
 	{QTI_PCI_VENDOR_ID, QCN90XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
 	{QTI_PCI_VENDOR_ID, QCN92XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
@@ -2047,11 +2165,21 @@ static const struct pci_device_id mhitest_pci_id_table[] = {
 	{}
 };
 
+#if IS_ENABLED(CONFIG_PCIEAER)
+static const struct pci_error_handlers mhitest_pci_err_handler = {
+	.error_detected = mhitest_pci_error_detected,
+	.resume = mhitest_pci_resume,
+};
+#endif
+
 struct pci_driver mhitest_pci_driver = {
 	.name	  = "mhitest_pci",
 	.probe	  = mhitest_pci_probe,
 	.remove	  = mhitest_pci_remove,
 	.id_table = mhitest_pci_id_table,
+#if IS_ENABLED(CONFIG_PCIEAER)
+	.err_handler = &mhitest_pci_err_handler,
+#endif
 };
 
 int mhitest_pci_register(void)
