@@ -14,3 +14,10 @@
 	model = "Qualcomm Technologies, Inc. IPQ5210 RDP497";
 	compatible = "qcom,ipq5210-rdp497", "qcom,ipq5424";
 };
+
+&nsscc {
+	assigned-clocks = <&nsscc NSS_CC_EPHY_RX_CLK_SRC>,
+			  <&nsscc NSS_CC_EPHY_TX_CLK_SRC>;
+	assigned-clock-parents = <&nsscc NSS_CC_PORT5_RX_DIV_CLK_SRC>,
+				 <&nsscc NSS_CC_PORT5_TX_DIV_CLK_SRC>;
+};
