@@ -311,13 +311,16 @@ struct eht_snapshot *br_mcast_offload_eht_collect_snapshot(struct net_bridge_por
  *	Build netlink message from snapshot (no locks held)
  */
 int br_mcast_offload_mdb_fill_eht_hosts_from_snapshot(struct sk_buff *skb,
-		struct eht_snapshot *snapshot)
+		struct eht_snapshot *snapshot, u32 *idx)
 {
 	struct nlattr *nest, *host_nest, *src_nest, *src_entry_nest;
 	u32 i, j;
 	int addr_size;
 
 	if (!snapshot || !snapshot->num_hosts)
+		return 0;
+
+	if (*idx >= snapshot->num_hosts)
 		return 0;
 
 	switch (snapshot->proto) {
@@ -338,7 +341,7 @@ int br_mcast_offload_mdb_fill_eht_hosts_from_snapshot(struct sk_buff *skb,
 	if (!nest)
 		return -EMSGSIZE;
 
-	for (i = 0; i < snapshot->num_hosts; i++) {
+	for (i = *idx; i < snapshot->num_hosts; i++) {
 		struct eht_host_snapshot *host = &snapshot->hosts[i];
 
 		host_nest = nla_nest_start(skb, MDBA_MDB_EATTR_EHT_HOST_ENTRY);
@@ -391,6 +394,7 @@ int br_mcast_offload_mdb_fill_eht_hosts_from_snapshot(struct sk_buff *skb,
 	}
 
 	nla_nest_end(skb, nest);
+	*idx = i;
 	return 0;
 
 out_cancel_src:
@@ -398,7 +402,8 @@ out_cancel_src:
 out_cancel_host:
 	nla_nest_cancel(skb, host_nest);
 out_cancel:
-	nla_nest_cancel(skb, nest);
+	nla_nest_end(skb, nest);
+	*idx = i;
 	return -EMSGSIZE;
 }
 
