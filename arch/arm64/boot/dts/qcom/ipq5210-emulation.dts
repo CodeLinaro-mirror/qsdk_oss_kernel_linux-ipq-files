@@ -276,6 +276,11 @@
 
 		/* EDMA host driver configuration */
 		edma@3ad00000 {
+			/*
+			 * DDRQ memory regions mapping to the EDMA node.
+			 */
+			memory-region = <&ddrq_data_region> , <&ddrq_desc_region>;
+			memory-region-names = "ddrq_data_region", "ddrq_desc_region";
 			qcom,rxdesc-ring-max = <24>;
 			qcom,rxfill-ring-max = <20>;
 			qcom,txdesc-ring-max = <24>;

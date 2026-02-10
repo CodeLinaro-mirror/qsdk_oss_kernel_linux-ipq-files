@@ -258,6 +258,24 @@
 		minidump_mem: minidump_mem@0 {
 			no-map;
 		};
+
+		/*
+		 * DDRQ data region details
+		 */
+		ddrq_data_region: ddrq_data_region@0 {
+			compatible = "shared-dma-pool";
+			no-map;
+			size = <0x0 0x01000000>;	/* 16MB */
+		};
+
+		/*
+		 * DDRQ descriptor memory details
+		 */
+		ddrq_desc_region: ddrq_desc_region@0 {
+			compatible = "shared-dma-pool";
+			no-map;
+			size = <0x0 0x00100000>;	/* 1MB */
+		};
 	};
 
 	soc@0 {
