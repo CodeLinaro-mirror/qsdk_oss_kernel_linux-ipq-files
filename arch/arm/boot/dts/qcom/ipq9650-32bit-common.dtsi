@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * IPQ9650 RDP board common device tree source for 32bit overrides
+ *
+ * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ */
+
+/ {
+	cpus {
+		/delete-node/ cpu@400;
+		/delete-node/ cpu-map;
+	};
+
+	pmu-dsu {
+		compatible = "arm,dsu-pmu";
+		interrupts = <GIC_SPI 50 IRQ_TYPE_EDGE_RISING>;
+		cpus = <&CPU0>, <&CPU1>, <&CPU2>, <&CPU3>;
+		status = "disabled";
+	};
+
+	soc@0 {
+		/delete-node/ etm@6c80000;
+
+		funnel@6c81000 {
+			in-ports {
+				/delete-node/ port@4;
+			};
+		};
+	};
+};
