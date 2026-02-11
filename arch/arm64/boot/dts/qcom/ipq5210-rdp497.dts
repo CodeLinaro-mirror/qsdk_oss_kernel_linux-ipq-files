@@ -13,13 +13,68 @@
 / {
 	model = "Qualcomm Technologies, Inc. IPQ5210 RDP497";
 	compatible = "qcom,ipq5210-rdp497", "qcom,ipq5424";
+
+	soc@0 {
+		mdio@90000 {
+			status = "okay";
+			/* gpio reset for Laguna PHY */
+			phy-reset-gpio = <&tlmm 24 GPIO_ACTIVE_LOW>;
+
+			phy0: ethernet-phy@8 {
+				reg = <8>;
+				compatible ="ethernet-phy-ieee802.3-c45";
+			};
+		};
+
+		mdio_ahb: mdio-ahb@1400000 {
+			status = "okay";
+			compatible = "qcom,mdio-ahb-ipq52xx";
+			reg = <0x1400000 0x200000>;  /* Base address: 0x1400000, Size: 2MB */
+		};
+
+		ess-instance {
+			num_devices = <0x1>;
+
+			ess_switch: ess-switch@3a000000 {
+				switch_lan_bmp = <0x12>; /* lan port bitmap */
+				switch_wan_bmp = <0x40>; /* wan port bitmap */
+				switch_mac_mode = <0xd>; /* USXGMII for Laguna PHY */
+				switch_mac_mode1 = <0xff>; /* unused */
+				switch_mac_mode2 = <0x1b>; /* XGSPON */
+
+				qcom,port_phyinfo {
+					port@0 {
+						port_id = <1>;
+						phy_address = <8>;
+						phy-handle = <&phy0>;
+						phy-mode = "usxgmii";
+						ethernet-phy-ieee802.3-c45;
+					};
+					port@3 {
+						port_id = <4>;
+						phy-mode = "internal";
+					};
+					port@5 {
+						port_id = <6>;
+						forced-speed = <10000>;
+						forced-duplex = <1>;
+						fixed-link {
+							speed = <10000>;
+							full-duplex;
+							pause;
+						};
+					};
+				};
+			};
+		};
+	};
 };
 
 &nsscc {
 	assigned-clocks = <&nsscc NSS_CC_EPHY_RX_CLK_SRC>,
 			  <&nsscc NSS_CC_EPHY_TX_CLK_SRC>;
-	assigned-clock-parents = <&nsscc NSS_CC_PORT5_RX_DIV_CLK_SRC>,
-				 <&nsscc NSS_CC_PORT5_TX_DIV_CLK_SRC>;
+	assigned-clock-parents = <&nsscc NSS_CC_PORT4_RX_DIV_CLK_SRC>,
+				 <&nsscc NSS_CC_PORT4_TX_DIV_CLK_SRC>;
 };
 
 &pcie0_phy {
