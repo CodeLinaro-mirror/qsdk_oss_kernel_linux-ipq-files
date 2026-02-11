@@ -13,13 +13,91 @@
 / {
 	model = "Qualcomm Technologies, Inc. IPQ5210 RDP500";
 	compatible = "qcom,ipq5210-rdp500", "qcom,ipq5210";
+
+	soc@0 {
+		mdio@90000 {
+			status = "okay";
+			/* gpio reset for Malibu PHY */
+			phy-reset-gpio = <&tlmm 24 GPIO_ACTIVE_LOW>;
+
+			ethernet-phy-package@0 {
+				compatible = "qcom,qca8075-package";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0x0>;
+				qcom,package-mode = "psgmii";
+				phy0: ethernet-phy@0 {
+					reg = <0x0>;
+				};
+				phy1: ethernet-phy@1 {
+					reg = <1>;
+				};
+				phy2: ethernet-phy@2 {
+					reg = <2>;
+				};
+			};
+		};
+
+		mdio_ahb: mdio-ahb@1400000 {
+			status = "okay";
+			compatible = "qcom,mdio-ahb-ipq52xx";
+			reg = <0x1400000 0x200000>;  /* Base address: 0x1400000, Size: 2MB */
+		};
+
+		ess-instance {
+			num_devices = <0x1>;
+
+			ess_switch: ess-switch@3a000000 {
+				switch_lan_bmp = <0x1e>; /* lan port bitmap */
+				switch_wan_bmp = <0x40>; /* wan port bitmap */
+				switch_mac_mode = <0x0>; /* PSGMII for malibu PHY */
+				switch_mac_mode1 = <0xff>; /* unused */
+				switch_mac_mode2 = <0x1b>; /* XGSPON */
+
+				qcom,port_phyinfo {
+					port@0 {
+						port_id = <1>;
+						phy_address = <0>;
+						phy-handle = <&phy0>;
+						phy-mode = "psgmii";
+					};
+					port@1 {
+						port_id = <2>;
+						phy_address = <1>;
+						phy-handle = <&phy1>;
+						phy-mode = "psgmii";
+					};
+					port@2 {
+						port_id = <3>;
+						phy_address = <2>;
+						phy-handle = <&phy2>;
+						phy-mode = "psgmii";
+					};
+					port@3 {
+						port_id = <4>;
+						phy-mode = "internal";
+					};
+					port@5 {
+						port_id = <6>;
+						forced-speed = <10000>;
+						forced-duplex = <1>;
+						fixed-link {
+							speed = <10000>;
+							full-duplex;
+							pause;
+						};
+					};
+				};
+			};
+		};
+	};
 };
 
 &nsscc {
 	assigned-clocks = <&nsscc NSS_CC_EPHY_RX_CLK_SRC>,
 			  <&nsscc NSS_CC_EPHY_TX_CLK_SRC>;
-	assigned-clock-parents = <&nsscc NSS_CC_PORT5_RX_DIV_CLK_SRC>,
-				 <&nsscc NSS_CC_PORT5_TX_DIV_CLK_SRC>;
+	assigned-clock-parents = <&nsscc NSS_CC_PORT4_RX_DIV_CLK_SRC>,
+				 <&nsscc NSS_CC_PORT4_TX_DIV_CLK_SRC>;
 };
 
 &tlmm {
