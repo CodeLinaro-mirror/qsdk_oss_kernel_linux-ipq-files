@@ -32,7 +32,9 @@
 #include <linux/of_reserved_mem.h>
 #include <linux/of_address.h>
 
-#define MINIDUMP_WAIT_MSECS	300000
+/* Separate timeouts for different phases of minidump collection */
+#define MINIDUMP_OPEN_TIMEOUT_MSECS	20000  /* 20s for userspace to open device */
+#define MINIDUMP_COMPLETE_TIMEOUT_MSECS	60000  /* 60s total for complete operation */
 #define CRASHDUMP_PAGE_SIZE	(512 * SZ_1K)
 typedef struct ctx_save_tlv_msg {
 	unsigned char *msg_buffer;
@@ -127,6 +129,7 @@ static void __iomem *smem_base_addr;
 static u64 smem_size;
 static u64 imem_size;
 enum minidump_crash_type minidump_type = MINIDUMP_CRASH_TYPE_LIVEDUMP;
+DECLARE_COMPLETION(minidump_open_complete);
 DECLARE_COMPLETION(minidump_complete);
 DEFINE_MUTEX(g_minidump_lock);
 
@@ -337,6 +340,9 @@ static int mini_dump_open(struct inode *inode, struct file *file) {
 	unsigned long flags;
 	struct dump_segment *segment = NULL;
 	int index = 0;
+
+	/* Signal that device has been opened */
+	complete(&minidump_open_complete);
 
 	if (!tlv_msg.msg_buffer)
 		return -ENOMEM;
@@ -591,6 +597,7 @@ int do_dump_minidump(enum minidump_crash_type crashtype)
 	pr_debug("\n Minidump: Size of node in Metadata list = %ld\n",
 		 (unsigned long)sizeof(struct minidump_metadata_list));
 
+	init_completion(&minidump_open_complete);
 	init_completion(&minidump_complete);
 	if (dump_class || dump_major) {
 		pr_err("Already minidump virtual class or device exists\n");
@@ -620,14 +627,41 @@ int do_dump_minidump(enum minidump_crash_type crashtype)
 		goto device_failed;
 	}
 
-	/* Wait (with a timeout) to let the ramdump complete */
-	ret = wait_for_completion_timeout(&minidump_complete,
-					  msecs_to_jiffies(MINIDUMP_WAIT_MSECS));
-	ret = ret ? 0 : -ETIMEDOUT;
+	/* Two-phase timeout approach:
+	 * Phase 1: Wait for userspace to open the device (20 seconds)
+	 * Phase 2: Wait for userspace to close the device (60 seconds)
+	 */
 
+	/* Phase 1: Wait for device open */
+	ret = wait_for_completion_timeout(&minidump_open_complete,
+					  msecs_to_jiffies(MINIDUMP_OPEN_TIMEOUT_MSECS));
+	if (ret == 0) {
+		/* Timeout occurred - userspace didn't open the device */
+		pr_err("Minidump: Timeout waiting for userspace to open device\n");
+		ret = -ETIMEDOUT;
+		goto device_failed;
+	}
+
+	/* Phase 2: Wait for device close/release */
+	ret = wait_for_completion_timeout(&minidump_complete,
+					  msecs_to_jiffies(MINIDUMP_COMPLETE_TIMEOUT_MSECS));
+	if (ret == 0) {
+		/* Timeout occurred - userspace didn't close the device */
+		pr_err("Minidump: Timeout waiting for userspace to close device\n");
+		ret = -ETIMEDOUT;
+	} else {
+		/* Completion signaled successfully */
+		ret = 0;
+	}
+
+	/* Cleanup allocated resources */
 	kfree(minidump.hdr.seg_size);
 	kfree(minidump.hdr.phy_addr);
 	kfree(minidump.hdr.type);
+	minidump.hdr.seg_size = NULL;
+	minidump.hdr.phy_addr = NULL;
+	minidump.hdr.type = NULL;
+
 	device_destroy(dump_class, MKDEV(dump_major, 0));
 
 device_failed:
