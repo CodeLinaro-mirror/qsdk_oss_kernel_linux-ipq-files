@@ -79,5 +79,6 @@
 #define GCC_QUPV3_I2C0_CLK		69
 #define GCC_QUPV3_I2C1_CLK		70
 #define GCC_PRIME_CORE_CLK		71
+#define GCC_MDIO_AHB_CLK		72
 
 #endif
