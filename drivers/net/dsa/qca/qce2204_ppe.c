@@ -1364,38 +1364,35 @@ static int qce2204_ppe_port_config_init(struct qce2204_priv *priv)
 	u32 reg, val, mru_mtu_val[3];
 	int i, ret;
 
-	/* MTU and MRU settings not required for CPU port 0 */
-	for (i = 1; i < QCE2204_NUM_PORTS; i++) {
-		/* Enable Ethernet port counter */
+	/* Enable ports counter */
+	for (i = 0; i < QCE2204_NUM_PORTS; i++) {
 		ret = qce2204_ppe_counter_enable_set(priv, i);
-		if (ret)
-			return ret;
-
-		reg = QCE2204_PPE_MRU_MTU_CTRL_TBL_ADDR + QCE2204_PPE_MRU_MTU_CTRL_TBL_INC * i;
-		ret = regmap_bulk_read(priv->regmap, reg,
-				       mru_mtu_val, ARRAY_SIZE(mru_mtu_val));
-		if (ret)
-			return ret;
-
-		/* Drop packet when size > MTU, redirect to CPU when size > MRU */
-		QCE2204_PPE_MRU_MTU_CTRL_SET_MRU_CMD(mru_mtu_val, QCE2204_PPE_ACTION_REDIRECT_TO_CPU);
-		QCE2204_PPE_MRU_MTU_CTRL_SET_MTU_CMD(mru_mtu_val, QCE2204_PPE_ACTION_DROP);
-		ret = regmap_bulk_write(priv->regmap, reg,
-					mru_mtu_val, ARRAY_SIZE(mru_mtu_val));
-		if (ret)
-			return ret;
-
-		reg = QCE2204_PPE_MC_MTU_CTRL_TBL_ADDR + QCE2204_PPE_MC_MTU_CTRL_TBL_INC * i;
-		val = FIELD_PREP(QCE2204_PPE_MC_MTU_CTRL_TBL_MTU_CMD, QCE2204_PPE_ACTION_DROP);
-		ret = regmap_update_bits(priv->regmap, reg,
-					 QCE2204_PPE_MC_MTU_CTRL_TBL_MTU_CMD,
-					 val);
 		if (ret)
 			return ret;
 	}
 
-	/* Enable CPU port counters */
-	return qce2204_ppe_counter_enable_set(priv, 0);
+	/* CPU port 0 MTU and MRU set to max framesize, ethernet ports MTU/MRC set by mtu ops */
+	reg = QCE2204_PPE_MRU_MTU_CTRL_TBL_ADDR + QCE2204_PPE_MRU_MTU_CTRL_TBL_INC * QCE2204_CPU_PORT_ID;
+	ret = regmap_bulk_read(priv->regmap, reg,
+				   mru_mtu_val, ARRAY_SIZE(mru_mtu_val));
+	if (ret)
+		return ret;
+
+	/* Redirect packet to CPU when size > MTU/MRU */
+	QCE2204_PPE_MRU_MTU_CTRL_SET_MRU(mru_mtu_val, QCE2204_MAX_FRAME_SIZE);
+	QCE2204_PPE_MRU_MTU_CTRL_SET_MRU_CMD(mru_mtu_val, QCE2204_PPE_ACTION_REDIRECT_TO_CPU);
+	QCE2204_PPE_MRU_MTU_CTRL_SET_MTU(mru_mtu_val, QCE2204_MAX_FRAME_SIZE);
+	QCE2204_PPE_MRU_MTU_CTRL_SET_MTU_CMD(mru_mtu_val, QCE2204_PPE_ACTION_REDIRECT_TO_CPU);
+	ret = regmap_bulk_write(priv->regmap, reg,
+				mru_mtu_val, ARRAY_SIZE(mru_mtu_val));
+	if (ret)
+		return ret;
+
+	reg = QCE2204_PPE_MC_MTU_CTRL_TBL_ADDR + QCE2204_PPE_MC_MTU_CTRL_TBL_INC * QCE2204_CPU_PORT_ID;
+	val = FIELD_PREP(QCE2204_PPE_MC_MTU_CTRL_TBL_MTU_CMD, QCE2204_PPE_ACTION_REDIRECT_TO_CPU);
+	return regmap_update_bits(priv->regmap, reg,
+				 QCE2204_PPE_MC_MTU_CTRL_TBL_MTU_CMD,
+				 val);
 }
 
 /* Initialize RSS hash */
@@ -1872,6 +1869,44 @@ int qce2204_ppe_port_mtu_set(struct qce2204_priv *priv,
 	/* Update MTU fields */
 	QCE2204_PPE_MRU_MTU_CTRL_SET_MTU(tbl_data, cfg->mtu);
 	QCE2204_PPE_MRU_MTU_CTRL_SET_MTU_CMD(tbl_data, cfg->mtu_cmd);
+
+	return regmap_bulk_write(priv->regmap, reg_addr, tbl_data,
+				 QCE2204_PPE_MRU_MTU_CTRL_TBL_INC / 4);
+}
+
+/**
+ * qce2204_ppe_port_mru_set - Configure port MRU
+ * @priv: QCE2204 private data
+ * @port_id: Port ID
+ * @cfg: MRU configuration
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int qce2204_ppe_port_mru_set(struct qce2204_priv *priv,
+			      u32 port_id,
+			      struct qce2204_ppe_port_mru_cfg *cfg)
+{
+	u32 reg_addr;
+	u32 tbl_data[QCE2204_PPE_MRU_MTU_CTRL_TBL_INC / 4];
+	int ret;
+
+	if (!priv || !cfg)
+		return -EINVAL;
+
+	if (port_id >= QCE2204_PPE_MRU_MTU_CTRL_TBL_ENTRIES)
+		return -EINVAL;
+
+	reg_addr = QCE2204_PPE_MRU_MTU_CTRL_TBL_ADDR +
+		   port_id * QCE2204_PPE_MRU_MTU_CTRL_TBL_INC;
+
+	ret = regmap_bulk_read(priv->regmap, reg_addr, tbl_data,
+			       QCE2204_PPE_MRU_MTU_CTRL_TBL_INC / 4);
+	if (ret)
+		return ret;
+
+	/* Update MRU fields */
+	QCE2204_PPE_MRU_MTU_CTRL_SET_MRU(tbl_data, cfg->mru);
+	QCE2204_PPE_MRU_MTU_CTRL_SET_MRU_CMD(tbl_data, cfg->mru_cmd);
 
 	return regmap_bulk_write(priv->regmap, reg_addr, tbl_data,
 				 QCE2204_PPE_MRU_MTU_CTRL_TBL_INC / 4);
@@ -2745,7 +2780,7 @@ int qce2204_ppe_hw_init(struct qce2204_priv *priv)
 {
 	int ret;
 
-	dev_info(priv->dev, "Initializing PPE hardware (upstream sequence)\n");
+	dev_info(priv->dev, "Initializing PPE hardware\n");
 
 	ret = qce2204_ppe_config_bm(priv);
 	if (ret)
