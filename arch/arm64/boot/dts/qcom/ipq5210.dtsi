@@ -103,17 +103,17 @@
 		#size-cells = <2>;
 		ranges;
 
-		smem@8a100000 {
+		bootloader@8a100000 {
+			reg = <0x0 0x8a100000 0x0 0x400000>;
+			no-map;
+		};
+
+		smem@8a500000 {
 			compatible = "qcom,smem";
-			reg = <0x0 0x8a100000 0x0 0x40000>;
+			reg = <0x0 0x8a500000 0x0 0x40000>;
 			no-map;
 
 			hwlocks = <&tcsr_mutex 3>;
-		};
-
-		bootloader@0x8a200000 {
-			reg = <0x0 0x8a200000 0x0 0x400000>;
-			no-map;
 		};
 
 		tfa@8a600000 {
