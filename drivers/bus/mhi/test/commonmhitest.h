@@ -168,7 +168,9 @@ struct mhitest_platform {
 /* klog level for mhitest driver */
 	bool soc_reset_requested;
 	struct completion soc_reset_request;
-	bool running;
+	atomic_t running;
+	atomic_t recovery_in_progress;
+	struct completion recovery_complete;
 	struct timer_list boot_debug_timer;
 };
 enum MHI_STATE {
