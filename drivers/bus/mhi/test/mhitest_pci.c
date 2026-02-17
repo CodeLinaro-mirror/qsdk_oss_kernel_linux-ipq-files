@@ -866,6 +866,12 @@ void mhitest_sch_do_recovery(struct mhitest_platform *mplat,
 	int gfp = GFP_KERNEL;
 	struct mhitest_recovery_data *data;
 
+	/* Check if device is running using atomic operation */
+	if (!atomic_read(&mplat->running)) {
+		pr_info("Device not running, skipping recovery scheduling\n");
+		return;
+	}
+
 	if (in_interrupt() || irqs_disabled())
 		gfp = GFP_ATOMIC;
 
@@ -1550,7 +1556,7 @@ static void mhitest_boot_debug_timeout_hdlr(struct timer_list *timer)
 	struct mhitest_platform *mplat = from_timer(mplat, timer,
 						    boot_debug_timer);
 
-	if (!pblsbl_debug || !mplat || !mplat->mhi_ctrl || mplat->running ||
+	if (!pblsbl_debug || !mplat || !mplat->mhi_ctrl || atomic_read(&mplat->running) ||
 	    MHITEST_IN_MISSION_MODE(mplat->mhi_ctrl->ee) ||
 	    mhi_scan_rddm_cookie(mplat->mhi_ctrl, DEVICE_RDDM_COOKIE))
 		return;
@@ -1814,10 +1820,10 @@ out1:
 
 int mhitest_prepare_start_mhi(struct mhitest_platform *mplat)
 {
-	if (mplat->running)
-		return 0;
-
 	int ret;
+
+	if (atomic_read(&mplat->running))
+		return 0;
 
 	/*
 	 * 1. power on, resume link if needed
@@ -1841,7 +1847,7 @@ int mhitest_prepare_start_mhi(struct mhitest_platform *mplat)
 		pr_err("Error ret: %d\n", ret);
 		goto out;
 	}
-	mplat->running = true;
+	atomic_set(&mplat->running, 1);
 
 out:
 	return ret;
@@ -1859,7 +1865,7 @@ static ssize_t state_show(struct device *dev,
 	if (!mplat)
 		return -ENOENT;
 
-	return sysfs_emit(buf, "%s\n", mplat->running ? "started" : "stopped");
+	return sysfs_emit(buf, "%s\n", atomic_read(&mplat->running) ? "started" : "stopped");
 }
 
 static ssize_t state_store(struct device *dev,
@@ -1880,11 +1886,11 @@ static ssize_t state_store(struct device *dev,
 			pr_err("Error preapare start mhi  ret:%d\n", ret);
 		}
 	} else if (sysfs_streq(buf, "stop")) {
-		if (mplat->running) {
+		if (atomic_read(&mplat->running)) {
 			mhitest_pci_soc_reset(mplat);
 			mhitest_pci_set_mhi_state(mplat, MHI_POWER_OFF);
 			mhitest_pci_set_mhi_state(mplat, MHI_DEINIT);
-			mplat->running = false;
+			atomic_set(&mplat->running, 0);
 			mhitest_global_soc_reset(mplat);
 			msleep(2000);
 			mhitest_reset_mhi_state(mplat);
@@ -1951,6 +1957,10 @@ int mhitest_pci_probe(struct pci_dev *pci_dev, const struct pci_device_id *id)
 	if (ret)
 		goto free_mplat;
 
+	/* Initialize recovery synchronization */
+	atomic_set(&mplat->recovery_in_progress, 0);
+	init_completion(&mplat->recovery_complete);
+
 	mhitest_store_mplat(mplat);
 
 	if (mplat->device_id == QCN92XX_DEVICE_ID)
@@ -2006,7 +2016,7 @@ fail_probe:
 
 void mhitest_pci_soc_reset(struct mhitest_platform *mplat)
 {
-	if (!mplat->running)
+	if (!atomic_read(&mplat->running))
 		return;
 
 	if (mhi_get_exec_env(mplat->mhi_ctrl) == MHI_EE_RDDM) {
@@ -2043,12 +2053,33 @@ void mhitest_pci_remove(struct pci_dev *pci_dev)
 	mplat = get_mhitest_mplat_by_pcidev(pci_dev);
 	if (mplat) {
 		pr_debug("Going for shutdown\n");
-		if (mplat->running) {
-			mhitest_pci_soc_reset(mplat);
-			mhitest_pci_set_mhi_state(mplat, MHI_POWER_OFF);
-			mhitest_pci_set_mhi_state(mplat, MHI_DEINIT);
-			mplat->running = false;
+
+		/* CRITICAL: Set running=false FIRST to prevent new callbacks
+		 * from queuing new work. Atomic operations have implicit memory
+		 * barriers, so no explicit barriers needed.
+		 */
+		atomic_set(&mplat->running, 0);
+
+		/* Wait for any in-progress recovery to complete before cleanup */
+		if (atomic_read(&mplat->recovery_in_progress)) {
+			pr_info("Waiting for recovery to complete...\n");
+			wait_for_completion_timeout(&mplat->recovery_complete,
+						    msecs_to_jiffies(30000)); /* 30s timeout */
 		}
+
+		/* Now cancel and flush any pending work. Since running=false,
+		 * no new work can be queued by callbacks during or after this.
+		 */
+		if (mplat->event_wq) {
+			pr_info("Cancelling pending recovery work\n");
+			cancel_work_sync(&mplat->event_work);
+			flush_workqueue(mplat->event_wq);
+		}
+
+		/* Safe to cleanup resources - no work can access them anymore */
+		mhitest_pci_soc_reset(mplat);
+		mhitest_pci_set_mhi_state(mplat, MHI_POWER_OFF);
+		mhitest_pci_set_mhi_state(mplat, MHI_DEINIT);
 
 		mhitest_pci_remove_all(mplat);
 		mhitest_event_work_deinit(mplat);
