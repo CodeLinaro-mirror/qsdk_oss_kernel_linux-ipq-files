@@ -233,7 +233,7 @@ static void nft_npt_eval(const struct nft_expr *expr, struct nft_regs *regs, con
 	}
 }
 
-static int nft_npt_validate(const struct nft_ctx *ctx, const struct nft_expr *expr, const struct nft_data **data)
+static int nft_npt_validate(const struct nft_ctx *ctx, const struct nft_expr *expr)
 {
 	struct nft_npt *priv = nft_expr_priv(expr);
 	int err;
