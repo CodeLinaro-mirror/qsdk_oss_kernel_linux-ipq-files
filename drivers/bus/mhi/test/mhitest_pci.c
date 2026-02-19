@@ -27,6 +27,7 @@
 
 #define QCN9000_DEFAULT_FW_FILE_NAME	"qcn9000/amss.bin"
 #define QCN9224_DEFAULT_FW_FILE_NAME	"qcn9224/amss.bin"
+#define QCC2072_DEFAULT_FW_FILE_NAME	"qcc2072/amss.bin"
 #define QCN9625_DEFAULT_FW_FILE_NAME	"qcn9625/amss.bin"
 #define QCN9589_DEFAULT_FW_FILE_NAME	"qcn9589/amss.bin"
 
@@ -1033,7 +1034,8 @@ int mhitest_pci_register_mhi(struct mhitest_platform *mplat)
 	mhi_ctrl->fbc_download = true;
 
 	if (mplat->device_id == QCN96XX_DEVICE_ID ||
-	    mplat->device_id == QCN95XX_DEVICE_ID)
+	    mplat->device_id == QCN95XX_DEVICE_ID ||
+	    mplat->device_id == QCC20XX_DEVICE_ID)
 		mhi_ctrl->standard_elf_image = true;
 
 	ret = mhi_register_controller(mhi_ctrl, &mhitest_mhi_config);
@@ -1164,6 +1166,8 @@ static int mhitest_get_bar_remap_ctrl_offset(struct mhitest_platform *mplat,
 		*reg = QCN9224_PCIE_REMAP_BAR_CTRL_OFFSET;
 		break;
 
+	case QCC20XX_DEVICE_ID:
+		fallthrough;
 	case QCN95XX_DEVICE_ID:
 		fallthrough;
 	case QCN96XX_DEVICE_ID:
@@ -1187,6 +1191,7 @@ static int mhitest_pci_select_window(struct mhitest_platform *mplat, u32 addr)
 	void __iomem *bar = NULL;
 
 	switch (mplat->device_id) {
+	case QCC20XX_DEVICE_ID:
 	case QCN92XX_DEVICE_ID:
 		window = (addr >> WINDOW_SHIFT) & QCN9224_WINDOW_VALUE_MASK;
 		break;
@@ -1216,6 +1221,7 @@ static int mhitest_pci_select_window(struct mhitest_platform *mplat, u32 addr)
 
 	/* Clear out last 6 or 7 bits of window register */
 	switch (mplat->device_id) {
+	case QCC20XX_DEVICE_ID:
 	case QCN92XX_DEVICE_ID:
 		prev_cleared_window = prev_window & ~(QCN9224_WINDOW_VALUE_MASK);
 		break;
@@ -1267,6 +1273,8 @@ static int mhitest_get_mhi_region_len(struct mhitest_platform *mplat,
 	case QCN95XX_DEVICE_ID:
 		fallthrough;
 	case QCN96XX_DEVICE_ID:
+		fallthrough;
+	case QCC20XX_DEVICE_ID:
 		*reg_start = QCN9224_PCI_MHIREGLEN_REG;
 		*reg_end = QCN9224_PCI_MHI_REGION_END;
 		break;
@@ -1450,7 +1458,7 @@ void mhitest_pci_disable_bus(struct mhitest_platform *mplat)
 
 	mhitest_global_soc_reset(mplat);
 
-	msleep(2000);
+	msleep(1000);
 
 	mhitest_reset_mhi_state(mplat);
 
@@ -1773,6 +1781,7 @@ int mhitest_pci_start_mhi(struct mhitest_platform *mplat)
 	case QCN92XX_DEVICE_ID:
 		qrtr_instance_id_reg = PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV0;
 		break;
+	case QCC20XX_DEVICE_ID:
 	case QCN95XX_DEVICE_ID:
 	case QCN96XX_DEVICE_ID:
 		qrtr_instance_id_reg =
@@ -1892,7 +1901,7 @@ static ssize_t state_store(struct device *dev,
 			mhitest_pci_set_mhi_state(mplat, MHI_DEINIT);
 			atomic_set(&mplat->running, 0);
 			mhitest_global_soc_reset(mplat);
-			msleep(2000);
+			msleep(1000);
 			mhitest_reset_mhi_state(mplat);
 		}
 	} else {
@@ -1966,6 +1975,9 @@ int mhitest_pci_probe(struct pci_dev *pci_dev, const struct pci_device_id *id)
 	if (mplat->device_id == QCN92XX_DEVICE_ID)
 		snprintf(mplat->fw_name, sizeof(mplat->fw_name),
 			 QCN9224_DEFAULT_FW_FILE_NAME);
+	else if (mplat->device_id == QCC20XX_DEVICE_ID)
+		snprintf(mplat->fw_name, sizeof(mplat->fw_name),
+			 QCC2072_DEFAULT_FW_FILE_NAME);
 	else if (mplat->device_id == QCN96XX_DEVICE_ID)
 		snprintf(mplat->fw_name, sizeof(mplat->fw_name),
 			 QCN9625_DEFAULT_FW_FILE_NAME);
@@ -2203,6 +2215,7 @@ retry:
 static const struct pci_device_id mhitest_pci_id_table[] = {
 	{QTI_PCI_VENDOR_ID, QCN90XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
 	{QTI_PCI_VENDOR_ID, QCN92XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
+	{QTI_PCI_VENDOR_ID, QCC20XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
 	{QTI_PCI_VENDOR_ID, QCN96XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
 	{QTI_PCI_VENDOR_ID, QCN95XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
 	{}
