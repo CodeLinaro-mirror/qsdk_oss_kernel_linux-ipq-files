@@ -364,6 +364,15 @@
 		};
 	};
 
+	sysregister {
+		compatible = "qcom,sysregister";
+		reg-names = "bootcount", "force_inactive";
+		reg-access-type = "syscon", "secure";
+		reg-phandle = <&imem>, <&tcsr>;
+		reg-offset = <0xC8>, <0x6100>;
+		reg-bit-position = <0xffffffff>, <12>;
+	};
+
 	wcss: wcss-smp2p {
 		compatible = "qcom,smp2p";
 		qcom,smem = <435>, <428>;

@@ -260,6 +260,10 @@
 		};
 	};
 
+	sysregister {
+		compatible = "qcom,sysregister";
+	};
+
 	soc@0 {
 		compatible = "simple-bus";
 		#address-cells = <1>;
