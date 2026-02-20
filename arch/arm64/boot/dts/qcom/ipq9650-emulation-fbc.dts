@@ -100,3 +100,7 @@
 	non-removable;
 	status = "okay";
 };
+
+&cmn_pll {
+	status = "disabled";
+};
