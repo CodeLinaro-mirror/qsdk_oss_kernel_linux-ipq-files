@@ -90,12 +90,19 @@ void mhitest_recovery_post_rddm(struct mhitest_platform *mplat)
 	u32 soc_reset_cause = 0;
 
 	pr_debug("Enter\n");
-	msleep(10000); /*Let's wait for some time !*/
+
+	/* Check if device is being removed using atomic operation */
+	if (!atomic_read(&mplat->running)) {
+		pr_info("Device removal in progress, skipping recovery\n");
+		return;
+	}
+
+	msleep(100); /* Brief delay before recovery operations */
 
 	mhitest_pci_soc_reset(mplat);
 	mhitest_pci_set_mhi_state(mplat, MHI_POWER_OFF);
 	mhitest_pci_set_mhi_state(mplat, MHI_DEINIT);
-	mplat->running = false;
+	atomic_set(&mplat->running, 0);
 
 	ret = mhitest_pci_reg_read(mplat,
 				   QCN9625_WLAON_SOC_RESET_CAUSE_SHADOW_REG,
@@ -123,9 +130,19 @@ int mhitest_recovery_event_handler(struct mhitest_platform *mplat, void *data)
 {
 	struct mhitest_driver_event *event = data;
 	struct mhitest_recovery_data *rdata = event->data;
+	int ret = 0;
 
-	pr_emerg("Recovery triggred with reason:(%s)-(%d)\n",
+	pr_emerg("Recovery triggered with reason:(%s)-(%d)\n",
 		 mhitest_recov_reason_to_str(rdata->reason), rdata->reason);
+
+	/* Check if device is running using atomic operation */
+	if (!atomic_read(&mplat->running)) {
+		pr_err("Target already down, skipping recovery\n");
+		goto out;
+	}
+
+	/* Set recovery in progress flag */
+	atomic_set(&mplat->recovery_in_progress, 1);
 
 	switch (rdata->reason) {
 	case MHI_DEFAULT:
@@ -135,18 +152,21 @@ int mhitest_recovery_event_handler(struct mhitest_platform *mplat, void *data)
 	case MHI_RDDM:
 		mhitest_dump_info(mplat, false);
 
-		if (rddm_r) { /*using mod param for now*/
+		if (rddm_r) /*using mod param for now*/
 			mhitest_recovery_post_rddm(mplat);
-			return 0; /*for now*/
-		} else
-			return 0;
-		break;
+		goto out;
 	default:
 		pr_err("Incorrect reason\n");
 		break;
 	}
-	kfree(data);
-	return 0;
+
+out:
+	/* Clear recovery in progress flag and signal completion */
+	atomic_set(&mplat->recovery_in_progress, 0);
+	complete(&mplat->recovery_complete);
+
+	kfree(rdata);
+	return ret;
 }
 
 static void mhitest_event_work(struct work_struct *work)
