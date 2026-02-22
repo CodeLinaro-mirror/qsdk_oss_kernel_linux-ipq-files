@@ -3912,6 +3912,17 @@ static __maybe_unused struct clk_regmap *gcc_ipq9650_dummy_clks[] = {
 	[GCC_QUPV3_WRAP_SE5_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_wrap_se5),
 	[GCC_QUPV3_WRAP_SE6_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_wrap_se6),
 	[GCC_QUPV3_WRAP_SE7_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_wrap_se7),
+	[GCC_USB1_PHY_CFG_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_usb1_phy_cfg_ahb),
+	[GCC_USB1_MASTER_CLK] = DEFINE_DUMMY_CLK(gcc_usb1_master),
+	[GCC_USB1_SLEEP_CLK] = DEFINE_DUMMY_CLK(gcc_usb1_sleep),
+	[GCC_USB1_MOCK_UTMI_CLK] = DEFINE_DUMMY_CLK(gcc_usb1_mock_utmi),
+	[GCC_USB0_PHY_CFG_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_usb0_phy_cfg_ahb),
+	[GCC_USB0_AUX_CLK] = DEFINE_DUMMY_CLK(gcc_usb0_aux),
+	[GCC_USB0_PIPE_CLK] = DEFINE_DUMMY_CLK(gcc_usb0_pipe),
+	[GCC_USB0_MASTER_CLK] = DEFINE_DUMMY_CLK(gcc_usb0_master),
+	[GCC_USB0_SLEEP_CLK] = DEFINE_DUMMY_CLK(gcc_usb0_sleep),
+	[GCC_USB0_MOCK_UTMI_CLK] = DEFINE_DUMMY_CLK(gcc_usb0_mock_utmi),
+	[GCC_SNOC_USB_CLK] = DEFINE_DUMMY_CLK(gcc_snoc_usb),
 };
 
 static __maybe_unused struct clk_regmap *gcc_ipq9650_clocks[] = {

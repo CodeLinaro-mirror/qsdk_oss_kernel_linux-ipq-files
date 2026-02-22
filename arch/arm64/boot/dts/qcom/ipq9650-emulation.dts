@@ -149,6 +149,30 @@
 			};
 		};
 
+		usb2@1e00000 {
+			status = "okay";
+
+			dwc3@1e00000 {
+				usb-phy = <>;
+				phys = <>;
+				phy-names = "";
+				snps,quirk-fladj = <0x8c00c8a0>;
+				snps,quirk-guctl = <0xc804010>;
+			};
+		};
+
+		usb3@8a00000 {
+			status = "okay";
+
+			dwc3@8a00000 {
+				usb-phy = <>;
+				phys = <>;
+				phy-names = "";
+				snps,quirk-fladj = <0x8c00c8a0>;
+				snps,quirk-guctl = <0xc804010>;
+			};
+		};
+
 		dp1 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
