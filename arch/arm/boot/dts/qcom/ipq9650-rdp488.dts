@@ -6,3 +6,4 @@
  */
 
 #include <arm64/qcom/ipq9650-rdp488.dts>
+#include "ipq9650-32bit-common.dtsi"
