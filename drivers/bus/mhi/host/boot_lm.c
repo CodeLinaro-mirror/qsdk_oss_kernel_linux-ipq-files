@@ -211,6 +211,8 @@ static int mhi_update_scratch_reg(struct mhi_controller *mhi_cntrl, u32 val)
 	struct device *dev = &mhi_cntrl->mhi_dev->dev;
 	u32 rd_val;
 	int ret = 0;
+	int retry;
+	const int max_retries = 3;
 
 	/* Program Window register to update boot args pointer */
 	ret = mhi_read_reg(mhi_cntrl, mhi_cntrl->regs, PCIE_REMAP_BAR_CTRL_OFFSET,
@@ -221,22 +223,35 @@ static int mhi_update_scratch_reg(struct mhi_controller *mhi_cntrl, u32 val)
 	rd_val = rd_val & ~(0x3f);
 
 	mhi_write_reg(mhi_cntrl, mhi_cntrl->regs, PCIE_REMAP_BAR_CTRL_OFFSET,
-				PCIE_SCRATCH_0_WINDOW_VAL | rd_val);
+		      PCIE_SCRATCH_0_WINDOW_VAL | rd_val);
 
-	mhi_write_reg(mhi_cntrl, mhi_cntrl->regs + MAX_UNWINDOWED_ADDRESS,
-			PCIE_REG_FOR_BOOT_ARGS, val);
+	/* Retry loop for writing and verifying scratch register */
+	for (retry = 0; retry < max_retries; retry++) {
+		mhi_write_reg(mhi_cntrl,
+			      mhi_cntrl->regs + MAX_UNWINDOWED_ADDRESS,
+			      PCIE_REG_FOR_BOOT_ARGS, val);
 
-	ret = mhi_read_reg(mhi_cntrl, mhi_cntrl->regs + MAX_UNWINDOWED_ADDRESS,
-			PCIE_REG_FOR_BOOT_ARGS,	&rd_val);
-	if (ret)
-		return ret;
+		ret = mhi_read_reg(mhi_cntrl,
+				   mhi_cntrl->regs + MAX_UNWINDOWED_ADDRESS,
+				   PCIE_REG_FOR_BOOT_ARGS, &rd_val);
+		if (ret)
+			return ret;
 
-	if (rd_val != val) {
-		dev_err(dev, "Write to PCIE_REG_FOR_BOOT_ARGS register failed\n");
-		return -EFAULT;
+		if (rd_val == val) {
+			if (retry > 0)
+				dev_info(dev,
+					 "Scratch register write succeeded after %d retries\n",
+					 retry);
+			return 0;
+		}
+
+		/* Small delay before retry */
+		usleep_range(1000, 2000);
 	}
 
-	return 0;
+	dev_err(dev, "Write to PCIE_REG_FOR_BOOT_ARGS register failed after %d retries (wrote: 0x%x, read: 0x%x)\n",
+		max_retries, val, rd_val);
+	return -EFAULT;
 }
 
 int mhi_handle_boot_args(struct mhi_controller *mhi_cntrl)
