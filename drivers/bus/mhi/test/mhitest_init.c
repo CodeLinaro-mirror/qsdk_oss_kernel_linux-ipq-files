@@ -86,7 +86,7 @@ char *mhitest_recov_reason_to_str(enum mhitest_recovery_reason reason)
 
 void mhitest_recovery_post_rddm(struct mhitest_platform *mplat)
 {
-	int ret;
+	int ret = 0;
 	u32 soc_reset_cause = 0;
 
 	pr_debug("Enter\n");
@@ -104,17 +104,20 @@ void mhitest_recovery_post_rddm(struct mhitest_platform *mplat)
 	mhitest_pci_set_mhi_state(mplat, MHI_DEINIT);
 	atomic_set(&mplat->running, 0);
 
-	ret = mhitest_pci_reg_read(mplat,
-				   QCN9625_WLAON_SOC_RESET_CAUSE_SHADOW_REG,
-				   &soc_reset_cause);
-	pr_info("soc_reset_cause: 0x%x\n", soc_reset_cause);
+	if (mplat->device_id == QCN96XX_DEVICE_ID ||
+	    mplat->device_id == QCN95XX_DEVICE_ID) {
+		ret = mhitest_pci_reg_read(mplat,
+					   QCN9625_WLAON_SOC_RESET_CAUSE_SHADOW_REG,
+					   &soc_reset_cause);
+		pr_info("soc_reset_cause: 0x%x\n", soc_reset_cause);
+	}
 
 	if (!ret && (soc_reset_cause & QCN9625_RESET_CAUSE_Q6_BCR))
 		mhitest_q6_bcr_reset(mplat);
 	else
 		mhitest_global_soc_reset(mplat);
 
-	msleep(2000);
+	msleep(1000);
 	mhitest_reset_mhi_state(mplat);
 
 	ret = mhitest_prepare_start_mhi(mplat);
