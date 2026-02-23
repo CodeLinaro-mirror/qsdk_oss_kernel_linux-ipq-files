@@ -1791,7 +1791,7 @@
 		/* EDMA host driver configuration */
 		edma@3ad00000 {
 			compatible = "qcom,edma";
-			reg = <0x3ad00000 0xef800>;
+			reg = <0x3ad00000 0x1C5000>;
 			reg-names = "edma-reg-base";
 			/* TO-DO: Add EDMA HW resets */
 			reset-names = "edma_rst";
