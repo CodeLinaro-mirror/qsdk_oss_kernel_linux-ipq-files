@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+config QCOM_TMELCOM_QMI
+	tristate "Qualcomm TMEL Communication QMI Client Infrastructure"
+	depends on QRTR && QCOM_QMI_HELPERS
+	help
+	  Generic QMI-based communication infrastructure for TME-L (Trusted
+	  Management Environment - Lite) services over PCIe. Provides QMI
+	  client framework for Trestles devices attached via PCIe.
+
+	  Currently supports TME service (0x5F) for attestation, provisioning,
+	  and licensing operations. The infrastructure is designed to be
+	  extensible for additional TME-L services in the future.
+
+	  The driver provides sysfs interface for monitoring and debugging,
+	  and exposes kernel APIs for other drivers to communicate with
+	  TME-L services.
+
+	  Say Y or M here to enable TME-L QMI client support.

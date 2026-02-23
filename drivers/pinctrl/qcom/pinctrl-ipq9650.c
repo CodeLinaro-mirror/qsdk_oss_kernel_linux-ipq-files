@@ -202,9 +202,12 @@ enum ipq9650_functions {
 	msm_mux_gcc_plltest_resetn,
 	msm_mux_gcc_tlmm,
 	msm_mux_mdc_mst,
-	msm_mux_mdc_slv,
+	msm_mux_mdc_slv0,
+	msm_mux_mdc_slv1,
 	msm_mux_mdio_mst,
 	msm_mux_mdio_slv,
+	msm_mux_mdio_slv0,
+	msm_mux_mdio_slv1,
 	msm_mux_pcie0_clk_req_n,
 	msm_mux_pcie0_wake,
 	msm_mux_pcie1_clk_req_n,
@@ -218,6 +221,7 @@ enum ipq9650_functions {
 	msm_mux_pll_bist_sync,
 	msm_mux_pll_test,
 	msm_mux_pwm_out00,
+	msm_mux_pwm_out01,
 	msm_mux_pwm_out02,
 	msm_mux_pwm_out10,
 	msm_mux_pwm_out11,
@@ -290,6 +294,7 @@ enum ipq9650_functions {
 	msm_mux_resout,
 	msm_mux_rx_los00,
 	msm_mux_rx_los01,
+	msm_mux_rx_los02,
 	msm_mux_rx_los10,
 	msm_mux_rx_los11,
 	msm_mux_rx_los20,
@@ -422,23 +427,27 @@ static const char *const dbg_out_clk_groups[] = {
 };
 
 static const char *const gcc_plltest_bypassnl_groups[] = {
-	"gpio43",
+	"gpio33",
 };
 
 static const char *const gcc_plltest_resetn_groups[] = {
-	"gpio45",
+	"gpio35",
 };
 
 static const char *const gcc_tlmm_groups[] = {
-	"gpio44",
+	"gpio34",
 };
 
 static const char *const mdc_mst_groups[] = {
 	"gpio22",
 };
 
-static const char *const mdc_slv_groups[] = {
+static const char *const mdc_slv0_groups[] = {
 	"gpio20",
+};
+
+static const char *const mdc_slv1_groups[] = {
+	"gpio14",
 };
 
 static const char *const mdio_mst_groups[] = {
@@ -446,7 +455,16 @@ static const char *const mdio_mst_groups[] = {
 };
 
 static const char *const mdio_slv_groups[] = {
+	"gpio46",
+	"gpio47",
+};
+
+static const char *const mdio_slv0_groups[] = {
 	"gpio21",
+};
+
+static const char *const mdio_slv1_groups[] = {
+	"gpio15",
 };
 
 static const char *const pcie0_clk_req_n_groups[] = {
@@ -501,12 +519,15 @@ static const char *const pwm_out00_groups[] = {
 	"gpio48",
 };
 
+static const char *const pwm_out01_groups[] = {
+	"gpio11",
+};
+
 static const char *const pwm_out02_groups[] = {
 	"gpio16",
 };
 
 static const char *const pwm_out10_groups[] = {
-	"gpio11",
 	"gpio47",
 };
 
@@ -792,6 +813,10 @@ static const char *const rx_los01_groups[] = {
 	"gpio39",
 };
 
+static const char *const rx_los02_groups[] = {
+	"gpio50",
+};
+
 static const char *const rx_los10_groups[] = {
 	"gpio46",
 };
@@ -861,9 +886,12 @@ static const struct pinfunction ipq9650_functions[] = {
 	MSM_PIN_FUNCTION(gcc_plltest_resetn),
 	MSM_PIN_FUNCTION(gcc_tlmm),
 	MSM_PIN_FUNCTION(mdc_mst),
-	MSM_PIN_FUNCTION(mdc_slv),
+	MSM_PIN_FUNCTION(mdc_slv0),
+	MSM_PIN_FUNCTION(mdc_slv1),
 	MSM_PIN_FUNCTION(mdio_mst),
 	MSM_PIN_FUNCTION(mdio_slv),
+	MSM_PIN_FUNCTION(mdio_slv0),
+	MSM_PIN_FUNCTION(mdio_slv1),
 	MSM_PIN_FUNCTION(pcie0_clk_req_n),
 	MSM_PIN_FUNCTION(pcie0_wake),
 	MSM_PIN_FUNCTION(pcie1_clk_req_n),
@@ -877,6 +905,7 @@ static const struct pinfunction ipq9650_functions[] = {
 	MSM_PIN_FUNCTION(pll_bist_sync),
 	MSM_PIN_FUNCTION(pll_test),
 	MSM_PIN_FUNCTION(pwm_out00),
+	MSM_PIN_FUNCTION(pwm_out01),
 	MSM_PIN_FUNCTION(pwm_out02),
 	MSM_PIN_FUNCTION(pwm_out10),
 	MSM_PIN_FUNCTION(pwm_out11),
@@ -949,6 +978,7 @@ static const struct pinfunction ipq9650_functions[] = {
 	MSM_PIN_FUNCTION(resout),
 	MSM_PIN_FUNCTION(rx_los00),
 	MSM_PIN_FUNCTION(rx_los01),
+	MSM_PIN_FUNCTION(rx_los02),
 	MSM_PIN_FUNCTION(rx_los10),
 	MSM_PIN_FUNCTION(rx_los11),
 	MSM_PIN_FUNCTION(rx_los20),
@@ -972,17 +1002,17 @@ static const struct msm_pingroup ipq9650_groups[] = {
 	[8] = PINGROUP(8, qup_se0_l0, pwm_out31, _, cri_rng2, qdss_tracedata_a, _, _, _, _, _, _),
 	[9] = PINGROUP(9, qup_se0_l1, pwm_out21, _, qdss_tracedata_a, _, _, _, _, _, _, _),
 	[10] = PINGROUP(10, qup_se1_l1, pwm_out11, _, _, qdss_tracedata_a, _, _, _, _, _, _),
-	[11] = PINGROUP(11, qup_se1_l0, pwm_out10, _, _, qdss_tracedata_a, _, _, _, _, _, _),
+	[11] = PINGROUP(11, qup_se1_l0, pwm_out01, _, _, qdss_tracedata_a, _, _, _, _, _, _),
 	[12] = PINGROUP(12, qup_se1_l3, _, qdss_tracedata_a, _, _, _, _, _, _, _, _),
 	[13] = PINGROUP(13, qup_se1_l2, _, qdss_tracedata_a, _, _, _, _, _, _, _, _),
-	[14] = PINGROUP(14, qup_se4_l1, tsens_max, _, qdss_tracedata_a, _, _, _, _, _, _, _),
-	[15] = PINGROUP(15, qup_se4_l0, _, qdss_tracedata_a, _, _, _, _, _, _, _, _),
+	[14] = PINGROUP(14, qup_se4_l1, mdc_slv1, tsens_max, _, qdss_tracedata_a, _, _, _, _, _, _),
+	[15] = PINGROUP(15, qup_se4_l0, mdio_slv1, _, qdss_tracedata_a, _, _, _, _, _, _, _),
 	[16] = PINGROUP(16, core_voltage_0, qup_se3_l1, pwm_out02, _, _, _, _, _, _, _, _),
 	[17] = PINGROUP(17, core_voltage_1, qup_se3_l0, pwm_out12, _, _, _, _, _, _, _, _),
 	[18] = PINGROUP(18, _, _, _, _, _, _, _, _, _, _, _),
 	[19] = PINGROUP(19, _, _, _, _, _, _, _, _, _, _, _),
-	[20] = PINGROUP(20, mdc_slv, qup_se3_l3, _, qdss_tracedata_a, _, _, _, _, _, _, _),
-	[21] = PINGROUP(21, mdio_slv, qup_se3_l2, atest_char_start, _, qdss_tracedata_a, _, _, _, _, _, _),
+	[20] = PINGROUP(20, mdc_slv0, qup_se3_l3, _, qdss_tracedata_a, _, _, _, _, _, _, _),
+	[21] = PINGROUP(21, mdio_slv0, qup_se3_l2, atest_char_start, _, qdss_tracedata_a, _, _, _, _, _, _),
 	[22] = PINGROUP(22, mdc_mst, atest_char_status2, _, _, _, _, _, _, _, _, _),
 	[23] = PINGROUP(23, mdio_mst, atest_char_status3, _, _, _, _, _, _, _, _, _),
 	[24] = PINGROUP(24, pcie0_clk_req_n, _, _, _, _, _, _, _, _, _, _),
@@ -994,9 +1024,9 @@ static const struct msm_pingroup ipq9650_groups[] = {
 	[30] = PINGROUP(30, pcie4_clk_req_n, _, _, _, _, _, _, _, _, _, _),
 	[31] = PINGROUP(31, _, _, _, _, _, _, _, _, _, _, _),
 	[32] = PINGROUP(32, pcie4_wake, _, _, _, _, _, _, _, _, _, _),
-	[33] = PINGROUP(33, core_voltage_2, qup_se2_l1, pwm_out22, atest_char_status0, _, _, _, _, _, _, _),
-	[34] = PINGROUP(34, core_voltage_3, qup_se2_l0, pwm_out32, _, _, _, _, _, _, _, _),
-	[35] = PINGROUP(35, core_voltage_4, pwm_out42, atest_char_status1, _, _, _, _, _, _, _, _),
+	[33] = PINGROUP(33, core_voltage_2, qup_se2_l1, gcc_plltest_bypassnl, pwm_out22, atest_char_status0, _, _, _, _, _, _),
+	[34] = PINGROUP(34, core_voltage_3, qup_se2_l0, gcc_tlmm, pwm_out32, _, _, _, _, _, _, _),
+	[35] = PINGROUP(35, core_voltage_4, gcc_plltest_resetn, pwm_out42, atest_char_status1, _, _, _, _, _, _, _),
 	[36] = PINGROUP(36, audio_pri_d0, qup_se7_l2, qdss_tracedata_a, _, _, _, _, _, _, _, _),
 	[37] = PINGROUP(37, audio_pri_d1, qup_se7_l3, audio_sec0, audio_sec0, rx_los21, qdss_tracedata_a, _, _, _, _, _),
 	[38] = PINGROUP(38, audio_pri_fsync, qup_se7_l0, rx_los11, qdss_tracedata_a, _, _, _, _, _, _, _),
@@ -1004,14 +1034,14 @@ static const struct msm_pingroup ipq9650_groups[] = {
 	[40] = PINGROUP(40, pcie3_clk_req_n, qup_se5_l4, qup_se4_l4, _, qdss_cti_trig_out_b0, _, _, _, _, _, _),
 	[41] = PINGROUP(41, _, _, _, _, _, _, _, _, _, _, _),
 	[42] = PINGROUP(42, pcie3_wake, qup_se5_l5, qup_se4_l5, _, qdss_cti_trig_in_b0, _, _, _, _, _, _),
-	[43] = PINGROUP(43, qup_se4_l3, qup_se6_l3, gcc_plltest_bypassnl, pwm_out50, _, qdss_cti_trig_in_b1, _, _, _, _, _),
-	[44] = PINGROUP(44, qup_se4_l2, qup_se6_l2, gcc_tlmm, pwm_out40, _, qdss_cti_trig_out_b1, _, _, _, _, _),
-	[45] = PINGROUP(45, qup_se5_l2, rx_los20, audio_sec_fsync, gcc_plltest_resetn, pwm_out30, _, qdss_traceclk_a, _, _, _, _),
-	[46] = PINGROUP(46, qup_se5_l3, rx_los10, audio_sec_pclk, pwm_out20, dbg_out_clk, qdss_tracectl_a, _, _, _, _, _),
-	[47] = PINGROUP(47, qup_se5_l0, rx_los00, audio_sec_d1, pll_bist_sync, pwm_out10, _, _, _, _, _, _),
+	[43] = PINGROUP(43, qup_se4_l3, qup_se6_l3, pwm_out50, _, qdss_cti_trig_in_b1, _, _, _, _, _, _),
+	[44] = PINGROUP(44, qup_se4_l2, qup_se6_l2, pwm_out40, _, qdss_cti_trig_out_b1, _, _, _, _, _, _),
+	[45] = PINGROUP(45, qup_se5_l2, rx_los20, audio_sec_fsync, pwm_out30, _, qdss_traceclk_a, _, _, _, _, _),
+	[46] = PINGROUP(46, qup_se5_l3, rx_los10, audio_sec_pclk, mdio_slv, pwm_out20, dbg_out_clk, qdss_tracectl_a, _, _, _, _),
+	[47] = PINGROUP(47, qup_se5_l0, rx_los00, audio_sec_d1, mdio_slv, pll_bist_sync, pwm_out10, _, _, _, _, _),
 	[48] = PINGROUP(48, qup_se5_l1, audio_sec_d0, pwm_out00, _, _, _, _, _, _, _, _),
 	[49] = PINGROUP(49, resout, _, _, _, _, _, _, _, _, _, _),
-	[50] = PINGROUP(50, tsn, _, _, _, _, _, _, _, _, _, _),
+	[50] = PINGROUP(50, tsn, rx_los02, _, _, _, _, _, _, _, _, _),
 	[51] = PINGROUP(51, pcie2_clk_req_n, qup_se6_l0, qup_se0_l4, audio_pri1, audio_pri1, qdss_cti_trig_out_a0, _, _, _, _, _),
 	[52] = PINGROUP(52, _, _, _, _, _, _, _, _, _, _, _),
 	[53] = PINGROUP(53, pcie2_wake, qup_se6_l1, qup_se0_l5, audio_pri0, audio_pri0, qdss_cti_trig_in_a0, _, atest_tic_en, _, _, _),
@@ -1044,7 +1074,7 @@ static struct platform_driver ipq9650_tlmm_driver = {
 		.of_match_table = ipq9650_tlmm_of_match,
 	},
 	.probe = ipq9650_tlmm_probe,
-	.remove = msm_pinctrl_remove,
+	.remove_new = msm_pinctrl_remove,
 };
 
 static int __init ipq9650_tlmm_init(void)

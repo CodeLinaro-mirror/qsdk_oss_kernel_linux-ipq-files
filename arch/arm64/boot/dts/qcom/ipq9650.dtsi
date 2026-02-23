@@ -212,17 +212,17 @@
 		#size-cells = <2>;
 		ranges;
 
-		smem@8a100000 {
+		bootloader@8a100000 {
+			reg = <0x0 0x8a100000 0x0 0x400000>;
+			no-map;
+		};
+
+		smem@8a500000 {
 			compatible = "qcom,smem";
-			reg = <0x0 0x8a100000 0x0 0x40000>;
+			reg = <0x0 0x8a500000 0x0 0x40000>;
 			no-map;
 
 			hwlocks = <&tcsr_mutex 3>;
-		};
-
-		bootloader@8a200000 {
-			reg = <0x0 0x8a200000 0x0 0x400000>;
-			no-map;
 		};
 
 		tfa@8a600000 {
@@ -268,8 +268,7 @@
 		dma-ranges;
 
 		pcie0_phy: phy@84000 {
-			compatible = "qcom,ipq9650-qmp-gen3x1-pcie-phy",
-				     "qcom,ipq9574-qmp-gen3x1-pcie-phy";
+			compatible = "qcom,ipq9650-qmp-gen3x1-pcie-phy";
 			reg = <0x00084000 0x1c0>; /* Serdes PLL */
 			#address-cells = <1>;
 			#size-cells = <1>;
@@ -312,8 +311,7 @@
 		};
 
 		pcie4_phy: phy@8c000 {
-			compatible = "qcom,ipq9650-qmp-gen3x1-pcie-phy",
-				     "qcom,ipq9574-qmp-gen3x1-pcie-phy";
+			compatible = "qcom,ipq9650-qmp-gen3x1-pcie-phy";
 			reg = <0x0008c000 0x1c0>; /* Serdes PLL */
 			#address-cells = <1>;
 			#size-cells = <1>;
@@ -355,6 +353,18 @@
 			};
 		};
 
+		mdio: mdio@90000 {
+			compatible = "qcom,qca-mdio", "qcom,ipq9650-mdio";
+			pinctrl-0 = <&mdio_mst_state &mdio_slv_state>;
+			pinctrl-names = "default";
+			reg = <0x90000 0x64>;
+			clocks = <&gcc GCC_MDIO_AHB_CLK>;
+			clock-names = "gcc_mdio_ahb_clk";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
 		cmn_pll: clock-controller@9b000 {
 			compatible = "qcom,ipq9650-cmn-pll";
 			reg = <0x0009b000 0x800>;
@@ -368,8 +378,7 @@
 		};
 
 		pcie3_phy: phy@b4000 {
-			compatible = "qcom,ipq9650-qmp-gen3x2-pcie-phy",
-				     "qcom,ipq9574-qmp-gen3x2-pcie-phy";
+			compatible = "qcom,ipq9650-qmp-gen3x2-pcie-phy";
 			reg = <0x000b4000 0x1c0>; /* Serdes PLL */
 			#address-cells = <1>;
 			#size-cells = <1>;
@@ -414,8 +423,7 @@
 		};
 
 		pcie1_phy: phy@f4000 {
-			compatible = "qcom,ipq9650-qmp-gen3x2-pcie-phy",
-				     "qcom,ipq9574-qmp-gen3x2-pcie-phy";
+			compatible = "qcom,ipq9650-qmp-gen3x2-pcie-phy";
 			reg = <0x000f4000 0x1c0>; /* Serdes PLL */
 			#address-cells = <1>;
 			#size-cells = <1>;
@@ -460,8 +468,7 @@
 		};
 
 		pcie2_phy: phy@fc000 {
-			compatible = "qcom,ipq9650-qmp-gen3x2-pcie-phy",
-				     "qcom,ipq9574-qmp-gen3x2-pcie-phy";
+			compatible = "qcom,ipq9650-qmp-gen3x2-pcie-phy";
 			reg = <0x000fc000 0x1c0>; /* Serdes PLL PCIE_2_CFG_QSERDES_PLL_QSERDES_PLL_G3X2_QMP_PLL */
 			#address-cells = <1>;
 			#size-cells = <1>;
@@ -514,6 +521,38 @@
 			gpio-ranges = <&tlmm 0 0 54>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
+
+			mdio_slv_state: mdio-slv-state {
+				mdc_slv {
+					pins = "gpio20";
+					function = "mdc_slv";
+					drive-strength = <8>;
+					bias-disable;
+				};
+
+				mdio_slv {
+					pins = "gpio21";
+					function = "mdio_slv";
+					drive-strength = <8>;
+					bias-pull-up;
+				};
+			};
+
+			mdio_mst_state: mdio-mst-state {
+				mdc_mst {
+					pins = "gpio22";
+					function = "mdc_mst";
+					drive-strength = <8>;
+					bias-pull-up;
+				};
+
+				mdio_mst {
+					pins = "gpio23";
+					function = "mdio_mst";
+					drive-strength = <8>;
+					bias-pull-up;
+				};
+			};
 
 			pcie0_default_state: pcie0-default-state {
 				perst-n-pins {
@@ -626,10 +665,10 @@
 			spi0: spi@1a80000 {
 				compatible = "qcom,geni-spi";
 				reg = <0x01a80000 0x4000>;
-				clocks = <&gcc GCC_QUPV3_SPI0_CLK>;
+				clocks = <&gcc GCC_QUPV3_WRAP_SE0_CLK>;
 				clock-names = "se";
 				interrupts = <GIC_SPI 339 IRQ_TYPE_LEVEL_HIGH>;
-				assigned-clocks = <&gcc GCC_QUPV3_SPI0_CLK>;
+				assigned-clocks = <&gcc GCC_QUPV3_WRAP_SE0_CLK>;
 				assigned-clock-rates = <50000000>;
 				/* Use common SE TX FIFO depth configuration */
 				qup-tx-fifo-depth = <0x20>;
@@ -639,7 +678,7 @@
 			uart0: serial@1a84000 {
 				compatible = "qcom,geni-debug-uart";
 				reg = <0x01a84000 0x4000>;
-				clocks = <&gcc GCC_QUPV3_UART0_CLK>;
+				clocks = <&gcc GCC_QUPV3_WRAP_SE1_CLK>;
 				clock-names = "se";
 				interrupts = <GIC_SPI 340 IRQ_TYPE_LEVEL_HIGH>;
 				status = "disabled";
@@ -648,11 +687,11 @@
 			i2c0: i2c@1a88000 {
 				compatible = "qcom,geni-i2c";
 				reg = <0x1a88000 0x4000>;
-				clocks = <&gcc GCC_QUPV3_I2C0_CLK>;
+				clocks = <&gcc GCC_QUPV3_WRAP_SE2_CLK>;
 				clock-names = "se";
 				clock-frequency = <400000>;
 				interrupts = <GIC_SPI 341 IRQ_TYPE_LEVEL_HIGH>;
-				assigned-clocks = <&gcc GCC_QUPV3_I2C0_CLK>;
+				assigned-clocks = <&gcc GCC_QUPV3_WRAP_SE2_CLK>;
 				assigned-clock-rates = <64000000>;
 				status = "disabled";
 			};
@@ -660,11 +699,11 @@
 			i2c1: i2c@1a8c000 {
 				compatible = "qcom,geni-i2c";
 				reg = <0x1a8c000 0x4000>;
-				clocks = <&gcc GCC_QUPV3_I2C1_CLK>;
+				clocks = <&gcc GCC_QUPV3_WRAP_SE3_CLK>;
 				clock-names = "se";
 				clock-frequency = <400000>;
 				interrupts = <GIC_SPI 342 IRQ_TYPE_LEVEL_HIGH>;
-				assigned-clocks = <&gcc GCC_QUPV3_I2C1_CLK>;
+				assigned-clocks = <&gcc GCC_QUPV3_WRAP_SE3_CLK>;
 				assigned-clock-rates = <64000000>;
 				status = "disabled";
 			};
@@ -672,7 +711,7 @@
 			uart1: serial@1a98000 {
 				compatible = "qcom,geni-debug-uart";
 				reg = <0x01a98000 0x4000>;
-				clocks = <&gcc GCC_QUPV3_UART1_CLK>;
+				clocks = <&gcc GCC_QUPV3_WRAP_SE6_CLK>;
 				clock-names = "se";
 				interrupts = <GIC_SPI 380 IRQ_TYPE_LEVEL_HIGH>;
 				status = "disabled";
@@ -1251,7 +1290,7 @@
 					  "boot-done",
 					  "wdog";
 
-			clocks = <&gcc GCC_PRIME_CORE_CLK>;
+			clocks = <&gcc GCC_PRIMESS_CLK>;
 			clock-names = "core-clk";
 
 			memory-region = <&prime_mem>;
@@ -1348,6 +1387,98 @@
 							0x2000 3
 							0x4400 2>;
 				};
+
+				fastrpc {
+					compatible = "qcom,fastrpc";
+					qcom,glink-channels = "fastrpcglink-apps-dsp";
+					label = "cdsp";
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					compute-cb@1 {
+						compatible = "qcom,fastrpc-compute-cb";
+						reg = <1>;
+						iommus = <&apps_iommu 0x0C01 0x0000>;
+						dma-coherent;
+					};
+
+					compute-cb@2 {
+						compatible = "qcom,fastrpc-compute-cb";
+						reg = <2>;
+						iommus = <&apps_iommu 0x0C02 0x0000>;
+						dma-coherent;
+					};
+
+					compute-cb@3 {
+						compatible = "qcom,fastrpc-compute-cb";
+						reg = <3>;
+						iommus = <&apps_iommu 0x0C03 0x0000>;
+						dma-coherent;
+					};
+
+					compute-cb@4 {
+						compatible = "qcom,fastrpc-compute-cb";
+						reg = <4>;
+						iommus = <&apps_iommu 0x0C04 0x0000>;
+						dma-coherent;
+					};
+
+					compute-cb@5 {
+						compatible = "qcom,fastrpc-compute-cb";
+						reg = <5>;
+						iommus = <&apps_iommu 0x0C05 0x0000>;
+						dma-coherent;
+					};
+
+					compute-cb@6 {
+						compatible = "qcom,fastrpc-compute-cb";
+						reg = <6>;
+						iommus = <&apps_iommu 0x0C06 0x0000>;
+						dma-coherent;
+					};
+
+					compute-cb@7 {
+						compatible = "qcom,fastrpc-compute-cb";
+						reg = <7>;
+						iommus = <&apps_iommu 0x0C07 0x0000>;
+						dma-coherent;
+					};
+
+					compute-cb@8 {
+						compatible = "qcom,fastrpc-compute-cb";
+						reg = <8>;
+						iommus = <&apps_iommu 0x0C08 0x0000>;
+						dma-coherent;
+					};
+
+					compute-cb@9 {
+						compatible = "qcom,fastrpc-compute-cb";
+						reg = <9>;
+						iommus = <&apps_iommu 0x0C09 0x0000>;
+						dma-coherent;
+					};
+
+					compute-cb@10 {
+						compatible = "qcom,fastrpc-compute-cb";
+						reg = <12>;
+						iommus = <&apps_iommu 0x0C0C 0x0000>;
+						dma-coherent;
+					};
+
+					compute-cb@11 {
+						compatible = "qcom,fastrpc-compute-cb";
+						reg = <13>;
+						iommus = <&apps_iommu 0x0C0D 0x0000>;
+						dma-coherent;
+					};
+
+					compute-cb@12 {
+						compatible = "qcom,fastrpc-compute-cb";
+						reg = <14>;
+						iommus = <&apps_iommu 0x0C0E 0x0000>;
+						dma-coherent;
+					};
+				};
 			};
 		};
 
@@ -1433,14 +1564,14 @@
 					       <200000000>,
 					       <100000000>;
 
-			resets = <&gcc GCC_PCIE3_PIPE_ARES>,
+			resets = <&gcc GCC_PCIE3_PIPE_CLK_ARES>,
 				 <&gcc GCC_PCIE3_CORE_STICKY_RESET>,
-				 <&gcc GCC_PCIE3_AXI_M_ARES>,
-				 <&gcc GCC_PCIE3_AXI_S_ARES>,
+				 <&gcc GCC_PCIE3_AXI_M_CLK_ARES>,
+				 <&gcc GCC_PCIE3_AXI_S_CLK_ARES>,
 				 <&gcc GCC_PCIE3_AXI_M_STICKY_RESET>,
 				 <&gcc GCC_PCIE3_AXI_S_STICKY_RESET>,
-				 <&gcc GCC_PCIE3_AHB_ARES>,
-				 <&gcc GCC_PCIE3_AUX_ARES>;
+				 <&gcc GCC_PCIE3_AHB_CLK_ARES>,
+				 <&gcc GCC_PCIE3_AUX_CLK_ARES>;
 
 			reset-names = "pipe",
 				      "sticky",
@@ -1517,14 +1648,14 @@
 					       <200000000>,
 					       <100000000>;
 
-			resets = <&gcc GCC_PCIE2_PIPE_ARES>,
+			resets = <&gcc GCC_PCIE2_PIPE_CLK_ARES>,
 				 <&gcc GCC_PCIE2_CORE_STICKY_RESET>,
-				 <&gcc GCC_PCIE2_AXI_M_ARES>,
-				 <&gcc GCC_PCIE2_AXI_S_ARES>,
+				 <&gcc GCC_PCIE2_AXI_M_CLK_ARES>,
+				 <&gcc GCC_PCIE2_AXI_S_CLK_ARES>,
 				 <&gcc GCC_PCIE2_AXI_M_STICKY_RESET>,
 				 <&gcc GCC_PCIE2_AXI_S_STICKY_RESET>,
-				 <&gcc GCC_PCIE2_AHB_ARES>,
-				 <&gcc GCC_PCIE2_AUX_ARES>;
+				 <&gcc GCC_PCIE2_AHB_CLK_ARES>,
+				 <&gcc GCC_PCIE2_AUX_CLK_ARES>;
 
 			reset-names = "pipe",
 				      "sticky",
@@ -1600,14 +1731,14 @@
 					       <200000000>,
 					       <100000000>;
 
-			resets = <&gcc GCC_PCIE1_PIPE_ARES>,
+			resets = <&gcc GCC_PCIE1_PIPE_CLK_ARES>,
 				 <&gcc GCC_PCIE1_CORE_STICKY_RESET>,
-				 <&gcc GCC_PCIE1_AXI_M_ARES>,
-				 <&gcc GCC_PCIE1_AXI_S_ARES>,
+				 <&gcc GCC_PCIE1_AXI_M_CLK_ARES>,
+				 <&gcc GCC_PCIE1_AXI_S_CLK_ARES>,
 				 <&gcc GCC_PCIE1_AXI_M_STICKY_RESET>,
 				 <&gcc GCC_PCIE1_AXI_S_STICKY_RESET>,
-				 <&gcc GCC_PCIE1_AHB_ARES>,
-				 <&gcc GCC_PCIE1_AUX_ARES>;
+				 <&gcc GCC_PCIE1_AHB_CLK_ARES>,
+				 <&gcc GCC_PCIE1_AUX_CLK_ARES>;
 
 			reset-names = "pipe",
 				      "sticky",
@@ -1683,14 +1814,14 @@
 					       <200000000>,
 					       <100000000>;
 
-			resets = <&gcc GCC_PCIE4_PIPE_ARES>,
+			resets = <&gcc GCC_PCIE4_PIPE_CLK_ARES>,
 				 <&gcc GCC_PCIE4_CORE_STICKY_RESET>,
-				 <&gcc GCC_PCIE4_AXI_M_ARES>,
-				 <&gcc GCC_PCIE4_AXI_S_ARES>,
+				 <&gcc GCC_PCIE4_AXI_M_CLK_ARES>,
+				 <&gcc GCC_PCIE4_AXI_S_CLK_ARES>,
 				 <&gcc GCC_PCIE4_AXI_M_STICKY_RESET>,
 				 <&gcc GCC_PCIE4_AXI_S_STICKY_RESET>,
-				 <&gcc GCC_PCIE4_AHB_ARES>,
-				 <&gcc GCC_PCIE4_AUX_ARES>;
+				 <&gcc GCC_PCIE4_AHB_CLK_ARES>,
+				 <&gcc GCC_PCIE4_AUX_CLK_ARES>;
 
 			reset-names = "pipe",
 				      "sticky",
@@ -1766,14 +1897,14 @@
 					       <200000000>,
 					       <100000000>;
 
-			resets = <&gcc GCC_PCIE0_PIPE_ARES>,
+			resets = <&gcc GCC_PCIE0_PIPE_CLK_ARES>,
 				 <&gcc GCC_PCIE0_CORE_STICKY_RESET>,
-				 <&gcc GCC_PCIE0_AXI_M_ARES>,
-				 <&gcc GCC_PCIE0_AXI_S_ARES>,
+				 <&gcc GCC_PCIE0_AXI_M_CLK_ARES>,
+				 <&gcc GCC_PCIE0_AXI_S_CLK_ARES>,
 				 <&gcc GCC_PCIE0_AXI_M_STICKY_RESET>,
 				 <&gcc GCC_PCIE0_AXI_S_STICKY_RESET>,
-				 <&gcc GCC_PCIE0_AHB_ARES>,
-				 <&gcc GCC_PCIE0_AUX_ARES>;
+				 <&gcc GCC_PCIE0_AHB_CLK_ARES>,
+				 <&gcc GCC_PCIE0_AUX_CLK_ARES>;
 
 			reset-names = "pipe",
 				      "sticky",
@@ -1913,12 +2044,12 @@
 					 <&gcc GCC_UNIPHY0_BCR>,
 					 <&gcc GCC_UNIPHY1_BCR>,
 					 <&gcc GCC_UNIPHY2_BCR>,
-					 <&gcc GCC_UNIPHY0_AHB_ARES>,
-					 <&gcc GCC_UNIPHY1_AHB_ARES>,
-					 <&gcc GCC_UNIPHY2_AHB_ARES>,
-					 <&gcc GCC_UNIPHY0_SYS_ARES>,
-					 <&gcc GCC_UNIPHY1_SYS_ARES>,
-					 <&gcc GCC_UNIPHY2_SYS_ARES>,
+					 <&gcc GCC_UNIPHY0_AHB_CLK_ARES>,
+					 <&gcc GCC_UNIPHY1_AHB_CLK_ARES>,
+					 <&gcc GCC_UNIPHY2_AHB_CLK_ARES>,
+					 <&gcc GCC_UNIPHY0_SYS_CLK_ARES>,
+					 <&gcc GCC_UNIPHY1_SYS_CLK_ARES>,
+					 <&gcc GCC_UNIPHY2_SYS_CLK_ARES>,
 					 <&gcc GCC_UNIPHY0_XPCS_ARES>,
 					 <&gcc GCC_UNIPHY1_XPCS_ARES>,
 					 <&gcc GCC_UNIPHY2_XPCS_ARES>,

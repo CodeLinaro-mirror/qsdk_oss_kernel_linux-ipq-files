@@ -1114,7 +1114,7 @@ static struct platform_driver ipq5210_tlmm_driver = {
 		.of_match_table = ipq5210_tlmm_of_match,
 	},
 	.probe = ipq5210_tlmm_probe,
-	.remove = msm_pinctrl_remove,
+	.remove_new = msm_pinctrl_remove,
 };
 
 static int __init ipq5210_tlmm_init(void)

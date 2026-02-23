@@ -1970,6 +1970,7 @@
 			num-lanes = <2>;
 			#address-cells = <3>;
 			#size-cells = <2>;
+			qcom,aspm-enabled;
 			axi-halt-val = <0x1e>; /* increase halt window size to 1GB */
 			cal-status-offset = <0x2400000>;
 
@@ -2068,6 +2069,7 @@
 			num-lanes = <2>;
 			#address-cells = <3>;
 			#size-cells = <2>;
+			qcom,aspm-enabled;
 			axi-halt-val = <0x1e>; /* increase halt window size to 1GB */
 			cal-status-offset = <0x2400000>;
 
@@ -2166,6 +2168,7 @@
 			num-lanes = <1>;
 			#address-cells = <3>;
 			#size-cells = <2>;
+			qcom,aspm-enabled;
 			axi-halt-val = <0x1e>; /* increase halt window size to 1GB */
 			cal-status-offset = <0x2400000>;
 
@@ -2264,6 +2267,7 @@
 			num-lanes = <1>;
 			#address-cells = <3>;
 			#size-cells = <2>;
+			qcom,aspm-enabled;
 			axi-halt-val = <0x1e>; /* increase halt window size to 1GB */
 			cal-status-offset = <0x2400000>;
 
