@@ -527,6 +527,12 @@
 			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
 			qcom,early_cal_enabled = "supported";
 			qcom,caldata_offset = <0x26800>;
+#ifdef __IPQ_MEM_PROFILE_512_MB__
+			qcom,caldb_offset = <0x1400000>;
+#else
+			qcom,caldb_offset = <0x1C00000>;
+#endif
+			qcom,caldb_size = <0x800000>;
 			qcom,board_id = <0x15>;
 #if !defined(__IPQ_MEM_PROFILE_256_MB__)
 			qcom,wsi = <&wsi>;
@@ -579,7 +585,11 @@
 			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
 			qcom,early_cal_enabled = "supported";
 			qcom,caldata_offset = <0x58800>;
+			qcom,caldb_offset = <0x1C00000>;
+#elif defined(__IPQ_MEM_PROFILE_512_MB__)
+			qcom,caldb_offset = <0x1400000>;
 #endif
+			qcom,caldb_size = <0x800000>;
 			qcom,board_id = <0x16>;
 #if !defined(__IPQ_MEM_PROFILE_256_MB__)
 			qcom,wsi = <&wsi>;

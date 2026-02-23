@@ -394,6 +394,12 @@
 			reg = <0x0 0x0 0x0 0x0 0x0>;
 			qcom,early_cal_enabled = "supported";
 			qcom,caldata_offset = <0x58800>;
+#ifdef __IPQ_MEM_PROFILE_512_MB__
+			qcom,caldb_offset = <0x1400000>;
+#else
+			qcom,caldb_offset = <0x1C00000>;
+#endif
+			qcom,caldb_size = <0x800000>;
 			qcom,board_id = <0x01>;
 			qcom,wsi = <&wsi>;
 			qcom,wsi_index = <2>;
@@ -451,6 +457,12 @@
 			reg = <0x0 0x0 0x0 0x0 0x0>;
 			qcom,early_cal_enabled = "supported";
 			qcom,caldata_offset = <0x8A800>;
+#ifdef __IPQ_MEM_PROFILE_512_MB__
+			qcom,caldb_offset = <0x1400000>;
+#else
+			qcom,caldb_offset = <0x1C00000>;
+#endif
+			qcom,caldb_size = <0x800000>;
 			qcom,board_id = <0x04>;
 			qcom,wsi = <&wsi>;
 			qcom,wsi_index = <0>;
@@ -502,6 +514,12 @@
 			reg = <0x0 0x0 0x0 0x0 0x0>;
 			qcom,early_cal_enabled = "supported";
 			qcom,caldata_offset = <0xBC800>;
+#ifdef __IPQ_MEM_PROFILE_512_MB__
+			qcom,caldb_offset = <0x1400000>;
+#else
+			qcom,caldb_offset = <0x1C00000>;
+#endif
+			qcom,caldb_size = <0x800000>;
 			qcom,wsi = <&wsi>;
 			qcom,wsi_index = <1>;
 			qcom,board_id = <0x02>;
