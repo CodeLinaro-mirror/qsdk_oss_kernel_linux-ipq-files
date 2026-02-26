@@ -35,6 +35,20 @@
 #define QMI_TME_TTIME_SET_RESP_V01 0x0007
 #define QMI_TME_LIC_CLEAN_REQ_V01 0x0008
 #define QMI_TME_LIC_CLEAN_RESP_V01 0x0008
+#define QMI_TME_ARB_GET_REQ_V01 0x000A
+#define QMI_TME_ARB_GET_RESP_V01 0x000A
+#define QMI_TME_ARB_UPDATE_REQ_V01 0x000B
+#define QMI_TME_ARB_UPDATE_RESP_V01 0x000B
+#define QMI_TME_READ_FUSE_REQ_V01 0x000C
+#define QMI_TME_READ_FUSE_RESP_V01 0x000C
+#define QMI_DPR_IMAGE_LOAD_REQ_V01 0x000D
+#define QMI_DPR_IMAGE_LOAD_RESP_V01 0x000D
+#define QMI_TME_TMEL_VERSION_READ_REQ_V01 0x000E
+#define QMI_TME_TMEL_VERSION_READ_RESP_V01 0x000E
+#define QMI_TME_QBEC_KEY_READ_REQ_V01 0x000F
+#define QMI_TME_QBEC_KEY_READ_RESP_V01 0x000F
+#define QMI_TME_FUSE_BLOW_REQ_V01 0x0009
+#define QMI_TME_FUSE_BLOW_RESP_V01 0x0009
 
 /* Max sizes */
 #define QMI_TME_MAX_KEY_SIZE_V01 128
@@ -50,6 +64,10 @@
 #define QMI_TME_MAX_INIT_ATT_RESPONSE_SIZE_V01 100
 #define QMI_TME_MAX_PROV_RESPONSE_SIZE_V01 100
 #define QMI_TME_MAX_LIC_CLEAN_COUNT_V01 30
+#define QMI_TME_DPR_IMAGE_BUFFER_SIZE_V01 32768
+#define QMI_TME_TMEL_VERSION_BUFFER_SIZE_V01 64
+#define QMI_TME_QBEC_PUBLIC_KEY_SIZE_V01 128
+#define QMI_TME_SECDAT_BUFFER_SIZE_V01 4096
 
 /* Max message lengths */
 #define QMI_TME_INIT_ATTESTATION_REQ_MSG_V01_MAX_MSG_LEN 7
@@ -68,6 +86,20 @@
 #define QMI_TME_TTIME_SET_RESP_MSG_V01_MAX_MSG_LEN 14
 #define QMI_TME_LIC_CLEAN_REQ_MSG_V01_MAX_MSG_LEN 7
 #define QMI_TME_LIC_CLEAN_RESP_MSG_V01_MAX_MSG_LEN 265
+#define QMI_TME_ARB_GET_REQ_MSG_V01_MAX_MSG_LEN 7
+#define QMI_TME_ARB_GET_RESP_MSG_V01_MAX_MSG_LEN 37
+#define QMI_TME_ARB_UPDATE_REQ_MSG_V01_MAX_MSG_LEN 7
+#define QMI_TME_ARB_UPDATE_RESP_MSG_V01_MAX_MSG_LEN 21
+#define QMI_TME_READ_FUSE_REQ_MSG_V01_MAX_MSG_LEN 7
+#define QMI_TME_READ_FUSE_RESP_MSG_V01_MAX_MSG_LEN 35
+#define QMI_DPR_IMAGE_LOAD_REQ_MSG_V01_MAX_MSG_LEN 32780
+#define QMI_DPR_IMAGE_LOAD_RESP_MSG_V01_MAX_MSG_LEN 28
+#define QMI_TME_TMEL_VERSION_READ_REQ_MSG_V01_MAX_MSG_LEN 7
+#define QMI_TME_TMEL_VERSION_READ_RESP_MSG_V01_MAX_MSG_LEN 110
+#define QMI_TME_QBEC_KEY_READ_REQ_MSG_V01_MAX_MSG_LEN 14
+#define QMI_TME_QBEC_KEY_READ_RESP_MSG_V01_MAX_MSG_LEN 167
+#define QMI_TME_FUSE_BLOW_REQ_MSG_V01_MAX_MSG_LEN 4108
+#define QMI_TME_FUSE_BLOW_RESP_MSG_V01_MAX_MSG_LEN 21
 
 /* Message structures */
 struct qmi_tme_init_attestation_req_msg_v01 {
@@ -203,6 +235,100 @@ struct qmi_tme_lic_clean_resp_msg_v01 {
 	u32 to_be_deleted_count;
 };
 
+struct qmi_arb_get_req_msg_v01 {
+	u32 sw_id;
+};
+
+struct qmi_arb_get_resp_msg_v01 {
+	struct qmi_response_type_v01 resp;
+	u32 status;
+	u32 ipc_status;
+	u8 oem_version_valid;
+	u8 oem_version;
+	u8 qti_version_valid;
+	u8 qti_version;
+	u8 oem_is_valid_valid;
+	u8 oem_is_valid;
+	u8 qti_is_valid_valid;
+	u8 qti_is_valid;
+};
+
+struct qmi_tme_arb_update_req_msg_v01 {
+	u32 reserved;
+};
+
+struct qmi_tme_arb_update_resp_msg_v01 {
+	struct qmi_response_type_v01 resp;
+	u32 status;
+	u32 ipc_status;
+};
+
+struct qmi_tme_read_fuse_req_msg_v01 {
+	u32 fuse_addr;
+};
+
+struct qmi_tme_read_fuse_resp_msg_v01 {
+	struct qmi_response_type_v01 resp;
+	u32 status;
+	u32 ipc_status;
+	u8 fuse_val_lsb_valid;
+	u32 fuse_val_lsb;
+	u8 fuse_val_msb_valid;
+	u32 fuse_val_msb;
+};
+
+struct qmi_dpr_image_load_req_msg_v01 {
+	u32 image_data_len;
+	u8 image_data[QMI_TME_DPR_IMAGE_BUFFER_SIZE_V01];
+	u32 dpr_image_data_len;
+};
+
+struct qmi_dpr_image_load_resp_msg_v01 {
+	struct qmi_response_type_v01 resp;
+};
+
+struct qmi_tme_tmel_version_read_req_msg_v01 {
+	u32 reserved;
+};
+
+struct qmi_tme_tmel_version_read_resp_msg_v01 {
+	struct qmi_response_type_v01 resp;
+	u32 version_info_len;
+	u8 version_info[QMI_TME_TMEL_VERSION_BUFFER_SIZE_V01];
+	u8 tmel_version_info_len_valid;
+	u32 tmel_version_info_len;
+};
+
+struct qmi_qbec_key_read_req_msg_v01 {
+	u32 feature_id;
+	u32 src_l1_key_id;
+};
+
+struct qmi_qbec_key_read_resp_msg_v01 {
+	struct qmi_response_type_v01 resp;
+	u32 status;
+	u32 ipc_status;
+	u8 public_key_valid;
+	u32 public_key_len;
+	u8 public_key[QMI_TME_QBEC_PUBLIC_KEY_SIZE_V01];
+	u8 qbec_public_key_len_valid;
+	u32 qbec_public_key_len;
+	u8 sequencer_status_valid;
+	u32 sequencer_status;
+};
+
+struct qmi_tme_fuse_blow_req_msg_v01 {
+	u32 secdat_fuse_data_len;
+	u8 secdat_fuse_data[QMI_TME_SECDAT_BUFFER_SIZE_V01];
+	u32 secdat_data_len;
+};
+
+struct qmi_tme_fuse_blow_resp_msg_v01 {
+	struct qmi_response_type_v01 resp;
+	u32 status;
+	u32 ipc_status;
+};
+
 /* Element info array declarations */
 extern struct qmi_elem_info qmi_tme_init_attestation_req_msg_v01_ei[];
 extern struct qmi_elem_info qmi_tme_init_attestation_resp_msg_v01_ei[];
@@ -220,6 +346,20 @@ extern struct qmi_elem_info qmi_tme_ttime_set_req_msg_v01_ei[];
 extern struct qmi_elem_info qmi_tme_ttime_set_resp_msg_v01_ei[];
 extern struct qmi_elem_info qmi_tme_lic_clean_req_msg_v01_ei[];
 extern struct qmi_elem_info qmi_tme_lic_clean_resp_msg_v01_ei[];
+extern struct qmi_elem_info qmi_tme_arb_get_req_msg_v01_ei[];
+extern struct qmi_elem_info qmi_tme_arb_get_resp_msg_v01_ei[];
+extern struct qmi_elem_info qmi_tme_arb_update_req_msg_v01_ei[];
+extern struct qmi_elem_info qmi_tme_arb_update_resp_msg_v01_ei[];
+extern struct qmi_elem_info qmi_tme_read_fuse_req_msg_v01_ei[];
+extern struct qmi_elem_info qmi_tme_read_fuse_resp_msg_v01_ei[];
+extern struct qmi_elem_info qmi_dpr_image_load_req_msg_v01_ei[];
+extern struct qmi_elem_info qmi_dpr_image_load_resp_msg_v01_ei[];
+extern struct qmi_elem_info qmi_tme_tmel_version_read_req_msg_v01_ei[];
+extern struct qmi_elem_info qmi_tme_tmel_version_read_resp_msg_v01_ei[];
+extern struct qmi_elem_info qmi_qbec_key_read_req_msg_v01_ei[];
+extern struct qmi_elem_info qmi_qbec_key_read_resp_msg_v01_ei[];
+extern struct qmi_elem_info qmi_tme_fuse_blow_req_msg_v01_ei[];
+extern struct qmi_elem_info qmi_tme_fuse_blow_resp_msg_v01_ei[];
 
 /* ===== Driver Internal Definitions ===== */
 

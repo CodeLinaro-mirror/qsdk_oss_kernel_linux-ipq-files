@@ -835,3 +835,682 @@ int tmelcom_qmi_get_service_info(int pcie_domain, u32 *service_id,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(tmelcom_qmi_get_service_info);
+
+/**
+ * tmelcom_qmi_secboot_get_arb_version() - Get ARB version for a software ID
+ * @pcie_domain: PCIe domain number
+ * @sw_id: Software ID to query
+ * @version: Pointer to store the version
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int tmelcom_qmi_secboot_get_arb_version(int pcie_domain, u32 sw_id, u32 *version)
+{
+	struct tmelcom_qmi_client *client;
+	struct qmi_arb_get_req_msg_v01 req = {0};
+	struct qmi_arb_get_resp_msg_v01 *resp;
+	struct qmi_txn txn;
+	int ret;
+
+	if (!version)
+		return -EINVAL;
+
+	client = tmelcom_qmi_get_client(pcie_domain);
+	if (!client) {
+		pr_err("tmelcom_qmi: No client for PCIe domain %d\n", pcie_domain);
+		return TMELCOM_QMI_ERR_NO_CLIENT;
+	}
+
+	resp = kzalloc(sizeof(*resp), GFP_KERNEL);
+	if (!resp)
+		return -ENOMEM;
+
+	/* Prepare request */
+	req.sw_id = sw_id;
+
+	mutex_lock(&client->lock);
+
+	/* Initialize transaction */
+	ret = qmi_txn_init(&client->qmi, &txn,
+			   qmi_tme_arb_get_resp_msg_v01_ei, resp);
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Failed to init transaction: %d\n", ret);
+		goto out_unlock;
+	}
+
+	/* Send request */
+	ret = qmi_send_request(&client->qmi, &client->sq, &txn,
+			       QMI_TME_ARB_GET_REQ_V01,
+			       QMI_TME_ARB_GET_REQ_MSG_V01_MAX_MSG_LEN,
+			       qmi_tme_arb_get_req_msg_v01_ei, &req);
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Failed to send request: %d\n", ret);
+		qmi_txn_cancel(&txn);
+		atomic_inc(&client->stats.errors);
+		goto out_unlock;
+	}
+
+	atomic_inc(&client->stats.requests_sent);
+	client->stats.last_request_time = ktime_get();
+
+	/* Wait for response */
+	ret = qmi_txn_wait(&txn, msecs_to_jiffies(qmi_timeout_ms));
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Transaction timeout: %d\n", ret);
+		atomic_inc(&client->stats.timeouts);
+		goto out_unlock;
+	}
+
+	atomic_inc(&client->stats.responses_received);
+	client->stats.last_response_time = ktime_get();
+
+	/* Check response */
+	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
+		tmelcom_qmi_err(client, "QMI request failed: ipc_status=%u, status=0x%x\n",
+				resp->ipc_status, resp->status);
+		ret = resp->ipc_status;
+		atomic_inc(&client->stats.errors);
+		client->stats.last_error_code = resp->status;
+		goto out_unlock;
+	}
+
+	/* Extract OEM version from response (matching IPC behavior) */
+	if (resp->oem_version_valid) {
+		*version = resp->oem_version;
+	} else {
+		*version = 0;
+	}
+
+	ret = resp->status;
+
+out_unlock:
+	mutex_unlock(&client->lock);
+	kfree(resp);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tmelcom_qmi_secboot_get_arb_version);
+
+/**
+ * tmelcom_qmi_secboot_update_arb_version_list() - Update ARB version list
+ * @pcie_domain: PCIe domain number
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int tmelcom_qmi_secboot_update_arb_version_list(int pcie_domain)
+{
+	struct tmelcom_qmi_client *client;
+	struct qmi_tme_arb_update_req_msg_v01 req = {0};
+	struct qmi_tme_arb_update_resp_msg_v01 *resp;
+	struct qmi_txn txn;
+	int ret;
+
+	client = tmelcom_qmi_get_client(pcie_domain);
+	if (!client) {
+		pr_err("tmelcom_qmi: No client for PCIe domain %d\n", pcie_domain);
+		return TMELCOM_QMI_ERR_NO_CLIENT;
+	}
+
+	resp = kzalloc(sizeof(*resp), GFP_KERNEL);
+	if (!resp)
+		return -ENOMEM;
+
+	mutex_lock(&client->lock);
+
+	/* Initialize transaction */
+	ret = qmi_txn_init(&client->qmi, &txn,
+			   qmi_tme_arb_update_resp_msg_v01_ei, resp);
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Failed to init transaction: %d\n", ret);
+		goto out_unlock;
+	}
+
+	/* Send request */
+	ret = qmi_send_request(&client->qmi, &client->sq, &txn,
+			       QMI_TME_ARB_UPDATE_REQ_V01,
+			       QMI_TME_ARB_UPDATE_REQ_MSG_V01_MAX_MSG_LEN,
+			       qmi_tme_arb_update_req_msg_v01_ei, &req);
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Failed to send request: %d\n", ret);
+		qmi_txn_cancel(&txn);
+		atomic_inc(&client->stats.errors);
+		goto out_unlock;
+	}
+
+	atomic_inc(&client->stats.requests_sent);
+	client->stats.last_request_time = ktime_get();
+
+	/* Wait for response */
+	ret = qmi_txn_wait(&txn, msecs_to_jiffies(qmi_timeout_ms));
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Transaction timeout: %d\n", ret);
+		atomic_inc(&client->stats.timeouts);
+		goto out_unlock;
+	}
+
+	atomic_inc(&client->stats.responses_received);
+	client->stats.last_response_time = ktime_get();
+
+	/* Check response */
+	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
+		tmelcom_qmi_err(client, "QMI request failed: ipc_status=%u, status=0x%x\n",
+				resp->ipc_status, resp->status);
+		ret = resp->ipc_status;
+		atomic_inc(&client->stats.errors);
+		client->stats.last_error_code = resp->status;
+		goto out_unlock;
+	}
+
+	ret = resp->status;
+
+out_unlock:
+	mutex_unlock(&client->lock);
+	kfree(resp);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tmelcom_qmi_secboot_update_arb_version_list);
+
+/**
+ * tmelcom_qmi_get_ecc_public_key() - Get ECC public key (QBEC key read)
+ * @pcie_domain: PCIe domain number
+ * @key_type: Key type/feature ID
+ * @buf: Buffer to store the public key
+ * @size: Size of the buffer
+ * @rsp_len: Pointer to store the actual response length
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int tmelcom_qmi_get_ecc_public_key(int pcie_domain, u32 key_type, void *buf,
+				    u32 size, u32 *rsp_len)
+{
+	struct tmelcom_qmi_client *client;
+	struct qmi_qbec_key_read_req_msg_v01 req = {0};
+	struct qmi_qbec_key_read_resp_msg_v01 *resp;
+	struct qmi_txn txn;
+	int ret;
+
+	if (!buf || !size || !rsp_len)
+		return -EINVAL;
+
+	client = tmelcom_qmi_get_client(pcie_domain);
+	if (!client) {
+		pr_err("tmelcom_qmi: No client for PCIe domain %d\n", pcie_domain);
+		return TMELCOM_QMI_ERR_NO_CLIENT;
+	}
+
+	resp = kzalloc(sizeof(*resp), GFP_KERNEL);
+	if (!resp)
+		return -ENOMEM;
+
+	/* Prepare request */
+	req.feature_id = 0;   /* Default value, matching IPC behavior */
+	req.src_l1_key_id = key_type;
+
+	mutex_lock(&client->lock);
+
+	/* Initialize transaction */
+	ret = qmi_txn_init(&client->qmi, &txn,
+			   qmi_qbec_key_read_resp_msg_v01_ei, resp);
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Failed to init transaction: %d\n", ret);
+		goto out_unlock;
+	}
+
+	/* Send request */
+	ret = qmi_send_request(&client->qmi, &client->sq, &txn,
+			       QMI_TME_QBEC_KEY_READ_REQ_V01,
+			       QMI_TME_QBEC_KEY_READ_REQ_MSG_V01_MAX_MSG_LEN,
+			       qmi_qbec_key_read_req_msg_v01_ei, &req);
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Failed to send request: %d\n", ret);
+		qmi_txn_cancel(&txn);
+		atomic_inc(&client->stats.errors);
+		goto out_unlock;
+	}
+
+	atomic_inc(&client->stats.requests_sent);
+	client->stats.last_request_time = ktime_get();
+
+	/* Wait for response */
+	ret = qmi_txn_wait(&txn, msecs_to_jiffies(qmi_timeout_ms));
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Transaction timeout: %d\n", ret);
+		atomic_inc(&client->stats.timeouts);
+		goto out_unlock;
+	}
+
+	atomic_inc(&client->stats.responses_received);
+	client->stats.last_response_time = ktime_get();
+
+	/* Check response */
+	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
+		tmelcom_qmi_err(client, "QMI request failed: ipc_status=%u, status=0x%x\n",
+				resp->ipc_status, resp->status);
+		ret = resp->ipc_status;
+		atomic_inc(&client->stats.errors);
+		client->stats.last_error_code = resp->status;
+		goto out_unlock;
+	}
+
+	/* Copy public key data from response */
+	if (resp->public_key_valid && resp->public_key_len > 0) {
+		u32 copy_len = min(resp->public_key_len, size);
+		memcpy(buf, resp->public_key, copy_len);
+		*rsp_len = resp->qbec_public_key_len_valid ? resp->qbec_public_key_len : copy_len;
+	} else {
+		*rsp_len = 0;
+	}
+
+	ret = resp->status;
+
+out_unlock:
+	mutex_unlock(&client->lock);
+	kfree(resp);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tmelcom_qmi_get_ecc_public_key);
+
+/**
+ * tmelcom_qmi_read_fuse() - Read a single fuse value
+ * @pcie_domain: PCIe domain number
+ * @fuse_addr: Fuse address to read
+ * @fuse_val_lsb: Pointer to store LSB of fuse value (lower 32 bits)
+ * @fuse_val_msb: Pointer to store MSB of fuse value (upper 32 bits)
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int tmelcom_qmi_read_fuse(int pcie_domain, u32 fuse_addr, u32 *fuse_val_lsb,
+			   u32 *fuse_val_msb)
+{
+	struct tmelcom_qmi_client *client;
+	struct qmi_tme_read_fuse_req_msg_v01 req = {0};
+	struct qmi_tme_read_fuse_resp_msg_v01 *resp;
+	struct qmi_txn txn;
+	int ret;
+
+	if (!fuse_val_lsb || !fuse_val_msb)
+		return -EINVAL;
+
+	client = tmelcom_qmi_get_client(pcie_domain);
+	if (!client) {
+		pr_err("tmelcom_qmi: No client for PCIe domain %d\n", pcie_domain);
+		return TMELCOM_QMI_ERR_NO_CLIENT;
+	}
+
+	resp = kzalloc(sizeof(*resp), GFP_KERNEL);
+	if (!resp)
+		return -ENOMEM;
+
+	/* Prepare request */
+	req.fuse_addr = fuse_addr;
+
+	mutex_lock(&client->lock);
+
+	/* Initialize transaction */
+	ret = qmi_txn_init(&client->qmi, &txn,
+			   qmi_tme_read_fuse_resp_msg_v01_ei, resp);
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Failed to init transaction: %d\n", ret);
+		goto out_unlock;
+	}
+
+	/* Send request */
+	ret = qmi_send_request(&client->qmi, &client->sq, &txn,
+			       QMI_TME_READ_FUSE_REQ_V01,
+			       QMI_TME_READ_FUSE_REQ_MSG_V01_MAX_MSG_LEN,
+			       qmi_tme_read_fuse_req_msg_v01_ei, &req);
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Failed to send request: %d\n", ret);
+		qmi_txn_cancel(&txn);
+		atomic_inc(&client->stats.errors);
+		goto out_unlock;
+	}
+
+	atomic_inc(&client->stats.requests_sent);
+	client->stats.last_request_time = ktime_get();
+
+	/* Wait for response */
+	ret = qmi_txn_wait(&txn, msecs_to_jiffies(qmi_timeout_ms));
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Transaction timeout: %d\n", ret);
+		atomic_inc(&client->stats.timeouts);
+		goto out_unlock;
+	}
+
+	atomic_inc(&client->stats.responses_received);
+	client->stats.last_response_time = ktime_get();
+
+	/* Check response */
+	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
+		tmelcom_qmi_err(client, "QMI request failed: ipc_status=%u, status=0x%x\n",
+				resp->ipc_status, resp->status);
+		ret = resp->ipc_status;
+		atomic_inc(&client->stats.errors);
+		client->stats.last_error_code = resp->status;
+		goto out_unlock;
+	}
+
+	/* Extract fuse values from response */
+	if (resp->fuse_val_lsb_valid) {
+		*fuse_val_lsb = resp->fuse_val_lsb;
+	} else {
+		*fuse_val_lsb = 0;
+	}
+
+	if (resp->fuse_val_msb_valid) {
+		*fuse_val_msb = resp->fuse_val_msb;
+	} else {
+		*fuse_val_msb = 0;
+	}
+
+	ret = resp->status;
+
+out_unlock:
+	mutex_unlock(&client->lock);
+	kfree(resp);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tmelcom_qmi_read_fuse);
+
+/**
+ * tmelcom_qmi_tmel_version_read() - Read TMEL version information
+ * @pcie_domain: PCIe domain number
+ * @version_info: Buffer to store version information
+ * @buf_len: Size of the buffer
+ * @version_info_len: Pointer to store actual version info length
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int tmelcom_qmi_tmel_version_read(int pcie_domain, u8 *version_info,
+				   u32 buf_len, u32 *version_info_len)
+{
+	struct tmelcom_qmi_client *client;
+	struct qmi_tme_tmel_version_read_req_msg_v01 req = {0};
+	struct qmi_tme_tmel_version_read_resp_msg_v01 *resp;
+	struct qmi_txn txn;
+	int ret;
+
+	if (!version_info || !buf_len || !version_info_len)
+		return -EINVAL;
+
+	client = tmelcom_qmi_get_client(pcie_domain);
+	if (!client) {
+		pr_err("tmelcom_qmi: No client for PCIe domain %d\n", pcie_domain);
+		return TMELCOM_QMI_ERR_NO_CLIENT;
+	}
+
+	resp = kzalloc(sizeof(*resp), GFP_KERNEL);
+	if (!resp)
+		return -ENOMEM;
+
+	mutex_lock(&client->lock);
+
+	/* Initialize transaction */
+	ret = qmi_txn_init(&client->qmi, &txn,
+			   qmi_tme_tmel_version_read_resp_msg_v01_ei, resp);
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Failed to init transaction: %d\n", ret);
+		goto out_unlock;
+	}
+
+	/* Send request */
+	ret = qmi_send_request(&client->qmi, &client->sq, &txn,
+			       QMI_TME_TMEL_VERSION_READ_REQ_V01,
+			       QMI_TME_TMEL_VERSION_READ_REQ_MSG_V01_MAX_MSG_LEN,
+			       qmi_tme_tmel_version_read_req_msg_v01_ei, &req);
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Failed to send request: %d\n", ret);
+		qmi_txn_cancel(&txn);
+		atomic_inc(&client->stats.errors);
+		goto out_unlock;
+	}
+
+	atomic_inc(&client->stats.requests_sent);
+	client->stats.last_request_time = ktime_get();
+
+	/* Wait for response */
+	ret = qmi_txn_wait(&txn, msecs_to_jiffies(qmi_timeout_ms));
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Transaction timeout: %d\n", ret);
+		atomic_inc(&client->stats.timeouts);
+		goto out_unlock;
+	}
+
+	atomic_inc(&client->stats.responses_received);
+	client->stats.last_response_time = ktime_get();
+
+	/* Check response */
+	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
+		tmelcom_qmi_err(client, "QMI request failed: result=%u\n",
+				resp->resp.result);
+		ret = -EIO;
+		atomic_inc(&client->stats.errors);
+		goto out_unlock;
+	}
+
+	/* Extract version info from response */
+	if (resp->version_info_len > 0) {
+		u32 copy_len = min(resp->version_info_len, buf_len);
+		memcpy(version_info, resp->version_info, copy_len);
+		*version_info_len = resp->tmel_version_info_len_valid ?
+				    resp->tmel_version_info_len : copy_len;
+	} else {
+		*version_info_len = 0;
+	}
+
+	ret = 0;
+
+out_unlock:
+	mutex_unlock(&client->lock);
+	kfree(resp);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tmelcom_qmi_tmel_version_read);
+
+/**
+ * tmelcom_qmi_dpr_image_load() - Load DPR image
+ * @pcie_domain: PCIe domain number
+ * @image_data: Pointer to the image data (already loaded by caller)
+ * @image_size: Size of the image data
+ *
+ * The caller is responsible for loading the image into memory at a particular
+ * address. This function takes that address and size and sends it via QMI.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int tmelcom_qmi_dpr_image_load(int pcie_domain, u8 *image_data, u32 image_size)
+{
+	struct tmelcom_qmi_client *client;
+	struct qmi_dpr_image_load_req_msg_v01 *req;
+	struct qmi_dpr_image_load_resp_msg_v01 *resp;
+	struct qmi_txn txn;
+	int ret;
+
+	if (!image_data || !image_size)
+		return -EINVAL;
+
+	if (image_size > QMI_TME_DPR_IMAGE_BUFFER_SIZE_V01) {
+		pr_err("tmelcom_qmi: Image size %u exceeds maximum %u\n",
+		       image_size, QMI_TME_DPR_IMAGE_BUFFER_SIZE_V01);
+		return -EINVAL;
+	}
+
+	client = tmelcom_qmi_get_client(pcie_domain);
+	if (!client) {
+		pr_err("tmelcom_qmi: No client for PCIe domain %d\n", pcie_domain);
+		return TMELCOM_QMI_ERR_NO_CLIENT;
+	}
+
+	req = kzalloc(sizeof(*req), GFP_KERNEL);
+	if (!req)
+		return -ENOMEM;
+
+	resp = kzalloc(sizeof(*resp), GFP_KERNEL);
+	if (!resp) {
+		kfree(req);
+		return -ENOMEM;
+	}
+
+	/* Prepare request - copy image data from caller's buffer */
+	req->image_data_len = image_size;
+	memcpy(req->image_data, image_data, image_size);
+	req->dpr_image_data_len = image_size;
+
+	mutex_lock(&client->lock);
+
+	/* Initialize transaction */
+	ret = qmi_txn_init(&client->qmi, &txn,
+			   qmi_dpr_image_load_resp_msg_v01_ei, resp);
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Failed to init transaction: %d\n", ret);
+		goto out_unlock;
+	}
+
+	/* Send request */
+	ret = qmi_send_request(&client->qmi, &client->sq, &txn,
+			       QMI_DPR_IMAGE_LOAD_REQ_V01,
+			       QMI_DPR_IMAGE_LOAD_REQ_MSG_V01_MAX_MSG_LEN,
+			       qmi_dpr_image_load_req_msg_v01_ei, req);
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Failed to send request: %d\n", ret);
+		qmi_txn_cancel(&txn);
+		atomic_inc(&client->stats.errors);
+		goto out_unlock;
+	}
+
+	atomic_inc(&client->stats.requests_sent);
+	client->stats.last_request_time = ktime_get();
+
+	/* Wait for response */
+	ret = qmi_txn_wait(&txn, msecs_to_jiffies(qmi_timeout_ms));
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Transaction timeout: %d\n", ret);
+		atomic_inc(&client->stats.timeouts);
+		goto out_unlock;
+	}
+
+	atomic_inc(&client->stats.responses_received);
+	client->stats.last_response_time = ktime_get();
+
+	/* Check response */
+	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
+		tmelcom_qmi_err(client, "QMI request failed: result=%u, error=%u\n",
+				resp->resp.result, resp->resp.error);
+		ret = -EIO;
+		atomic_inc(&client->stats.errors);
+		goto out_unlock;
+	}
+
+	ret = 0;
+
+out_unlock:
+	mutex_unlock(&client->lock);
+	kfree(resp);
+	kfree(req);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tmelcom_qmi_dpr_image_load);
+
+/**
+ * tmelcom_qmi_fuse_blow() - Blow fuses with SECDAT data
+ * @pcie_domain: PCIe domain number
+ * @fuse_data: Pointer to the fuse data (already loaded by caller)
+ * @fuse_data_size: Size of the fuse data
+ *
+ * The caller is responsible for loading the fuse data into memory.
+ * This function takes that address and size and sends it via QMI.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int tmelcom_qmi_fuse_blow(int pcie_domain, u8 *fuse_data, u32 fuse_data_size)
+{
+	struct tmelcom_qmi_client *client;
+	struct qmi_tme_fuse_blow_req_msg_v01 *req;
+	struct qmi_tme_fuse_blow_resp_msg_v01 *resp;
+	struct qmi_txn txn;
+	int ret;
+
+	if (!fuse_data || !fuse_data_size)
+		return -EINVAL;
+
+	if (fuse_data_size > QMI_TME_SECDAT_BUFFER_SIZE_V01) {
+		pr_err("tmelcom_qmi: Fuse data size %u exceeds maximum %u\n",
+		       fuse_data_size, QMI_TME_SECDAT_BUFFER_SIZE_V01);
+		return -EINVAL;
+	}
+
+	client = tmelcom_qmi_get_client(pcie_domain);
+	if (!client) {
+		pr_err("tmelcom_qmi: No client for PCIe domain %d\n", pcie_domain);
+		return TMELCOM_QMI_ERR_NO_CLIENT;
+	}
+
+	req = kzalloc(sizeof(*req), GFP_KERNEL);
+	if (!req)
+		return -ENOMEM;
+
+	resp = kzalloc(sizeof(*resp), GFP_KERNEL);
+	if (!resp) {
+		kfree(req);
+		return -ENOMEM;
+	}
+
+	/* Prepare request - copy fuse data from caller's buffer */
+	req->secdat_fuse_data_len = fuse_data_size;
+	memcpy(req->secdat_fuse_data, fuse_data, fuse_data_size);
+	req->secdat_data_len = fuse_data_size;
+
+	mutex_lock(&client->lock);
+
+	/* Initialize transaction */
+	ret = qmi_txn_init(&client->qmi, &txn,
+			   qmi_tme_fuse_blow_resp_msg_v01_ei, resp);
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Failed to init transaction: %d\n", ret);
+		goto out_unlock;
+	}
+
+	/* Send request */
+	ret = qmi_send_request(&client->qmi, &client->sq, &txn,
+			       QMI_TME_FUSE_BLOW_REQ_V01,
+			       QMI_TME_FUSE_BLOW_REQ_MSG_V01_MAX_MSG_LEN,
+			       qmi_tme_fuse_blow_req_msg_v01_ei, req);
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Failed to send request: %d\n", ret);
+		qmi_txn_cancel(&txn);
+		atomic_inc(&client->stats.errors);
+		goto out_unlock;
+	}
+
+	atomic_inc(&client->stats.requests_sent);
+	client->stats.last_request_time = ktime_get();
+
+	/* Wait for response */
+	ret = qmi_txn_wait(&txn, msecs_to_jiffies(qmi_timeout_ms));
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Transaction timeout: %d\n", ret);
+		atomic_inc(&client->stats.timeouts);
+		goto out_unlock;
+	}
+
+	atomic_inc(&client->stats.responses_received);
+	client->stats.last_response_time = ktime_get();
+
+	/* Check response */
+	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
+		tmelcom_qmi_err(client, "QMI request failed: ipc_status=%u, status=0x%x\n",
+				resp->ipc_status, resp->status);
+		ret = resp->ipc_status;
+		atomic_inc(&client->stats.errors);
+		client->stats.last_error_code = resp->status;
+		goto out_unlock;
+	}
+
+	ret = resp->status;
+
+out_unlock:
+	mutex_unlock(&client->lock);
+	kfree(resp);
+	kfree(req);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tmelcom_qmi_fuse_blow);
