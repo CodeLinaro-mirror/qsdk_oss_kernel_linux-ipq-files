@@ -1955,6 +1955,55 @@
 			reg-names = "edma-reg-base";
 			/* TO-DO: Add EDMA HW resets */
 			reset-names = "edma_rst";
+			qcom,rxdesc-ring-max = <24>;
+			qcom,rxfill-ring-max = <20>;
+			qcom,txdesc-ring-max = <24>;
+			qcom,txcomp-ring-max = <20>;
+			qcom,rx-page-mode = <0>;
+			qcom,tx-map-priority-level = <1>;
+			qcom,rx-map-priority-level = <1>;
+			qcom,txdesc-fc-grp-map = <1 2 3 4 5 6>;
+			qcom,vp-id = <8>;
+			interrupts = <0 332 4>, <0 333 4>, <0 334 4>, <0 335 4>,
+				   <0 336 4>, <0 337 4>, <0 338 4>, <0 339 4>,
+				   <0 340 4>, <0 341 4>, <0 342 4>, <0 343 4>,
+				   <0 344 4>, <0 345 4>, <0 346 4>, <0 347 4>,
+				   <0 348 4>, <0 349 4>, <0 350 4>, <0 351 4>, /* TX Complete ring IRQ info (0 - 19) */
+
+				   <0 288 4>, <0 289 4>, <0 290 4>, <0 291 4>,
+				   <0 292 4>, <0 293 4>, <0 294 4>, <0 295 4>,
+				   <0 296 4>, <0 297 4>, <0 298 4>, <0 299 4>,
+				   <0 300 4>, <0 301 4>, <0 302 4>, <0 303 4>,
+				   <0 304 4>, <0 305 4>, <0 306 4>, <0 307 4>,
+				   <0 308 4>, <0 309 4>, <0 310 4>, <0 311 4>, /* RX desc ring IRQ info (0 - 23) */
+
+				   <0 312 4>, <0 313 4>, <0 314 4>, <0 315 4>,
+				   <0 316 4>, <0 317 4>, <0 318 4>, <0 319 4>,
+				   <0 320 4>, <0 321 4>, <0 322 4>, <0 323 4>,
+				   <0 324 4>, <0 325 4>, <0 326 4>, <0 327 4>,
+				   <0 328 4>, <0 329 4>, <0 330 4>, <0 331 4>, /* RX fill ring IRQ info (0 - 19) */
+
+				   <0 352 4>;					/* Misc interrupt */
+			interrupt-names = "txcmpl_0", "txcmpl_1", "txcmpl_2", "txcmpl_3",
+				   "txcmpl_4", "txcmpl_5", "txcmpl_6", "txcmpl_7",
+				   "txcmpl_8", "txcmpl_9", "txcmpl_10", "txcmpl_11",
+				   "txcmpl_12", "txcmpl_13", "txcmpl_14", "txcmpl_15",
+				   "txcmpl_16", "txcmpl_17", "txcmpl_18", "txcmpl_19",
+
+				   "rxdesc_0", "rxdesc_1", "rxdesc_2", "rxdesc_3",
+				   "rxdesc_4", "rxdesc_5", "rxdesc_6", "rxdesc_7",
+				   "rxdesc_8", "rxdesc_9", "rxdesc_10", "rxdesc_11",
+				   "rxdesc_12", "rxdesc_13", "rxdesc_14", "rxdesc_15",
+				   "rxdesc_16", "rxdesc_17", "rxdesc_18", "rxdesc_19",
+				   "rxdesc_20", "rxdesc_21", "rxdesc_22", "rxdesc_23",
+
+				   "rxfill_0", "rxfill_1", "rxfill_2", "rxfill_3",
+				   "rxfill_4", "rxfill_5", "rxfill_6", "rxfill_7",
+				   "rxfill_8", "rxfill_9", "rxfill_10", "rxfill_11",
+				   "rxfill_12", "rxfill_13", "rxfill_14", "rxfill_15",
+				   "rxfill_16", "rxfill_17", "rxfill_18", "rxfill_19",
+
+				   "misc_err";
 		};
 
 		nss-ppe {

@@ -15,6 +15,15 @@
 	model = "Qualcomm Technologies, Inc. IPQ5210 RDP498";
 	compatible = "qcom,ipq5210-rdp498", "qcom,ipq5210";
 
+	aliases {
+		serial0 = &uart1;
+		ethernet0 = "/soc/dp1";
+		ethernet1 = "/soc/dp2";
+		ethernet2 = "/soc/dp3";
+		ethernet3 = "/soc/dp4";
+		ethernet4 = "/soc/dp5";
+	};
+
 	soc@0 {
 		mdio@90000 {
 			status = "okay";
@@ -90,6 +99,57 @@
 					};
 				};
 			};
+		};
+
+		dp1 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <1>;
+			reg = <0x3a001000 0x200>;
+			qcom,mactype = <0>;
+			local-mac-address = [000000000000];
+			qcom,ppe-offload-disabled = <0>;
+		};
+
+		dp2 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <2>;
+			reg = <0x3a001200 0x200>;
+			qcom,mactype = <0>;
+			local-mac-address = [000000000000];
+			qcom,ppe-offload-disabled = <0>;
+		};
+
+
+		dp3 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <3>;
+			reg = <0x3a001400 0x200>;
+			qcom,mactype = <0>;
+			local-mac-address = [000000000000];
+			qcom,ppe-offload-disabled = <0>;
+		};
+
+		dp4 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <4>;
+			reg = <0x3a001600 0x200>;
+			qcom,mactype = <0>;
+			local-mac-address = [000000000000];
+			qcom,ppe-offload-disabled = <0>;
+		};
+
+		dp5 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <6>;
+			reg = <0x3A001A00 0x200>;
+			qcom,mactype = <1>;
+			local-mac-address = [000000000000];
+			qcom,ppe-offload-disabled = <0>;
 		};
 	};
 };
