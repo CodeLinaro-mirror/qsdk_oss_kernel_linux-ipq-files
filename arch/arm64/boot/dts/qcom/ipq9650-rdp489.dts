@@ -21,7 +21,7 @@
 			spi0: spi@1a80000 {
 				pinctrl-0 = <&qup_spi0_default>;
 				pinctrl-names = "default";
-				status = "okay";
+				status = "disabled";
 
 				flash@0 {
 					compatible = "spansion,s25fs128s1", "jedec,spi-nor";
@@ -33,14 +33,6 @@
 			};
 		};
 	};
-};
-
-&qpic_bam {
-	status = "okay";
-};
-
-&qpic_nand {
-	status = "okay";
 };
 
 &mdio {
@@ -78,6 +70,137 @@
 			phy-handle = <&phy5>;
 			phy-mode = "usxgmii";
 			ethernet-phy-ieee802.3-c45;
+		};
+	};
+};
+
+&qpic_bam {
+	status = "disabled";
+};
+
+&qpic_nand {
+	status = "disabled";
+};
+
+&pcie1_phy {
+	status = "disabled";
+};
+
+&pcie1 {
+	perst-gpio = <&tlmm 28 GPIO_ACTIVE_LOW>;
+	status = "disabled";
+
+	pcie1_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
+&pcie2_phy {
+	status = "disabled";
+};
+
+&pcie2 {
+	perst-gpio = <&tlmm 52 GPIO_ACTIVE_LOW>;
+	status = "disabled";
+
+	pcie2_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
+&pcie3_phy {
+	status = "disabled";
+};
+
+&pcie3 {
+	perst-gpio = <&tlmm 41 GPIO_ACTIVE_LOW>;
+	status = "disabled";
+
+	pcie3_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
+&qusb_phy_1 {
+	status = "disabled";
+};
+
+&usb2 {
+	status = "disabled";
+};
+
+&qusb_phy_0 {
+	status = "disabled";
+};
+
+&ssphy_0 {
+	status = "disabled";
+};
+
+&usb3 {
+	status = "disabled";
+};
+
+&tlmm {
+	pcie0_default_state: pcie0-default-state {
+		perst-n-pins {
+			pins = "gpio25";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-up;
+			output-low;
+		};
+	};
+
+	pcie1_default_state: pcie1-default-state {
+		perst-n-pins {
+			pins = "gpio28";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-down;
+			output-low;
+		};
+	};
+
+	pcie2_default_state: pcie2-default-state {
+		perst-n-pins {
+			pins = "gpio52";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-down;
+			output-low;
+		};
+	};
+
+	pcie3_default_state: pcie3-default-state {
+		perst-n-pins {
+			pins = "gpio41";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-up;
+			output-low;
+		};
+	};
+
+	pcie4_default_state: pcie4-default-state {
+		perst-n-pins {
+			pins = "gpio31";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-down;
+			output-low;
 		};
 	};
 };
