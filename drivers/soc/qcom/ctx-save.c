@@ -76,6 +76,22 @@ struct minidump_metadata_list {
 ctx_save_tlv_msg_t tlv_msg;
 u32 minidump_version_lvl;
 
+/**
+ * struct ctx_save_platform_data - Platform-specific configuration data
+ * @tmel_buffer_size: Size of TMEL buffer
+ * @tmel_log_buffer_reg_addr: Register address for TMEL buffer
+ * @tlv_buffer_size: Size of TLV buffer
+ * @tlv_buffer_addr: IMEM address for TLV buffer
+ * @regsave_size: Size of register save buffer
+ */
+struct ctx_save_platform_data {
+	u32 tmel_buffer_size;
+	u32 tmel_log_buffer_reg_addr;
+	u32 tlv_buffer_size;
+	u32 tlv_buffer_addr;
+	u32 regsave_size;
+};
+
 #ifdef CONFIG_QCA_MINIDUMP
 struct minidump_metadata {
 	char mod_log[METADATA_FILE_SZ];
@@ -1730,10 +1746,188 @@ static struct notifier_block panic_nb = {
 	.notifier_call = ctx_save_panic_handler,
 };
 
+/*
+ * ctx_save_setup_tmel_log_buf - Allocate and setup TMEL buffer
+ * @pdev: Platform device pointer
+ * @pdata: Platform-specific configuration data
+ * @tmel_buffer: Pointer to store allocated TMEL buffer
+ *
+ * This function allocates TMEL buffer for platforms that have platform data
+ * configured and writes its physical address to the appropriate register.
+ * Returns success if platform data is not available (not an error condition).
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+static int ctx_save_setup_tmel_log_buf(struct platform_device *pdev,
+				       const struct ctx_save_platform_data *pdata,
+				       void **tmel_buffer)
+{
+	void __iomem *reg_addr = NULL;
+	phys_addr_t tmel_phy_addr;
+	int ret;
+
+	/* Return success if platform data is not available */
+	if (!pdata || !pdata->tmel_buffer_size || !pdata->tmel_log_buffer_reg_addr)
+		return 0;
+
+	*tmel_buffer = (void *)__get_dma_pages(GFP_KERNEL,
+					       get_order(pdata->tmel_buffer_size));
+	if (!*tmel_buffer) {
+		dev_err(&pdev->dev, "Failed to allocate TMEL buffer\n");
+		return -ENOMEM;
+	}
+
+	tmel_phy_addr = virt_to_phys(*tmel_buffer);
+
+	/* Validate physical address */
+	if (!tmel_phy_addr || !virt_addr_valid(*tmel_buffer)) {
+		dev_err(&pdev->dev,
+			"Invalid physical address for TMEL buffer: phys=0x%llx\n",
+			(u64)tmel_phy_addr);
+		ret = -EINVAL;
+		goto err_free_tmel;
+	}
+
+	/* Ensure address fits in 32-bit register */
+	if (tmel_phy_addr > 0xFFFFFFFF) {
+		dev_err(&pdev->dev,
+			"TMEL physical address 0x%llx exceeds 32-bit range\n",
+			(u64)tmel_phy_addr);
+		ret = -EINVAL;
+		goto err_free_tmel;
+	}
+
+	dev_dbg(&pdev->dev,
+		"TMEL buffer allocated: virt=0x%lx phys=0x%llx size=%u\n",
+		(unsigned long)*tmel_buffer, (u64)tmel_phy_addr,
+		pdata->tmel_buffer_size);
+
+	/* Map and write TMEL buffer address to register */
+	reg_addr = ioremap(pdata->tmel_log_buffer_reg_addr, 4);
+	if (!reg_addr) {
+		dev_err(&pdev->dev, "Failed to map register at 0x%x\n",
+			pdata->tmel_log_buffer_reg_addr);
+		ret = -ENOMEM;
+		goto err_free_tmel;
+	}
+
+	writel(tmel_phy_addr, reg_addr);
+
+	/* Validate write operation */
+	if (readl(reg_addr) != tmel_phy_addr) {
+		dev_warn(&pdev->dev,
+			 "TMEL register write verification failed at 0x%x: expected 0x%llx, read 0x%x\n",
+			 pdata->tmel_log_buffer_reg_addr, (u64)tmel_phy_addr, readl(reg_addr));
+	}
+
+	dev_dbg(&pdev->dev,
+		"TMEL buffer address written to register at 0x%x\n",
+		pdata->tmel_log_buffer_reg_addr);
+	iounmap(reg_addr);
+
+	return 0;
+
+err_free_tmel:
+	free_pages((unsigned long)*tmel_buffer, get_order(pdata->tmel_buffer_size));
+	*tmel_buffer = NULL;
+	return ret;
+}
+
+/*
+ * ctx_save_setup_tlv_buf - Allocate and setup TLV buffer
+ * @pdev: Platform device pointer
+ * @pdata: Platform-specific configuration data
+ *
+ * This function allocates TLV buffer for platforms that have platform data
+ * configured and writes its physical address to IMEM location.
+ * Returns success if platform data is not available (not an error condition).
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+static int ctx_save_setup_tlv_buf(struct platform_device *pdev,
+				  const struct ctx_save_platform_data *pdata)
+{
+	void *tlv_buffer = NULL;
+	void __iomem *tlv_imem_addr = NULL;
+	phys_addr_t tlv_phy_addr;
+	int ret;
+
+	/* Return success if platform data is not available */
+	if (!pdata || !pdata->tlv_buffer_size || !pdata->tlv_buffer_addr)
+		return 0;
+
+	tlv_buffer = (void *)__get_dma_pages(GFP_KERNEL,
+					     get_order(pdata->tlv_buffer_size));
+	if (!tlv_buffer) {
+		dev_err(&pdev->dev, "Failed to allocate TLV buffer\n");
+		return -ENOMEM;
+	}
+
+	tlv_phy_addr = virt_to_phys(tlv_buffer);
+
+	/* Validate physical address */
+	if (!tlv_phy_addr || !virt_addr_valid(tlv_buffer)) {
+		dev_err(&pdev->dev,
+			"Invalid physical address for TLV buffer: phys=0x%llx\n",
+			(u64)tlv_phy_addr);
+		ret = -EINVAL;
+		goto err_free_tlv;
+	}
+
+	/* Ensure address fits in 32-bit register */
+	if (tlv_phy_addr > 0xFFFFFFFF) {
+		dev_err(&pdev->dev,
+			"TLV physical address 0x%llx exceeds 32-bit range\n",
+			(u64)tlv_phy_addr);
+		ret = -EINVAL;
+		goto err_free_tlv;
+	}
+
+	dev_dbg(&pdev->dev,
+		"TLV buffer allocated: virt=0x%lx phys=0x%llx size=%u\n",
+		(unsigned long)tlv_buffer, (u64)tlv_phy_addr,
+		pdata->tlv_buffer_size);
+
+	/* Store TLV buffer physical address in IMEM */
+	tlv_imem_addr = ioremap(pdata->tlv_buffer_addr, 4);
+	if (!tlv_imem_addr) {
+		dev_err(&pdev->dev,
+			"Failed to map TLV IMEM location at 0x%x\n",
+			pdata->tlv_buffer_addr);
+		ret = -ENOMEM;
+		goto err_free_tlv;
+	}
+
+	writel(tlv_phy_addr, tlv_imem_addr);
+
+	/* Validate write operation */
+	if (readl(tlv_imem_addr) != tlv_phy_addr) {
+		dev_warn(&pdev->dev,
+			 "TLV IMEM write verification failed at 0x%x: expected 0x%llx, read 0x%x\n",
+			 pdata->tlv_buffer_addr, (u64)tlv_phy_addr, readl(tlv_imem_addr));
+	}
+
+	dev_dbg(&pdev->dev, "TLV buffer address written to IMEM at 0x%x\n",
+		pdata->tlv_buffer_addr);
+	iounmap(tlv_imem_addr);
+
+	/* Update tlv_msg to use the new TLV buffer */
+	tlv_msg.msg_buffer = tlv_buffer;
+	tlv_msg.cur_msg_buffer_pos = tlv_msg.msg_buffer;
+	tlv_msg.len = pdata->tlv_buffer_size;
+
+	return 0;
+
+err_free_tlv:
+	free_pages((unsigned long)tlv_buffer, get_order(pdata->tlv_buffer_size));
+	return ret;
+}
+
 static int ctx_save_probe(struct platform_device *pdev)
 {
 	void *scm_regsave;
 	struct device_node *of_node = pdev->dev.of_node;
+	const struct ctx_save_platform_data *pdata;
 	size_t tlv_msg_offset = 0;
 #ifdef CONFIG_QCA_MINIDUMP
 	struct device_node *node;
@@ -1744,19 +1938,33 @@ static int ctx_save_probe(struct platform_device *pdev)
 	struct resource imem;
 #endif /* CONFIG_QCA_MINIDUMP */
 	int ret;
+	void *tmel_buffer = NULL;
+	u32 regsave_size;
 
-	scm_regsave = (void *) __get_dma_pages(GFP_KERNEL,
-				get_order(CRASHDUMP_PAGE_SIZE));
+	/* Get platform-specific data from of_device_id table */
+	pdata = of_device_get_match_data(&pdev->dev);
+	if (pdata)
+		regsave_size = pdata->regsave_size;
+	else
+		regsave_size = CRASHDUMP_PAGE_SIZE;
 
-	if (!scm_regsave)
+	scm_regsave = (void *)__get_dma_pages(GFP_KERNEL,
+					      get_order(regsave_size));
+
+	if (!scm_regsave) {
+		dev_err(&pdev->dev, "Failed to allocate regsave buffer\n");
 		return -ENOMEM;
+	}
 
-	ret = qcom_scm_regsave(scm_regsave, CRASHDUMP_PAGE_SIZE);
+	dev_dbg(&pdev->dev, "Regsave buffer allocated: size=%u\n",
+		regsave_size);
+
+	ret = qcom_scm_regsave(scm_regsave, regsave_size);
 
 	if (ret) {
 		pr_err("Setting register save address failed.\n"
-			"Registers won't be dumped on a dog bite\n");
-		return ret;
+		       "Registers won't be dumped on a dog bite\n");
+		goto err_free_regsave;
 	}
 
 #ifdef CONFIG_QCA_MINIDUMP
@@ -1821,36 +2029,49 @@ static int ctx_save_probe(struct platform_device *pdev)
 	spin_lock_init(&tlv_msg.spinlock);
 	of_property_read_u32(of_node, "minidump-level", &minidump_version_lvl);
 
-	if (minidump_version_lvl != 2)
-		tlv_msg_offset = 500 * SZ_1K;
-	else
-		tlv_msg_offset = 489 * SZ_1K;
+	/* Call setup functions unconditionally - they return success if pdata is not available */
+	ret = ctx_save_setup_tmel_log_buf(pdev, pdata, &tmel_buffer);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "TMEL buffer setup failed, continuing without it\n");
+		tmel_buffer = NULL;
+	}
 
-	tlv_msg.msg_buffer = scm_regsave + tlv_msg_offset;
-	tlv_msg.cur_msg_buffer_pos = tlv_msg.msg_buffer;
-	tlv_msg.len = CRASHDUMP_PAGE_SIZE - tlv_msg_offset;
+	ret = ctx_save_setup_tlv_buf(pdev, pdata);
+	if (ret < 0)
+		dev_err(&pdev->dev, "TLV buffer setup failed, continuing without it\n");
+
+	/* If buffers were not allocated (not IPQ5210/IPQ9650), use existing flow */
+	if (!tlv_msg.msg_buffer) {
+		/* For other platforms, use existing flow */
+		if (minidump_version_lvl != 2)
+			tlv_msg_offset = 500 * SZ_1K;
+		else
+			tlv_msg_offset = 489 * SZ_1K;
+
+		tlv_msg.msg_buffer = scm_regsave + tlv_msg_offset;
+		tlv_msg.cur_msg_buffer_pos = tlv_msg.msg_buffer;
+		tlv_msg.len = CRASHDUMP_PAGE_SIZE - tlv_msg_offset;
+	}
+
 	ret = ctx_save_fill_log_dump_tlv();
-
 	/* if failed, we still return 0 because it should not
 	 * affect the boot flow. The return value 0 does not
 	 * necessarily indicate success in this function.
 	 */
 	if (ret) {
 		pr_err("log dump initialization failed\n");
-		return 0;
+		goto err_cleanup_dma;
 	}
 
 	ret = atomic_notifier_chain_register(&panic_notifier_list, &panic_nb);
-
 	if (ret)
 		dev_err(&pdev->dev,
 			"Failed to register panic notifier\n");
 
 #ifdef CONFIG_QCA_MINIDUMP
 	ret = register_module_notifier(&wlan_module_exit_nb);
-	if (ret) {
+	if (ret)
 		dev_err(&pdev->dev, "Failed to register WLAN  module exit notifier\n");
-	}
 
 	ret = atomic_notifier_chain_register(&panic_notifier_list,
 				&wlan_panic_nb);
@@ -1859,6 +2080,25 @@ static int ctx_save_probe(struct platform_device *pdev)
 			"Failed to register panic notifier for WLAN module info\n");
 	register_sysrq_key('y', &sysrq_minidump_op);
 #endif /* CONFIG_QCA_MINIDUMP */
+	return 0;
+
+err_cleanup_dma:
+	if (pdata && pdata->tlv_buffer_size && tlv_msg.msg_buffer) {
+		free_pages((unsigned long)tlv_msg.msg_buffer,
+			   get_order(pdata->tlv_buffer_size));
+		tlv_msg.msg_buffer = NULL;
+	}
+
+	/*
+	 * Don't free TMEL buffer here - it's independent and was successfully set up.
+	 * TMEL buffer will remain allocated for crash dump functionality.
+	 * scm_regsave is already registered with firmware, don't free it either.
+	 */
+	return 0;
+
+err_free_regsave:
+	/* Free scm_regsave only if qcom_scm_regsave failed */
+	free_pages((unsigned long)scm_regsave, get_order(regsave_size));
 	return ret;
 }
 
@@ -1931,9 +2171,28 @@ static int ctx_save_probe(struct platform_device *pdev)
  *		-----------------
  */
 
+/* Platform-specific configuration data for IPQ5210 */
+static const struct ctx_save_platform_data ipq5210_data = {
+	.tmel_buffer_size = 0x20000,        /* 128KB */
+	.tmel_log_buffer_reg_addr = 0x8600BE4,
+	.tlv_buffer_size = 0x5C00,          /* 23KB */
+	.tlv_buffer_addr = 0x8600758,
+	.regsave_size = 0x10000,            /* 64KB */
+};
+
+/* Platform-specific configuration data for IPQ9650 */
+static const struct ctx_save_platform_data ipq9650_data = {
+	.tmel_buffer_size = 0x20000,        /* 128KB */
+	.tmel_log_buffer_reg_addr = 0x1967004,
+	.tlv_buffer_size = 0x5C00,          /* 23KB */
+	.tlv_buffer_addr = 0x8600758,
+	.regsave_size = 0x40000,            /* 256KB */
+};
+
 static const struct of_device_id ctx_save_of_table[] = {
 	{
 		.compatible = "qti,ctxt-save-ipq5210",
+		.data = &ipq5210_data,
 	},
 	{
 		.compatible = "qti,ctxt-save-ipq5332",
@@ -1946,6 +2205,7 @@ static const struct of_device_id ctx_save_of_table[] = {
 	},
 	{
 		.compatible = "qti,ctxt-save-ipq9650",
+		.data = &ipq9650_data,
 	},
 	{}
 };

@@ -55,6 +55,7 @@
 #define QTI_PCI_VENDOR_ID		0x17CB
 #define QCN90XX_DEVICE_ID		0x1104
 #define QCN92XX_DEVICE_ID		0x1109
+#define QCC20XX_DEVICE_ID		0x1112
 #define QCN96XX_DEVICE_ID		0x1113
 #define QCN95XX_DEVICE_ID		0x1114
 
@@ -170,7 +171,9 @@ struct mhitest_platform {
 /* klog level for mhitest driver */
 	bool soc_reset_requested;
 	struct completion soc_reset_request;
-	bool running;
+	atomic_t running;
+	atomic_t recovery_in_progress;
+	struct completion recovery_complete;
 	struct timer_list boot_debug_timer;
 };
 enum MHI_STATE {

@@ -7,3 +7,4 @@
  */
 
 #include <arm64/qcom/ipq9650-emulation.dts>
+#include "ipq9650-32bit-common.dtsi"

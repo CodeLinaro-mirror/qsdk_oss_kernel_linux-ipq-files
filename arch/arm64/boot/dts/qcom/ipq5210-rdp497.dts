@@ -21,3 +21,19 @@
 	assigned-clock-parents = <&nsscc NSS_CC_PORT5_RX_DIV_CLK_SRC>,
 				 <&nsscc NSS_CC_PORT5_TX_DIV_CLK_SRC>;
 };
+
+&pcie0_phy {
+	status = "disabled";
+};
+
+&pcie0 {
+	status = "disabled";
+};
+
+&pcie1_phy {
+	status = "disabled";
+};
+
+&pcie1 {
+	status = "disabled";
+};

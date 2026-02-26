@@ -6,6 +6,7 @@
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
+#include <dt-bindings/clock/qcom,apss-ipq.h>
 #include <dt-bindings/clock/qcom,ipq5210-cmn-pll.h>
 #include <dt-bindings/clock/qcom,ipq5210-gcc.h>
 #include <dt-bindings/clock/qcom,ipq5210-nsscc.h>
@@ -60,6 +61,9 @@
 			reg = <0x0>;
 			enable-method = "psci";
 			next-level-cache = <&L2_0>;
+			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
+			clock-names = "cpu";
+			operating-points-v2 = <&cpu_opp_table>;
 		};
 
 		CPU1: cpu@1 {
@@ -68,6 +72,9 @@
 			enable-method = "psci";
 			reg = <0x1>;
 			next-level-cache = <&L2_0>;
+			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
+			clock-names = "cpu";
+			operating-points-v2 = <&cpu_opp_table>;
 		};
 
 		CPU2: cpu@2 {
@@ -76,6 +83,9 @@
 			enable-method = "psci";
 			reg = <0x2>;
 			next-level-cache = <&L2_0>;
+			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
+			clock-names = "cpu";
+			operating-points-v2 = <&cpu_opp_table>;
 		};
 
 		CPU3: cpu@3 {
@@ -84,6 +94,9 @@
 			enable-method = "psci";
 			reg = <0x3>;
 			next-level-cache = <&L2_0>;
+			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
+			clock-names = "cpu";
+			operating-points-v2 = <&cpu_opp_table>;
 		};
 
 		L2_0: l2-cache {
@@ -96,6 +109,36 @@
 		device_type = "memory";
 		/* We expect the bootloader to fill in the size */
 		reg = <0x0 0x80000000 0x0 0x0 >;
+	};
+
+	cpu_opp_table: opp-table-cpu {
+		compatible = "operating-points-v2-kryo-cpu";
+		opp-shared;
+		nvmem-cells = <&apss_cpu_freq>;
+		nvmem-cell-names = "cpu_freq";
+
+		/* Listed all supported CPU frequencies and opp-supported-hw
+		 * values to select CPU frequencies based on the PLL LValue.
+		 * ------------------------------------------------------------
+		 * Frequency     1.2GHz	   1.4GHz	opp-supported-hw
+		 * ------------------------------------------------------------
+		 * 1200000000      1	      1			0x3
+		 * 1416000000      0	      1			0x1
+		 * -----------------------------------------------------------*/
+
+		opp-1200000000 {
+			opp-hz = /bits/ 64 <1200000000>;
+			opp-supported-hw = <0x3>;
+			opp-microvolt = <850000>;
+			clock-latency-ns = <200000>;
+		};
+
+		opp-1416000000 {
+			opp-hz = /bits/ 64 <1416000000>;
+			opp-supported-hw = <0x1>;
+			opp-microvolt = <1000000>;
+			clock-latency-ns = <200000>;
+		};
 	};
 
 	reserved-memory {
@@ -134,6 +177,24 @@
 		minidump_mem: minidump_mem@0 {
 			no-map;
 		};
+
+		/*
+		 * DDRQ data region details
+		 */
+		ddrq_data_region: ddrq_data_region@0 {
+			compatible = "shared-dma-pool";
+			no-map;
+			size = <0x0 0x00800000>;	/* 8MB */
+		};
+
+		/*
+		 * DDRQ descriptor memory details
+		 */
+		ddrq_desc_region: ddrq_desc_region@0 {
+			compatible = "shared-dma-pool";
+			no-map;
+			size = <0x0 0x00080000>;	/* 512KB */
+		};
 	};
 
 	soc@0 {
@@ -148,6 +209,11 @@
 			reg = <0xA4000 0x741>;
 			#address-cells = <1>;
 			#size-cells = <1>;
+
+			apss_cpu_freq: apss_cpu_freq@28 {
+				reg = <0x28 0x1>;
+				bits = <0 8>;
+			};
 
 			s11: s11@3dd {
 				reg = <0x3dd 0x1>;
@@ -224,8 +290,7 @@
 		};
 
 		pcie0_phy: phy@84000 {
-			compatible = "qcom,ipq5210-qmp-gen3x1-pcie-phy",
-				     "qcom,ipq9574-qmp-gen3x1-pcie-phy";
+			compatible = "qcom,ipq5210-qmp-gen3x1-pcie-phy";
 			reg = <0x00084000 0x1bc>; /* Serdes PLL */
 			#address-cells = <1>;
 			#size-cells = <1>;
@@ -1791,7 +1856,7 @@
 		/* EDMA host driver configuration */
 		edma@3ad00000 {
 			compatible = "qcom,edma";
-			reg = <0x3ad00000 0xef800>;
+			reg = <0x3ad00000 0x1C5000>;
 			reg-names = "edma-reg-base";
 			/* TO-DO: Add EDMA HW resets */
 			reset-names = "edma_rst";

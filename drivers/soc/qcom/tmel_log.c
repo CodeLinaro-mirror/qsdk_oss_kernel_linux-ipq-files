@@ -125,7 +125,7 @@ static void dump_fuse_v1(unsigned int addr)
 		fuse->val);
 }
 
-static void dump_fuse_v2(unsigned int addr)
+static void dump_fuse_v2(unsigned int addr, const struct tmellog_data *data)
 {
 	struct fuse_payload *fuse __free(kfree);
 	int ret;
@@ -133,10 +133,13 @@ static void dump_fuse_v2(unsigned int addr)
 	fuse = kzalloc(sizeof(struct fuse_payload), GFP_KERNEL);
 	if (!fuse)
 		return;
-
-	fuse->fuse_addr = addr;
-	ret = qcom_scm_get_ipq_fuse_list(fuse,
-					 sizeof(struct fuse_payload));
+	if (data->tmelcom_support) {
+		ret = tmelcom_fuse_list_read((struct tmel_fuse_payload *)fuse,
+					    sizeof(struct fuse_payload));
+	} else {
+		ret = qcom_scm_get_ipq_fuse_list(fuse,
+						 sizeof(struct fuse_payload));
+	}
 	if (ret) {
 		pr_err("Fuse list SCM call failed, ret = %d\n", ret);
 		return;
@@ -162,7 +165,7 @@ static ssize_t dump_fuse_store(struct device *dev,
 	if (data->version == 0x1)
 		dump_fuse_v1(addr);
 	else if (data->version == 0x2)
-		dump_fuse_v2(addr);
+		dump_fuse_v2(addr, data);
 
 	return count;
 }
@@ -231,9 +234,15 @@ static int list_fuse_v2(const struct tmellog_data *data, char *buf)
 		fuse[index].fuse_addr = base_addr + next;
 		next += 0x8;
 	}
-
-	ret = qcom_scm_get_ipq_fuse_list(fuse, sizeof(struct fuse_payload ) *
-					 data->fuse_addr_size);
+	if (data->tmelcom_support) {
+		ret = tmelcom_fuse_list_read((struct tmel_fuse_payload *)fuse,
+					    sizeof(struct fuse_payload) *
+					    data->fuse_addr_size);
+	} else {
+		ret = qcom_scm_get_ipq_fuse_list(fuse,
+						 sizeof(struct fuse_payload) *
+						 data->fuse_addr_size);
+	}
 	if (ret) {
 		pr_err("Fuse list SCM call failed, ret = %d\n", ret);
 		return ret;
@@ -372,6 +381,15 @@ static const struct tmellog_data tmellog_ipq9574_data = {
 	.version = 0x1,
 };
 
+static const struct tmellog_data tmellog_ipq9650_data = {
+	.base_addr = 0xA4100,
+	.fuse_addr = 0xA40E8,
+	.fuse_addr_size = 0x8,
+	.tme_auth_en_mask = 0x82,
+	.tmelcom_support = true,
+	.version = 0x2,
+};
+
 static const struct of_device_id tmel_log_match_tbl[] = {
 	{.compatible = "qcom,tmel-log-ipq5332",
 	 .data = &tmellog_ipq5332_data,
@@ -384,6 +402,9 @@ static const struct of_device_id tmel_log_match_tbl[] = {
 	},
 	{.compatible = "qcom,tmel-log-ipq9574",
 	 .data = &tmellog_ipq9574_data,
+	},
+	{.compatible = "qcom,tmel-log-ipq9650",
+	 .data = &tmellog_ipq9650_data,
 	},
 	{},
 };
