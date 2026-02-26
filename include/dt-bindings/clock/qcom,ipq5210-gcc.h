@@ -143,5 +143,6 @@
 #define GCC_QDSS_TSCTR_DIV3_CLK					133
 #define GCC_QDSS_TSCTR_DIV4_CLK					134
 #define GCC_QDSS_TSCTR_DIV8_CLK					135
-
+#define GCC_PCIE0_PIPE_CLK_SRC					136
+#define GCC_PCIE1_PIPE_CLK_SRC					137
 #endif
