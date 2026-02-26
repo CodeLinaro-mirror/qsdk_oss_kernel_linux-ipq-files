@@ -23,6 +23,11 @@
 #define QCN9625_SRAM_END \
 				(QCN9625_SRAM_START + QCN9625_SRAM_SIZE - 1)
 
+#define QCC2072_SRAM_START			0x01400000
+#define QCC2072_SRAM_SIZE			0x00500000
+#define QCC2072_SRAM_END \
+				(QCC2072_SRAM_START + QCC2072_SRAM_SIZE - 1)
+
 #define QCN9224_PCIE_BHI_ERRDBG2_REG		0x1E0E238
 #define QCN9224_PCIE_BHI_ERRDBG3_REG		0x1E0E23C
 #define QCN9224_PBL_LOG_SRAM_START		0x01303da0
@@ -35,6 +40,9 @@
 
 #define QCN9625_PBL_LOG_SRAM_START		0x0210AF10
 #define QCN9625_PBL_WLAN_BOOT_CONFIG		0x01F9200C
+
+#define QCC2072_PBL_LOG_SRAM_START		0x0140BA58
+#define QCC2072_TCSR_PBL_LOGGING_REG		0x01B000F8
 
 #define TCSR_DEBUG_REG0                         0x1B001C4
 #define PBL_ERR_MAGIC_COOKIE                    0xAABBCCDD
@@ -155,6 +163,11 @@ static int mhitest_read_pbl_ram_info(struct mhitest_platform *mplat,
 
 #define QCN9625_PCIE_PCIE_LOCAL_REG_REMAP_BAR_CTRL	0x3278
 #define QCN9625_GCC_RAMSS_CBCR				0x1E38218
+
+#define QCC2072_PCIE_PCIE_LOCAL_REG_REMAP_BAR_CTRL	0x3278
+#define QCC2072_WLAON_SOC_RESET_CAUSE_SHADOW_REG	0x1F80608
+#define QCC2072_PCIE_PCIE_PARF_LTSSM			0x1E081B0
+#define QCC2072_GCC_RAMSS_CBCR				0x1E65200
 
 #define PCIE_CFG_PCIE_STATUS			0x230
 #define PCIE_PCIE_PARF_PM_STTS			0x1E08024
@@ -368,6 +381,7 @@ static int mhitest_debug_read_noc_errors(struct mhitest_platform *mplat,
 	case QCN92XX_DEVICE_ID:
 	case QCN95XX_DEVICE_ID:
 	case QCN96XX_DEVICE_ID:
+	case QCC20XX_DEVICE_ID:
 		for (i = 0; noc_err_table_list[i].reg_name; i++)
 			noc_err_table_list[i].reg_handler(mplat,
 				noc_err_table_list[i].reg, &buf[i]);
@@ -435,6 +449,21 @@ static int mhitest_debug_read_misc_data(struct mhitest_platform *mplat,
 				     &pbl_sbl_err->parf_ltssm);
 		mhitest_pci_reg_read(mplat,
 				     QCN9625_GCC_RAMSS_CBCR,
+				     &pbl_sbl_err->gcc_ramss_cbcr);
+	}
+
+	if (mplat->device_id == QCC20XX_DEVICE_ID) {
+		mhitest_pci_reg_read(mplat,
+				     QCC2072_PCIE_PCIE_LOCAL_REG_REMAP_BAR_CTRL,
+				     &pbl_sbl_err->remap_bar_ctrl);
+		mhitest_pci_reg_read(mplat,
+				     QCC2072_WLAON_SOC_RESET_CAUSE_SHADOW_REG,
+				     &pbl_sbl_err->soc_rc_shadow_reg);
+		mhitest_pci_reg_read(mplat,
+				     QCC2072_PCIE_PCIE_PARF_LTSSM,
+				     &pbl_sbl_err->parf_ltssm);
+		mhitest_pci_reg_read(mplat,
+				     QCC2072_GCC_RAMSS_CBCR,
 				     &pbl_sbl_err->gcc_ramss_cbcr);
 	}
 
@@ -570,7 +599,8 @@ static void mhitest_debug_print_bl_data(struct mhitest_platform *mplat,
 
 	if (mplat->device_id == QCN92XX_DEVICE_ID ||
 	    mplat->device_id == QCN95XX_DEVICE_ID ||
-	    mplat->device_id == QCN96XX_DEVICE_ID) {
+	    mplat->device_id == QCN96XX_DEVICE_ID ||
+	    mplat->device_id == QCC20XX_DEVICE_ID) {
 		pr_err("LOCAL_REG_REMAP_BAR_CTRL: 0x%08x, WLAON_SOC_RESET_CAUSE_SHADOW_REG: 0x%08x, PARF_LTSSM: 0x%08x\n",
 			pbl_sbl_err->remap_bar_ctrl,
 			pbl_sbl_err->soc_rc_shadow_reg,
@@ -676,6 +706,18 @@ void mhitest_pci_dump_bl_sram_mem(struct mhitest_platform *mplat)
 
 		pbl_data.tcsr_pbl_logging_reg = QCN9224_TCSR_PBL_LOGGING_REG;
 		pbl_data.pbl_wlan_boot_cfg = QCN9625_PBL_WLAN_BOOT_CONFIG;
+		pbl_data.pbl_bootstrap_status = QCN9224_PBL_BOOTSTRAP_STATUS;
+		break;
+	case QCC20XX_DEVICE_ID:
+		sbl_data.sbl_sram_start = QCC2072_SRAM_START;
+		sbl_data.sbl_sram_end = QCC2072_SRAM_END;
+		sbl_data.sbl_log_size_reg = QCN9224_PCIE_BHI_ERRDBG3_REG;
+		sbl_data.sbl_log_start_reg = QCN9224_PCIE_BHI_ERRDBG2_REG;
+		sbl_data.sbl_log_size_shift = 0;
+		pbl_data.pbl_log_sram_start = QCC2072_PBL_LOG_SRAM_START;
+		pbl_data.pbl_log_sram_max_size = QCN9224_PBL_LOG_SRAM_MAX_SIZE;
+		pbl_data.tcsr_pbl_logging_reg = QCC2072_TCSR_PBL_LOGGING_REG;
+		pbl_data.pbl_wlan_boot_cfg = QCN9224_PBL_WLAN_BOOT_CFG;
 		pbl_data.pbl_bootstrap_status = QCN9224_PBL_BOOTSTRAP_STATUS;
 		break;
 	default:
