@@ -1335,7 +1335,9 @@
 				 <0>,
 				 <0>,
 				 <0>,
-				 <0>;
+				 <0>,
+				 <&cmn_pll IPQ5210_EPHY_RAW_CLK>,
+				 <&cmn_pll IPQ5210_EPHY_RAW_CLK>;
 			clock-names = "xo",
 				      "nss",
 				      "ppe",
@@ -1345,7 +1347,9 @@
 				      "uniphy1_rx",
 				      "uniphy1_tx",
 				      "uniphy2_rx",
-				      "uniphy2_tx";
+				      "uniphy2_tx",
+				      "ephy_rx",
+				      "ephy_tx";
 			#clock-cells = <1>;
 			#reset-cells = <1>;
 			#interconnect-cells = <1>;
