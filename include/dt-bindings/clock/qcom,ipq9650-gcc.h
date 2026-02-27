@@ -203,5 +203,16 @@
 #define GPLL2_OUT_MAIN						193
 #define GPLL4							194
 #define GPLL6							195
+#define GCC_SLEEP_CLK_SRC					196
+#define GCC_PCIE0_PIPE_CLK_SRC					197
+#define GCC_PCIE1_PIPE_CLK_SRC					198
+#define GCC_PCIE2_PIPE_CLK_SRC					199
+#define GCC_PCIE3_PIPE_CLK_SRC					200
+#define GCC_PCIE4_PIPE_CLK_SRC					201
+#define GCC_USB0_PIPE_CLK_SRC					202
+#define GCC_XO_CLK_SRC						203
+#define GCC_USB0_EUD_AT_CLK					204
+#define GCC_PCNOC_BFDCD_CLK_SRC					205
+#define GCC_SYSTEM_NOC_BFDCD_CLK_SRC				206
 
 #endif
