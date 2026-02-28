@@ -355,6 +355,10 @@
 	status = "disabled";
 };
 
+&ess_uniphy {
+	status = "disabled";
+};
+
 &ess_switch {
 	switch_lan_bmp = <0x3e>; /* lan port bitmap */
 	switch_wan_bmp = <0x40>; /* wan port bitmap */
