@@ -93,10 +93,6 @@
 	status = "disabled";
 };
 
-&spi0 {
-	status = "disabled";
-};
-
 &qpic_bam {
 	status = "disabled";
 };
@@ -115,8 +111,4 @@
 
 &usb3 {
 	status = "disabled";
-};
-
-&uart1 {
-	status = "okay";
 };
