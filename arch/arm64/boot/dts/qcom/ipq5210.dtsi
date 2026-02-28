@@ -1481,6 +1481,10 @@
 					<&nsscc NSS_CC_UNIPHY_PORT5_TX_CLK>,
 					<&nsscc NSS_CC_UNIPHY_PORT6_RX_CLK>,
 					<&nsscc NSS_CC_UNIPHY_PORT6_TX_CLK>,
+					<&cmn_pll IPQ5210_EPHY_RAW_CLK>,
+					<&cmn_pll IPQ5210_EPHY_RAW_CLK>,
+					<&nsscc NSS_CC_PORT4_RX_CLK_SRC>,
+					<&nsscc NSS_CC_PORT4_TX_CLK_SRC>,
 					<&nsscc NSS_CC_PORT5_RX_CLK_SRC>,
 					<&nsscc NSS_CC_PORT5_TX_CLK_SRC>;
 				clock-names = "cmn_ahb_clk",
@@ -1533,6 +1537,10 @@
 					"uniphy1_port5_tx_clk",
 					"uniphy2_port6_rx_clk",
 					"uniphy2_port6_tx_clk",
+					"ephy_rx_clk_src_parent",
+					"ephy_tx_clk_src_parent",
+					"nss_port4_rx_clk_src",
+					"nss_port4_tx_clk_src",
 					"nss_port5_rx_clk_src",
 					"nss_port5_tx_clk_src";
 				resets = <&nsscc NSS_CC_PPE_BCR>,
