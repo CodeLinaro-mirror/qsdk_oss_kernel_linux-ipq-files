@@ -208,18 +208,6 @@
 	status = "okay";
 };
 
-&spi0 {
-	status = "disabled";
-};
-
-&qpic_bam {
-	status = "disabled";
-};
-
-&qpic_nand {
-	status = "disabled";
-};
-
 &qusb_phy_0 {
 	status = "disabled";
 };
@@ -230,8 +218,4 @@
 
 &usb3 {
 	status = "disabled";
-};
-
-&uart1 {
-	status = "okay";
 };
