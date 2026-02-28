@@ -385,16 +385,16 @@
 			mdio_pins: mdio-state {
 				mux_0 {
 					pins = "gpio26";
-					function = "mdc";
+					function = "mdc_mst";
 					drive-strength = <6>;
-					bias-disable;
+					bias-pull-down;
 				};
 
 				mux_1 {
 					pins = "gpio27";
-					function = "mdio";
+					function = "mdio_mst";
 					drive-strength = <6>;
-					bias-disable;
+					bias-pull-down;
 				};
 			};
 		};
