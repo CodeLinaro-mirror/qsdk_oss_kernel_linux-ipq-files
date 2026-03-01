@@ -1330,12 +1330,12 @@
 				 <&cmn_pll IPQ5210_NSS_CLK>,
 				 <&cmn_pll IPQ5210_PPE_CLK>,
 				 <&gcc_gpll0_out_aux>,
-				 <0>,
-				 <0>,
-				 <0>,
-				 <0>,
-				 <0>,
-				 <0>,
+				 <&ess_uniphy 0>,
+				 <&ess_uniphy 1>,
+				 <&ess_uniphy 2>,
+				 <&ess_uniphy 3>,
+				 <&ess_uniphy 4>,
+				 <&ess_uniphy 5>,
 				 <&cmn_pll IPQ5210_EPHY_RAW_CLK>,
 				 <&cmn_pll IPQ5210_EPHY_RAW_CLK>;
 			clock-names = "xo",
@@ -1353,6 +1353,10 @@
 			#clock-cells = <1>;
 			#reset-cells = <1>;
 			#interconnect-cells = <1>;
+			assigned-clocks = <&nsscc NSS_CC_EPHY_RX_CLK_SRC>,
+					  <&nsscc NSS_CC_EPHY_TX_CLK_SRC>;
+			assigned-clock-parents = <&nsscc NSS_CC_PORT4_RX_DIV_CLK_SRC>,
+						 <&nsscc NSS_CC_PORT4_TX_DIV_CLK_SRC>;
 		};
 
 		eip: eip196@39800000 {
@@ -1417,6 +1421,7 @@
 			compatible = "qcom,ess-uniphy";
 			reg = <0x7a00000 0x30000>;
 			uniphy_access_mode = "local bus";
+			#clock-cells = <1>;
 		};
 
 		ess_instance: ess-instance {
