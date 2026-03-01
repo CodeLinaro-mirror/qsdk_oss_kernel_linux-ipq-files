@@ -110,23 +110,23 @@ static const struct parent_map nss_cc_parent_map_port4_tx[] = {
 static const struct clk_parent_data gcc_xo_ephy_uniphy0_rx[] = {
 	{ .index = DT_XO },
 	{ .index = DT_EPHY_RX_CLK },
-	{ .name = "uniphy0_gcc_rx_clk" },
+	{ .index = DT_UNIPHY0_NSS_RX_CLK },
 };
 
 static const struct clk_parent_data gcc_xo_ephy_uniphy0_tx[] = {
 	{ .index = DT_XO },
-	{ .name = "uniphy0_gcc_tx_clk" },
+	{ .index = DT_UNIPHY0_NSS_TX_CLK },
 	{ .index = DT_EPHY_TX_CLK },
 };
 
 static const struct clk_parent_data gcc_xo_uniphy0_gcc_rx[] = {
 	{ .index = DT_XO },
-	{ .name = "uniphy0_gcc_rx_clk" },
+	{ .index = DT_UNIPHY0_NSS_RX_CLK },
 };
 
 static const struct clk_parent_data gcc_xo_uniphy0_gcc_tx[] = {
 	{ .index = DT_XO },
-	{ .name = "uniphy0_gcc_tx_clk" },
+	{ .index = DT_UNIPHY0_NSS_TX_CLK },
 };
 
 static const struct parent_map nss_cc_parent_map_port5_rx[] = {
@@ -144,12 +144,12 @@ static const struct parent_map nss_cc_parent_map_port5_tx[] = {
 static const struct clk_parent_data gcc_xo_ephy_uniphy1_rx[] = {
 	{ .index = DT_XO },
 	{ .index = DT_EPHY_RX_CLK },
-	{ .name = "uniphy1_gcc_rx_clk" },
+	{ .index = DT_UNIPHY1_NSS_RX_CLK },
 };
 
 static const struct clk_parent_data gcc_xo_ephy_uniphy1_tx[] = {
 	{ .index = DT_XO },
-	{ .name = "uniphy1_gcc_tx_clk" },
+	{ .index = DT_UNIPHY1_NSS_TX_CLK },
 	{ .index = DT_EPHY_TX_CLK },
 };
 
@@ -165,12 +165,12 @@ static const struct parent_map nss_cc_parent_map_port6_tx[] = {
 
 static const struct clk_parent_data gcc_xo_uniphy2_rx[] = {
 	{ .index = DT_XO },
-	{ .name = "uniphy2_gcc_rx_clk" },
+	{ .index = DT_UNIPHY2_NSS_RX_CLK },
 };
 
 static const struct clk_parent_data gcc_xo_uniphy2_tx[] = {
 	{ .index = DT_XO },
-	{ .name = "uniphy2_gcc_tx_clk" },
+	{ .index = DT_UNIPHY2_NSS_TX_CLK },
 };
 
 static const struct freq_tbl ftbl_nss_cc_ppe_clk_src[] = {
@@ -579,6 +579,7 @@ static const struct freq_multi_tbl ftbl_nss_cc_port1_3_rx_clk_src[] = {
 	FM(125000000, ftbl_nss_cc_port1_rx_clk_src_125),
 	FMS(156250000, P_UNIPHY0_NSS_RX_CLK, 2, 0, 0),
 	FMS(312500000, P_UNIPHY0_NSS_RX_CLK, 1, 0, 0),
+	FMS(378788000, P_UNIPHY0_NSS_RX_CLK, 1, 0, 0),
 	{ }
 };
 
@@ -627,6 +628,7 @@ static const struct freq_multi_tbl ftbl_nss_cc_port1_3_tx_clk_src[] = {
 	FM(125000000, ftbl_nss_cc_port1_tx_clk_src_125),
 	FMS(156250000, P_UNIPHY0_NSS_TX_CLK, 2, 0, 0),
 	FMS(312500000, P_UNIPHY0_NSS_TX_CLK, 1, 0, 0),
+	FMS(378788000, P_UNIPHY0_NSS_TX_CLK, 1, 0, 0),
 	{ }
 };
 
