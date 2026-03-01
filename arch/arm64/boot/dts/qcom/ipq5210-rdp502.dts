@@ -40,7 +40,10 @@
 		mdio@90000 {
 			status = "okay";
 			/* gpio reset for PHYs */
-			phy-reset-gpio = <&tlmm 24 GPIO_ACTIVE_LOW>;
+			phy-reset-gpio = <
+				&tlmm 24 GPIO_ACTIVE_LOW
+				&tlmm 45 GPIO_ACTIVE_LOW
+			>;
 			ethernet-phy-package@0 {
 				compatible = "qcom,qce1204-package";
 				#address-cells = <1>;
