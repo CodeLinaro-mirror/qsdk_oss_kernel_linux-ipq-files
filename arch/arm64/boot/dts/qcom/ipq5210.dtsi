@@ -146,26 +146,30 @@
 		#size-cells = <2>;
 		ranges;
 
-		bootloader@8a100000 {
-			reg = <0x0 0x8a100000 0x0 0x400000>;
+		bootloader@87800000 {
+			reg = <0x0 0x87800000 0x0 0x400000>;
 			no-map;
 		};
 
-		smem@8a500000 {
+		smem@87c00000 {
 			compatible = "qcom,smem";
-			reg = <0x0 0x8a500000 0x0 0x40000>;
+			reg = <0x0 0x87c00000 0x0 0x40000>;
 			no-map;
 
 			hwlocks = <&tcsr_mutex 3>;
 		};
 
-		tfa@8a600000 {
-			reg = <0x0 0x8a600000 0x0 0x80000>;
+		tfa@87d00000 {
+			reg = <0x0 0x87d00000 0x0 0x80000>;
 			no-map;
 		};
 
-		optee@8a680000 {
-			reg = <0x0 0x8a680000 0x0 0x280000>;
+		optee@87d80000 {
+#ifdef __IPQ_MEM_PROFILE_256_MB__
+			reg = <0x0 0x87d80000 0x0 0x80000>;
+#else
+			reg = <0x0 0x87d80000 0x0 0x280000>;
+#endif
 			no-map;
 		};
 
