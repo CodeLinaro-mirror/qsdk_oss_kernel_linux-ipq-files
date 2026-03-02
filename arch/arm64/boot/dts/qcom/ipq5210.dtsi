@@ -310,14 +310,17 @@
 
 			clocks = <&gcc GCC_PCIE0_AUX_CLK>,
 				 <&gcc GCC_PCIE0_AHB_CLK>,
+				 <&gcc GCC_SNOC_PCIE0_AXI_M_CLK>,
 				 <&gcc GCC_CNOC_PCIE0_1LANE_S_CLK>;
-			clock-names = "aux", "cfg_ahb", "snoc_lane";
+			clock-names = "aux", "cfg_ahb", "snoc_lane", "anoc_lane";
 
 			assigned-clocks = <&gcc GCC_PCIE0_AUX_CLK>,
 					  <&gcc GCC_PCIE0_AHB_CLK>,
+					  <&gcc GCC_SNOC_PCIE0_AXI_M_CLK>,
 					  <&gcc GCC_CNOC_PCIE0_1LANE_S_CLK>;
 			assigned-clock-rates = <20000000>,
 					       <100000000>,
+					       <200000000>,
 					       <240000000>;
 
 			resets = <&gcc GCC_PCIE0_PHY_BCR>,
@@ -351,14 +354,17 @@
 
 			clocks = <&gcc GCC_PCIE1_AUX_CLK>,
 				 <&gcc GCC_PCIE1_AHB_CLK>,
+				 <&gcc GCC_SNOC_PCIE1_AXI_M_CLK>,
 				 <&gcc GCC_CNOC_PCIE1_2LANE_S_CLK>;
-			clock-names = "aux", "cfg_ahb", "snoc_lane";
+			clock-names = "aux", "cfg_ahb", "snoc_lane", "anoc_lane";
 
 			assigned-clocks = <&gcc GCC_PCIE1_AUX_CLK>,
 					  <&gcc GCC_PCIE1_AHB_CLK>,
+					  <&gcc GCC_SNOC_PCIE1_AXI_M_CLK>,
 					  <&gcc GCC_CNOC_PCIE1_2LANE_S_CLK>;
 			assigned-clock-rates = <20000000>,
 					       <100000000>,
+					       <266666666>,
 					       <240000000>;
 
 			resets = <&gcc GCC_PCIE1_PHY_BCR>,
