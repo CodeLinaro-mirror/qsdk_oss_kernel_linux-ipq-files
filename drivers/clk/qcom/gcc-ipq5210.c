@@ -3170,6 +3170,11 @@ static int gcc_ipq5210_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	/* Constrain gpll0 to its hardware-programmed rate.
+	 * Without real GCC consumers, gpll0 is unconstrained and
+	 * gets incorrectly selected as the CPU clock parent.
+	 */
+	clk_hw_set_rate_range(&gpll0.clkr.hw, 800000000UL, 800000000UL);
 	dev_info(&pdev->dev, "Registered GCC clocks\n");
 
 	return ret;
