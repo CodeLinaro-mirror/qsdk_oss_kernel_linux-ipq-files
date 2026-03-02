@@ -279,6 +279,24 @@
 		minidump_mem: minidump_mem@0 {
 			no-map;
 		};
+
+		uio_firmware: uio_firmware@0 {
+			compatible = "qcom,debug-uio-firmware";
+			size = <0x0 0x2000>;
+			no-map;
+		};
+
+		uio_host: uio_host@0 {
+			compatible = "qcom,debug-uio-host";
+			size = <0x0 0x2000>;
+			no-map;
+		};
+
+		uio_nss: uio_nss@0 {
+			compatible = "qcom,debug-uio-nss";
+			size = <0x0 0x2000>;
+			no-map;
+		};
 	};
 
 	soc: soc@0 {
