@@ -115,22 +115,6 @@
 				 <&nsscc NSS_CC_PORT4_TX_DIV_CLK_SRC>;
 };
 
-&pcie0_phy {
-	status = "disabled";
-};
-
-&pcie0 {
-	status = "disabled";
-};
-
-&pcie1_phy {
-	status = "disabled";
-};
-
-&pcie1 {
-	status = "disabled";
-};
-
 &qpic_bam {
 	status = "disabled";
 };

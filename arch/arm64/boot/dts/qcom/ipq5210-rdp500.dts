@@ -172,13 +172,13 @@
 };
 
 &pcie0_phy {
-	status = "disabled";
+	status = "okay";
 };
 
 &pcie0 {
 	pinctrl-0 = <&pcie0_default_state>;
 	perst-gpio = <&tlmm 32 GPIO_ACTIVE_LOW>;
-	status = "disabled";
+	status = "okay";
 
 	pcie0_rp {
 		reg = <0 0 0 0 0>;
@@ -210,14 +210,6 @@
 			};
 		};
 	};
-};
-
-&pcie1_phy {
-	status = "disabled";
-};
-
-&pcie1 {
-	status = "disabled";
 };
 
 &qcn9224_pcie0 {
