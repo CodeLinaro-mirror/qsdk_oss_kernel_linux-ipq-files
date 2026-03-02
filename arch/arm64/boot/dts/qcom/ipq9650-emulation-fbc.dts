@@ -112,3 +112,7 @@
 &tmelcom {
 	status = "okay";
 };
+
+&ess_uniphy {
+	status = "disabled";
+};

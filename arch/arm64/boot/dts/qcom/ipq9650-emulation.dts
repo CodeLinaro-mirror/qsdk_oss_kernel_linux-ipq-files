@@ -500,3 +500,7 @@
 &cmn_pll {
 	status = "disabled";
 };
+
+&ess_uniphy {
+	status = "disabled";
+};

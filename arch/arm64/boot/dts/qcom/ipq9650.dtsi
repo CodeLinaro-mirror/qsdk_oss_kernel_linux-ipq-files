@@ -1826,12 +1826,12 @@
 				 <&cmn_pll IPQ9650_NSS_CLK>,
 				 <&cmn_pll IPQ9650_PPE_CLK>,
 				 <&gcc_gpll0_out_aux>,
-				 <0>,
-				 <0>,
-				 <0>,
-				 <0>,
-				 <0>,
-				 <0>;
+				 <&ess_uniphy 0>,
+				 <&ess_uniphy 1>,
+				 <&ess_uniphy 2>,
+				 <&ess_uniphy 3>,
+				 <&ess_uniphy 4>,
+				 <&ess_uniphy 5>;
 			clock-names = "xo",
 				      "nss",
 				      "ppe",
@@ -2263,6 +2263,13 @@
 			status = "disabled";
 		};
 
+		ess_uniphy: ess-uniphy@7a00000 {
+			compatible = "qcom,ess-uniphy";
+			reg = <0x7a00000 0x30000>;
+			uniphy_access_mode = "local bus";
+			#clock-cells = <1>;
+		};
+
 		ess_instance: ess-instance {
 			compatible = "qcom,ess-instance";
 			num_devices = <0x1>;
@@ -2326,7 +2333,9 @@
 					 <&nsscc NSS_CC_UNIPHY_PORT5_RX_CLK>,
 					 <&nsscc NSS_CC_UNIPHY_PORT5_TX_CLK>,
 					 <&nsscc NSS_CC_UNIPHY_PORT6_RX_CLK>,
-					 <&nsscc NSS_CC_UNIPHY_PORT6_TX_CLK>;
+					 <&nsscc NSS_CC_UNIPHY_PORT6_TX_CLK>,
+					 <&nsscc NSS_CC_PORT5_RX_CLK_SRC>,
+					 <&nsscc NSS_CC_PORT5_TX_CLK_SRC>;
 				clock-names = "cmn_ahb_clk",
 					      "cmn_sys_clk",
 					      "uniphy0_ahb_clk",
@@ -2376,7 +2385,9 @@
 					      "uniphy1_port5_rx_clk",
 					      "uniphy1_port5_tx_clk",
 					      "uniphy2_port6_rx_clk",
-					      "uniphy2_port6_tx_clk";
+					      "uniphy2_port6_tx_clk",
+					      "nss_port5_rx_clk_src",
+					      "nss_port5_tx_clk_src";
 				resets = <&nsscc NSS_CC_PPE_BCR>,
 					 <&gcc GCC_UNIPHY0_BCR>,
 					 <&gcc GCC_UNIPHY1_BCR>,
