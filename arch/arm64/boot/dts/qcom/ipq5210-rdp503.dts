@@ -245,7 +245,7 @@
 				switch_wan_bmp = <0x40>; /* wan port bitmap */
 				switch_mac_mode = <0x15>; /* UQXGMII for qce1204 PHY */
 				switch_mac_mode1 = <0xd>; /* USXGMII for Laguna PHY */
-				switch_mac_mode2 = <0x1b>; /* XGSPON */
+				switch_mac_mode2 = <0xff>;
 
 				qcom,port_phyinfo {
 					port@0 {
