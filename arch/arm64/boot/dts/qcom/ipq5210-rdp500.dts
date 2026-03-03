@@ -79,7 +79,7 @@
 				switch_wan_bmp = <0x40>; /* wan port bitmap */
 				switch_mac_mode = <0x0>; /* PSGMII for malibu PHY */
 				switch_mac_mode1 = <0xff>; /* unused */
-				switch_mac_mode2 = <0x1b>; /* XGSPON */
+				switch_mac_mode2 = <0xff>;
 
 				qcom,port_phyinfo {
 					port@0 {
