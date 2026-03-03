@@ -419,6 +419,15 @@
 					bias-pull-down;
 				};
 			};
+
+			pps_state: pps-state {
+				pps-pins {
+					pins = "gpio18";
+					function = "pps";
+					drive-strength = <8>;
+					bias-pull-down;
+				};
+			};
 		};
 
 		gcc: clock-controller@1800000 {
