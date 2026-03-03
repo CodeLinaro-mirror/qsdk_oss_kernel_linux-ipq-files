@@ -26,7 +26,7 @@ bool qcom_pas_is_available(void)
 EXPORT_SYMBOL_GPL(qcom_pas_is_available);
 
 int qcom_pas_init_image(u32 peripheral, const void *metadata, size_t size,
-			struct qcom_pas_metadata *ctx)
+			struct qcom_pas_context *ctx)
 {
 	if (ops_ptr)
 		return ops_ptr->init_image(ops_ptr->dev, peripheral,
@@ -36,7 +36,7 @@ int qcom_pas_init_image(u32 peripheral, const void *metadata, size_t size,
 }
 EXPORT_SYMBOL_GPL(qcom_pas_init_image);
 
-void qcom_pas_metadata_release(struct qcom_pas_metadata *ctx)
+void qcom_pas_metadata_release(struct qcom_pas_context *ctx)
 {
 	if (ops_ptr && ctx && ctx->ptr)
 		ops_ptr->metadata_release(ops_ptr->dev, ctx);
