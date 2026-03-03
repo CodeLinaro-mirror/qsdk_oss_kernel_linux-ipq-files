@@ -1495,7 +1495,15 @@
 					<&nsscc NSS_CC_PORT4_RX_CLK_SRC>,
 					<&nsscc NSS_CC_PORT4_TX_CLK_SRC>,
 					<&nsscc NSS_CC_PORT5_RX_CLK_SRC>,
-					<&nsscc NSS_CC_PORT5_TX_CLK_SRC>;
+					<&nsscc NSS_CC_PORT5_TX_CLK_SRC>,
+					<&nsscc NSS_CC_UNIPHY_PORT1_RX_DIV4_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT1_TX_DIV4_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT2_RX_DIV4_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT2_TX_DIV4_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT3_RX_DIV4_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT3_TX_DIV4_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT4_RX_DIV4_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT4_TX_DIV4_CLK>;
 				clock-names = "cmn_ahb_clk",
 					"cmn_sys_clk",
 					"uniphy0_ahb_clk",
@@ -1551,7 +1559,15 @@
 					"nss_port4_rx_clk_src",
 					"nss_port4_tx_clk_src",
 					"nss_port5_rx_clk_src",
-					"nss_port5_tx_clk_src";
+					"nss_port5_tx_clk_src",
+					"uniphy_port1_rx_div4_clk",
+					"uniphy_port1_tx_div4_clk",
+					"uniphy_port2_rx_div4_clk",
+					"uniphy_port2_tx_div4_clk",
+					"uniphy_port3_rx_div4_clk",
+					"uniphy_port3_tx_div4_clk",
+					"uniphy_port4_rx_div4_clk",
+					"uniphy_port4_tx_div4_clk";
 				resets = <&nsscc NSS_CC_PPE_BCR>,
 					<&gcc GCC_UNIPHY0_BCR>,
 					<&gcc GCC_UNIPHY1_BCR>,
