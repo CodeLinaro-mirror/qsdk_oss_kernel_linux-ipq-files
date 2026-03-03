@@ -376,9 +376,9 @@
 			qcom,early_cal_enabled = "supported";
 			qcom,caldata_offset = <0x58800>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
-			qcom,caldb_offset = <0x1400000>;
+			qcom,caldb_offset = <0xD00000>;
 #else
-			qcom,caldb_offset = <0x1C00000>;
+			qcom,caldb_offset = <0x1100000>;
 #endif
 			qcom,caldb_size = <0x800000>;
 			qcom,board_id = <0x01>;
@@ -439,9 +439,9 @@
 			qcom,early_cal_enabled = "supported";
 			qcom,caldata_offset = <0x8A800>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
-			qcom,caldb_offset = <0x1400000>;
+			qcom,caldb_offset = <0xD00000>;
 #else
-			qcom,caldb_offset = <0x1C00000>;
+			qcom,caldb_offset = <0x1100000>;
 #endif
 			qcom,caldb_size = <0x800000>;
 			qcom,board_id = <0x04>;
@@ -496,9 +496,9 @@
 #endif
 			qcom,caldata_offset = <0xbc800>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
-			qcom,caldb_offset = <0x1400000>;
+			qcom,caldb_offset = <0xD00000>;
 #else
-			qcom,caldb_offset = <0x1C00000>;
+			qcom,caldb_offset = <0x1100000>;
 #endif
 			qcom,caldb_size = <0x800000>;
 			qcom,board_id = <0x02>;
@@ -840,7 +840,7 @@
 
 #if !defined(__IPQ_MEM_PROFILE_256_MB__) && !defined(__IPQ_MEM_PROFILE_512_MB__)
 &qcn9000_pcie0{
-	reg = <0x0 0x5C500000 0x0 0x01600000>;
+	reg = <0x0 0x56D00000 0x0 0x01600000>;
 	status = "ok";
 };
 
@@ -853,22 +853,22 @@
 	 * +=========+==============+=========+
 	 * |  Region | Start Offset |   Size  |
 	 * +---------+--------------+---------+
-	 * | HREMOTE |  0x5C500000  |   9MB   |
+	 * | HREMOTE |  0x56D00000  |   9MB   |
 	 * +---------+--------------+---------+
-	 * | M3 Dump |  0x5CE00000  |   1MB   |
+	 * | M3 Dump |  0x57600000  |   1MB   |
 	 * +---------+--------------+---------+
-	 * |   ETR   |  0x5CF00000  |   1MB   |
+	 * |   ETR   |  0x57700000  |   1MB   |
 	 * +---------+--------------+---------+
-	 * |  Caldb  |  0x5D000000  |   8MB   |
+	 * |  Caldb  |  0x57800000  |   8MB   |
 	 * +---------+--------------+---------+
-	 * | Pageable|  0x5D800000  |   3MB   |
+	 * | Pageable|  0x58000000  |   3MB   |
 	 * +==================================+
 	 */
-	base-addr = <0x5C500000>;
-	m3-dump-addr = <0x5CE00000>;
-	etr-addr = <0x5CF00000>;
-	caldb-addr = <0x5D000000>;
-	pageable-addr = <0x5D800000>;
+	base-addr = <0x56D00000>;
+	m3-dump-addr = <0x57600000>;
+	etr-addr = <0x57700000>;
+	caldb-addr = <0x57800000>;
+	pageable-addr = <0x58000000>;
 	hremote-size = <0x900000>;
 	pageable-size = <0x300000>;
 	tgt-mem-mode = <0x5>;
