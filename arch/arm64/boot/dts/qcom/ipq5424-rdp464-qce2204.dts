@@ -1169,6 +1169,23 @@
 			bias-pull-down;
 		};
 	};
+
+	mdio_slv_pins: mdio1-state {
+		mux_0 {
+			pins = "gpio20";
+			function = "mdc_slv";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+
+		mux_1 {
+			pins = "gpio21";
+			function = "mdio_slv";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+
 };
 
 &qcn9224_pcie1 {

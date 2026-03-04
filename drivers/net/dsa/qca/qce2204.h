@@ -24,7 +24,7 @@
 #define QCE2204_RSTP_ATHTAG_TYPE			0xfefe	/* RSTP Atheros header type */
 #define QCE2204_NUM_PORTS				6
 #define QCE2204_NUM_CPU_PORTS				2
-#define QCE2204_MDIO_REG_BASE_OFFSET		0x07000000
+#define QCE2204_MDIO_PPE_REG_BASE_OFFSET	0x07000000
 
 #define PHY_ID_QCE2204					0x004dd190
 #define QCE2204_CHIP_ID					0x50
@@ -70,6 +70,16 @@
 enum qce2204_port_mac_type {
 	QCE2204_PORT_MAC_TYPE_GMAC = 0,
 	QCE2204_PORT_MAC_TYPE_XGMAC = 1,
+};
+
+/**
+ * enum qce2204_bp_mode - Cross-chip backpressure mode
+ * @QCE2204_BP_QUEUE: Queue-based backpressure (default)
+ * @QCE2204_BP_EDMA: EDMA-based backpressure (for IPQ5424/IPQ5332)
+ */
+enum qce2204_bp_mode {
+	QCE2204_BP_QUEUE = 0,
+	QCE2204_BP_EDMA  = 1,
 };
 
 /* QCE2204 Hardware Module Base Addresses */
@@ -239,6 +249,9 @@ struct qce2204_priv {
 
 	/* DSA tag protocol */
 	enum dsa_tag_protocol tag_protocol;
+
+	/* Cross-chip backpressure mode */
+	enum qce2204_bp_mode bp_mode;
 };
 
 /* Clock/Reset management functions */
@@ -262,9 +275,9 @@ int qce2204_get_port_resets(struct qce2204_priv *priv, int port,
 int qce2204_reset_switch(struct qce2204_priv *priv);
 int qce2204_reset_port(struct qce2204_priv *priv, int port);
 
-/* PPE register access functions */
-u32 qce2204_ppe_read(struct qce2204_priv *priv, u32 reg);
-void qce2204_ppe_write(struct qce2204_priv *priv, u32 reg, u32 val);
+/* QCE2204 register access functions */
+int qce2204_mdio_read(struct mii_bus *bus, int addr, u32 reg, u32 *val);
+int qce2204_mdio_write(struct mii_bus *bus, int addr, u32 reg, u32 val);
 
 /* Port management functions */
 void qce2204_port_set_status(struct qce2204_priv *priv, int port, int enable);

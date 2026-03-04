@@ -435,6 +435,26 @@ struct qce2204_ppe_eg_gen_ctrl_cfg {
 };
 
 /**
+ * struct qce2204_ppe_mdio_backpressure_cfg - MDIO backpressure configuration
+ * @trigger_en: MDIO trigger enable
+ * @timer_en: MDIO timer enable
+ * @div_factor: MDIO clock divider factor
+ * @preamble: MDIO preamble value
+ * @timer_cnt: MDIO timer count
+ * @crosschip_bp_en: Cross-chip backpressure enable
+ * @crosschip_bp_mode: Cross-chip backpressure mode
+ */
+struct qce2204_ppe_mdio_backpressure_cfg {
+	bool trigger_en;
+	bool timer_en;
+	u8 div_factor;
+	u8 preamble;
+	u32 timer_cnt;
+	bool crosschip_bp_en;
+	bool crosschip_bp_mode;
+};
+
+/**
  * struct qce2204_ppe_in_vlan_xlt_cfg - Ingress VLAN translation configuration
  * @port_id: Port ID or port bitmap
  * @svid_fmt: S-VID format
@@ -567,6 +587,8 @@ int qce2204_ppe_port_mru_set(struct qce2204_priv *priv,
 			      struct qce2204_ppe_port_mru_cfg *cfg);
 int qce2204_ppe_eg_gen_ctrl_set(struct qce2204_priv *priv,
 				 struct qce2204_ppe_eg_gen_ctrl_cfg *cfg);
+int qce2204_ppe_mdio_backpressure_set(struct qce2204_priv *priv,
+				      struct qce2204_ppe_mdio_backpressure_cfg *cfg);
 int qce2204_setup_cpu_port_athtag(struct qce2204_priv *priv);
 int qce2204_teardown_cpu_port_athtag(struct qce2204_priv *priv);
 int qce2204_ppe_hw_init(struct qce2204_priv *priv);

@@ -23,6 +23,10 @@
 #include "qce2204_ppe_regs.h"
 #include "qce2204_ppe_mac.h"
 
+uint8_t qce2204_fcgroup[QCE2204_NUM_PORTS] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+module_param_array(qce2204_fcgroup, byte, NULL, 0644);
+MODULE_PARM_DESC(qce2204_fcgroup, "PPE EDMA fc_group id bind with each QCE2204 ports");
+
 /**
  * qce2204_port_alloc_ppe_resources - Allocate PPE resources for a port
  * @priv: QCE2204 private data
@@ -110,7 +114,7 @@ static inline void qce2204_addr_split(u32 regaddr, u16 *reg_low, u16 *reg_mid, u
 	*reg_high |= BIT(0);
 }
 
-static int qce2204_mdio_read(struct mii_bus *bus, int addr, u32 reg, u32 *val)
+int qce2204_mdio_read(struct mii_bus *bus, int addr, u32 reg, u32 *val)
 {
 	u16 reg_low, reg_mid, reg_high;
 	int ret, data;
@@ -137,7 +141,7 @@ static int qce2204_mdio_read(struct mii_bus *bus, int addr, u32 reg, u32 *val)
 	return ret < 0 ? ret : 0;
 }
 
-static int qce2204_mdio_write(struct mii_bus *bus, int addr, u32 reg, u32 val)
+int qce2204_mdio_write(struct mii_bus *bus, int addr, u32 reg, u32 val)
 {
 	u16 reg_low, reg_mid, reg_high;
 	int ret;
@@ -202,6 +206,17 @@ static const struct regmap_bus qce2204_regmap_bus = {
 	.reg_read = qce2204_regmap_read,
 	.val_format_endian_default = REGMAP_ENDIAN_NATIVE,
 };
+
+static void qce2204_parse_bp_mode(struct qce2204_priv *priv)
+{
+	priv->bp_mode = QCE2204_BP_QUEUE;
+
+	if (of_machine_is_compatible("qcom,ipq5424") ||
+	    of_machine_is_compatible("qcom,ipq5332"))
+		priv->bp_mode = QCE2204_BP_EDMA;
+
+	dev_info(priv->dev, "priv->bp_mode:%d\n", priv->bp_mode);
+}
 
 /* Port management - placeholder */
 void qce2204_port_set_status(struct qce2204_priv *priv, int port, int enable)
@@ -335,6 +350,8 @@ static int qce2204_change_tag_protocol(struct dsa_switch *ds, enum dsa_tag_proto
 				return ret;
 			}
 		}
+
+		ds->fc_group = qce2204_fcgroup;
 	} else if (proto == DSA_TAG_PROTO_4B_QCA) {
 		/* Configure ATH tag */
 		ret = qce2204_setup_cpu_port_athtag(priv);
@@ -342,6 +359,8 @@ static int qce2204_change_tag_protocol(struct dsa_switch *ds, enum dsa_tag_proto
 			dev_err(priv->dev, "Failed to config ATH tag: %d\n", ret);
 			return ret;
 		}
+
+		ds->fc_group = qce2204_fcgroup;
 	} else if (proto == DSA_TAG_PROTO_NONE) {
 		/* Setup none tag VSI configuration */
 		ret = qce2204_setup_none_tag_vsi(priv);
@@ -356,6 +375,7 @@ static int qce2204_change_tag_protocol(struct dsa_switch *ds, enum dsa_tag_proto
 			dev_err(priv->dev, "Failed to setup none tag RSTP: %d\n", ret);
 			return ret;
 		}
+		ds->fc_group = NULL;
 	}
 
 	priv->tag_protocol = proto;
@@ -632,9 +652,11 @@ static int qce2204_mdio_probe(struct mdio_device *mdiodev)
 	priv->addr = mdiodev->addr;
 	mutex_init(&priv->reg_mutex);
 
-	priv->reg_base_offset = QCE2204_MDIO_REG_BASE_OFFSET;
+	priv->reg_base_offset = QCE2204_MDIO_PPE_REG_BASE_OFFSET;
 
 	dev_info(dev, "QCE2204 MDIO device at address %d\n", mdiodev->addr);
+
+	qce2204_parse_bp_mode(priv);
 
 	ret = qce2204_ahb_clk_set_rate(priv, QCE2204_AHB_CLK_RATE_104M);
 	if (ret) {
