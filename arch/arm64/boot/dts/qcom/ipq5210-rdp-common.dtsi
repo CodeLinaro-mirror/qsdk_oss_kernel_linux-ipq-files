@@ -85,6 +85,13 @@
 	status = "disabled";
 };
 
+&i2c0 {
+	pinctrl-0 = <&qup_i2c0_default>;
+	pinctrl-names = "default";
+
+	status = "okay";
+};
+
 &tlmm {
 	qspi_default_state: qspi-default-state {
 		qspi_clock {
@@ -177,4 +184,21 @@
 			bias-pull-down;
 		};
 	};
+
+	qup_i2c0_default: qup-i2c0-default-state {
+		qup_i2c0_scl {
+			pins = "gpio20";
+			function = "qup_se2_l10";
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+
+		qup_i2c0_sda {
+			pins = "gpio21";
+			function = "qup_se2_l00";
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+	};
+
 };
