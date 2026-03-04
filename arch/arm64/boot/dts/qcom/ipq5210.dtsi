@@ -423,6 +423,68 @@
 					bias-pull-down;
 				};
 			};
+
+			pon_cmn_pins: pon-cmn-pins {
+
+				pon_active_led {
+					pins = "gpio11";
+					function = "pon_active_led";
+					drive-strength = <6>;
+					bias-pull-down;
+				};
+
+				pon_tx_pwr_on {
+					pins = "gpio15";
+					function = "pon_tx";
+					drive-strength = <6>;
+					bias-pull-down;
+				};
+
+				pon_rx_pwr_on {
+					pins = "gpio48";
+					function = "pon_rx";
+					drive-strength = <6>;
+					bias-pull-down;
+				};
+			};
+
+			xgspon_pins: xgspon-pins {
+
+				pon_tx_burst {
+					pins = "gpio14";
+					function = "pon_tx_burst";
+					drive-strength = <6>;
+					bias-disable;
+				};
+
+				pon_tx_fault {
+					pins = "gpio17";
+					function = "pon_tx_fault";
+					drive-strength = <6>;
+					bias-pull-down;
+				};
+
+				pon_tx_sd {
+					pins = "gpio16";
+					function = "pon_tx_sd";
+					drive-strength = <6>;
+					bias-pull-down;
+				};
+
+				pon_rx_los {
+					pins = "gpio10";
+					function = "pon_rx_los";
+					drive-strength = <6>;
+					bias-pull-up;
+				};
+
+				pon_tx_dis {
+					pins = "gpio12";
+					function = "pon_tx_dis";
+					drive-strength = <6>;
+					bias-pull-down;
+				};
+			};
 		};
 
 		gcc: clock-controller@1800000 {
