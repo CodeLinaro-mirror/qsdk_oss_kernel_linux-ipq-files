@@ -1,0 +1,71 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * IPQ5210 RDP505 board device tree source
+ *
+ * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ */
+
+/dts-v1/;
+
+#include "ipq5210-rdp-common.dtsi"
+#include "ipq5210-default-memory.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. IPQ5210 RDP505";
+	compatible = "qcom,ipq5210-rdp505", "qcom,ipq5210";
+
+	aliases {
+		serial0 = &uart1;
+	};
+
+};
+
+&tlmm {
+	pcie0_default_state: pcie0-default-state {
+		pins = "gpio32";
+		function = "gpio";
+		drive-strength = <6>;
+		bias-pull-down;
+		output-low;
+	};
+};
+
+&pcie0_phy {
+	status = "okay";
+};
+
+&pcie0 {
+	pinctrl-0 = <&pcie0_default_state>;
+	perst-gpio = <&tlmm 32 GPIO_ACTIVE_LOW>;
+	status = "okay";
+
+	pcie0_rp {
+		reg = <0 0 0 0 0>;
+	};
+};
+
+&pcie1_phy {
+	status = "disabled";
+};
+
+&pcie1 {
+	status = "disabled";
+};
+
+&qusb_phy_0 {
+	status = "disabled";
+};
+
+&ssphy_0 {
+	status = "disabled";
+};
+
+&usb3 {
+	status = "disabled";
+};
+
+&i2c0 {
+	status = "disabled";
+};
+
