@@ -234,6 +234,11 @@ enum ipq5210_functions {
 	msm_mux_pon_tx_dis,
 	msm_mux_pon_tx_fault,
 	msm_mux_pon_tx_sd,
+	msm_mux_gpn_rx_los,
+	msm_mux_gpn_tx_burst,
+	msm_mux_gpn_tx_dis,
+	msm_mux_gpn_tx_fault,
+	msm_mux_gpn_tx_sd,
 	msm_mux_pps,
 	msm_mux_pwm_out00,
 	msm_mux_pwm_out01,
@@ -578,6 +583,26 @@ static const char *const pon_tx_fault_groups[] = {
 
 static const char *const pon_tx_sd_groups[] = {
 	"gpio16",
+};
+
+static const char *const gpn_rx_los_groups[] = {
+	"gpio47",
+};
+
+static const char *const gpn_tx_burst_groups[] = {
+	"gpio51",
+};
+
+static const char *const gpn_tx_dis_groups[] = {
+	"gpio13",
+};
+
+static const char *const gpn_tx_fault_groups[] = {
+	"gpio49",
+};
+
+static const char *const gpn_tx_sd_groups[] = {
+	"gpio50",
 };
 
 static const char *const pps_groups[] = {
@@ -952,6 +977,11 @@ static const struct pinfunction ipq5210_functions[] = {
 	MSM_PIN_FUNCTION(pon_tx_dis),
 	MSM_PIN_FUNCTION(pon_tx_fault),
 	MSM_PIN_FUNCTION(pon_tx_sd),
+	MSM_PIN_FUNCTION(gpn_rx_los),
+	MSM_PIN_FUNCTION(gpn_tx_burst),
+	MSM_PIN_FUNCTION(gpn_tx_dis),
+	MSM_PIN_FUNCTION(gpn_tx_fault),
+	MSM_PIN_FUNCTION(gpn_tx_sd),
 	MSM_PIN_FUNCTION(pps),
 	MSM_PIN_FUNCTION(pwm_out00),
 	MSM_PIN_FUNCTION(pwm_out01),
@@ -1044,7 +1074,7 @@ static const struct msm_pingroup ipq5210_groups[] = {
 	[10] = PINGROUP(10, pon_rx_los, qup_se3_l3, pwm_out30, _, _, qdss_tracedata_a, _, _, _, _, _),
 	[11] = PINGROUP(11, pon_active_led, qup_se3_l2, pwm_out20, _, _, qdss_tracedata_a, _, _, _, _, _),
 	[12] = PINGROUP(12, pon_tx_dis, qup_se2_l3, pwm_out10, audio_pri0, audio_pri0, _, qrng_rosc0, qdss_tracedata_a, _, _, _),
-	[13] = PINGROUP(13, _, qup_se2_l2, pwm_out00, audio_pri3, audio_pri3, _, qrng_rosc1, qdss_tracedata_a, _, _, _),
+	[13] = PINGROUP(13, gpn_tx_dis, qup_se2_l2, pwm_out00, audio_pri3, audio_pri3, _, qrng_rosc1, qdss_tracedata_a, _, _, _),
 	[14] = PINGROUP(14, pon_tx_burst, qup_se0_l4, _, qrng_rosc2, qdss_tracedata_a, _, _, _, _, _, _),
 	[15] = PINGROUP(15, pon_tx, qup_se0_l5, _, qdss_tracedata_a, _, _, _, _, _, _, _),
 	[16] = PINGROUP(16, pon_tx_sd, audio_sec1, audio_sec1, qdss_cti_trig_out_b0, _, _, _, _, _, _, _),
@@ -1078,11 +1108,11 @@ static const struct msm_pingroup ipq5210_groups[] = {
 	[44] = PINGROUP(44, resout, _, _, _, _, _, _, _, _, _, _),
 	[45] = PINGROUP(45, pon_mux_sel, _, _, _, _, _, _, _, _, _, _),
 	[46] = PINGROUP(46, dg_out, atest_char_start, _, _, _, _, _, _, _, _, _),
-	[47] = PINGROUP(47, _, mdc_slv2, qup_se5_l2, _, _, _, _, _, _, _, _),
+	[47] = PINGROUP(47, gpn_rx_los, mdc_slv2, qup_se5_l2, _, _, _, _, _, _, _, _),
 	[48] = PINGROUP(48, pon_rx, qup_se5_l3, _, _, _, _, _, _, _, _, _),
-	[49] = PINGROUP(49, _, mdio_slv2, qup_se5_l00, audio_sec2, audio_sec2, _, _, _, _, _, _),
-	[50] = PINGROUP(50, _, qup_se5_l10, audio_sec3, audio_sec3, _, _, _, _, _, _, _),
-	[51] = PINGROUP(51, _, qup_se5_l4, _, _, _, _, _, _, _, _, _),
+	[49] = PINGROUP(49, gpn_tx_fault, mdio_slv2, qup_se5_l00, audio_sec2, audio_sec2, _, _, _, _, _, _),
+	[50] = PINGROUP(50, gpn_tx_sd, qup_se5_l10, audio_sec3, audio_sec3, _, _, _, _, _, _, _),
+	[51] = PINGROUP(51, gpn_tx_burst, qup_se5_l4, _, _, _, _, _, _, _, _, _),
 	[52] = PINGROUP(52, qup_se2_l11, qup_se5_l5, qup_se4_l4, qup_se5_l01, _, _, _, _, _, _, _),
 	[53] = PINGROUP(53, qup_se2_l01, qup_se4_l5, qup_se5_l11, _, _, _, _, _, _, _, _),
 };
