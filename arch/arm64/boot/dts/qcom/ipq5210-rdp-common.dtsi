@@ -103,6 +103,13 @@
 	status = "okay";
 };
 
+&i2c0 {
+	pinctrl-0 = <&qup_i2c0_default>;
+	pinctrl-names = "default";
+
+	status = "okay";
+};
+
 &sdhc {
 	max-frequency = <192000000>;
 	bus-width = <4>;
@@ -204,6 +211,22 @@
 			function = "qup_se1_l3";
 			drive-strength = <6>;
 			bias-pull-down;
+		};
+	};
+
+	qup_i2c0_default: qup-i2c0-default-state {
+		qup_i2c0_scl {
+			pins = "gpio20";
+			function = "qup_se2_l10";
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+
+		qup_i2c0_sda {
+			pins = "gpio21";
+			function = "qup_se2_l00";
+			drive-strength = <6>;
+			bias-pull-up;
 		};
 	};
 };
