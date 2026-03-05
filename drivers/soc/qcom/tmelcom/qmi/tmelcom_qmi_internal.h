@@ -293,6 +293,13 @@ struct qmi_tme_tmel_version_read_req_msg_v01 {
 
 struct qmi_tme_tmel_version_read_resp_msg_v01 {
 	struct qmi_response_type_v01 resp;
+	u32 status;
+	u32 ipc_status;
+	u8 tmel_mode_valid;
+	u32 tmel_mode;
+	u8 tmel_patch_status_valid;
+	u32 tmel_patch_status;
+	u8 version_info_valid;
 	u32 version_info_len;
 	u8 version_info[QMI_TME_TMEL_VERSION_BUFFER_SIZE_V01];
 	u8 tmel_version_info_len_valid;
@@ -367,6 +374,13 @@ extern struct qmi_elem_info qmi_tme_fuse_blow_resp_msg_v01_ei[];
 #define TME_QMI_TIMEOUT_MS 5000
 #define TME_QMI_MAX_MSG_LEN 4122  /* Largest message size */
 
+/* Domain to attach number mapping node */
+struct domain_attach_node {
+	u32 domain_num;           /* PCIe domain number */
+	int attach_num;           /* Attach number (1-based, position in sorted list) */
+	struct list_head list;    /* Kernel list linkage */
+};
+
 /* Statistics structure */
 struct tmelcom_qmi_stats {
 	atomic_t requests_sent;
@@ -388,33 +402,45 @@ struct tmelcom_qmi_pdata {
 struct tmelcom_qmi_client {
 	struct qmi_handle qmi;
 	struct platform_device *pdev;
-	int pcie_domain;
+	int domain_num;
+	u32 instance_id;
 	struct sockaddr_qrtr sq;
 	struct list_head node;
 	bool connected;
 	struct mutex lock;
 	struct tmelcom_qmi_stats stats;
 	struct dentry *debugfs_dir;  /* For debugfs */
+	struct kobject *sysfs_kobj;  /* For sysfs */
 };
 
 /* Internal functions */
-struct tmelcom_qmi_client *tmelcom_qmi_get_client(int pcie_domain);
+struct tmelcom_qmi_client *tmelcom_qmi_get_client(int domain_num);
 
 /* Shared variables across compilation units */
 extern unsigned int qmi_timeout_ms;
 extern atomic_t client_count;
+extern struct list_head tmelcom_qmi_clients;
+extern struct mutex tmelcom_qmi_clients_lock;
 
 /* Conversion helpers */
-static inline int qrtr_instance_to_pcie_domain(u32 instance_id)
+static inline int qrtr_instance_to_domain_num(u32 instance_id)
 {
 	if (instance_id < QRTR_INSTANCE_BASE)
 		return -EINVAL;
-	return instance_id - QRTR_INSTANCE_BASE;
+	/* The instance_id encodes the PCIe domain in the upper nibble.
+	 * The lower nibble is always 0x1 (as per hardware spec).
+	 * Shift right by 4 bits to obtain the domain number.
+	 */
+	return (int)(instance_id >> 4);
 }
 
-static inline u32 pcie_domain_to_qrtr_instance(int pcie_domain)
+static inline u32 domain_num_to_qrtr_instance(int domain_num)
 {
-	return QRTR_INSTANCE_BASE + pcie_domain;
+	/* Reverse of qrtr_instance_to_domain_num:
+	 *   instance_id = (domain_num << 4) + 0x1
+	 * This yields the correct QRTR node values
+	 */
+	return (u32)((domain_num << 4) + 0x1);
 }
 
 /* Error codes */
@@ -429,12 +455,12 @@ static inline u32 pcie_domain_to_qrtr_instance(int pcie_domain)
 
 /* Logging macros */
 #define tmelcom_qmi_err(client, fmt, ...) \
-	pr_err("tmelcom_qmi[domain=%d]: " fmt, (client)->pcie_domain, ##__VA_ARGS__)
+	pr_err("tmelcom_qmi[domain=%d]: " fmt, (client)->domain_num, ##__VA_ARGS__)
 
 #define tmelcom_qmi_info(client, fmt, ...) \
-	pr_info("tmelcom_qmi[domain=%d]: " fmt, (client)->pcie_domain, ##__VA_ARGS__)
+	pr_info("tmelcom_qmi[domain=%d]: " fmt, (client)->domain_num, ##__VA_ARGS__)
 
 #define tmelcom_qmi_dbg(client, fmt, ...) \
-	pr_debug("tmelcom_qmi[domain=%d]: " fmt, (client)->pcie_domain, ##__VA_ARGS__)
+	pr_debug("tmelcom_qmi[domain=%d]: " fmt, (client)->domain_num, ##__VA_ARGS__)
 
 #endif /* _TMELCOM_QMI_INTERNAL_H */
