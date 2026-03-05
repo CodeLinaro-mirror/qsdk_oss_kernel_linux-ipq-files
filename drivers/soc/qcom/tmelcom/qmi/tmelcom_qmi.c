@@ -14,14 +14,24 @@
 #include <linux/net.h>
 #include <linux/soc/qcom/qmi.h>
 #include <linux/tmelcom_qmi.h>
+#include <linux/kobject.h>
+#include <linux/sysfs.h>
+#include <linux/sort.h>
+#include <linux/fs.h>
+#include <linux/vmalloc.h>
 
 #include "tmelcom_qmi_internal.h"
 
 /* Global client list */
-static LIST_HEAD(tmelcom_qmi_clients);
-static DEFINE_MUTEX(tmelcom_qmi_clients_lock);
+LIST_HEAD(tmelcom_qmi_clients);
+/* Protects tmelcom_qmi_clients list */
+DEFINE_MUTEX(tmelcom_qmi_clients_lock);
 static struct dentry *tmelcom_qmi_debugfs;
+static struct kobject *tmelcomm_sysfs_root;
+static struct kobject *qmi_sysfs_root;
 atomic_t client_count = ATOMIC_INIT(0);
+/* Sorted domain list: position in list = attach number */
+static LIST_HEAD(domain_attach_list);
 //EXPORT_SYMBOL_GPL(client_count);
 
 /* Notifier chain for QMI client events */
@@ -32,6 +42,74 @@ unsigned int qmi_timeout_ms = TME_QMI_TIMEOUT_MS;
 module_param(qmi_timeout_ms, uint, 0644);
 MODULE_PARM_DESC(qmi_timeout_ms, "QMI transaction timeout in milliseconds");
 //EXPORT_SYMBOL_GPL(qmi_timeout_ms);
+
+/* ===== PCIe Domain to Attach Number Mapping (Linked List) ===== */
+
+/**
+ * domain_to_attach_num() - Get attach number for a given domain
+ * @domain: PCIe domain number
+ *
+ * Returns: Attach number (1-based, position in sorted list) or -1 if not found
+ */
+static int domain_to_attach_num(u32 domain)
+{
+	struct domain_attach_node *node;
+
+	list_for_each_entry(node, &domain_attach_list, list) {
+		if (node->domain_num == domain)
+			return node->attach_num;
+	}
+	return -1;
+}
+
+/**
+ * register_domain_attach_num() - Register domain and assign attach number
+ * @new_domain: The new PCIe domain to add
+ *
+ * Registers the domain in sorted order in the linked list and reassigns attach numbers
+ * for all nodes based on their position. Must be called with tmelcom_qmi_clients_lock held.
+ */
+static void register_domain_attach_num(u32 new_domain)
+{
+	struct domain_attach_node *new_node, *pos;
+	int attach_num;
+	bool inserted = false;
+
+	/* Check if domain already exists */
+	list_for_each_entry(pos, &domain_attach_list, list) {
+		if (pos->domain_num == new_domain)
+			return;  /* Already exists */
+	}
+
+	/* Allocate new node */
+	new_node = kzalloc(sizeof(*new_node), GFP_KERNEL);
+	if (!new_node) {
+		pr_err("tmelcom_qmi: Failed to allocate domain_attach_node\n");
+		return;
+	}
+
+	new_node->domain_num = new_domain;
+	INIT_LIST_HEAD(&new_node->list);
+
+	/* Find insertion point and insert in sorted order */
+	list_for_each_entry(pos, &domain_attach_list, list) {
+		if (pos->domain_num > new_domain) {
+			list_add_tail(&new_node->list, &pos->list);
+			inserted = true;
+			break;
+		}
+	}
+
+	/* If not inserted, add at end (largest domain) */
+	if (!inserted)
+		list_add_tail(&new_node->list, &domain_attach_list);
+
+	/* Reassign attach numbers based on position in sorted list */
+	attach_num = 1;
+	list_for_each_entry(pos, &domain_attach_list, list) {
+		pos->attach_num = attach_num++;
+	}
+}
 
 /* ===== QMI Element Info Arrays ===== */
 /* Copied from qmi_tme_service_v01.c */
@@ -1286,22 +1364,22 @@ struct qmi_elem_info qmi_tme_tmel_version_read_resp_msg_v01_ei[] = {
 		.ei_array	= qmi_response_type_v01_ei,
 	},
 	{
-		.data_type	= QMI_DATA_LEN,
+		.data_type	= QMI_UNSIGNED_4_BYTE,
 		.elem_len	= 1,
-		.elem_size	= sizeof(u8),
+		.elem_size	= sizeof(u32),
 		.array_type	= NO_ARRAY,
-		.tlv_type	= 0x01,
+		.tlv_type	= 0x03,
 		.offset		= offsetof(struct qmi_tme_tmel_version_read_resp_msg_v01,
-					   version_info_len),
+					   status),
 	},
 	{
-		.data_type	= QMI_UNSIGNED_1_BYTE,
-		.elem_len	= QMI_TME_TMEL_VERSION_BUFFER_SIZE_V01,
-		.elem_size	= sizeof(u8),
-		.array_type	= VAR_LEN_ARRAY,
-		.tlv_type	= 0x01,
+		.data_type	= QMI_UNSIGNED_4_BYTE,
+		.elem_len	= 1,
+		.elem_size	= sizeof(u32),
+		.array_type	= NO_ARRAY,
+		.tlv_type	= 0x04,
 		.offset		= offsetof(struct qmi_tme_tmel_version_read_resp_msg_v01,
-					   version_info),
+					   ipc_status),
 	},
 	{
 		.data_type	= QMI_OPT_FLAG,
@@ -1310,7 +1388,7 @@ struct qmi_elem_info qmi_tme_tmel_version_read_resp_msg_v01_ei[] = {
 		.array_type	= NO_ARRAY,
 		.tlv_type	= 0x10,
 		.offset		= offsetof(struct qmi_tme_tmel_version_read_resp_msg_v01,
-					   tmel_version_info_len_valid),
+					   tmel_mode_valid),
 	},
 	{
 		.data_type	= QMI_UNSIGNED_4_BYTE,
@@ -1318,6 +1396,69 @@ struct qmi_elem_info qmi_tme_tmel_version_read_resp_msg_v01_ei[] = {
 		.elem_size	= sizeof(u32),
 		.array_type	= NO_ARRAY,
 		.tlv_type	= 0x10,
+		.offset		= offsetof(struct qmi_tme_tmel_version_read_resp_msg_v01,
+					   tmel_mode),
+	},
+	{
+		.data_type	= QMI_OPT_FLAG,
+		.elem_len	= 1,
+		.elem_size	= sizeof(u8),
+		.array_type	= NO_ARRAY,
+		.tlv_type	= 0x11,
+		.offset		= offsetof(struct qmi_tme_tmel_version_read_resp_msg_v01,
+					   tmel_patch_status_valid),
+	},
+	{
+		.data_type	= QMI_UNSIGNED_4_BYTE,
+		.elem_len	= 1,
+		.elem_size	= sizeof(u32),
+		.array_type	= NO_ARRAY,
+		.tlv_type	= 0x11,
+		.offset		= offsetof(struct qmi_tme_tmel_version_read_resp_msg_v01,
+					   tmel_patch_status),
+	},
+	{
+		.data_type	= QMI_OPT_FLAG,
+		.elem_len	= 1,
+		.elem_size	= sizeof(u8),
+		.array_type	= NO_ARRAY,
+		.tlv_type	= 0x12,
+		.offset		= offsetof(struct qmi_tme_tmel_version_read_resp_msg_v01,
+					   version_info_valid),
+	},
+	{
+		.data_type	= QMI_DATA_LEN,
+		.elem_len	= 1,
+		.elem_size	= sizeof(u8),
+		.array_type	= NO_ARRAY,
+		.tlv_type	= 0x12,
+		.offset		= offsetof(struct qmi_tme_tmel_version_read_resp_msg_v01,
+					   version_info_len),
+	},
+	{
+		.data_type	= QMI_UNSIGNED_1_BYTE,
+		.elem_len	= QMI_TME_TMEL_VERSION_BUFFER_SIZE_V01,
+		.elem_size	= sizeof(u8),
+		.array_type	= VAR_LEN_ARRAY,
+		.tlv_type	= 0x12,
+		.offset		= offsetof(struct qmi_tme_tmel_version_read_resp_msg_v01,
+					   version_info),
+	},
+	{
+		.data_type	= QMI_OPT_FLAG,
+		.elem_len	= 1,
+		.elem_size	= sizeof(u8),
+		.array_type	= NO_ARRAY,
+		.tlv_type	= 0x13,
+		.offset		= offsetof(struct qmi_tme_tmel_version_read_resp_msg_v01,
+					   tmel_version_info_len_valid),
+	},
+	{
+		.data_type	= QMI_UNSIGNED_4_BYTE,
+		.elem_len	= 1,
+		.elem_size	= sizeof(u32),
+		.array_type	= NO_ARRAY,
+		.tlv_type	= 0x13,
 		.offset		= offsetof(struct qmi_tme_tmel_version_read_resp_msg_v01,
 					   tmel_version_info_len),
 	},
@@ -1654,18 +1795,66 @@ static const struct qmi_msg_handler tme_qmi_msg_handlers[] = {
 /* ===== Client Management ===== */
 
 /**
- * tmelcom_qmi_get_client() - Get QMI client for a PCIe domain
- * @pcie_domain: PCIe domain number
+ * tmelcom_qmi_get_client() - Get QMI client for an attach number
+ * @attach_num: Attach number (1, 2, 3, etc.) - assigned during probe
+ *
+ * Lookup: Find domain node with matching attach_num, then find client with that domain
  *
  * Return: Client pointer on success, NULL if not found
  */
-struct tmelcom_qmi_client *tmelcom_qmi_get_client(int pcie_domain)
+struct tmelcom_qmi_client *tmelcom_qmi_get_client(int attach_num)
+{
+	struct tmelcom_qmi_client *client;
+	struct domain_attach_node *node;
+	u32 target_domain = 0;
+	bool found = false;
+
+	if (attach_num < 1) {
+		pr_err("tmelcom_qmi: Invalid attach_num %d (must be >= 1)\n",
+		       attach_num);
+		return NULL;
+	}
+
+	mutex_lock(&tmelcom_qmi_clients_lock);
+
+	/* Find domain with matching attach_num */
+	list_for_each_entry(node, &domain_attach_list, list) {
+		if (node->attach_num == attach_num) {
+			target_domain = node->domain_num;
+			found = true;
+			break;
+		}
+	}
+
+	if (!found) {
+		pr_debug("tmelcom_qmi: attach_num %d not found in domain list\n",
+			 attach_num);
+		mutex_unlock(&tmelcom_qmi_clients_lock);
+		return NULL;
+	}
+
+	/* Find client with matching domain */
+	list_for_each_entry(client, &tmelcom_qmi_clients, node) {
+		if (client->domain_num == target_domain && client->connected) {
+			mutex_unlock(&tmelcom_qmi_clients_lock);
+			return client;
+		}
+	}
+
+	mutex_unlock(&tmelcom_qmi_clients_lock);
+	return NULL;
+}
+
+/* ===== Sysfs Implementation ===== */
+
+/* Helper to get client from kobject */
+static struct tmelcom_qmi_client *kobj_to_client(struct kobject *kobj)
 {
 	struct tmelcom_qmi_client *client;
 
 	mutex_lock(&tmelcom_qmi_clients_lock);
 	list_for_each_entry(client, &tmelcom_qmi_clients, node) {
-		if (client->pcie_domain == pcie_domain && client->connected) {
+		if (client->sysfs_kobj == kobj) {
 			mutex_unlock(&tmelcom_qmi_clients_lock);
 			return client;
 		}
@@ -1674,6 +1863,387 @@ struct tmelcom_qmi_client *tmelcom_qmi_get_client(int pcie_domain)
 
 	return NULL;
 }
+
+/* Basic info attributes */
+static ssize_t instance_id_show(struct kobject *kobj,
+				struct kobj_attribute *attr, char *buf)
+{
+	struct tmelcom_qmi_client *client = kobj_to_client(kobj);
+
+	if (!client)
+		return -ENODEV;
+
+	return sysfs_emit(buf, "0x%x\n", client->instance_id);
+}
+
+/* attach_num attribute - shows the assigned attach number (1-based) */
+static ssize_t attach_num_show(struct kobject *kobj,
+			       struct kobj_attribute *attr, char *buf)
+{
+	struct tmelcom_qmi_client *client = kobj_to_client(kobj);
+	int attach_num;
+
+	if (!client)
+		return -ENODEV;
+
+	attach_num = domain_to_attach_num(client->domain_num);
+	if (attach_num < 0)
+		return -ENOENT;
+
+	return sysfs_emit(buf, "%d\n", attach_num);
+}
+
+/* ARB Version Get - write sw_id, read returns version info */
+static ssize_t arb_version_get_store(struct kobject *kobj,
+				     struct kobj_attribute *attr,
+				     const char *buf, size_t count)
+{
+	struct tmelcom_qmi_client *client = kobj_to_client(kobj);
+	u32 sw_id, version = 0;
+	int ret;
+
+	if (!client)
+		return -ENODEV;
+
+	ret = kstrtou32(buf, 0, &sw_id);
+	if (ret)
+		return ret;
+
+	/* Calculate attach_num on-demand */
+	int attach_num = domain_to_attach_num(client->domain_num);
+	if (attach_num < 0)
+		return -ENOENT;
+
+	/* Call IPC directly */
+	ret = tmelcom_qmi_secboot_get_arb_version(attach_num, sw_id,
+						  &version);
+	/*
+	 * The API returns:
+	 * - Negative values for QMI-level errors (timeout, no client, etc.)
+	 * - resp->ipc_status when QMI fails (usually 0)
+	 * - resp->status on success (can be non-zero error code from firmware)
+	 *
+	 * We should only print the version if ret == 0 (complete success).
+	 * For any other return value, it's an error.
+	 */
+	if (ret != 0) {
+		pr_err("ARB version query failed for sw_id 0x%x: ret=%d\n", sw_id, ret);
+		return (ret < 0) ? ret : -EIO;
+	}
+
+	/* Only print version on success (ret == 0) */
+	pr_info("ARB version for sw_id 0x%x: 0x%x\n", sw_id, version);
+
+	return count;
+}
+
+static ssize_t arb_version_get_show(struct kobject *kobj,
+				    struct kobj_attribute *attr, char *buf)
+{
+	return sysfs_emit(buf, "Write sw_id to query ARB version\n");
+}
+
+/* ARB Version Update - write triggers update */
+static ssize_t arb_version_update_store(struct kobject *kobj,
+					struct kobj_attribute *attr,
+					const char *buf, size_t count)
+{
+	struct tmelcom_qmi_client *client = kobj_to_client(kobj);
+	int ret;
+
+	if (!client)
+		return -ENODEV;
+
+	/* Calculate attach_num on-demand */
+	int attach_num = domain_to_attach_num(client->domain_num);
+	if (attach_num < 0)
+		return -ENOENT;
+
+	/* Call IPC directly */
+	ret = tmelcom_qmi_secboot_update_arb_version_list(attach_num);
+	if (ret)
+		return ret;
+
+	pr_info("ARB version list updated successfully\n");
+
+	return count;
+}
+
+/* ECC Public Key - write src_l1_key_id, read returns key */
+static ssize_t ecc_public_key_store(struct kobject *kobj,
+				    struct kobj_attribute *attr,
+				    const char *buf, size_t count)
+{
+	struct tmelcom_qmi_client *client = kobj_to_client(kobj);
+	u32 src_l1_key_id;
+	u8 public_key[QMI_TME_QBEC_PUBLIC_KEY_SIZE_V01];
+	u32 public_key_len;
+	int ret, i;
+
+	if (!client)
+		return -ENODEV;
+
+	ret = kstrtou32(buf, 0, &src_l1_key_id);
+	if (ret)
+		return ret;
+
+	/* Calculate attach_num on-demand */
+	int attach_num = domain_to_attach_num(client->domain_num);
+	if (attach_num < 0)
+		return -ENOENT;
+
+	/* Call API with key_type (src_l1_key_id) */
+	ret = tmelcom_qmi_get_ecc_public_key(attach_num, src_l1_key_id,
+					     public_key, sizeof(public_key),
+					     &public_key_len);
+	if (ret)
+		return ret;
+
+	/* Print public key in hex format */
+	if (public_key_len > 0) {
+		int print_len = min_t(u32, public_key_len, 32);
+		char hex_buf[96];  /* 32 bytes * 3 chars per byte */
+		int pos = 0;
+
+		for (i = 0; i < print_len && pos < sizeof(hex_buf) - 3; i++) {
+			pos += snprintf(hex_buf + pos, sizeof(hex_buf) - pos,
+					"%02x ", public_key[i]);
+		}
+		pr_info("ECC public key (len=%u): %s%s\n", public_key_len, hex_buf,
+			public_key_len > 32 ? "..." : "");
+	} else {
+		pr_info("ECC public key: empty\n");
+	}
+
+	return count;
+}
+
+static ssize_t ecc_public_key_show(struct kobject *kobj,
+				   struct kobj_attribute *attr, char *buf)
+{
+	return sysfs_emit(buf, "Write src_l1_key_id to get key\n");
+}
+
+/* Fuse Read - write fuse_addr, read returns fuse value */
+static ssize_t fuse_read_store(struct kobject *kobj,
+			       struct kobj_attribute *attr,
+			       const char *buf, size_t count)
+{
+	struct tmelcom_qmi_client *client = kobj_to_client(kobj);
+	u32 fuse_addr, fuse_val_lsb, fuse_val_msb;
+	int ret;
+
+	if (!client)
+		return -ENODEV;
+
+	ret = kstrtou32(buf, 0, &fuse_addr);
+	if (ret)
+		return ret;
+
+	/* Calculate attach_num on-demand */
+	int attach_num = domain_to_attach_num(client->domain_num);
+	if (attach_num < 0)
+		return -ENOENT;
+
+	/* Call IPC directly */
+	ret = tmelcom_qmi_read_fuse(attach_num, fuse_addr,
+				    &fuse_val_lsb, &fuse_val_msb);
+	if (ret)
+		return ret;
+
+	pr_info("Fuse[0x%x]: lsb=0x%08x msb=0x%08x\n",
+		fuse_addr, fuse_val_lsb, fuse_val_msb);
+
+	return count;
+}
+
+static ssize_t fuse_read_show(struct kobject *kobj,
+			      struct kobj_attribute *attr, char *buf)
+{
+	return sysfs_emit(buf, "Write fuse_addr to read fuse value\n");
+}
+
+/* TMEL Version - read-only, returns version */
+static ssize_t tmel_version_show(struct kobject *kobj,
+				 struct kobj_attribute *attr, char *buf)
+{
+	struct tmelcom_qmi_client *client = kobj_to_client(kobj);
+	u8 version_info[QMI_TME_TMEL_VERSION_BUFFER_SIZE_V01];
+	u32 version_info_len;
+	int ret;
+
+	if (!client)
+		return -ENODEV;
+
+	/* Calculate attach_num on-demand */
+	int attach_num = domain_to_attach_num(client->domain_num);
+	if (attach_num < 0)
+		return -ENOENT;
+
+	/* Call IPC directly */
+	ret = tmelcom_qmi_tmel_version_read(attach_num, version_info,
+					    sizeof(version_info),
+					    &version_info_len);
+	if (ret)
+		return ret;
+
+	/* Ensure null termination */
+	if (version_info_len < sizeof(version_info))
+		version_info[version_info_len] = '\0';
+	else
+		version_info[sizeof(version_info) - 1] = '\0';
+
+	return sysfs_emit(buf, "%s\n", version_info);
+}
+
+/* Fuse Blow - write file path, read file and pass contents to QMI */
+static ssize_t fuse_blow_store(struct kobject *kobj,
+			       struct kobj_attribute *attr,
+			       const char *buf, size_t count)
+{
+	struct tmelcom_qmi_client *client = kobj_to_client(kobj);
+	struct file *fptr = NULL;
+	struct kstat st;
+	void *file_data = NULL;
+	loff_t file_size;
+	char *file_path;
+	int ret;
+	loff_t pos = 0;
+	size_t original_count = count;
+	size_t path_len;
+
+	if (!client)
+		return -ENODEV;
+
+	/* Validate input size to prevent excessive allocations */
+	if (count > PATH_MAX || count == 0)
+		return -EINVAL;
+
+	/* Allocate buffer for file path and remove trailing newline/whitespace */
+	file_path = kzalloc(count + 1, GFP_KERNEL);
+	if (!file_path)
+		return -ENOMEM;
+
+	memcpy(file_path, buf, count);
+	file_path[count] = '\0';
+
+	/* Remove trailing newline and whitespace if present */
+	path_len = count;
+	while (path_len > 0 && (file_path[path_len - 1] == '\n' ||
+				file_path[path_len - 1] == '\r' ||
+				file_path[path_len - 1] == ' ' ||
+				file_path[path_len - 1] == '\t')) {
+		file_path[path_len - 1] = '\0';
+		path_len--;
+	}
+
+	if (path_len == 0) {
+		pr_err("Empty file path provided\n");
+		ret = -EINVAL;
+		goto free_path;
+	}
+
+	/* Open file from path */
+	fptr = filp_open(file_path, O_RDONLY, 0);
+	if (IS_ERR(fptr)) {
+		pr_err("File open failed: '%s' (error %ld)\n", file_path, PTR_ERR(fptr));
+		pr_err("Make sure the file path is absolute (e.g., /tmp/sec.elf)\n");
+		ret = PTR_ERR(fptr);
+		goto free_path;
+	}
+
+	/* Get file size */
+	ret = vfs_getattr(&fptr->f_path, &st, STATX_SIZE, AT_STATX_SYNC_AS_STAT);
+	if (ret) {
+		pr_err("Getting file attributes failed for '%s': %d\n", file_path, ret);
+		goto file_close;
+	}
+	file_size = st.size;
+
+	if (file_size == 0) {
+		pr_err("File is empty: '%s'\n", file_path);
+		ret = -EINVAL;
+		goto file_close;
+	}
+
+	/* Allocate buffer for file contents */
+	file_data = vzalloc(file_size);
+	if (!file_data) {
+		pr_err("Failed to allocate %lld bytes for file data\n", file_size);
+		ret = -ENOMEM;
+		goto file_close;
+	}
+
+	/* Read file contents */
+	ret = kernel_read(fptr, file_data, file_size, &pos);
+	if (ret != file_size) {
+		pr_err("File read failed for '%s': expected %lld bytes, got %d\n",
+		       file_path, file_size, ret);
+		ret = (ret < 0) ? ret : -EIO;
+		goto free_data;
+	}
+
+	/* Calculate attach_num on-demand */
+	int attach_num = domain_to_attach_num(client->domain_num);
+	if (attach_num < 0) {
+		ret = -ENOENT;
+		goto free_data;
+	}
+
+	/* Call QMI function with file buffer and size */
+	ret = tmelcom_qmi_fuse_blow(attach_num, (u8 *)file_data, file_size);
+	if (ret) {
+		pr_err("Fuse blow failed for '%s': %d\n", file_path, ret);
+		/* Return the actual error code */
+		goto free_data;
+	}
+
+	pr_info("Fuse blow successful for '%s'\n", file_path);
+
+	/* Return original count to indicate success */
+	ret = original_count;
+
+free_data:
+	vfree(file_data);
+file_close:
+	filp_close(fptr, NULL);
+free_path:
+	kfree(file_path);
+	return ret;
+}
+
+/* Attribute definitions */
+static struct kobj_attribute instance_id_attr = __ATTR_RO(instance_id);
+static struct kobj_attribute attach_num_attr = __ATTR_RO(attach_num);
+static struct kobj_attribute arb_read_version_attr =
+	__ATTR(arb_read_version, 0644, arb_version_get_show,
+	       arb_version_get_store);
+static struct kobj_attribute version_commit_attr =
+	__ATTR(version_commit, 0200, NULL, arb_version_update_store);
+static struct kobj_attribute get_ecc_public_key_attr =
+	__ATTR(get_ecc_public_key, 0644, ecc_public_key_show,
+	       ecc_public_key_store);
+static struct kobj_attribute dump_fuse_attr =
+	__ATTR(dump_fuse, 0644, fuse_read_show, fuse_read_store);
+static struct kobj_attribute tmel_version_attr = __ATTR_RO(tmel_version);
+static struct kobj_attribute sec_elf_attr =
+	__ATTR(sec_elf, 0200, NULL, fuse_blow_store);
+
+static struct attribute *qmi_client_attrs[] = {
+	&instance_id_attr.attr,
+	&attach_num_attr.attr,
+	&arb_read_version_attr.attr,
+	&version_commit_attr.attr,
+	&get_ecc_public_key_attr.attr,
+	&dump_fuse_attr.attr,
+	&tmel_version_attr.attr,
+	&sec_elf_attr.attr,
+	NULL,
+};
+
+static struct attribute_group qmi_client_attr_group = {
+	.attrs = qmi_client_attrs,
+};
 
 /* ===== Debugfs Implementation ===== */
 
@@ -1708,7 +2278,7 @@ static int qrtr_instance_show(struct seq_file *s, void *unused)
 {
 	struct tmelcom_qmi_client *client = s->private;
 
-	seq_printf(s, "%u\n", pcie_domain_to_qrtr_instance(client->pcie_domain));
+	seq_printf(s, "%u\n", domain_num_to_qrtr_instance(client->domain_num));
 	return 0;
 }
 DEFINE_SHOW_ATTRIBUTE(qrtr_instance);
@@ -1791,9 +2361,10 @@ static int tmelcom_qmi_probe(struct platform_device *pdev)
 
 	client->pdev = pdev;
 	client->sq = pdata->sq;
-	client->pcie_domain = qrtr_instance_to_pcie_domain(pdata->instance_id);
+	client->instance_id = pdata->instance_id;
+	client->domain_num = qrtr_instance_to_domain_num(pdata->instance_id);
 
-	if (client->pcie_domain < 0) {
+	if (client->domain_num < 0) {
 		dev_err(&pdev->dev, "Invalid QRTR instance\n");
 		return -EINVAL;
 	}
@@ -1804,7 +2375,7 @@ static int tmelcom_qmi_probe(struct platform_device *pdev)
 	atomic_set(&client->stats.errors, 0);
 	atomic_set(&client->stats.timeouts, 0);
 
-	/* Initialize QMI handle */
+	/* Initialize QMI handle BEFORE adding to list */
 	ret = qmi_handle_init(&client->qmi, TME_QMI_MAX_MSG_LEN, NULL,
 			      tme_qmi_msg_handlers);
 	if (ret < 0) {
@@ -1822,8 +2393,17 @@ static int tmelcom_qmi_probe(struct platform_device *pdev)
 
 	client->connected = true;
 
+	/* NOW add to global list with fully initialized client */
+	mutex_lock(&tmelcom_qmi_clients_lock);
+	list_add_tail(&client->node, &tmelcom_qmi_clients);
+
+	/* Register domain and assign attach number */
+	register_domain_attach_num(client->domain_num);
+
+	mutex_unlock(&tmelcom_qmi_clients_lock);
+
 	/* Create debugfs directory */
-	snprintf(dir_name, sizeof(dir_name), "domain_%d", client->pcie_domain);
+	snprintf(dir_name, sizeof(dir_name), "domain_%d", client->domain_num);
 	client->debugfs_dir = debugfs_create_dir(dir_name, tmelcom_qmi_debugfs);
 	if (client->debugfs_dir) {
 		debugfs_create_file("status", 0400, client->debugfs_dir,
@@ -1848,21 +2428,55 @@ static int tmelcom_qmi_probe(struct platform_device *pdev)
 				    client, &timeouts_fops);
 	}
 
-	/* Add to global list */
-	mutex_lock(&tmelcom_qmi_clients_lock);
-	list_add_tail(&client->node, &tmelcom_qmi_clients);
-	mutex_unlock(&tmelcom_qmi_clients_lock);
+	/* Create sysfs directory for this instance using domain_num (unique, no conflicts) */
+	if (qmi_sysfs_root) {
+		char sysfs_name[16];
+
+		snprintf(sysfs_name, sizeof(sysfs_name), "%d", client->domain_num);
+		client->sysfs_kobj = kobject_create_and_add(sysfs_name,
+							    qmi_sysfs_root);
+		if (!client->sysfs_kobj) {
+			dev_warn(&pdev->dev,
+				 "Failed to create sysfs directory\n");
+		} else {
+			/* Create sysfs files */
+			ret = sysfs_create_group(client->sysfs_kobj,
+						 &qmi_client_attr_group);
+			if (ret) {
+				dev_warn(&pdev->dev,
+					 "Failed to create sysfs attrs: %d\n",
+					 ret);
+				kobject_put(client->sysfs_kobj);
+				client->sysfs_kobj = NULL;
+				/* Don't fail probe for sysfs errors - just warn */
+			} else {
+				int attach_num = domain_to_attach_num(client->domain_num);
+				dev_info(&pdev->dev,
+					 "Sysfs: /sys/kernel/tmelcomm/qmi/%d/ (instance_id=0x%x, attach_num=%d)\n",
+					 client->domain_num, client->instance_id,
+					 attach_num);
+			}
+		}
+	}
 
 	atomic_inc(&client_count);
 	platform_set_drvdata(pdev, client);
 
-	dev_info(&pdev->dev, "TME QMI client registered for PCIe domain %d (node=0x%x, port=%u)\n",
-		 client->pcie_domain, client->sq.sq_node, client->sq.sq_port);
+	dev_info(&pdev->dev,
+		 "TME QMI client registered for PCIe domain %d\n",
+		 client->domain_num);
+	{
+		int attach_num = domain_to_attach_num(client->domain_num);
+		dev_info(&pdev->dev,
+			 "  node=0x%x port=%u instance_id=0x%x attach_num=%d\n",
+			 client->sq.sq_node, client->sq.sq_port,
+			 client->instance_id, attach_num);
+	}
 
 	/* Notify registered listeners about the new connection */
 	{
 		struct tmelcom_qmi_notify_data notify_data = {
-			.pcie_domain = client->pcie_domain,
+			.domain_num = client->domain_num,
 			.event = TMELCOM_QMI_CLIENT_CONNECTED,
 		};
 		blocking_notifier_call_chain(&tmelcom_qmi_notifier_list,
@@ -1887,7 +2501,7 @@ static int tmelcom_qmi_remove(struct platform_device *pdev)
 	/* Notify registered listeners about disconnection */
 	{
 		struct tmelcom_qmi_notify_data notify_data = {
-			.pcie_domain = client->pcie_domain,
+			.domain_num = client->domain_num,
 			.event = TMELCOM_QMI_CLIENT_DISCONNECTED,
 		};
 		blocking_notifier_call_chain(&tmelcom_qmi_notifier_list,
@@ -1904,6 +2518,12 @@ static int tmelcom_qmi_remove(struct platform_device *pdev)
 
 	atomic_dec(&client_count);
 
+	/* Remove sysfs */
+	if (client->sysfs_kobj) {
+		sysfs_remove_group(client->sysfs_kobj, &qmi_client_attr_group);
+		kobject_put(client->sysfs_kobj);
+	}
+
 	/* Remove debugfs */
 	debugfs_remove_recursive(client->debugfs_dir);
 
@@ -1911,7 +2531,7 @@ static int tmelcom_qmi_remove(struct platform_device *pdev)
 	qmi_handle_release(&client->qmi);
 
 	dev_info(&pdev->dev, "TME QMI client removed for PCIe domain %d\n",
-		 client->pcie_domain);
+		 client->domain_num);
 
 	return 0;
 }
@@ -1926,33 +2546,93 @@ static struct platform_driver tmelcom_qmi_driver = {
 
 /* ===== QMI Service Discovery ===== */
 
+/**
+ * qrtr_node_to_instance_id() - Calculate and validate instance ID from QRTR node
+ * @node: QRTR node number
+ *
+ * Calculates the instance ID from QRTR node, matching MHI's calculation:
+ * instance_id = node - QRTR_INSTANCE_BASE
+ *
+ * Also checks if a client with this instance ID already exists.
+ *
+ * Examples:
+ *   node 0x18 - 0x7 = 0x11 (PCIe domain 1)
+ *   node 0x28 - 0x7 = 0x21 (PCIe domain 2)
+ *   node 0x38 - 0x7 = 0x31 (PCIe domain 3)
+ *
+ * Return: Instance ID on success, -EEXIST if already registered, negative error code on failure
+ */
+static int qrtr_node_to_instance_id(u32 node)
+{
+	struct tmelcom_qmi_client *client;
+	u32 instance_id;
+	bool already_exists = false;
+
+	/* Validate QRTR node */
+	if (node < QRTR_INSTANCE_BASE) {
+		pr_err("tmelcom_qmi: Invalid QRTR node: 0x%x (must be >= 0x%x)\n",
+		       node, QRTR_INSTANCE_BASE);
+		return -EINVAL;
+	}
+
+	/* Calculate instance ID from QRTR node */
+	instance_id = node - QRTR_INSTANCE_BASE;
+
+	/* Check if a client with this instance ID already exists */
+	mutex_lock(&tmelcom_qmi_clients_lock);
+	list_for_each_entry(client, &tmelcom_qmi_clients, node) {
+		if (client->instance_id == instance_id) {
+			already_exists = true;
+			pr_info("tmelcom_qmi: QMI server instance 0x%x already registered, ignoring duplicate\n",
+				instance_id);
+			break;
+		}
+	}
+	mutex_unlock(&tmelcom_qmi_clients_lock);
+
+	if (already_exists)
+		return -EEXIST;
+
+	return instance_id;
+}
+
 static int tmelcom_qmi_new_server(struct qmi_handle *qmi,
 				   struct qmi_service *service)
 {
 	struct platform_device *pdev;
 	struct tmelcom_qmi_pdata pdata;
-	int pcie_domain;
+	u32 calculated_instance_id;
+	int domain_num;
 	int ret;
 
-	/* Extract PCIe domain from QRTR instance ID */
-	pcie_domain = qrtr_instance_to_pcie_domain(service->instance);
-	if (pcie_domain < 0) {
-		pr_err("tmelcom_qmi: Invalid QRTR instance ID: %u\n",
-		       service->instance);
+	/* Calculate and validate instance ID from QRTR node */
+	ret = qrtr_node_to_instance_id(service->node);
+	if (ret == -EEXIST)
+		return 0;  /* Already registered, not an error */
+	if (ret < 0)
+		return ret;  /* Validation error */
+
+	calculated_instance_id = ret;
+
+	/* Calculate domain number from instance ID */
+	domain_num = qrtr_instance_to_domain_num(calculated_instance_id);
+	if (domain_num < 0 || domain_num > 31) {  /* Reasonable upper bound */
+		pr_err("tmelcom_qmi: Invalid PCIe domain %d from instance ID: 0x%x\n",
+		       domain_num, calculated_instance_id);
 		return -EINVAL;
 	}
 
-	pr_debug("tmelcom_qmi: Discovered TME QMI server: node=0x%x, port=%u, instance=%u, PCIe domain=%d\n",
-		service->node, service->port, service->instance, pcie_domain);
+	pr_info("tmelcom_qmi: Discovered TME QMI server: node=0x%x, port=%u, calculated_instance=0x%x, PCIe domain=%d\n",
+		service->node, service->port, calculated_instance_id, domain_num);
 
 	/* Prepare platform data */
 	pdata.sq.sq_family = AF_QIPCRTR;
 	pdata.sq.sq_node = service->node;
 	pdata.sq.sq_port = service->port;
-	pdata.instance_id = service->instance;
+	pdata.instance_id = calculated_instance_id;
 
-	/* Create platform device */
-	pdev = platform_device_alloc("tmelcom_qmi_client", pcie_domain);
+	/* Create platform device with QRTR node as unique ID to avoid conflicts */
+	pdev = platform_device_alloc("tmelcom_qmi_client", service->node);
 	if (!pdev)
 		return -ENOMEM;
 
@@ -2024,6 +2704,19 @@ static int __init tmelcom_qmi_init(void)
 {
 	int ret;
 
+	/* Create sysfs root directory at /sys/kernel/tmelcomm/qmi/ */
+	tmelcomm_sysfs_root = kobject_create_and_add("tmelcomm", kernel_kobj);
+	if (!tmelcomm_sysfs_root) {
+		pr_warn("tmelcom_qmi: Failed to create tmelcomm sysfs root, continuing without sysfs\n");
+	} else {
+		qmi_sysfs_root = kobject_create_and_add("qmi", tmelcomm_sysfs_root);
+		if (!qmi_sysfs_root) {
+			pr_warn("tmelcom_qmi: Failed to create qmi sysfs root, continuing without sysfs\n");
+			kobject_put(tmelcomm_sysfs_root);
+			tmelcomm_sysfs_root = NULL;
+		}
+	}
+
 	/* Create debugfs directory */
 	tmelcom_qmi_debugfs = debugfs_create_dir("tmelcom_qmi", NULL);
 	if (IS_ERR_OR_NULL(tmelcom_qmi_debugfs)) {
@@ -2056,7 +2749,8 @@ static int __init tmelcom_qmi_init(void)
 		goto err_release_lookup;
 	}
 
-	pr_info("tmelcom_qmi: Driver initialized successfully (looking for service 0x%x\n", QMI_TME_SERVICE_ID_V01);
+	pr_info("tmelcom_qmi: Driver initialized (service 0x%x)\n",
+		QMI_TME_SERVICE_ID_V01);
 	return 0;
 
 err_release_lookup:
@@ -2065,6 +2759,10 @@ err_unregister_driver:
 	platform_driver_unregister(&tmelcom_qmi_driver);
 err_remove_debugfs:
 	debugfs_remove_recursive(tmelcom_qmi_debugfs);
+	if (qmi_sysfs_root)
+		kobject_put(qmi_sysfs_root);
+	if (tmelcomm_sysfs_root)
+		kobject_put(tmelcomm_sysfs_root);
 	return ret;
 }
 
@@ -2075,6 +2773,12 @@ static void __exit tmelcom_qmi_exit(void)
 	qmi_handle_release(&lookup_client);
 	platform_driver_unregister(&tmelcom_qmi_driver);
 	debugfs_remove_recursive(tmelcom_qmi_debugfs);
+
+	/* Remove sysfs root */
+	if (qmi_sysfs_root)
+		kobject_put(qmi_sysfs_root);
+	if (tmelcomm_sysfs_root)
+		kobject_put(tmelcomm_sysfs_root);
 }
 
 module_init(tmelcom_qmi_init);
