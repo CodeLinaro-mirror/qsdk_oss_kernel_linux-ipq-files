@@ -83,12 +83,12 @@ static const struct parent_map nss_cc_parent_map_port1_4_tx[] = {
 
 static const struct clk_parent_data gcc_xo_uniphy0_rx[] = {
 	{ .index = DT_XO },
-	{ .fw_name = "uniphy0_gcc_rx_clk" },
+	{ .index = DT_UNIPHY0_NSS_RX_CLK },
 };
 
 static const struct clk_parent_data gcc_xo_uniphy0_tx[] = {
 	{ .index = DT_XO },
-	{ .fw_name = "uniphy0_gcc_tx_clk" },
+	{ .index = DT_UNIPHY0_NSS_TX_CLK },
 };
 
 static const struct parent_map nss_cc_parent_map_port_5_rx[] = {
@@ -105,14 +105,14 @@ static const struct parent_map nss_cc_parent_map_port_5_tx[] = {
 
 static const struct clk_parent_data gcc_xo_uniphy0_uniphy1_rx[] = {
 	{ .index = DT_XO },
-	{ .fw_name = "uniphy0_gcc_rx_clk" },
-	{ .fw_name = "uniphy1_gcc_rx_clk" },
+	{ .index = DT_UNIPHY0_NSS_RX_CLK },
+	{ .index = DT_UNIPHY1_NSS_RX_CLK },
 };
 
 static const struct clk_parent_data gcc_xo_uniphy0_uniphy1_tx[] = {
 	{ .index = DT_XO },
-	{ .fw_name = "uniphy0_gcc_tx_clk" },
-	{ .fw_name = "uniphy1_gcc_tx_clk" },
+	{ .index = DT_UNIPHY0_NSS_TX_CLK },
+	{ .index = DT_UNIPHY1_NSS_TX_CLK },
 };
 
 static const struct parent_map nss_cc_parent_map_port_6_rx[] = {
@@ -127,12 +127,12 @@ static const struct parent_map nss_cc_parent_map_port_6_tx[] = {
 
 static const struct clk_parent_data gcc_xo_uniphy2_rx[] = {
 	{ .index = DT_XO },
-	{ .fw_name = "uniphy2_gcc_rx_clk" },
+	{ .index = DT_UNIPHY2_NSS_RX_CLK },
 };
 
 static const struct clk_parent_data gcc_xo_uniphy2_tx[] = {
 	{ .index = DT_XO },
-	{ .fw_name = "uniphy2_gcc_tx_clk" },
+	{ .index = DT_UNIPHY2_NSS_TX_CLK },
 };
 
 
