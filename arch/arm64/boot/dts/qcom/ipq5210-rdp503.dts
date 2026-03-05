@@ -39,6 +39,9 @@
 	soc@0 {
 		mdio@90000 {
 			status = "okay";
+			pinctrl-0 = <&mdio_pins &pon_cmn_pins &xgspon_pins>;
+			pinctrl-names = "default";
+
 			/* gpio reset for PHYs */
 			phy-reset-gpio = <
 				&tlmm 24 GPIO_ACTIVE_LOW
