@@ -131,15 +131,3 @@
 	assigned-clock-parents = <&nsscc NSS_CC_PORT4_RX_DIV_CLK_SRC>,
 				 <&nsscc NSS_CC_PORT4_TX_DIV_CLK_SRC>;
 };
-
-&qusb_phy_0 {
-	status = "disabled";
-};
-
-&ssphy_0 {
-	status = "disabled";
-};
-
-&usb3 {
-	status = "disabled";
-};

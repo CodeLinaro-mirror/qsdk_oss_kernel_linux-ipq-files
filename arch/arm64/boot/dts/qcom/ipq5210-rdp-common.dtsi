@@ -81,6 +81,18 @@
 	status = "okay";
 };
 
+&qusb_phy_0 {
+	status = "okay";
+};
+
+&ssphy_0 {
+	status = "okay";
+};
+
+&usb3 {
+	status = "okay";
+};
+
 &sdhc {
 	max-frequency = <192000000>;
 	bus-width = <4>;
