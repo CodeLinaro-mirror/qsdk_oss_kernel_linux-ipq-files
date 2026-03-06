@@ -1452,6 +1452,10 @@
 			reg = <0x39800000 0x7ffff>;
 			reg_offset = <0x80000>;
 			ranges;
+			clocks = <&nsscc NSS_CC_EIP_CLK>,
+				<&nsscc NSS_CC_NSSNOC_EIP_CLK>;
+			clock-names = "eip_clk", "eip_nocclk";
+			clock-frequency = /bits/ 64 <375000000 375000000>;
 			status = "ok";
 			interrupts = <GIC_SPI 212 IRQ_TYPE_LEVEL_HIGH>,
 				     <GIC_SPI 213 IRQ_TYPE_LEVEL_HIGH>,
@@ -2081,6 +2085,29 @@
 				   "rxfill_16", "rxfill_17", "rxfill_18", "rxfill_19",
 
 				   "misc_err";
+			clocks = <&nsscc NSS_CC_NSS_CSR_CLK>,
+				<&nsscc NSS_CC_NSSNOC_NSS_CSR_CLK>,
+				<&nsscc NSS_CC_PPE_EDMA_CLK>,
+				<&gcc GCC_NSSNOC_ATB_CLK>,
+				<&gcc GCC_NSS_TS_CLK>,
+				<&gcc GCC_NSSNOC_QOSGEN_REF_CLK>,
+				<&gcc GCC_NSSNOC_TIMEOUT_REF_CLK>,
+				<&gcc GCC_NSSNOC_SNOC_CLK>,
+				<&gcc GCC_NSSCFG_CLK>,
+				<&gcc GCC_NSSNOC_NSSCC_CLK>,
+				<&gcc GCC_NSSCC_CLK>,
+				<&gcc GCC_NSSNOC_XO_DCD_CLK>,
+				<&gcc GCC_NSSNOC_SNOC_1_CLK>,
+				<&gcc GCC_NSSNOC_PCNOC_1_CLK>,
+				<&gcc GCC_NSSNOC_MEMNOC_CLK>,
+				<&gcc GCC_NSSNOC_MEMNOC_1_CLK>;
+			clock-names = "nss-csr-clk", "nss-nssnoc-csr-clk",
+				"nss-edma-clk", "nss-nssnoc-atb-clk", "nss-ts-clk",
+				"nss-nssnoc-qosgen-ref-clk", "nss-nssnoc-timeout-ref-clk",
+				"nss-nssnoc-snoc-clk", "nss-nsscfg-clk", "nss-nssnoc-nsscc-clk",
+				"nss-nsscc-clk", "nss-nssnoc-xo-dcd-clk", "nss-nssnoc-snoc-1-clk",
+				"nss-nssnoc-pcnoc-1-clk", "nss-nssnoc-memnoc-clk",
+				"nss-nssnoc-mem-noc-1-clk";
 		};
 
 		nss-ppe {
