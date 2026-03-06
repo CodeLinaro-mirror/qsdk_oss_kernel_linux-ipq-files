@@ -454,3 +454,10 @@
 &mlo_global_mem0 {
 	status = "okay";
 };
+
+&ess_uniphy {
+	assigned-clocks = <&nsscc NSS_CC_PORT4_RX_CLK_SRC>,
+			  <&nsscc NSS_CC_PORT4_TX_CLK_SRC>;
+	assigned-clock-parents = <&ess_uniphy 0>,
+				 <&ess_uniphy 1>;
+};
