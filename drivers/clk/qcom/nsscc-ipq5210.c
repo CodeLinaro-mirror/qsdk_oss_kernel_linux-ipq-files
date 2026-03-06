@@ -816,6 +816,7 @@ static struct clk_rcg2 nss_cc_port4_rx_clk_src = {
 		.parent_data = gcc_xo_ephy_uniphy0_rx,
 		.num_parents = ARRAY_SIZE(gcc_xo_ephy_uniphy0_rx),
 		.ops = &clk_rcg2_fm_ops,
+		.flags = CLK_SET_RATE_NO_REPARENT,
 	},
 };
 
@@ -873,6 +874,7 @@ static struct clk_rcg2 nss_cc_port4_tx_clk_src = {
 		.parent_data = gcc_xo_ephy_uniphy0_tx,
 		.num_parents = ARRAY_SIZE(gcc_xo_ephy_uniphy0_tx),
 		.ops = &clk_rcg2_fm_ops,
+		.flags = CLK_SET_RATE_NO_REPARENT,
 	},
 };
 
