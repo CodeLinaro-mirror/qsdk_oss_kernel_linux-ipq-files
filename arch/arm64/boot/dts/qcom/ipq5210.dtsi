@@ -2034,8 +2034,10 @@
 			compatible = "qcom,edma";
 			reg = <0x3ad00000 0x1C5000>;
 			reg-names = "edma-reg-base";
-			/* TO-DO: Add EDMA HW resets */
-			reset-names = "edma_rst";
+			resets = <&nsscc NSS_CC_PPE_EDMA_CLK_ARES>,
+			       <&nsscc NSS_CC_PPE_EDMA_CFG_CLK_ARES>;
+			reset-names = "edma_rst",
+				"edma_cfg_rst";
 			qcom,rxdesc-ring-max = <24>;
 			qcom,rxfill-ring-max = <20>;
 			qcom,txdesc-ring-max = <24>;
