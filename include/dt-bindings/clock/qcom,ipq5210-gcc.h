@@ -150,4 +150,5 @@
 #define GCC_SNOC_LPASS_CLK					140
 #define GCC_LPASS_SWAY_CLK_SRC					141
 #define GCC_LPASS_AXIM_CLK_SRC					142
+#define GPLL0_MAIN						143
 #endif
