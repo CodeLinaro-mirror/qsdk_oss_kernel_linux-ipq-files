@@ -1,0 +1,96 @@
+/*
+ * Copyright (c) 2017, 2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+&soc {
+	apc_apm: apm@b111000 {
+		compatible = "qcom,ipq9650-apm";
+		/* To-Do: Add alias4 pwr gate for cpu4 */
+		reg = <0x0fb00000 0x1000>,
+		      <0xF800010 0x4>,
+		      <0xF810010 0x4>,
+		      <0xF820010 0x4>,
+		      <0xF830010 0x4>,
+		      <0xFB000F4 0x4>;
+		reg-names = "pm-apcc-glb",
+			    "alias0-pwr-gate",
+			    "alias1-pwr-gate",
+			    "alias2-pwr-gate",
+			    "alias3-pwr-gate",
+			    "apm-ctl-override";
+		status = "disabled";
+		qcom,apm-post-halt-delay = <0x2>;
+		qcom,apm-halt-clk-delay = <0x11>;
+		qcom,apm-resume-clk-delay = <0x10>;
+		qcom,apm-sel-switch-delay = <0x01>;
+	};
+
+	apc_cpr: cpr4-ctrl@b018000 {
+		compatible = "qcom,cpr4-ipq9650-apss-regulator";
+		reg = <0x48000 0x4000>, <0xa4000 0x1000>;
+		reg-names = "cpr_ctrl", "fuse_base";
+		status = "disabled";
+		interrupts = <GIC_SPI 15 IRQ_TYPE_EDGE_RISING>;
+		interrupt-names = "cpr";
+		qcom,cpr-ctrl-name = "apc";
+		qcom,cpr-sensor-time = <1000>;
+		qcom,cpr-loop-time = <5000000>;
+		qcom,cpr-idle-cycles = <15>;
+		qcom,cpr-step-quot-init-min = <0>;
+		qcom,cpr-step-quot-init-max = <15>;
+		qcom,cpr-count-mode = <0>;		/* All-at-once */
+		qcom,cpr-count-repeat = <1>;
+		qcom,cpr-down-error-step-limit = <1>;
+		qcom,cpr-up-error-step-limit = <1>;
+		qcom,apm-ctrl = <&apc_apm>;
+		qcom,apm-threshold-voltage = <850000>;
+		qcom,voltage-step = <12500>;
+
+		thread@0 {
+			qcom,cpr-thread-id = <0>;
+			qcom,cpr-consecutive-up = <0>;
+			qcom,cpr-consecutive-down = <0>;
+			qcom,cpr-up-threshold = <2>;
+			qcom,cpr-down-threshold = <2>;
+
+			apc_vreg: regulator {
+				regulator-name = "apc_corner";
+				regulator-min-microvolt = <1>;
+				regulator-max-microvolt = <3>;
+				/*To-Do: IPQ9650 has 3 part types, 2 voltages needs to be updated in qcom,cpr-parts-voltage */
+				qcom,cpr-part-types = <2>;
+				qcom,cpr-parts-voltage = <1037500>;
+				qcom,cpr-fuse-corners = <3>;
+				qcom,cpr-fuse-combos = <6>;
+				qcom,cpr-corners = <3>;
+				qcom,cpr-speed-bins = <1>;
+				qcom,cpr-speed-bin-corners = <3>;
+				qcom,cpr-corner-fmax-map = <1 2 3>;
+				qcom,allow-voltage-interpolation;
+				qcom,allow-quotient-interpolation;
+				qcom,cpr-scaled-open-loop-voltage-as-ceiling;
+				qcom,cpr-voltage-ceiling =
+					<735000 815000 960000>;
+				qcom,cpr-voltage-floor =
+					<550000 650000 750000>;
+				qcom,corner-frequencies =
+					<840000000 1368000000 1944000000>;
+
+				regulator-always-on;
+			};
+		};
+	};
+};
