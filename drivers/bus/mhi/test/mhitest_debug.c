@@ -18,6 +18,11 @@
 #define QCN9224_SRAM_END \
 		(QCN9224_SRAM_START + QCN9224_SRAM_SIZE - 1)
 
+#define QCN9625_SRAM_START			0x02100000
+#define QCN9625_SRAM_SIZE			0x00580000
+#define QCN9625_SRAM_END \
+				(QCN9625_SRAM_START + QCN9625_SRAM_SIZE - 1)
+
 #define QCN9224_PCIE_BHI_ERRDBG2_REG		0x1E0E238
 #define QCN9224_PCIE_BHI_ERRDBG3_REG		0x1E0E23C
 #define QCN9224_PBL_LOG_SRAM_START		0x01303da0
@@ -28,9 +33,102 @@
 #define QCN9224_PBL_BOOTSTRAP_STATUS		0x1A006D4
 #define MAX_PBL_DATA_SNAPSHOT			2
 
-#define QCN9000_PCIE_REMAP_BAR_CTRL_OFFSET	0x310C
-#define QCN9224_PCI_MHIREGLEN_REG		0x1E0E100
-#define QCN9224_PCI_MHI_REGION_END		0x1E0EFFC
+#define QCN9625_PBL_LOG_SRAM_START		0x0210AF10
+#define QCN9625_PBL_WLAN_BOOT_CONFIG		0x01F9200C
+
+#define TCSR_DEBUG_REG0                         0x1B001C4
+#define PBL_ERR_MAGIC_COOKIE                    0xAABBCCDD
+
+/* Structure to have information about pbl_err region */
+typedef struct _pbl_err_to_host_type {
+	uint32_t  magic_cookie;
+	uint32_t  err_region_size;
+	uint32_t  err_region_base;
+} pbl_err_to_host_type;
+
+
+/**
+ * mhitest_read_pbl_ram_info - Read PBL RAM information from TCSR_DEBUG_REG0
+ * @mplat: structure of mhitest platform driver
+ * @pbl_ram_start: pointer to store PBL RAM start address
+ * @pbl_ram_size: pointer to store PBL RAM size
+ *
+ * Read PBL RAM information from TCSR_DEBUG_REG0 register. This register points
+ * to a structure that contains the magic cookie, error region size, and error
+ * region base address. If the magic cookie matches, use the error region base
+ * and size as the PBL RAM start address and size. Otherwise, use default values.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+static int mhitest_read_pbl_ram_info(struct mhitest_platform *mplat,
+				     u32 *pbl_ram_start, u32 *pbl_ram_size)
+{
+	u32 tcsr_debug_reg0_val = 0;
+	pbl_err_to_host_type pbl_err_info = {0};
+	int ret = 0;
+
+	if (!mplat || !pbl_ram_start || !pbl_ram_size) {
+		pr_err("Invalid input parameters\n");
+		return -EINVAL;
+	}
+
+	/* Read the value from TCSR_DEBUG_REG0 */
+	ret = mhitest_pci_reg_read(mplat, TCSR_DEBUG_REG0, &tcsr_debug_reg0_val);
+	if (ret != 0) {
+		pr_err("Failed to read TCSR_DEBUG_REG0\n");
+		return ret;
+	}
+
+	/* Check for 4-byte alignment - addresses must be aligned to 4-byte boundary
+	 */
+	if (tcsr_debug_reg0_val & 0x3) {
+		pr_err("TCSR_DEBUG_REG0 value 0x%x is not 4-byte aligned\n",
+		       tcsr_debug_reg0_val);
+		return -EINVAL;
+	}
+
+	/* Read the pbl_err_to_host_type structure using sizeof(u32) for field offsets */
+	ret = mhitest_pci_reg_read(mplat,
+				  tcsr_debug_reg0_val,
+				  (u32 *)&pbl_err_info.magic_cookie);
+	if (ret != 0) {
+		pr_err("Failed to read magic_cookie at address 0x%x\n", tcsr_debug_reg0_val);
+		return ret;
+	}
+
+	ret = mhitest_pci_reg_read(mplat,
+				  tcsr_debug_reg0_val + sizeof(u32),
+				  (u32 *)&pbl_err_info.err_region_size);
+	if (ret != 0) {
+		pr_err("Failed to read err_region_size\n");
+		return ret;
+	}
+
+	ret = mhitest_pci_reg_read(mplat,
+				  tcsr_debug_reg0_val + (2 * sizeof(u32)),
+				  (u32 *)&pbl_err_info.err_region_base);
+	if (ret != 0) {
+		pr_err("Failed to read err_region_base\n");
+		return ret;
+	}
+
+	/* Verify magic cookie */
+	if (pbl_err_info.magic_cookie != PBL_ERR_MAGIC_COOKIE) {
+		pr_err("Invalid magic cookie: 0x%x, expected: 0x%x\n",
+		       pbl_err_info.magic_cookie, PBL_ERR_MAGIC_COOKIE);
+		return -EINVAL;
+	}
+
+	/* Use the values from the structure */
+	*pbl_ram_start = pbl_err_info.err_region_base;
+	*pbl_ram_size = pbl_err_info.err_region_size;
+
+	pr_info("Using PBL RAM info from TCSR_DEBUG_REG0: start=0x%x, size=%u\n",
+		 *pbl_ram_start, *pbl_ram_size);
+
+	return 0;
+}
+
 #define QCN9224_SNOC_ERL_ErrVld_Low		0x1E80010
 #define QCN9224_SNOC_ERL_ErrLog0_Low		0x1E80020
 #define QCN9224_SNOC_ERL_ErrLog0_High		0x1E80024
@@ -55,24 +153,16 @@
 #define QCN9224_PCIE_PCIE_PARF_LTSSM			0x1E081B0
 #define QCN9224_GCC_RAMSS_CBCR				0x1E38200
 
+#define QCN9625_PCIE_PCIE_LOCAL_REG_REMAP_BAR_CTRL	0x3278
+#define QCN9625_GCC_RAMSS_CBCR				0x1E38218
+
 #define PCIE_CFG_PCIE_STATUS			0x230
 #define PCIE_PCIE_PARF_PM_STTS			0x1E08024
 #define PCIE_PCI_MSI_CAP_ID_NEXT_CTRL_REG	0x50
 #define PCIE_MSI_CAP_OFF_04H_REG		0x54
 #define PCIE_MSI_CAP_OFF_08H_REG		0x58
 #define PCIE_MSI_CAP_OFF_0CH_REG		0x5C
-#define PCIE_LOCAL_REG_BASE			0x1E00000
-#define PCIE_LOCAL_REG_END			0x1E03FFF
 #define SBL_LOG_SIZE_MASK			0xFFFF
-
-#define WINDOW_SHIFT				19
-#define WINDOW_VALUE_MASK			0x3f
-#define WINDOW_ENABLE_BIT			0x40000000
-#define MAX_UNWINDOWED_ADDRESS			0x80000
-#define WINDOW_START				MAX_UNWINDOWED_ADDRESS
-#define WINDOW_RANGE_MASK			0x7FFFF
-
-static DEFINE_SPINLOCK(pci_reg_window_lock);
 
 struct pbl_reg_addr {
 	u32 pbl_log_sram_start;
@@ -126,149 +216,6 @@ struct noc_err_table {
 	int (*reg_handler)(struct mhitest_platform *mplat, u32 addr,
 			   u32 *val);
 };
-
-static int mhitest_pci_get_bar_addr(struct mhitest_platform *mplat,
-				    void __iomem **bar)
-{
-	if (!mplat) {
-		pr_err("Plat Priv is null\n");
-		return -ENODEV;
-	}
-
-	switch (mplat->device_id) {
-	case QCN92XX_DEVICE_ID:
-		if (!mplat->bar) {
-			pr_err("PCI bar is not yet assigned\n");
-			return -EINVAL;
-		}
-		*bar = mplat->bar;
-		break;
-	default:
-		pr_err("Unsupported device id 0x%lx\n",
-			mplat->device_id);
-		return -ENODEV;
-	}
-
-	return 0;
-}
-
-static void mhitest_pci_select_window(struct mhitest_platform *mplat, u32 addr)
-{
-	u32 window = (addr >> WINDOW_SHIFT) & WINDOW_VALUE_MASK;
-	u32 prev_window = 0, curr_window = 0, prev_cleared_window = 0;
-	volatile u32 write_val, read_val = 0;
-	int retry = 0;
-	void __iomem *bar = NULL;
-
-	if (mhitest_pci_get_bar_addr(mplat, &bar) < 0) {
-		pr_err("Get bar address failed\n");
-		return;
-	}
-
-
-	prev_window = readl_relaxed(bar +
-				    QCN9000_PCIE_REMAP_BAR_CTRL_OFFSET);
-
-	/* Clear out last 6 bits of window register */
-	prev_cleared_window = prev_window & ~(0x3f);
-
-	/* Write the new last 6 bits of window register. Only window 1 values
-	 * are changed. Window 2 and 3 are unaffected.
-	 */
-	curr_window = prev_cleared_window | window;
-
-	/* Skip writing into window register if the read value
-	 * is same as calculated value.
-	 */
-	if (curr_window == prev_window)
-		return;
-
-	write_val = WINDOW_ENABLE_BIT | curr_window;
-	writel_relaxed(write_val, bar +
-		       QCN9000_PCIE_REMAP_BAR_CTRL_OFFSET);
-
-	read_val = readl_relaxed(bar +
-				 QCN9000_PCIE_REMAP_BAR_CTRL_OFFSET);
-
-	/* If value written is not yet reflected, wait till it is reflected */
-	while ((read_val != write_val) && (retry < 10)) {
-		mdelay(1);
-		read_val = readl_relaxed(bar +
-					 QCN9000_PCIE_REMAP_BAR_CTRL_OFFSET);
-		retry++;
-	}
-
-	if ((retry >= 10) && (read_val != write_val))
-		pr_debug("retry count: %d", retry);
-}
-
-int mhitest_get_mhi_region_len(struct mhitest_platform *mplat,
-			       u32 *reg_start, u32 *reg_end)
-{
-	switch (mplat->device_id) {
-	case QCN92XX_DEVICE_ID:
-		*reg_start = QCN9224_PCI_MHIREGLEN_REG;
-		*reg_end = QCN9224_PCI_MHI_REGION_END;
-		break;
-	default:
-		pr_err("Unknown device type 0x%lx\n",
-			mplat->device_id);
-		return -ENODEV;
-	}
-
-	return 0;
-}
-
-int mhitest_pci_reg_read(struct mhitest_platform *mplat,
-			 u32 addr, u32 *val)
-{
-	int ret;
-	u32 mhi_region_start_reg = 0;
-	u32 mhi_region_end_reg = 0;
-	unsigned long flags;
-	void __iomem *bar = NULL;
-
-	if (!mplat) {
-		pr_err("Plat Priv is null\n");
-		return -ENODEV;
-	}
-
-	ret = mhitest_pci_get_bar_addr(mplat, &bar);
-	if (ret < 0) {
-		pr_err("Get bar address failed\n");
-		return ret;
-	}
-
-	if (addr < MAX_UNWINDOWED_ADDRESS) {
-		*val = readl_relaxed(bar + addr);
-		return 0;
-	}
-
-	ret = mhitest_get_mhi_region_len(mplat, &mhi_region_start_reg,
-					 &mhi_region_end_reg);
-	if (ret) {
-		pr_err("MHI start and end region not assigned.\n");
-		return ret;
-	}
-
-	spin_lock_irqsave(&pci_reg_window_lock, flags);
-	mhitest_pci_select_window(mplat, addr);
-
-	if ((addr >= PCIE_LOCAL_REG_BASE && addr <= PCIE_LOCAL_REG_END) ||
-		(addr >= mhi_region_start_reg && addr <= mhi_region_end_reg)) {
-		if (addr >= mhi_region_start_reg && addr <= mhi_region_end_reg)
-			addr = addr - mhi_region_start_reg;
-
-		*val = readl_relaxed(bar +
-				     (addr & WINDOW_RANGE_MASK));
-	} else {
-		*val = readl_relaxed(bar + WINDOW_START +
-				     (addr & WINDOW_RANGE_MASK));
-	}
-	spin_unlock_irqrestore(&pci_reg_window_lock, flags);
-
-	return 0;
-}
 
 static struct noc_err_table noc_err_table_list[] = {
 	{"SNOC_ERL_ErrVld_Low", QCN9224_SNOC_ERL_ErrVld_Low,
@@ -419,6 +366,8 @@ static int mhitest_debug_read_noc_errors(struct mhitest_platform *mplat,
 
 	switch (mplat->device_id) {
 	case QCN92XX_DEVICE_ID:
+	case QCN95XX_DEVICE_ID:
+	case QCN96XX_DEVICE_ID:
 		for (i = 0; noc_err_table_list[i].reg_name; i++)
 			noc_err_table_list[i].reg_handler(mplat,
 				noc_err_table_list[i].reg, &buf[i]);
@@ -473,6 +422,19 @@ static int mhitest_debug_read_misc_data(struct mhitest_platform *mplat,
 				     &pbl_sbl_err->parf_ltssm);
 		mhitest_pci_reg_read(mplat,
 				     QCN9224_GCC_RAMSS_CBCR,
+				     &pbl_sbl_err->gcc_ramss_cbcr);
+	}
+
+	if (mplat->device_id == QCN95XX_DEVICE_ID ||
+	    mplat->device_id == QCN96XX_DEVICE_ID) {
+		mhitest_pci_reg_read(mplat,
+				     QCN9625_PCIE_PCIE_LOCAL_REG_REMAP_BAR_CTRL,
+				     &pbl_sbl_err->remap_bar_ctrl);
+		mhitest_pci_reg_read(mplat,
+				     QCN9224_PCIE_PCIE_PARF_LTSSM,
+				     &pbl_sbl_err->parf_ltssm);
+		mhitest_pci_reg_read(mplat,
+				     QCN9625_GCC_RAMSS_CBCR,
 				     &pbl_sbl_err->gcc_ramss_cbcr);
 	}
 
@@ -606,7 +568,9 @@ static void mhitest_debug_print_bl_data(struct mhitest_platform *mplat,
 
 	mhitest_debug_print_pbl_data(mplat, &pbl_sbl_err->pbl_data[0]);
 
-	if (mplat->device_id == QCN92XX_DEVICE_ID) {
+	if (mplat->device_id == QCN92XX_DEVICE_ID ||
+	    mplat->device_id == QCN95XX_DEVICE_ID ||
+	    mplat->device_id == QCN96XX_DEVICE_ID) {
 		pr_err("LOCAL_REG_REMAP_BAR_CTRL: 0x%08x, WLAON_SOC_RESET_CAUSE_SHADOW_REG: 0x%08x, PARF_LTSSM: 0x%08x\n",
 			pbl_sbl_err->remap_bar_ctrl,
 			pbl_sbl_err->soc_rc_shadow_reg,
@@ -678,6 +642,7 @@ void mhitest_pci_dump_bl_sram_mem(struct mhitest_platform *mplat)
 		sbl_data.sbl_sram_end = QCN9224_SRAM_END;
 		sbl_data.sbl_log_size_reg = QCN9224_PCIE_BHI_ERRDBG3_REG;
 		sbl_data.sbl_log_start_reg = QCN9224_PCIE_BHI_ERRDBG2_REG;
+		sbl_data.sbl_log_size_shift = 0;
 		if (mhi_ctrl->major_version == 2)
 			pbl_data.pbl_log_sram_start =
 				QCN9224_v2_PBL_LOG_SRAM_START;
@@ -688,6 +653,29 @@ void mhitest_pci_dump_bl_sram_mem(struct mhitest_platform *mplat)
 		pbl_data.pbl_log_sram_max_size = QCN9224_PBL_LOG_SRAM_MAX_SIZE;
 		pbl_data.tcsr_pbl_logging_reg = QCN9224_TCSR_PBL_LOGGING_REG;
 		pbl_data.pbl_wlan_boot_cfg = QCN9224_PBL_WLAN_BOOT_CFG;
+		pbl_data.pbl_bootstrap_status = QCN9224_PBL_BOOTSTRAP_STATUS;
+		break;
+	case QCN95XX_DEVICE_ID:
+	case QCN96XX_DEVICE_ID:
+		sbl_data.sbl_sram_start = QCN9625_SRAM_START;
+		sbl_data.sbl_sram_end = QCN9625_SRAM_END;
+		sbl_data.sbl_log_size_reg = QCN9224_PCIE_BHI_ERRDBG3_REG;
+		sbl_data.sbl_log_start_reg = QCN9224_PCIE_BHI_ERRDBG2_REG;
+		sbl_data.sbl_log_size_shift = 0;
+
+		/* Try to read PBL RAM information from TCSR_DEBUG_REG0 */
+		if (mhitest_read_pbl_ram_info(mplat,
+					     &pbl_data.pbl_log_sram_start,
+					     &pbl_data.pbl_log_sram_max_size) != 0) {
+			/* Fallback to default values if reading fails */
+			pbl_data.pbl_log_sram_start = QCN9625_PBL_LOG_SRAM_START;
+			pbl_data.pbl_log_sram_max_size = QCN9224_PBL_LOG_SRAM_MAX_SIZE;
+			pr_info("Using default PBL RAM values: start=0x%x, size=%u\n",
+				pbl_data.pbl_log_sram_start, pbl_data.pbl_log_sram_max_size);
+		}
+
+		pbl_data.tcsr_pbl_logging_reg = QCN9224_TCSR_PBL_LOGGING_REG;
+		pbl_data.pbl_wlan_boot_cfg = QCN9625_PBL_WLAN_BOOT_CONFIG;
 		pbl_data.pbl_bootstrap_status = QCN9224_PBL_BOOTSTRAP_STATUS;
 		break;
 	default:

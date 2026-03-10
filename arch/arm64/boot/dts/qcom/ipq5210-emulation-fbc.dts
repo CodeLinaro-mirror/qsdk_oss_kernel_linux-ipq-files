@@ -152,3 +152,7 @@
 &tmelcom {
 	status = "okay";
 };
+
+&cmn_pll {
+	status = "disabled";
+};

@@ -532,6 +532,10 @@
 	status = "disabled";
 };
 
+&qcom_test_userpd1 {
+	status = "disabled";
+};
+
 /* PINCTRL */
 
 &tlmm {

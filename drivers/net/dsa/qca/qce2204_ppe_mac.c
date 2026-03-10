@@ -905,6 +905,30 @@ void qce2204_phylink_mac_link_up(struct dsa_switch *ds, int port,
 	u32 reg, val;
 	int ret;
 
+	/* Set speed clock for port0 10G force speed */
+	if (port == 0 && speed == SPEED_10000) {
+		/* Set TX and RX clock rate to 312.5MHz for 10G speed */
+		if (priv->port_clks[port].tx_clk && !IS_ERR(priv->port_clks[port].tx_clk)) {
+			ret = clk_set_rate(priv->port_clks[port].tx_clk, 312500000);
+			if (ret) {
+				dev_warn(priv->dev, "Failed to set TX clock rate for port %d: %d\n",
+					port, ret);
+			} else {
+				dev_dbg(priv->dev, "Port %d: Set TX clock rate to 312.5MHz\n", port);
+			}
+		}
+
+		if (priv->port_clks[port].rx_clk && !IS_ERR(priv->port_clks[port].rx_clk)) {
+			ret = clk_set_rate(priv->port_clks[port].rx_clk, 312500000);
+			if (ret) {
+				dev_warn(priv->dev, "Failed to set RX clock rate for port %d: %d\n",
+					port, ret);
+			} else {
+				dev_dbg(priv->dev, "Port %d: Set RX clock rate to 312.5MHz\n", port);
+			}
+		}
+	}
+
 	/* Determine MAC type for this port */
 	mac_type = priv->ppe_port[port].mac_type;
 

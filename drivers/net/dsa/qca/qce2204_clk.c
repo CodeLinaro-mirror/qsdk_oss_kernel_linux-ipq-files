@@ -72,6 +72,14 @@ int qce2204_enable_clocks(struct qce2204_priv *priv)
 		return ret;
 	}
 
+	/* Set switch core clock rate to 250M from serdes1 */
+	ret = clk_set_rate(priv->core_clk, 250000000);
+	if (ret) {
+		dev_err(dev, "Failed to set switch core clock rate to 250MHz: %d\n", ret);
+		clk_disable_unprepare(priv->core_clk);
+		return ret;
+	}
+
 	ret = clk_prepare_enable(priv->ipe_clk);
 	if (ret) {
 		dev_err(dev, "Failed to enable IPE clock: %d\n", ret);
@@ -218,7 +226,7 @@ int qce2204_get_port_resets(struct qce2204_priv *priv, int port,
 	struct device *dev = priv->dev;
 	int ret;
 
-	priv->port_resets[port].tx_reset = of_reset_control_get_by_index(port_np, 0);
+	priv->port_resets[port].tx_reset = of_reset_control_get_exclusive(port_np, QCE2204_PORT_RESET_TX);
 	if (IS_ERR(priv->port_resets[port].tx_reset)) {
 		ret = PTR_ERR(priv->port_resets[port].tx_reset);
 		if (ret != -EPROBE_DEFER)
@@ -226,7 +234,7 @@ int qce2204_get_port_resets(struct qce2204_priv *priv, int port,
 		return ret;
 	}
 
-	priv->port_resets[port].rx_reset = of_reset_control_get_by_index(port_np, 1);
+	priv->port_resets[port].rx_reset = of_reset_control_get_exclusive(port_np, QCE2204_PORT_RESET_RX);
 	if (IS_ERR(priv->port_resets[port].rx_reset)) {
 		ret = PTR_ERR(priv->port_resets[port].rx_reset);
 		if (ret != -EPROBE_DEFER)
@@ -317,13 +325,6 @@ int qce2204_init_switch_clocks_resets(struct qce2204_priv *priv)
 	struct device *dev = priv->dev;
 	int ret;
 
-	/* Get switch-level clocks */
-	ret = qce2204_get_clocks(priv);
-	if (ret) {
-		dev_err(dev, "Failed to get switch clocks: %d\n", ret);
-		return ret;
-	}
-
 	/* Get switch-level resets */
 	ret = qce2204_get_resets(priv);
 	if (ret) {
@@ -331,10 +332,10 @@ int qce2204_init_switch_clocks_resets(struct qce2204_priv *priv)
 		return ret;
 	}
 
-	/* Enable switch-level clocks */
-	ret = qce2204_enable_clocks(priv);
+	/* Get switch-level clocks */
+	ret = qce2204_get_clocks(priv);
 	if (ret) {
-		dev_err(dev, "Failed to enable switch clocks: %d\n", ret);
+		dev_err(dev, "Failed to get switch clocks: %d\n", ret);
 		return ret;
 	}
 
@@ -343,6 +344,13 @@ int qce2204_init_switch_clocks_resets(struct qce2204_priv *priv)
 	if (ret) {
 		dev_err(dev, "Failed to reset switch: %d\n", ret);
 		qce2204_disable_clocks(priv);
+		return ret;
+	}
+
+	/* Enable switch-level clocks */
+	ret = qce2204_enable_clocks(priv);
+	if (ret) {
+		dev_err(dev, "Failed to enable switch clocks: %d\n", ret);
 		return ret;
 	}
 
@@ -370,13 +378,21 @@ int qce2204_init_port_clocks_resets(struct qce2204_priv *priv)
 		return 0;
 	}
 
-	for (port = 0; port < QCE2204_NUM_PORTS; port++) {
-		char port_name[16];
-
-		snprintf(port_name, sizeof(port_name), "port@%d", port);
-		port_np = of_get_child_by_name(ports_np, port_name);
-		if (!port_np)
+	for_each_available_child_of_node(ports_np, port_np) {
+		/* Get port number from reg property */
+		ret = of_property_read_u32(port_np, "reg", &port);
+		if (ret) {
+			dev_err(dev, "Failed to get port number from node %pOFn: %d\n",
+				port_np, ret);
+			of_node_put(port_np);
 			continue;
+		}
+
+		if (port >= QCE2204_NUM_PORTS) {
+			dev_err(dev, "Invalid port number %d in device tree\n", port);
+			of_node_put(port_np);
+			continue;
+		}
 
 		/* Try to get per-port clocks */
 		ret = qce2204_get_port_clocks(priv, port, port_np);
@@ -407,8 +423,6 @@ int qce2204_init_port_clocks_resets(struct qce2204_priv *priv)
 				return ret;
 			}
 		}
-
-		of_node_put(port_np);
 	}
 
 	of_node_put(ports_np);
@@ -438,4 +452,28 @@ void qce2204_cleanup_port_clocks_resets(struct qce2204_priv *priv)
 	}
 
 	dev_info(priv->dev, "Port clocks and resets cleaned up\n");
+}
+
+/* Update ahb clock rate */
+int qce2204_ahb_clk_set_rate(struct qce2204_priv *priv, unsigned long rate)
+{
+	struct device *dev = priv->dev;
+	int ret;
+
+	priv->ahb_clk = devm_clk_get(dev, QCE2204_CLK_AHB);
+	if (IS_ERR(priv->ahb_clk)) {
+		ret = PTR_ERR(priv->ahb_clk);
+		if (ret != -EPROBE_DEFER)
+			dev_err(dev, "Failed to get ahb clock: %d\n", ret);
+		return ret;
+	}
+
+	ret = clk_set_rate(priv->ahb_clk, rate);
+	if (ret < 0) {
+		dev_err(dev, "Failed to set AHB clock rate to %lu Hz: %d\n", rate, ret);
+		return ret;
+	}
+
+	dev_info(dev, "Set AHB clock rate to %lu Hz\n", rate);
+	return 0;
 }

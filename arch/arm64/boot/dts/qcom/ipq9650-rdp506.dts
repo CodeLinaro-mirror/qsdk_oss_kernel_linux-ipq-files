@@ -42,3 +42,41 @@
 &qpic_nand {
 	status = "okay";
 };
+
+&mdio {
+	phy-reset-gpio = <&tlmm 18 GPIO_ACTIVE_LOW>, /* Reset for QCE1204. */
+			 <&tlmm 14 GPIO_ACTIVE_LOW>; /* Reset for two QCA81XXs. */
+
+	phy4: ethernet-phy@8 {
+		compatible = "ethernet-phy-ieee802.3-c45";
+		reg = <8>;
+	};
+
+	phy5: ethernet-phy@c {
+		compatible = "ethernet-phy-ieee802.3-c45";
+		reg = <12>;
+	};
+};
+
+&ess_switch {
+	switch_mac_mode1 = <0xd>; /* mac mode for uniphy instance1 */
+	switch_mac_mode2 = <0xd>; /* mac mode for uniphy instance2 */
+
+	qcom,port_phyinfo {
+		port@4 {
+			port_id = <5>;
+			phy_address = <8>;
+			phy-handle = <&phy4>;
+			phy-mode = "usxgmii";
+			ethernet-phy-ieee802.3-c45;
+		};
+
+		port@5 {
+			port_id = <6>;
+			phy_address = <12>;
+			phy-handle = <&phy5>;
+			phy-mode = "usxgmii";
+			ethernet-phy-ieee802.3-c45;
+		};
+	};
+};

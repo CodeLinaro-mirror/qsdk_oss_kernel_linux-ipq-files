@@ -47,12 +47,6 @@ int qce2204_port_alloc_ppe_resources(struct qce2204_priv *priv, int port)
 		return 0;
 	}
 
-	/* Only user ports (1-4) need resource allocation */
-	if (port < 1 || port > 4) {
-		dev_err(priv->dev, "Invalid user port %d\n", port);
-		return -EINVAL;
-	}
-
 	res = &priv->port_ppe_res[port];
 
 	/* Skip if already allocated */
@@ -454,15 +448,23 @@ static int qce2204_port_change_mtu(struct dsa_switch *ds, int port, int new_mtu)
 {
 	struct qce2204_priv *priv = ds->priv;
 	struct qce2204_ppe_port_mtu_cfg mtu_cfg;
-	int ret;
+	struct qce2204_ppe_port_mru_cfg mru_cfg;
+	struct dsa_port *cpu_dp;
+	int ret, mtu_val;
 
 	/* Skip CPU port */
 	if (dsa_is_cpu_port(ds, port))
 		return 0;
 
-	/* Configure MTU with drop action for oversized packets */
-	mtu_cfg.mtu = new_mtu;
-	mtu_cfg.mtu_cmd = QCE2204_PPE_ACTION_DROP;
+	/* Align with PPE port's MTU, dsa_slave_change_mtu/ppe_drv_port_mtu_mru_set */
+	cpu_dp = dsa_to_port(ds, QCE2204_CPU_PORT_ID);
+	mtu_val = new_mtu + ETH_HLEN +
+				cpu_dp->tag_ops->needed_headroom +
+				cpu_dp->tag_ops->needed_tailroom;
+
+	/* Configure MTU with rdt cpu action for oversized packets */
+	mtu_cfg.mtu = mtu_val;
+	mtu_cfg.mtu_cmd = QCE2204_PPE_ACTION_REDIRECT_TO_CPU;
 
 	ret = qce2204_ppe_port_mtu_set(priv, port, &mtu_cfg);
 	if (ret) {
@@ -470,7 +472,17 @@ static int qce2204_port_change_mtu(struct dsa_switch *ds, int port, int new_mtu)
 		return ret;
 	}
 
-	dev_dbg(priv->dev, "Port %d MTU set to %d\n", port, new_mtu);
+	/* Configure MRU with rdt cpu action for oversized packets */
+	mru_cfg.mru = mtu_val;
+	mru_cfg.mru_cmd = QCE2204_PPE_ACTION_REDIRECT_TO_CPU;
+
+	ret = qce2204_ppe_port_mru_set(priv, port, &mru_cfg);
+	if (ret) {
+		dev_err(priv->dev, "Failed to set MRU for port %d: %d\n", port, ret);
+		return ret;
+	}
+
+	dev_dbg(priv->dev, "Port %d MTU/MRU set to %d\n", port, mtu_val);
 	return 0;
 }
 
@@ -609,6 +621,12 @@ static int qce2204_mdio_probe(struct mdio_device *mdiodev)
 	priv->reg_base_offset = QCE2204_MDIO_REG_BASE_OFFSET;
 
 	dev_info(dev, "QCE2204 MDIO device at address %d\n", mdiodev->addr);
+
+	ret = qce2204_ahb_clk_set_rate(priv, QCE2204_AHB_CLK_RATE_104M);
+	if (ret) {
+		dev_err(dev, "Failed to set ahb clock to 104Mhz: %d\n", ret);
+		return ret;
+	}
 
 	ret = qce2204_init_switch_clocks_resets(priv);
 	if (ret) {

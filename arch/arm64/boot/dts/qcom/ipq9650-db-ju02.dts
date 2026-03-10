@@ -1,0 +1,83 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * IPQ9650 DB JU02 board device tree source
+ *
+ * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ */
+
+/dts-v1/;
+
+#include "ipq9650-rdp-common.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. IPQ9650 DB JU02";
+	compatible = "qcom,ipq9650-db-ju02", "qcom,ipq9650";
+
+	soc@0 {
+		qupv3: geniqup@1ac0000 {
+			status = "okay";
+
+			spi0: spi@1a80000 {
+				pinctrl-0 = <&qup_spi0_default>;
+				pinctrl-names = "default";
+				status = "okay";
+
+				flash@0 {
+					compatible = "spansion,s25fs128s1", "jedec,spi-nor";
+					#address-cells = <1>;
+					#size-cells = <1>;
+					reg = <0>;
+					spi-max-frequency = <50000000>;
+				};
+			};
+		};
+	};
+};
+
+&qpic_bam {
+	status = "okay";
+};
+
+&qpic_nand {
+	status = "okay";
+};
+
+&mdio {
+	phy-reset-gpio = <&tlmm 18 GPIO_ACTIVE_LOW>, /* Reset for QCE1204. */
+			 <&tlmm 14 GPIO_ACTIVE_LOW>, /* Reset for UNIPHY1 QCA81XXs. */
+			 <&tlmm 15 GPIO_ACTIVE_LOW>; /* Reset for UNIPHY2 QCA81XXs. */
+
+	phy4: ethernet-phy@8 {
+		compatible = "ethernet-phy-ieee802.3-c45";
+		reg = <8>;
+	};
+
+	phy5: ethernet-phy@c {
+		compatible = "ethernet-phy-ieee802.3-c45";
+		reg = <12>;
+	};
+};
+
+&ess_switch {
+	switch_mac_mode1 = <0xd>; /* mac mode for uniphy instance1 */
+	switch_mac_mode2 = <0xd>; /* mac mode for uniphy instance2 */
+
+	qcom,port_phyinfo {
+		port@4 {
+			port_id = <5>;
+			phy_address = <8>;
+			phy-handle = <&phy4>;
+			phy-mode = "usxgmii";
+			ethernet-phy-ieee802.3-c45;
+		};
+
+		port@5 {
+			port_id = <6>;
+			phy_address = <12>;
+			phy-handle = <&phy5>;
+			phy-mode = "usxgmii";
+			ethernet-phy-ieee802.3-c45;
+		};
+	};
+};

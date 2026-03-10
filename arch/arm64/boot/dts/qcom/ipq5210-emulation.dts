@@ -31,6 +31,12 @@
 
 	aliases {
 		serial0 = &uart1;
+		ethernet0 = "/soc/dp1";
+		ethernet1 = "/soc/dp2";
+		ethernet2 = "/soc/dp3";
+		ethernet3 = "/soc/dp4";
+		ethernet4 = "/soc/dp5";
+		ethernet5 = "/soc/dp6";
 	};
 
 	chosen {
@@ -194,9 +200,195 @@
 				};
 			};
 		};
+
+		dp1 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <1>;
+			reg = <0x3a001000 0x200>;
+			qcom,mactype = <0>;
+			local-mac-address = [000000000000];
+			qcom,phy-mdio-addr = <16>;
+			phy-mode = "psgmii";
+			qcom,ppe-offload-disabled = <1>;
+		};
+
+		dp2 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <2>;
+			reg = <0x3a001200 0x200>;
+			qcom,mactype = <0>;
+			local-mac-address = [000000000000];
+			qcom,phy-mdio-addr = <17>;
+			phy-mode = "psgmii";
+			qcom,ppe-offload-disabled = <1>;
+		};
+
+
+		dp3 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <3>;
+			reg = <0x3a001400 0x200>;
+			qcom,mactype = <0>;
+			local-mac-address = [000000000000];
+			qcom,phy-mdio-addr = <18>;
+			phy-mode = "psgmii";
+			qcom,ppe-offload-disabled = <1>;
+		};
+
+		dp4 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <4>;
+			reg = <0x3a001600 0x200>;
+			qcom,mactype = <0>;
+			local-mac-address = [000000000000];
+			qcom,phy-mdio-addr = <19>;
+			phy-mode = "psgmii";
+			qcom,ppe-offload-disabled = <1>;
+		};
+
+		dp5 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <5>;
+			reg = <0x3a001800 0x200>;
+			qcom,mactype = <0>;
+			local-mac-address = [000000000000];
+			qcom,phy-mdio-addr = <8>;
+			phy-mode = "psgmii";
+			qcom,ppe-offload-disabled = <1>;
+		};
+
+		dp6 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <6>;
+			reg = <0x3A001A00 0x200>;
+			qcom,mactype = <1>;
+			local-mac-address = [000000000000];
+			qcom,phy-mdio-addr = <8>;
+			phy-mode = "psgmii";
+			qcom,ppe-offload-disabled = <1>;
+			qcom,gem_port = <1>;
+		};
+
+		/* EDMA host driver configuration */
+		edma@3ad00000 {
+			/*
+			 * DDRQ memory regions mapping to the EDMA node.
+			 */
+			memory-region = <&ddrq_data_region> , <&ddrq_desc_region>;
+			memory-region-names = "ddrq_data_region", "ddrq_desc_region";
+			qcom,rxdesc-ring-max = <24>;
+			qcom,rxfill-ring-max = <20>;
+			qcom,txdesc-ring-max = <24>;
+			qcom,txcomp-ring-max = <20>;
+			qcom,rx-page-mode = <0>;
+			qcom,tx-map-priority-level = <1>;
+			qcom,rx-map-priority-level = <1>;
+			qcom,txdesc-fc-grp-map = <1 2 3 4 5 6>;
+			qcom,vp-id = <8>;
+			interrupts = <0 332 4>, <0 333 4>, <0 334 4>, <0 335 4>,
+				   <0 336 4>, <0 337 4>, <0 338 4>, <0 339 4>,
+				   <0 340 4>, <0 341 4>, <0 342 4>, <0 343 4>,
+				   <0 344 4>, <0 345 4>, <0 346 4>, <0 347 4>,
+				   <0 348 4>, <0 349 4>, <0 350 4>, <0 351 4>, /* TX Complete ring IRQ info (0 - 19) */
+
+				   <0 288 4>, <0 289 4>, <0 290 4>, <0 291 4>,
+				   <0 292 4>, <0 293 4>, <0 294 4>, <0 295 4>,
+				   <0 296 4>, <0 297 4>, <0 298 4>, <0 299 4>,
+				   <0 300 4>, <0 301 4>, <0 302 4>, <0 303 4>,
+				   <0 304 4>, <0 305 4>, <0 306 4>, <0 307 4>,
+				   <0 308 4>, <0 309 4>, <0 310 4>, <0 311 4>, /* RX desc ring IRQ info (0 - 23) */
+
+				   <0 312 4>, <0 313 4>, <0 314 4>, <0 315 4>,
+				   <0 316 4>, <0 317 4>, <0 318 4>, <0 319 4>,
+				   <0 320 4>, <0 321 4>, <0 322 4>, <0 323 4>,
+				   <0 324 4>, <0 325 4>, <0 326 4>, <0 327 4>,
+				   <0 328 4>, <0 329 4>, <0 330 4>, <0 331 4>, /* RX fill ring IRQ info (0 - 19) */
+
+				   <0 352 4>;					/* Misc interrupt */
+			interrupt-names = "txcmpl_0", "txcmpl_1", "txcmpl_2", "txcmpl_3",
+				   "txcmpl_4", "txcmpl_5", "txcmpl_6", "txcmpl_7",
+				   "txcmpl_8", "txcmpl_9", "txcmpl_10", "txcmpl_11",
+				   "txcmpl_12", "txcmpl_13", "txcmpl_14", "txcmpl_15",
+				   "txcmpl_16", "txcmpl_17", "txcmpl_18", "txcmpl_19",
+
+				   "rxdesc_0", "rxdesc_1", "rxdesc_2", "rxdesc_3",
+				   "rxdesc_4", "rxdesc_5", "rxdesc_6", "rxdesc_7",
+				   "rxdesc_8", "rxdesc_9", "rxdesc_10", "rxdesc_11",
+				   "rxdesc_12", "rxdesc_13", "rxdesc_14", "rxdesc_15",
+				   "rxdesc_16", "rxdesc_17", "rxdesc_18", "rxdesc_19",
+				   "rxdesc_20", "rxdesc_21", "rxdesc_22", "rxdesc_23",
+
+				   "rxfill_0", "rxfill_1", "rxfill_2", "rxfill_3",
+				   "rxfill_4", "rxfill_5", "rxfill_6", "rxfill_7",
+				   "rxfill_8", "rxfill_9", "rxfill_10", "rxfill_11",
+				   "rxfill_12", "rxfill_13", "rxfill_14", "rxfill_15",
+				   "rxfill_16", "rxfill_17", "rxfill_18", "rxfill_19",
+
+				   "misc_err";
+		};
 	};
 
 	psci {
 		status = "disabled";
 	};
+};
+
+&ess_switch {
+	switch_lan_bmp = <0x3e>; /* lan port bitmap */
+	switch_wan_bmp = <0x40>; /* wan port bitmap */
+	switch_mac_mode = <0xd>; /* mac mode for uniphy instance0*/
+	switch_mac_mode1 = <0xd>; /* mac mode for uniphy instance1*/
+	switch_mac_mode2 = <0xd>; /* mac mode for uniphy instance2*/
+
+	qcom,port_phyinfo {
+		port@1 {
+			port_id = <1>;
+			forced-speed = <10000>;
+			forced-duplex = <1>;
+		};
+		port@2 {
+			port_id = <2>;
+			forced-speed = <1000>;
+			forced-duplex = <1>;
+		};
+		port@3 {
+			port_id = <3>;
+			forced-speed = <1000>;
+			forced-duplex = <1>;
+		};
+		port@4 {
+			port_id = <4>;
+			forced-speed = <1000>;
+			forced-duplex = <1>;
+		};
+		port@5 {
+			port_id = <5>;
+			forced-speed = <10000>;
+			forced-duplex = <1>;
+		};
+		port@6 {
+			port_id = <6>;
+			forced-speed = <10000>;
+			forced-duplex = <1>;
+		};
+	};
+};
+
+&ref_48mhz_clk {
+	clock-div = <1>;
+	clock-mult = <1>;
+};
+
+&xo_clk {
+	clock-frequency = <48000000>;
+};
+
+&cmn_pll {
+	status = "disabled";
 };

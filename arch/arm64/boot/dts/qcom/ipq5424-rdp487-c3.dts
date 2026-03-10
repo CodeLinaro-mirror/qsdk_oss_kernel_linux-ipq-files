@@ -443,12 +443,6 @@
 	status = "okay";
 };
 
-#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
-&userpd_1 {
-	status = "okay";
-};
-#endif
-
 &tlmm {
 	gpio_leds_default: gpio-leds-default-state {
 		pins = "gpio42";
@@ -622,12 +616,6 @@
 };
 #endif
 
-#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
-&mlo_global_mem0 {
-	reg = <0x0 0x9b300000 0x0 0xc00000>;
-	status = "okay";
-};
-#else
 &mlo_global_mem0 {
 #if defined(__IPQ_MEM_PROFILE_512_MB__)
 	reg = <0x0 0x96e00000 0x0 0xc00000>;
@@ -637,7 +625,6 @@
 	status = "okay";
 #endif
 };
-#endif
 
 &wifi0 {
 	qcom,rproc = <&q6v5_wcss>;

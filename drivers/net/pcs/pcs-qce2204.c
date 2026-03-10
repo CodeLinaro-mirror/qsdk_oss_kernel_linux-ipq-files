@@ -13,10 +13,6 @@
 
 #include <dt-bindings/clock/qcom,qce2204-pcs.h>
 
-/* MII registers */
-#define PLL_POWER_ON_AND_RESET			0x0
-#define PCS_ANA_SW_RESET			BIT(6)
-
 /* MMD_PMAPMD registers */
 #define CALIBRATION4				0x78
 #define CALIBRATION_DONE			BIT(7)
@@ -31,6 +27,9 @@
 
 #define UPHY_SLDO				0x16e
 
+#define PLL_POWER_ON_AND_RESET                  0x1e0
+#define PCS_ANA_SW_RESET                        BIT(6)
+
 #define MODE_CONTROL				0x11b
 #define MODE_CONTROL_SEL_MASK			GENMASK(12, 8)
 #define MODE_CONTROL_XPCS			0x10
@@ -40,10 +39,7 @@
 #define MODE_CONTROL_SGMII_PHY			1
 #define MODE_CONTROL_SGMII_MAC			2
 
-#define QP_USXG_OPTION1				0x180
-#define QP_USXG_OPTION1_DATAPASS		BIT(0)
-#define QP_USXG_OPTION1_DATAPASS_SGMII		0
-#define QP_USXG_OPTION1_DATAPASS_USXGMII	1
+#define QP_USXG_OPTION3				0x182
 
 #define PCS_CH0_CONFIG				0x120
 #define PCS_CH0_ADPT_RESET			BIT(11)
@@ -137,7 +133,7 @@ enum pcs_func_id {
 
 struct qce2204_raw_clk {
 	struct clk_hw hw_clk;
-	phy_interface_t cur_interface;
+	struct qce2204_pcs *qce2204;
 };
 
 struct qce2204_pcs {
@@ -147,6 +143,7 @@ struct qce2204_pcs {
 	struct reset_control *rstcs[PCS_FUNC_MAX];
 	struct reset_control *xpcs_rstc;
 	struct qce2204_raw_clk raw_clk[QCE2204_PCS_TX_CLK + 1];
+	phy_interface_t curr_mode;
 };
 
 #define phylink_pcs_to_qce2204(pl_pcs) \
@@ -154,7 +151,7 @@ struct qce2204_pcs {
 #define qce2204_to_phylink_pcs(qce2204) (&(qce2204)->pcs)
 
 const char *const pcs_func_name[PCS_FUNC_MAX] = {
-	"sys", "rx", "tx"
+	"sys", "rx", "tx", "xgmii_rx", "xgmii_tx"
 };
 
 static unsigned long qce2204_pcs_clk_recalc_rate(struct clk_hw *hw,
@@ -162,8 +159,9 @@ static unsigned long qce2204_pcs_clk_recalc_rate(struct clk_hw *hw,
 {
 	struct qce2204_raw_clk *raw_clk = container_of(hw, struct qce2204_raw_clk,
 						       hw_clk);
+	struct qce2204_pcs *qce2204 = raw_clk->qce2204;
 
-	switch (raw_clk->cur_interface) {
+	switch (qce2204->curr_mode) {
 	case PHY_INTERFACE_MODE_2500BASEX:
 	case PHY_INTERFACE_MODE_10GBASER:
 	case PHY_INTERFACE_MODE_USXGMII:
@@ -206,6 +204,10 @@ static int qce2204_pcs_clocks_register(struct mdio_device *mdiodev)
 		return -ENOMEM;
 
 	clk_data->num = QCE2204_PCS_CLK_NUM;
+
+	/* Initialize raw_clk qce2204 pointers */
+	qce2204->raw_clk[QCE2204_PCS_RX_CLK].qce2204 = qce2204;
+	qce2204->raw_clk[QCE2204_PCS_TX_CLK].qce2204 = qce2204;
 
 	snprintf(name, sizeof(name), "%s::pcs_rx", dev_name(dev));
 	init.ops = &qce2204_pcs_clk_ops;
@@ -347,7 +349,7 @@ static int qce2204_set_msldo(struct qce2204_pcs *qce2204, phy_interface_t ifmode
 
 static int qce2204_pcs_set_mode(struct qce2204_pcs *qce2204, phy_interface_t ifmode)
 {
-	unsigned int hw_ifmode, data;
+	unsigned int hw_ifmode, op3_mask = 0;
 	bool set_sgmii_mac = false;
 	int ret;
 
@@ -366,18 +368,19 @@ static int qce2204_pcs_set_mode(struct qce2204_pcs *qce2204, phy_interface_t ifm
 	switch (ifmode) {
 	case PHY_INTERFACE_MODE_SGMII:
 		hw_ifmode = MODE_CONTROL_SGMII;
-		data = QP_USXG_OPTION1_DATAPASS_SGMII;
 		set_sgmii_mac = true;
 		break;
 	case PHY_INTERFACE_MODE_2500BASEX:
 		hw_ifmode = MODE_CONTROL_SGMII_PLUS;
-		data = QP_USXG_OPTION1_DATAPASS_SGMII;
 		set_sgmii_mac = true;
 		break;
 	case PHY_INTERFACE_MODE_10GBASER:
-	case PHY_INTERFACE_MODE_USXGMII:
+		op3_mask = BIT(1);
 		hw_ifmode = MODE_CONTROL_XPCS;
-		data = QP_USXG_OPTION1_DATAPASS_USXGMII;
+		break;
+	case PHY_INTERFACE_MODE_USXGMII:
+		op3_mask = GENMASK(4, 1);
+		hw_ifmode = MODE_CONTROL_XPCS;
 		break;
 	default:
 		return -EOPNOTSUPP;
@@ -404,10 +407,17 @@ static int qce2204_pcs_set_mode(struct qce2204_pcs *qce2204, phy_interface_t ifm
 		}
 	}
 
-	/* Data pass selects sgmii or usgmii */
-	return mdiodev_c45_modify(qce2204->mdiodev, MDIO_MMD_PMAPMD, QP_USXG_OPTION1,
-				  QP_USXG_OPTION1_DATAPASS,
-				  FIELD_PREP(QP_USXG_OPTION1_DATAPASS, data));
+	/* qp option3 configuration */
+	if (op3_mask) {
+		ret = mdiodev_c45_modify(qce2204->mdiodev, MDIO_MMD_PMAPMD, QP_USXG_OPTION3,
+					 op3_mask, op3_mask);
+		if (ret) {
+			dev_err(&qce2204->mdiodev->dev, "Failed to set option3 mask value.\n");
+			return ret;
+		}
+	}
+
+	return 0;
 }
 
 static int qce2204_pcs_config_sgmii(struct qce2204_pcs *qce2204,
@@ -435,14 +445,16 @@ static int qce2204_do_calibration(struct mdio_device *mdio_dev)
 {
 	int ret;
 
-	ret = mdiodev_modify(mdio_dev, PLL_POWER_ON_AND_RESET,
-			     PCS_ANA_SW_RESET, 0);
+	ret = mdiodev_c45_modify(mdio_dev, MDIO_MMD_PMAPMD,
+				 PLL_POWER_ON_AND_RESET,
+				 PCS_ANA_SW_RESET, 0);
 	if (ret)
 		return ret;
 
 	fsleep(1000);
-	ret = mdiodev_modify(mdio_dev, PLL_POWER_ON_AND_RESET,
-			     PCS_ANA_SW_RESET, PCS_ANA_SW_RESET);
+	ret = mdiodev_c45_modify(mdio_dev, MDIO_MMD_PMAPMD,
+				 PLL_POWER_ON_AND_RESET,
+				 PCS_ANA_SW_RESET, PCS_ANA_SW_RESET);
 	if (ret)
 		return ret;
 
@@ -459,7 +471,7 @@ static int qce2204_pcs_config_10g_mode(struct qce2204_pcs *qce2204,
 				       const unsigned long *advertising,
 				       bool permit)
 {
-	int ret, val;
+	int ret, val, i;
 
 	ret = qce2204_pcs_set_mode(qce2204, ifmode);
 	if (ret) {
@@ -467,38 +479,38 @@ static int qce2204_pcs_config_10g_mode(struct qce2204_pcs *qce2204,
 		return ret;
 	}
 
-	ret = reset_control_reset(qce2204->rstcs[PCS_FUNC_RX]);
-	if (ret) {
-		dev_err(&qce2204->mdiodev->dev, "Failed to reset PCS FUNC RX.\n");
-		return ret;
+	/* Assert all reset controls */
+	for (i = PCS_FUNC_RX; i <= XPCS_FUNC_XGMII_TX; i++) {
+		ret = reset_control_assert(qce2204->rstcs[i]);
+		if (ret) {
+			dev_err(&qce2204->mdiodev->dev,
+				"Failed to assert reset %s.\n", pcs_func_name[i]);
+			return ret;
+		}
 	}
 
-	ret = reset_control_reset(qce2204->rstcs[PCS_FUNC_TX]);
-	if (ret) {
-		dev_err(&qce2204->mdiodev->dev, "Failed to reset PCS FUNC TX.\n");
-		return ret;
+	/* Wait 1ms */
+	usleep_range(1000, 1100);
+
+	/* Deassert all reset controls */
+	for (i = PCS_FUNC_RX; i <= XPCS_FUNC_XGMII_TX; i++) {
+		ret = reset_control_deassert(qce2204->rstcs[i]);
+		if (ret) {
+			dev_err(&qce2204->mdiodev->dev,
+				"Failed to deassert reset %s.\n", pcs_func_name[i]);
+			return ret;
+		}
 	}
 
-	ret = reset_control_reset(qce2204->rstcs[XPCS_FUNC_XGMII_RX]);
-	if (ret) {
-		dev_err(&qce2204->mdiodev->dev, "Failed to reset XPCS XGMII FUNC RX.\n");
-		return ret;
-	}
-
-	ret = reset_control_reset(qce2204->rstcs[XPCS_FUNC_XGMII_TX]);
-	if (ret) {
-		dev_err(&qce2204->mdiodev->dev, "Failed to reset XPCS XGMII FUNC TX.\n");
-		return ret;
-	}
-
-	ret = qce2204_do_calibration(qce2204->mdiodev);
+	/* Wait calibration */
+	ret = read_poll_timeout(mdiodev_c45_read, val,
+				(val & CALIBRATION_DONE),
+				1000, 100000, true, qce2204->mdiodev,
+				MDIO_MMD_PMAPMD, CALIBRATION4);
 	if (ret) {
 		dev_err(&qce2204->mdiodev->dev, "Calibration timeout!\n");
 		return ret;
 	}
-
-	qce2204->raw_clk[QCE2204_PCS_RX_CLK].cur_interface = ifmode;
-	qce2204->raw_clk[QCE2204_PCS_TX_CLK].cur_interface = ifmode;
 
 	/* Open SSC clock */
 	ret = mdiodev_c45_modify(qce2204->mdiodev, MDIO_MMD_PMAPMD, UPHY_TXPI,
@@ -540,6 +552,14 @@ static int qce2204_pcs_config_10g_mode(struct qce2204_pcs *qce2204,
 					 XPCS_USXG_EN);
 		if (ret)
 			return ret;
+
+		/* Initialized at 10G Speed */
+		ret = mdiodev_c45_modify(qce2204->mdiodev, MDIO_MMD_VEND2, XPCS_MII_CTRL,
+					 XPCS_SPEED_MASK, XPCS_SPEED_10000 | XPCS_DUPLEX_FULL);
+		if (ret) {
+			dev_err(&qce2204->mdiodev->dev, "Failed to set XPCS speed as 10G.\n");
+				return ret;
+		}
 	}
 
 	/* XPCS software reset */
@@ -633,17 +653,37 @@ static int qce2204_pcs_config(struct phylink_pcs *pcs,
 			      bool permit)
 {
 	struct qce2204_pcs *qce2204 = phylink_pcs_to_qce2204(pcs);
+	int ret;
+
+	/* Check if the requested mode is the same as current mode */
+	if (qce2204->curr_mode == ifmode) {
+		dev_dbg(&qce2204->mdiodev->dev,
+			"PCS mode %s already configured, skipping reconfiguration\n",
+			phy_modes(ifmode));
+		return 0;
+	}
 
 	switch (ifmode) {
 	case PHY_INTERFACE_MODE_SGMII:
 	case PHY_INTERFACE_MODE_2500BASEX:
-		return qce2204_pcs_config_sgmii(qce2204, neg_mode, ifmode, advertising, permit);
+		ret = qce2204_pcs_config_sgmii(qce2204, neg_mode, ifmode, advertising, permit);
+		break;
 	case PHY_INTERFACE_MODE_10GBASER:
 	case PHY_INTERFACE_MODE_USXGMII:
-		return qce2204_pcs_config_10g_mode(qce2204, neg_mode, ifmode, advertising, permit);
+		ret = qce2204_pcs_config_10g_mode(qce2204, neg_mode, ifmode, advertising, permit);
+		break;
 	default:
 		return -EOPNOTSUPP;
 	}
+
+	/* Save current mode if configuration was successful */
+	if (ret == 0) {
+		qce2204->curr_mode = ifmode;
+		dev_dbg(&qce2204->mdiodev->dev,
+			"PCS mode configured to %s\n", phy_modes(ifmode));
+	}
+
+	return ret;
 }
 
 static int qce2204_pcs_adpt_reset(struct mdio_device *mdio_dev)
@@ -684,7 +724,7 @@ static int qce2204_pcs_link_up_sgmii(struct qce2204_pcs *qce2204,
 {
 	u16 sgmii_config = 0;
 	unsigned long rate;
-	int ret;
+	int ret, i;
 
 	if (neg_mode != PHYLINK_PCS_NEG_INBAND_ENABLED) {
 		switch (speed) {
@@ -720,16 +760,27 @@ static int qce2204_pcs_link_up_sgmii(struct qce2204_pcs *qce2204,
 	if (ret)
 		return ret;
 
-	ret = reset_control_reset(qce2204->rstcs[PCS_FUNC_RX]);
-	if (ret) {
-		dev_err(&qce2204->mdiodev->dev, "Failed to reset PCS FUNC RX.\n");
-		return ret;
+	/* Assert reset for PCS RX and TX */
+	for (i = PCS_FUNC_RX; i <= PCS_FUNC_TX; i++) {
+		ret = reset_control_assert(qce2204->rstcs[i]);
+		if (ret) {
+			dev_err(&qce2204->mdiodev->dev,
+				"Failed to assert reset %s.\n", pcs_func_name[i]);
+			return ret;
+		}
 	}
 
-	ret = reset_control_reset(qce2204->rstcs[PCS_FUNC_TX]);
-	if (ret) {
-		dev_err(&qce2204->mdiodev->dev, "Failed to reset PCS FUNC TX.\n");
-		return ret;
+	/* Wait 1ms */
+	usleep_range(1000, 1100);
+
+	/* Deassert reset for PCS RX and TX */
+	for (i = PCS_FUNC_RX; i <= PCS_FUNC_TX; i++) {
+		ret = reset_control_deassert(qce2204->rstcs[i]);
+		if (ret) {
+			dev_err(&qce2204->mdiodev->dev,
+				"Failed to deassert reset %s.\n", pcs_func_name[i]);
+			return ret;
+		}
 	}
 
 	ret = qce2204_do_calibration(qce2204->mdiodev);
@@ -738,31 +789,24 @@ static int qce2204_pcs_link_up_sgmii(struct qce2204_pcs *qce2204,
 		return ret;
 	}
 
-	qce2204->raw_clk[QCE2204_PCS_RX_CLK].cur_interface = ifmode;
-	qce2204->raw_clk[QCE2204_PCS_TX_CLK].cur_interface = ifmode;
-
-	ret = clk_set_rate(qce2204->clks[PCS_FUNC_RX], rate);
-	if (ret) {
-		dev_err(&qce2204->mdiodev->dev, "Failed to set PCS FUNC RX clock.\n");
-		return ret;
+	/* Set clock rate for PCS RX and TX */
+	for (i = PCS_FUNC_RX; i <= PCS_FUNC_TX; i++) {
+		ret = clk_set_rate(qce2204->clks[i], rate);
+		if (ret) {
+			dev_err(&qce2204->mdiodev->dev,
+				"Failed to set clock rate for %s.\n", pcs_func_name[i]);
+			return ret;
+		}
 	}
 
-	ret = clk_set_rate(qce2204->clks[PCS_FUNC_TX], rate);
-	if (ret) {
-		dev_err(&qce2204->mdiodev->dev, "Failed to set PCS FUNC TX clock.\n");
-		return ret;
-	}
-
-	ret = clk_prepare_enable(qce2204->clks[PCS_FUNC_RX]);
-	if (ret) {
-		dev_err(&qce2204->mdiodev->dev, "Failed to enable PCS FUNC RX clock.\n");
-		return ret;
-	}
-
-	ret = clk_prepare_enable(qce2204->clks[PCS_FUNC_TX]);
-	if (ret) {
-		dev_err(&qce2204->mdiodev->dev, "Failed to enable PCS FUNC TX clock.\n");
-		return ret;
+	/* Enable clocks for PCS RX and TX */
+	for (i = PCS_FUNC_RX; i <= PCS_FUNC_TX; i++) {
+		ret = clk_prepare_enable(qce2204->clks[i]);
+		if (ret) {
+			dev_err(&qce2204->mdiodev->dev,
+				"Failed to enable clock %s.\n", pcs_func_name[i]);
+			return ret;
+		}
 	}
 
 	ret = qce2204_pcs_adpt_reset(qce2204->mdiodev);
@@ -779,7 +823,7 @@ static int qce2204_pcs_link_up_10g_mode(struct qce2204_pcs *qce2204,
 					phy_interface_t ifmode,
 					int speed, int duplex)
 {
-	int ret, val, xpcs_speed;
+	int ret, val, xpcs_speed, i;
 	unsigned long rate;
 
 	switch (speed) {
@@ -844,53 +888,21 @@ static int qce2204_pcs_link_up_10g_mode(struct qce2204_pcs *qce2204,
 	}
 
 	/* Set MII interface clock rate */
-	ret = clk_set_rate(qce2204->clks[PCS_FUNC_RX], rate);
-	if (ret) {
-		dev_err(&qce2204->mdiodev->dev, "Failed to set PCS FUNC RX clock.\n");
-		return ret;
-	}
-
-	ret = clk_set_rate(qce2204->clks[PCS_FUNC_TX], rate);
-	if (ret) {
-		dev_err(&qce2204->mdiodev->dev, "Failed to set PCS FUNC TX clock.\n");
-		return ret;
-	}
-
-	ret = clk_set_rate(qce2204->clks[XPCS_FUNC_XGMII_RX], rate);
-	if (ret) {
-		dev_err(&qce2204->mdiodev->dev, "Failed to set XPCS FUNC XGMII RX clock.\n");
-		return ret;
-	}
-
-	ret = clk_set_rate(qce2204->clks[XPCS_FUNC_XGMII_TX], rate);
-	if (ret) {
-		dev_err(&qce2204->mdiodev->dev, "Failed to set XPCS FUNC XGMII TX clock.\n");
-		return ret;
+	for (i = PCS_FUNC_RX; i <= XPCS_FUNC_XGMII_TX; i++) {
+		ret = clk_set_rate(qce2204->clks[i], rate);
+		if (ret) {
+			dev_err(&qce2204->mdiodev->dev, "Failed to set clock rate for %d.\n", i);
+			return ret;
+		}
 	}
 
 	/* Enable MII interface clocks */
-	ret = clk_prepare_enable(qce2204->clks[PCS_FUNC_RX]);
-	if (ret) {
-		dev_err(&qce2204->mdiodev->dev, "Failed to enable PCS FUNC RX clock.\n");
-		return ret;
-	}
-
-	ret = clk_prepare_enable(qce2204->clks[PCS_FUNC_TX]);
-	if (ret) {
-		dev_err(&qce2204->mdiodev->dev, "Failed to enable PCS FUNC TX clock.\n");
-		return ret;
-	}
-
-	ret = clk_prepare_enable(qce2204->clks[XPCS_FUNC_XGMII_RX]);
-	if (ret) {
-		dev_err(&qce2204->mdiodev->dev, "Failed to enable XPCS FUNC XGMII RX clock.\n");
-		return ret;
-	}
-
-	ret = clk_prepare_enable(qce2204->clks[XPCS_FUNC_XGMII_TX]);
-	if (ret) {
-		dev_err(&qce2204->mdiodev->dev, "Failed to enable XPCS FUNC XGMII TX clock.\n");
-		return ret;
+	for (i = PCS_FUNC_RX; i <= XPCS_FUNC_XGMII_TX; i++) {
+		ret = clk_prepare_enable(qce2204->clks[i]);
+		if (ret) {
+			dev_err(&qce2204->mdiodev->dev, "Failed to enable clock %d.\n", i);
+			return ret;
+		}
 	}
 
 	/* XPCS adapter reset USXGMII */
@@ -981,23 +993,34 @@ static int qce2204_pcs_probe(struct mdio_device *mdio_dev)
 	struct reset_control *rstc;
 	struct qce2204_pcs *qce2204;
 	struct clk *clk;
-	int i;
+	const char *initial_mode_str;
+	phy_interface_t initial_mode = PHY_INTERFACE_MODE_NA;
+	int i, ret;
 
 	qce2204 = devm_kzalloc(dev, sizeof(*qce2204), GFP_KERNEL);
 	if (!qce2204)
 		return -ENOMEM;
 
+	/* Initialize curr_mode to NA */
+	qce2204->curr_mode = PHY_INTERFACE_MODE_NA;
+
 	for (i = 0; i < PCS_FUNC_MAX; i++) {
 		clk = devm_clk_get(dev, pcs_func_name[i]);
-		if (IS_ERR(clk))
+		if (IS_ERR(clk)) {
+			dev_err(dev, "Failed to get clock %s: %ld\n",
+				pcs_func_name[i], PTR_ERR(clk));
 			return PTR_ERR(clk);
+		}
 
 		qce2204->clks[i] = clk;
 
 		rstc = devm_reset_control_get_exclusive(dev,
 							pcs_func_name[i]);
-		if (IS_ERR(rstc))
+		if (IS_ERR(rstc)) {
+			dev_err(dev, "Failed to get reset control %s: %ld\n",
+				pcs_func_name[i], PTR_ERR(rstc));
 			return PTR_ERR(rstc);
+		}
 
 		qce2204->rstcs[i] = rstc;
 	}
@@ -1012,11 +1035,25 @@ static int qce2204_pcs_probe(struct mdio_device *mdio_dev)
 	/* PCS system clock is always kept as enabled, then do reset
 	 * on the PCS system.
 	 */
-	clk_prepare_enable(qce2204->clks[PCS_FUNC_SYS]);
+	ret = clk_prepare_enable(qce2204->clks[PCS_FUNC_SYS]);
+	if (ret) {
+		dev_err(dev, "Failed to enable PCS system clock: %d\n", ret);
+		return ret;
+	}
 
-	reset_control_assert(qce2204->rstcs[PCS_FUNC_SYS]);
+	ret = reset_control_assert(qce2204->rstcs[PCS_FUNC_SYS]);
+	if (ret) {
+		dev_err(dev, "Failed to assert PCS system reset: %d\n", ret);
+		return ret;
+	}
+
 	usleep_range(20000, 21000);
-	reset_control_deassert(qce2204->rstcs[PCS_FUNC_SYS]);
+
+	ret = reset_control_deassert(qce2204->rstcs[PCS_FUNC_SYS]);
+	if (ret) {
+		dev_err(dev, "Failed to deassert PCS system reset: %d\n", ret);
+		return ret;
+	}
 
 	mdiodev_set_drvdata(mdio_dev, qce2204);
 
@@ -1025,7 +1062,48 @@ static int qce2204_pcs_probe(struct mdio_device *mdio_dev)
 	qce2204->pcs.neg_mode = true;
 	qce2204->pcs.poll = true;
 
-	return qce2204_pcs_clocks_register(mdio_dev);
+	/* Parse and apply initial_mode property if present */
+	ret = device_property_read_string(dev, "initial_mode", &initial_mode_str);
+	if (ret == 0) {
+		/* Convert string to phy_interface_t using case-insensitive comparison */
+		if (!strcasecmp(initial_mode_str, phy_modes(PHY_INTERFACE_MODE_SGMII))) {
+			initial_mode = PHY_INTERFACE_MODE_SGMII;
+		} else if (!strcasecmp(initial_mode_str, phy_modes(PHY_INTERFACE_MODE_2500BASEX))) {
+			initial_mode = PHY_INTERFACE_MODE_2500BASEX;
+		} else if (!strcasecmp(initial_mode_str, phy_modes(PHY_INTERFACE_MODE_10GBASER))) {
+			initial_mode = PHY_INTERFACE_MODE_10GBASER;
+		} else if (!strcasecmp(initial_mode_str, phy_modes(PHY_INTERFACE_MODE_USXGMII))) {
+			initial_mode = PHY_INTERFACE_MODE_USXGMII;
+		} else {
+			dev_warn(dev, "Unknown initial_mode '%s', skipping initialization\n",
+				 initial_mode_str);
+			initial_mode = PHY_INTERFACE_MODE_NA;
+		}
+
+		/* Initialize PCS with the specified mode */
+		if (initial_mode != PHY_INTERFACE_MODE_NA) {
+			ret = qce2204_pcs_config(&qce2204->pcs,
+						 PHYLINK_PCS_NEG_NONE,
+						 initial_mode,
+						 NULL,
+						 false);
+			if (ret) {
+				dev_err(dev, "Failed to initialize PCS with mode %s: %d\n",
+					phy_modes(initial_mode), ret);
+				return ret;
+			}
+			dev_info(dev, "PCS initialized with mode: %s\n", phy_modes(initial_mode));
+		}
+	}
+
+	/* Register PCS raw clocks */
+	ret = qce2204_pcs_clocks_register(mdio_dev);
+	if (ret) {
+		dev_err(dev, "Failed to register PCS clocks: %d\n", ret);
+		return ret;
+	}
+
+	return 0;
 }
 
 static const struct of_device_id qce2204_pcs_match_table[] = {

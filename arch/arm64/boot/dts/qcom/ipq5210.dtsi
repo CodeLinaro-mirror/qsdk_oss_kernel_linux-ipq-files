@@ -6,6 +6,8 @@
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
+#include <dt-bindings/clock/qcom,apss-ipq.h>
+#include <dt-bindings/clock/qcom,ipq5210-cmn-pll.h>
 #include <dt-bindings/clock/qcom,ipq5210-gcc.h>
 #include <dt-bindings/clock/qcom,ipq5210-nsscc.h>
 #include <dt-bindings/reset/qcom,ipq5210-gcc.h>
@@ -31,21 +33,20 @@
 			#clock-cells = <0>;
 		};
 
-		cmn_pll_nss_clk_429m: cmn-pll-nss-clk-429m {
-			compatible = "fixed-clock";
-			clock-frequency = <429000000>;
-			#clock-cells = <0>;
-		};
-
-		cmn_pll_nss_clk_375m: cmn-pll-nss-clk-375m {
-			compatible = "fixed-clock";
-			clock-frequency = <375000000>;
-			#clock-cells = <0>;
-		};
-
 		gcc_gpll0_out_aux: gcc-gpll0-out-aux {
 			compatible = "fixed-clock";
 			clock-frequency = <800000000>;
+			#clock-cells = <0>;
+		};
+
+		ref_48mhz_clk: ref-48mhz-clk {
+			compatible = "fixed-factor-clock";
+			clocks = <&xo_clk>;
+			#clock-cells = <0>;
+		};
+
+		xo_clk: xo-clk {
+			compatible = "fixed-clock";
 			#clock-cells = <0>;
 		};
 	};
@@ -60,6 +61,9 @@
 			reg = <0x0>;
 			enable-method = "psci";
 			next-level-cache = <&L2_0>;
+			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
+			clock-names = "cpu";
+			operating-points-v2 = <&cpu_opp_table>;
 		};
 
 		CPU1: cpu@1 {
@@ -68,6 +72,9 @@
 			enable-method = "psci";
 			reg = <0x1>;
 			next-level-cache = <&L2_0>;
+			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
+			clock-names = "cpu";
+			operating-points-v2 = <&cpu_opp_table>;
 		};
 
 		CPU2: cpu@2 {
@@ -76,6 +83,9 @@
 			enable-method = "psci";
 			reg = <0x2>;
 			next-level-cache = <&L2_0>;
+			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
+			clock-names = "cpu";
+			operating-points-v2 = <&cpu_opp_table>;
 		};
 
 		CPU3: cpu@3 {
@@ -84,6 +94,9 @@
 			enable-method = "psci";
 			reg = <0x3>;
 			next-level-cache = <&L2_0>;
+			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
+			clock-names = "cpu";
+			operating-points-v2 = <&cpu_opp_table>;
 		};
 
 		L2_0: l2-cache {
@@ -98,22 +111,52 @@
 		reg = <0x0 0x80000000 0x0 0x0 >;
 	};
 
+	cpu_opp_table: opp-table-cpu {
+		compatible = "operating-points-v2-kryo-cpu";
+		opp-shared;
+		nvmem-cells = <&apss_cpu_freq>;
+		nvmem-cell-names = "cpu_freq";
+
+		/* Listed all supported CPU frequencies and opp-supported-hw
+		 * values to select CPU frequencies based on the PLL LValue.
+		 * ------------------------------------------------------------
+		 * Frequency     1.2GHz	   1.4GHz	opp-supported-hw
+		 * ------------------------------------------------------------
+		 * 1200000000      1	      1			0x3
+		 * 1416000000      0	      1			0x1
+		 * -----------------------------------------------------------*/
+
+		opp-1200000000 {
+			opp-hz = /bits/ 64 <1200000000>;
+			opp-supported-hw = <0x3>;
+			opp-microvolt = <850000>;
+			clock-latency-ns = <200000>;
+		};
+
+		opp-1416000000 {
+			opp-hz = /bits/ 64 <1416000000>;
+			opp-supported-hw = <0x1>;
+			opp-microvolt = <1000000>;
+			clock-latency-ns = <200000>;
+		};
+	};
+
 	reserved-memory {
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
 
-		smem@8a100000 {
+		bootloader@8a100000 {
+			reg = <0x0 0x8a100000 0x0 0x400000>;
+			no-map;
+		};
+
+		smem@8a500000 {
 			compatible = "qcom,smem";
-			reg = <0x0 0x8a100000 0x0 0x40000>;
+			reg = <0x0 0x8a500000 0x0 0x40000>;
 			no-map;
 
 			hwlocks = <&tcsr_mutex 3>;
-		};
-
-		bootloader@0x8a200000 {
-			reg = <0x0 0x8a200000 0x0 0x400000>;
-			no-map;
 		};
 
 		tfa@8a600000 {
@@ -126,8 +169,31 @@
 			no-map;
 		};
 
+		tmc_etr_region: tmc_etr_dump@0 {
+			no-map;
+			status = "disabled";
+		};
+
 		minidump_mem: minidump_mem@0 {
 			no-map;
+		};
+
+		/*
+		 * DDRQ data region details
+		 */
+		ddrq_data_region: ddrq_data_region@0 {
+			compatible = "shared-dma-pool";
+			no-map;
+			size = <0x0 0x00800000>;	/* 8MB */
+		};
+
+		/*
+		 * DDRQ descriptor memory details
+		 */
+		ddrq_desc_region: ddrq_desc_region@0 {
+			compatible = "shared-dma-pool";
+			no-map;
+			size = <0x0 0x00080000>;	/* 512KB */
 		};
 	};
 
@@ -138,6 +204,72 @@
 		ranges = <0 0 0 0xffffffff>;
 		dma-ranges;
 
+		efuse@a4000 {
+			compatible = "qcom,qfprom";
+			reg = <0xA4000 0x741>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			apss_cpu_freq: apss_cpu_freq@28 {
+				reg = <0x28 0x1>;
+				bits = <0 8>;
+			};
+
+			s11: s11@3dd {
+				reg = <0x3dd 0x1>;
+				bits = <4 4>;
+			};
+
+			s12: s12@3de {
+				reg = <0x3de 0x1>;
+				bits = <0 4>;
+			};
+
+			s13: s13@3de {
+				reg = <0x3de 0x1>;
+				bits = <4 4>;
+			};
+
+			s14: s14@3e5 {
+				reg = <0x3e5 0x2>;
+				bits = <7 4>;
+			};
+
+			s15: s15@3e6 {
+				reg = <0x3e6 0x1>;
+				bits = <3 4>;
+			};
+
+			tsens_mode: mode@419 {
+				reg = <0x419 0x1>;
+				bits = <0 3>;
+			};
+
+			tsens_base0: base0@419 {
+				reg = <0x419 0x2>;
+				bits = <3 10>;
+			};
+
+			tsens_base1: base1@41a {
+				reg = <0x41a 0x2>;
+				bits = <5 10>;
+			};
+		};
+
+		tsens: thermal-sensor@4a9000 {
+			compatible = "qcom,ipq5210-tsens";
+			reg = <0x4a9000 0x1000>,
+			      <0x4a8000 0x1000>;
+			nvmem-cells = <&tsens_mode>, <&tsens_base0>, <&tsens_base1>,
+				      <&s11>, <&s12>, <&s13>, <&s14>, <&s15>;
+			nvmem-cell-names = "mode", "base0", "base1", "s11",
+					   "s12", "s13", "s14", "s15";
+			interrupts = <GIC_SPI 52 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "combined";
+			#thermal-sensor-cells = <1>;
+			status = "disabled";
+		};
+
 		rng: rng@4c3000 {
 			compatible = "qcom,ipq5210-trng", "qcom,trng";
 			reg = <0x004c3000 0x1000>;
@@ -145,9 +277,20 @@
 			clock-names = "core";
 		};
 
+		cmn_pll: clock-controller@9b000 {
+			compatible = "qcom,ipq5210-cmn-pll";
+			reg = <0x0009b000 0x800>;
+			clocks = <&ref_48mhz_clk>,
+				 <&gcc GCC_CMN_12GPLL_AHB_CLK>,
+				 <&gcc GCC_CMN_12GPLL_SYS_CLK>;
+			clock-names = "ref", "ahb", "sys";
+			#clock-cells = <1>;
+			assigned-clocks = <&cmn_pll IPQ5210_CMN_PLL_CLK>;
+			assigned-clock-rates-u64 = /bits/ 64 <12000000000>;
+		};
+
 		pcie0_phy: phy@84000 {
-			compatible = "qcom,ipq5210-qmp-gen3x1-pcie-phy",
-				     "qcom,ipq9574-qmp-gen3x1-pcie-phy";
+			compatible = "qcom,ipq5210-qmp-gen3x1-pcie-phy";
 			reg = <0x00084000 0x1bc>; /* Serdes PLL */
 			#address-cells = <1>;
 			#size-cells = <1>;
@@ -263,6 +406,16 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges = <0x0 0x01937000 0x2b000>;
+
+			pwm: pwm@a010 {
+				compatible = "qcom,ipq9574-pwm";
+				reg = <0xa010 0x20>;
+				clocks = <&gcc GCC_ADSS_PWM_CLK>;
+				assigned-clocks = <&gcc GCC_ADSS_PWM_CLK>;
+				assigned-clock-rates = <100000000>;
+				#pwm-cells = <2>;
+				status = "disabled";
+			};
 		};
 
 		qupv3: geniqup@1ac0000 {
@@ -280,10 +433,10 @@
 			spi0: spi@1a80000 {
 				compatible = "qcom,geni-spi";
 				reg = <0x1a80000 0x4000>;
-				clocks = <&gcc GCC_QUPV3_SPI0_CLK>;
+				clocks = <&gcc GCC_QUPV3_WRAP_SE0_CLK>;
 				clock-names = "se";
 				interrupts = <GIC_SPI 138 IRQ_TYPE_LEVEL_HIGH>;
-				assigned-clocks = <&gcc GCC_QUPV3_SPI0_CLK>;
+				assigned-clocks = <&gcc GCC_QUPV3_WRAP_SE0_CLK>;
 				assigned-clock-rates = <50000000>;
 				status = "disabled";
 			};
@@ -291,7 +444,7 @@
 			uart1: serial@1a84000 {
 				compatible = "qcom,geni-debug-uart";
 				reg = <0x1a84000 0x4000>;
-				clocks = <&gcc GCC_QUPV3_UART1_CLK>;
+				clocks = <&gcc GCC_QUPV3_WRAP_SE1_CLK>;
 				clock-names = "se";
 				interrupts = <GIC_SPI 139 IRQ_TYPE_LEVEL_HIGH>;
 				status = "disabled";
@@ -300,11 +453,11 @@
 			i2c0: i2c@1a88000 {
 				compatible = "qcom,geni-i2c";
 				reg = <0x1a88000 0x4000>;
-				clocks = <&gcc GCC_QUPV3_I2C0_CLK>;
+				clocks = <&gcc GCC_QUPV3_WRAP_SE2_CLK>;
 				clock-names = "se";
 				clock-frequency = <400000>;
 				interrupts = <GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>;
-				assigned-clocks = <&gcc GCC_QUPV3_I2C0_CLK>;
+				assigned-clocks = <&gcc GCC_QUPV3_WRAP_SE2_CLK>;
 				assigned-clock-rates = <64000000>;
 				status = "disabled";
 			};
@@ -312,11 +465,11 @@
 			i2c1: i2c@1a8c000 {
 				compatible = "qcom,geni-i2c";
 				reg = <0x1a8c000 0x4000>;
-				clocks = <&gcc GCC_QUPV3_I2C1_CLK>;
+				clocks = <&gcc GCC_QUPV3_WRAP_SE3_CLK>;
 				clock-names = "se";
 				clock-frequency = <400000>;
 				interrupts = <GIC_SPI 141 IRQ_TYPE_LEVEL_HIGH>;
-				assigned-clocks = <&gcc GCC_QUPV3_I2C1_CLK>;
+				assigned-clocks = <&gcc GCC_QUPV3_WRAP_SE3_CLK>;
 				assigned-clock-rates = <64000000>;
 				status = "disabled";
 			};
@@ -336,6 +489,7 @@
 			num-lanes = <2>;
 			#address-cells = <3>;
 			#size-cells = <2>;
+			qcom,aspm-enabled;
 			axi-halt-val = <0x1e>; /* increase halt window size to 1GB */
 
 			ranges = <0x81000000 0 0x50200000 0x50200000 0 0x00100000>,   /* downstream I/O */
@@ -419,6 +573,7 @@
 			num-lanes = <1>;
 			#address-cells = <3>;
 			#size-cells = <2>;
+			qcom,aspm-enabled;
 			axi-halt-val = <0x1e>; /* increase halt window size to 1GB */
 
 			ranges = <0x81000000 0 0x70200000 0x70200000 0 0x00100000>,   /* downstream I/O */
@@ -486,6 +641,335 @@
 			phy-names = "pciephy";
 
 			status = "disabled";
+		};
+
+		stm@6002000 {
+			compatible = "arm,coresight-stm", "arm,primecell";
+			reg = <0x06002000 0x1000>,
+				<0x09000000 0x1000000>;
+			reg-names = "stm-base", "stm-stimulus-base";
+			coresight-name = "coresight-stm";
+			clocks = <&gcc GCC_QDSS_DAP_CLK>,
+				 <&gcc GCC_QDSS_AT_CLK>;
+			clock-names = "apb_pclk", "atclk";
+
+			out-ports {
+				port {
+					stm_out: endpoint {
+						remote-endpoint = <&funnel0_in7>;
+					};
+				};
+			};
+		};
+
+		funnel@6041000 {
+			compatible = "arm,coresight-dynamic-funnel", "arm,primecell";
+			reg = <0x06041000 0x1000>;
+			reg-names = "funnel-base";
+			coresight-name = "coresight-funnel-in0";
+			clocks = <&gcc GCC_QDSS_DAP_CLK>,
+				 <&gcc GCC_QDSS_AT_CLK>;
+			clock-names = "apb_pclk", "atclk";
+
+			in-ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				/*
+				 * Port 0 - TME
+				 * Port 2 - SNOC
+				 * Port 3 - NSS
+				 * Port 4 - CNOC
+				 * Port 6 - TPDA QDSS
+				 * Port 7 - STM_SS
+				 */
+
+				port@7 {
+					reg = <7>;
+					funnel0_in7: endpoint {
+						remote-endpoint = <&stm_out>;
+					};
+				};
+			};
+
+			out-ports {
+				port {
+					funnel0_out: endpoint {
+						remote-endpoint = <&merge_funnel_in0>;
+					};
+				};
+			};
+		};
+
+		funnel@6042000 {
+			compatible = "arm,coresight-dynamic-funnel", "arm,primecell";
+			reg = <0x06042000 0x1000>;
+			reg-names = "funnel-base";
+			coresight-name = "coresight-funnel-in1";
+			clocks = <&gcc GCC_QDSS_DAP_CLK>,
+				 <&gcc GCC_QDSS_AT_CLK>;
+			clock-names = "apb_pclk", "atclk";
+
+			in-ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				/*
+				 * Port 1 - MEMNOC
+				 * Port 3 - TPDA QDSS
+				 * Port 4 - APSS
+				 */
+
+				port@4 {
+					reg = <4>;
+					funnel1_in2: endpoint {
+						remote-endpoint = <&apss_funnel_out>;
+					};
+				};
+			};
+
+			out-ports {
+				port {
+					funnel1_out: endpoint {
+						remote-endpoint = <&merge_funnel_in1>;
+					};
+				};
+			};
+		};
+
+		funnel@6045000 {
+			compatible = "arm,coresight-dynamic-funnel", "arm,primecell";
+			reg = <0x06045000 0x1000>;
+			reg-names = "funnel-base";
+			coresight-name = "coresight-funnel-merge";
+			clocks = <&gcc GCC_QDSS_DAP_CLK>,
+				 <&gcc GCC_QDSS_AT_CLK>;
+			clock-names = "apb_pclk", "atclk";
+
+			out-ports {
+				port {
+					merge_funnel_out: endpoint {
+						remote-endpoint = <&etf_in>;
+					};
+				};
+			};
+
+			in-ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					merge_funnel_in0: endpoint {
+						remote-endpoint = <&funnel0_out>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+					merge_funnel_in1: endpoint {
+						remote-endpoint = <&funnel1_out>;
+					};
+				};
+			};
+
+		};
+
+		replicator@6046000 {
+			compatible = "arm,coresight-dynamic-replicator", "arm,primecell";
+			reg = <0x06046000 0x1000>;
+			reg-names = "replicator-base";
+			coresight-name = "coresight-replicator";
+			clocks = <&gcc GCC_QDSS_DAP_CLK>,
+				 <&gcc GCC_QDSS_AT_CLK>;
+			clock-names = "apb_pclk", "atclk";
+
+			out-ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					etr_replicator_out0: endpoint {
+						remote-endpoint = <&etr_in>;
+					};
+				};
+			};
+
+			in-ports {
+				port {
+					etr_replicator_in0: endpoint {
+						remote-endpoint = <&etf_out>;
+					};
+				};
+			};
+		};
+
+		etf@6047000 {
+			compatible = "arm,coresight-tmc", "arm,primecell";
+			reg = <0x06047000 0x1000>;
+			reg-names = "tmc-base";
+			coresight-name = "coresight-tmc-etf";
+			arm,default-sink;
+			clocks = <&gcc GCC_QDSS_DAP_CLK>;
+			clock-names = "apb_pclk";
+
+			out-ports {
+				port {
+					etf_out: endpoint {
+						remote-endpoint = <&etr_replicator_in0>;
+					};
+				};
+			};
+
+			in-ports {
+				port {
+					etf_in: endpoint {
+						remote-endpoint = <&merge_funnel_out>;
+					};
+				};
+			};
+		};
+
+		tmc_etr: tmc@6048000 {
+			compatible = "arm,coresight-tmc", "arm,primecell";
+			reg = <0x06048000 0x1000>;
+			reg-names = "tmc-base";
+			interrupts = <GIC_SPI 155 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "byte-cntr-irq";
+			arm,buffer-size = <0x100000>;
+			arm,scatter-gather;
+			memory-region = <&tmc_etr_region>;
+			coresight-name = "coresight-tmc-etr";
+			clocks = <&gcc GCC_QDSS_DAP_CLK>;
+			clock-names = "apb_pclk";
+
+			in-ports {
+				port {
+					etr_in: endpoint {
+						remote-endpoint = <&etr_replicator_out0>;
+					};
+				};
+			};
+		};
+
+		etm0: etm@645c000 {
+			compatible = "arm,coresight-etm4x", "arm,primecell";
+			reg = <0x0645c000 0x1000>;
+			coresight-name = "coresight-etm0";
+			cpu = <&CPU0>;
+			clocks = <&gcc GCC_QDSS_DAP_CLK>;
+			clock-names = "apb_pclk";
+
+			out-ports {
+				port {
+					etm0_out: endpoint {
+						remote-endpoint = <&apss_funnel_in0>;
+					};
+				};
+			};
+		};
+
+		etm1: etm@645d000 {
+			compatible = "arm,coresight-etm4x", "arm,primecell";
+			reg = <0x0645d000 0x1000>;
+			coresight-name = "coresight-etm1";
+			cpu = <&CPU1>;
+			clocks = <&gcc GCC_QDSS_DAP_CLK>;
+			clock-names = "apb_pclk";
+
+			out-ports {
+				port {
+					etm1_out: endpoint {
+						remote-endpoint = <&apss_funnel_in1>;
+					};
+				};
+			};
+		};
+
+		etm2: etm@645e000 {
+			compatible = "arm,coresight-etm4x", "arm,primecell";
+			reg = <0x0645e000 0x1000>;
+			coresight-name = "coresight-etm2";
+			cpu = <&CPU2>;
+			clocks = <&gcc GCC_QDSS_DAP_CLK>;
+			clock-names = "apb_pclk";
+
+			out-ports {
+				port {
+					etm2_out: endpoint {
+						remote-endpoint = <&apss_funnel_in2>;
+					};
+				};
+			};
+		};
+
+		etm3: etm@645f000 {
+			compatible = "arm,coresight-etm4x", "arm,primecell";
+			reg = <0x0645f000 0x1000>;
+			coresight-name = "coresight-etm3";
+			cpu = <&CPU3>;
+			clocks = <&gcc GCC_QDSS_DAP_CLK>;
+			clock-names = "apb_pclk";
+
+			out-ports {
+				port {
+					etm3_out: endpoint {
+						remote-endpoint = <&apss_funnel_in3>;
+					};
+				};
+			};
+		};
+
+		funnel@6461000 {
+			compatible = "arm,coresight-dynamic-funnel", "arm,primecell";
+			reg = <0x06461000 0x1000>;
+			reg-names = "funnel-base";
+			coresight-name = "coresight-funnel-apss";
+			clocks = <&gcc GCC_QDSS_DAP_CLK>,
+				 <&gcc GCC_QDSS_AT_CLK>;
+			clock-names = "apb_pclk", "atclk";
+
+			out-ports {
+				port {
+					apss_funnel_out: endpoint {
+						remote-endpoint = <&funnel1_in2>;
+					};
+				};
+			};
+
+			in-ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					apss_funnel_in0: endpoint {
+						remote-endpoint = <&etm0_out>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+					apss_funnel_in1: endpoint {
+						remote-endpoint = <&etm1_out>;
+					};
+				};
+
+				port@2 {
+					reg = <2>;
+					apss_funnel_in2: endpoint {
+						remote-endpoint = <&etm2_out>;
+					};
+				};
+
+				port@3 {
+					reg = <3>;
+					apss_funnel_in3: endpoint {
+						remote-endpoint = <&etm3_out>;
+					};
+				};
+			};
 		};
 
 		sdhc: mmc@7804000 {
@@ -813,8 +1297,8 @@
 			compatible = "qcom,ipq5210-nsscc";
 			reg = <0x39b00000 0x100000>;
 			clocks = <&xo>,
-				 <&cmn_pll_nss_clk_375m>,
-				 <&cmn_pll_nss_clk_429m>,
+				 <&cmn_pll IPQ5210_NSS_CLK>,
+				 <&cmn_pll IPQ5210_PPE_CLK>,
 				 <&gcc_gpll0_out_aux>,
 				 <0>,
 				 <0>,
@@ -883,12 +1367,515 @@
 			status = "ok";
 		};
 
+		ess_instance: ess-instance {
+			compatible = "qcom,ess-instance";
+			num_devices = <0x1>;
+
+			ess_switch: ess-switch@3a000000 {
+				compatible = "qcom,ess-switch-ipq52xx";
+				reg = <0x3a000000 0x1000000>;
+				switch_access_mode = "local bus";
+				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
+				switch_inner_bmp = <0x80>; /*inner port bitmap*/
+				bm_tick_mode = <0>; /* bm tick mode */
+				tm_tick_mode = <0>; /* tm tick mode */
+				clocks = <&gcc GCC_CMN_12GPLL_AHB_CLK>,
+					<&gcc GCC_CMN_12GPLL_SYS_CLK>,
+					<&gcc GCC_UNIPHY0_AHB_CLK>,
+					<&gcc GCC_UNIPHY0_SYS_CLK>,
+					<&gcc GCC_UNIPHY1_AHB_CLK>,
+					<&gcc GCC_UNIPHY1_SYS_CLK>,
+					<&gcc GCC_UNIPHY2_AHB_CLK>,
+					<&gcc GCC_UNIPHY2_SYS_CLK>,
+					<&gcc GCC_NSSNOC_NSSCC_CLK>,
+					<&gcc GCC_NSSCC_CLK>,
+					<&gcc GCC_NSSNOC_SNOC_1_CLK>,
+					<&gcc GCC_NSSNOC_SNOC_CLK>,
+					<&nsscc NSS_CC_PORT1_MAC_CLK>,
+					<&nsscc NSS_CC_PORT2_MAC_CLK>,
+					<&nsscc NSS_CC_PORT3_MAC_CLK>,
+					<&nsscc NSS_CC_PORT4_MAC_CLK>,
+					<&nsscc NSS_CC_PORT5_MAC_CLK>,
+					<&nsscc NSS_CC_PORT6_MAC_CLK>,
+					<&nsscc NSS_CC_PPE_SWITCH_CLK>,
+					<&nsscc NSS_CC_PPE_SWITCH_CFG_CLK>,
+					<&nsscc NSS_CC_NSSNOC_PPE_CLK>,
+					<&nsscc NSS_CC_NSSNOC_PPE_CFG_CLK>,
+					<&nsscc NSS_CC_PPE_EDMA_CLK>,
+					<&nsscc NSS_CC_PPE_EDMA_CFG_CLK>,
+					<&nsscc NSS_CC_PPE_SWITCH_IPE_CLK>,
+					<&nsscc NSS_CC_PPE_SWITCH_BTQ_CLK>,
+					<&nsscc NSS_CC_PORT1_RX_CLK>,
+					<&nsscc NSS_CC_PORT1_TX_CLK>,
+					<&nsscc NSS_CC_PORT2_RX_CLK>,
+					<&nsscc NSS_CC_PORT2_TX_CLK>,
+					<&nsscc NSS_CC_PORT3_RX_CLK>,
+					<&nsscc NSS_CC_PORT3_TX_CLK>,
+					<&nsscc NSS_CC_PORT4_RX_CLK>,
+					<&nsscc NSS_CC_PORT4_TX_CLK>,
+					<&nsscc NSS_CC_PORT5_RX_CLK>,
+					<&nsscc NSS_CC_PORT5_TX_CLK>,
+					<&nsscc NSS_CC_PORT6_RX_CLK>,
+					<&nsscc NSS_CC_PORT6_TX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT1_RX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT1_TX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT2_RX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT2_TX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT3_RX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT3_TX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT4_RX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT4_TX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT5_RX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT5_TX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT6_RX_CLK>,
+					<&nsscc NSS_CC_UNIPHY_PORT6_TX_CLK>;
+				clock-names = "cmn_ahb_clk",
+					"cmn_sys_clk",
+					"uniphy0_ahb_clk",
+					"uniphy0_sys_clk",
+					"uniphy1_ahb_clk",
+					"uniphy1_sys_clk",
+					"uniphy2_ahb_clk",
+					"uniphy2_sys_clk",
+					"gcc_nssnoc_nsscc_clk",
+					"gcc_nsscc_clk",
+					"gcc_nssnoc_snoc_1_clk",
+					"gcc_nssnoc_snoc_clk",
+					"port1_mac_clk",
+					"port2_mac_clk",
+					"port3_mac_clk",
+					"port4_mac_clk",
+					"port5_mac_clk",
+					"port6_mac_clk",
+					"nss_ppe_clk",
+					"nss_ppe_cfg_clk",
+					"nssnoc_ppe_clk",
+					"nssnoc_ppe_cfg_clk",
+					"nss_edma_clk",
+					"nss_edma_cfg_clk",
+					"nss_ppe_ipe_clk",
+					"nss_ppe_btq_clk",
+					"nss_port1_rx_clk",
+					"nss_port1_tx_clk",
+					"nss_port2_rx_clk",
+					"nss_port2_tx_clk",
+					"nss_port3_rx_clk",
+					"nss_port3_tx_clk",
+					"nss_port4_rx_clk",
+					"nss_port4_tx_clk",
+					"nss_port5_rx_clk",
+					"nss_port5_tx_clk",
+					"nss_port6_rx_clk",
+					"nss_port6_tx_clk",
+					"uniphy0_port1_rx_clk",
+					"uniphy0_port1_tx_clk",
+					"uniphy0_port2_rx_clk",
+					"uniphy0_port2_tx_clk",
+					"uniphy0_port3_rx_clk",
+					"uniphy0_port3_tx_clk",
+					"uniphy0_port4_rx_clk",
+					"uniphy0_port4_tx_clk",
+					"uniphy1_port5_rx_clk",
+					"uniphy1_port5_tx_clk",
+					"uniphy2_port6_rx_clk",
+					"uniphy2_port6_tx_clk";
+				resets = <&nsscc NSS_CC_PPE_BCR>,
+					<&gcc GCC_UNIPHY0_BCR>,
+					<&gcc GCC_UNIPHY1_BCR>,
+					<&gcc GCC_UNIPHY2_BCR>,
+					<&gcc GCC_UNIPHY0_AHB_ARES>,
+					<&gcc GCC_UNIPHY1_AHB_ARES>,
+					<&gcc GCC_UNIPHY2_AHB_ARES>,
+					<&gcc GCC_UNIPHY0_SYS_ARES>,
+					<&gcc GCC_UNIPHY1_SYS_ARES>,
+					<&gcc GCC_UNIPHY2_SYS_ARES>,
+					<&gcc GCC_UNIPHY0_XPCS_ARES>,
+					<&gcc GCC_UNIPHY1_XPCS_ARES>,
+					<&gcc GCC_UNIPHY2_XPCS_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT1_RX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT1_TX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT2_RX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT2_TX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT3_RX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT3_TX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT4_RX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT4_TX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT5_RX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT5_TX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT6_RX_CLK_ARES>,
+					<&nsscc NSS_CC_UNIPHY_PORT6_TX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT1_RX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT1_TX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT2_RX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT2_TX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT3_RX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT3_TX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT4_RX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT4_TX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT5_RX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT5_TX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT6_RX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT6_TX_CLK_ARES>,
+					<&nsscc NSS_CC_PORT1_MAC_CLK_ARES>,
+					<&nsscc NSS_CC_PORT2_MAC_CLK_ARES>,
+					<&nsscc NSS_CC_PORT3_MAC_CLK_ARES>,
+					<&nsscc NSS_CC_PORT4_MAC_CLK_ARES>,
+					<&nsscc NSS_CC_PORT5_MAC_CLK_ARES>,
+					<&nsscc NSS_CC_PORT6_MAC_CLK_ARES>;
+				reset-names = "ppe_rst",
+					"uniphy0_soft_rst",
+					"uniphy1_soft_rst",
+					"uniphy2_soft_rst",
+					"uniphy0_ahb_rst",
+					"uniphy1_ahb_rst",
+					"uniphy2_ahb_rst",
+					"uniphy0_sys_rst",
+					"uniphy1_sys_rst",
+					"uniphy2_sys_rst",
+					"uniphy0_xpcs_rst",
+					"uniphy1_xpcs_rst",
+					"uniphy2_xpcs_rst",
+					"uniphy_port1_rx_rst",
+					"uniphy_port1_tx_rst",
+					"uniphy_port2_rx_rst",
+					"uniphy_port2_tx_rst",
+					"uniphy_port3_rx_rst",
+					"uniphy_port3_tx_rst",
+					"uniphy_port4_rx_rst",
+					"uniphy_port4_tx_rst",
+					"uniphy_port5_rx_rst",
+					"uniphy_port5_tx_rst",
+					"uniphy_port6_rx_rst",
+					"uniphy_port6_tx_rst",
+					"nss_port1_rx_rst",
+					"nss_port1_tx_rst",
+					"nss_port2_rx_rst",
+					"nss_port2_tx_rst",
+					"nss_port3_rx_rst",
+					"nss_port3_tx_rst",
+					"nss_port4_rx_rst",
+					"nss_port4_tx_rst",
+					"nss_port5_rx_rst",
+					"nss_port5_tx_rst",
+					"nss_port6_rx_rst",
+					"nss_port6_tx_rst",
+					"nss_port1_mac_rst",
+					"nss_port2_mac_rst",
+					"nss_port3_mac_rst",
+					"nss_port4_mac_rst",
+					"nss_port5_mac_rst",
+					"nss_port6_mac_rst";
+
+				port_scheduler_resource {
+					port@0 {
+						port_id = <0>;
+						ucast_queue = <170 254>;
+						mcast_queue = <256 271>;
+						l0sp = <44 56>;
+						l0cdrr = <170 255>;
+						l0edrr = <170 255>;
+						l1cdrr = <44 56>;
+						l1edrr = <44 56>;
+					};
+					port@1 {
+						port_id = <1>;
+						ucast_queue = <0 7>;
+						mcast_queue = <272 275>;
+						l0sp = <0 1>;
+						l0cdrr = <0 7>;
+						l0edrr = <0 7>;
+						l1cdrr = <0 1>;
+						l1edrr = <0 1>;
+					};
+					port@2 {
+						port_id = <2>;
+						ucast_queue = <8 15>;
+						mcast_queue = <276 279>;
+						l0sp = <2 3>;
+						l0cdrr = <8 15>;
+						l0edrr = <8 15>;
+						l1cdrr = <2 3>;
+						l1edrr = <2 3>;
+					};
+					port@3 {
+						port_id = <3>;
+						ucast_queue = <16 23>;
+						mcast_queue = <280 283>;
+						l0sp = <4 5>;
+						l0cdrr = <16 23>;
+						l0edrr = <16 23>;
+						l1cdrr = <4 5>;
+						l1edrr = <4 5>;
+					};
+					port@4 {
+						port_id = <4>;
+						ucast_queue = <24 31>;
+						mcast_queue = <284 287>;
+						l0sp = <6 7>;
+						l0cdrr = <24 31>;
+						l0edrr = <24 31>;
+						l1cdrr = <6 7>;
+						l1edrr = <6 7>;
+					};
+					port@5 {
+						port_id = <5>;
+						ucast_queue = <32 39>;
+						mcast_queue = <288 291>;
+						l0sp = <8 9>;
+						l0cdrr = <32 39>;
+						l0edrr = <32 39>;
+						l1cdrr = <8 9>;
+						l1edrr = <8 9>;
+					};
+					port@6 {
+						port_id = <6>;
+						ucast_queue = <40 159>;
+						mcast_queue = <292 295>;
+						l0sp = <10 41>;
+						l0cdrr = <40 159>;
+						l0edrr = <40 159>;
+						l1cdrr = <10 41>;
+						l1edrr = <10 41>;
+					};
+					port@7 {
+						port_id = <7>;
+						ucast_queue = <160 169>;
+						mcast_queue = <296 299>;
+						l0sp = <42 43>;
+						l0cdrr = <160 169>;
+						l0edrr = <160 169>;
+						l1cdrr = <42 43>;
+						l1edrr = <42 43>;
+					};
+					reserved {
+						ucast_queue = <255 255>;
+						mcast_queue = <0 0>;
+						l0sp = <57 63>;
+						l0cdrr = <0 0>;
+						l0edrr = <0 0>;
+						l1cdrr = <57 63>;
+						l1edrr = <57 63>;
+					};
+				};
+
+				port_scheduler_config {
+					port@0 {
+						port_id = <0>;
+						l1scheduler {
+							group@0 {
+								/* L0 SP */
+								sp = <44>;
+								sp_loop_pri = <13>;
+								sp_max_pri = <1>;
+								/* cpri cdrr epri edrr */
+								cfg = <0 44 0 44>;
+							};
+						};
+						l0scheduler {
+							group@0 {
+								/* 8 x (4 cores + 2 VP) */
+								ucast_queue = <170>;
+								ucast_loop_pri = <48>;
+								ucast_max_pri = <8>;
+								/* multicast queue */
+								mcast_queue = <256>;
+								mcast_loop_pri = <8>;
+								/* sp cpri cdrr epri edrr */
+								cfg = <44 0 170 0 170>;
+							};
+							group@1 {
+								/* 4 GRO + 1x4 SMD */
+								ucast_queue = <218>;
+								ucast_loop_pri = <8>;
+								ucast_max_pri = <4>;
+								mcast_queue = <264>;
+								mcast_loop_pri = <8>;
+								cfg = <50 0 218 0 218>;
+							};
+							group@2 {
+								/* DS */
+								ucast_queue = <226>;
+								ucast_loop_pri = <8>;
+								cfg = <52 0 226 0 226>;
+							};
+
+							group@3 {
+								/* SMD DS */
+								ucast_queue = <234>;
+								ucast_loop_pri = <4>;
+								cfg = <53 0 234 0 234>;
+							};
+
+							group@4 {
+								/* Ingress SRAM for DDRQ */
+								ucast_queue = <238>;
+								ucast_loop_pri = <17>;
+								ucast_max_pri = <8>;
+								cfg = <54 0 238 0 238>;
+							};
+						};
+					};
+					port@1 {
+						port_id = <1>;
+						l1scheduler {
+							group@0 {
+								sp = <0>;
+								cfg = <0 0 0 0>;
+							};
+						};
+						l0scheduler {
+							group@0 {
+								ucast_queue = <0>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <272>;
+								mcast_loop_pri = <4>;
+								cfg = <0 0 0 0 0>;
+							};
+						};
+					};
+					port@2 {
+						port_id = <2>;
+						l1scheduler {
+							group@0 {
+								sp = <2>;
+								cfg = <0 2 0 2>;
+							};
+						};
+						l0scheduler {
+							group@0 {
+								ucast_queue = <8>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <276>;
+								mcast_loop_pri = <4>;
+								cfg = <2 0 8 0 8>;
+							};
+						};
+					};
+					port@3 {
+						port_id = <3>;
+						l1scheduler {
+							group@0 {
+								sp = <4>;
+								cfg = <0 4 0 4>;
+							};
+						};
+						l0scheduler {
+							group@0 {
+								ucast_queue = <16>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <280>;
+								mcast_loop_pri = <4>;
+								cfg = <4 0 16 0 16>;
+							};
+						};
+					};
+					port@4 {
+						port_id = <4>;
+						l1scheduler {
+							group@0 {
+								sp = <6>;
+								cfg = <0 6 0 6>;
+							};
+						};
+						l0scheduler {
+							group@0 {
+								ucast_queue = <24>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <284>;
+								mcast_loop_pri = <4>;
+								cfg = <6 0 24 0 24>;
+							};
+						};
+					};
+					port@5 {
+						port_id = <5>;
+						l1scheduler {
+							group@0 {
+								sp = <8>;
+								cfg = <0 8 0 8>;
+							};
+						};
+						l0scheduler {
+							group@0 {
+								ucast_queue = <32>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <288>;
+								mcast_loop_pri = <4>;
+								cfg = <8 0 32 0 32>;
+							};
+						};
+					};
+
+					port@6 {
+						port_id = <6>;
+						l1scheduler {
+							group@0 {
+								sp = <10>;
+								sp_loop_pri = <15>;
+								sp_max_pri = <1>;
+								cfg = <6 0 10 0 10>;
+							};
+						};
+						l0scheduler {
+							group@0 {
+								ucast_queue = <40>;
+								ucast_loop_pri = <120>;
+								ucast_max_pri = <8>;
+								mcast_queue = <292>;
+								mcast_loop_pri = <4>;
+								cfg = <10 0 40 0 40>;
+							};
+						};
+					};
+
+					port@7 {
+						port_id = <7>;
+						l1scheduler {
+							group@0 {
+								sp = <42>;
+								sp_loop_pri = <2>;
+								sp_max_pri = <1>;
+								cfg = <0 42 0 42>;
+							};
+						};
+						l0scheduler {
+							group@0 {
+								ucast_queue = <160>;
+								ucast_loop_pri = <10>;
+								ucast_max_pri = <8>;
+								mcast_queue = <296>;
+								mcast_loop_pri = <4>;
+								cfg = <42 0 160 0 160>;
+							};
+						};
+					};
+				};
+			};
+		};
+
+		/* EDMA host driver configuration */
+		edma@3ad00000 {
+			compatible = "qcom,edma";
+			reg = <0x3ad00000 0x1C5000>;
+			reg-names = "edma-reg-base";
+			/* TO-DO: Add EDMA HW resets */
+			reset-names = "edma_rst";
+		};
+
+		nss-ppe {
+			compatible = "qcom,nss-ppe";
+		};
 	};
 
 	firmware {
 		scm {
 			compatible = "qcom,scm-ipq5210", "qcom,scm";
 			qcom,dload-mode = <&tcsr 0x25100>;
+		};
+
+		optee {
+			compatible = "linaro,optee-tz";
+			method = "smc";
 		};
 	};
 
@@ -917,5 +1904,87 @@
 		memory-region = <&minidump_mem>;
 		qcom,imem = <&imem>;
 		minidump-level = <2>;
+	};
+
+	pmu {
+		compatible = "arm,cortex-a53-pmu";
+		interrupts = <GIC_PPI 7 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_HIGH)>;
+	};
+
+	pmu-v7 {
+		compatible = "arm,cortex-a7-pmu";
+		interrupts = <GIC_PPI 7 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_HIGH)>;
+	};
+
+	thermal_zones: thermal-zones {
+		ethphy-thermal {
+			polling-delay-passive = <0>;
+			polling-delay = <0>;
+			thermal-sensors = <&tsens 11>;
+
+			trips {
+				ethphy-critical {
+					temperature = <120000>;
+					hysteresis = <9000>;
+					type = "critical";
+				};
+			};
+		};
+
+		pon-uniphy-thermal {
+			polling-delay-passive = <0>;
+			polling-delay = <0>;
+			thermal-sensors = <&tsens 12>;
+
+			trips {
+				pon-uniphy-critical {
+					temperature = <120000>;
+					hysteresis = <9000>;
+					type = "critical";
+				};
+			};
+		};
+
+		nss-top-thermal {
+			polling-delay-passive = <0>;
+			polling-delay = <0>;
+			thermal-sensors = <&tsens 13>;
+
+			trips {
+				nss-top-critical {
+					temperature = <120000>;
+					hysteresis = <9000>;
+					type = "critical";
+				};
+			};
+		};
+
+		a53ss-cm-dist-ts-0-thermal {
+			polling-delay-passive = <0>;
+			polling-delay = <0>;
+			thermal-sensors = <&tsens 14>;
+
+			trips {
+				a53ss-cm-dist-ts-0-critical {
+					temperature = <120000>;
+					hysteresis = <9000>;
+					type = "critical";
+				};
+			};
+		};
+
+		a53ss-cm-dist-ts-1-thermal {
+			polling-delay-passive = <0>;
+			polling-delay = <0>;
+			thermal-sensors = <&tsens 15>;
+
+			trips {
+				a53ss-cm-dist-ts-1-critical {
+					temperature = <120000>;
+					hysteresis = <9000>;
+					type = "critical";
+				};
+			};
+		};
 	};
 };

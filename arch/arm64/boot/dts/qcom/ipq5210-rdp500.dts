@@ -14,3 +14,45 @@
 	model = "Qualcomm Technologies, Inc. IPQ5210 RDP500";
 	compatible = "qcom,ipq5210-rdp500", "qcom,ipq5210";
 };
+
+&nsscc {
+	assigned-clocks = <&nsscc NSS_CC_EPHY_RX_CLK_SRC>,
+			  <&nsscc NSS_CC_EPHY_TX_CLK_SRC>;
+	assigned-clock-parents = <&nsscc NSS_CC_PORT5_RX_DIV_CLK_SRC>,
+				 <&nsscc NSS_CC_PORT5_TX_DIV_CLK_SRC>;
+};
+
+&tlmm {
+	pcie0_default_state: pcie0-default-state {
+		pins = "gpio32";
+		function = "gpio";
+		drive-strength = <6>;
+		bias-pull-down;
+		output-low;
+	};
+};
+
+&pcie0_phy {
+	status = "disabled";
+};
+
+&pcie0 {
+	pinctrl-0 = <&pcie0_default_state>;
+	perst-gpio = <&tlmm 32 GPIO_ACTIVE_LOW>;
+	status = "disabled";
+
+	pcie0_rp {
+		reg = <0 0 0 0 0>;
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
+&pcie1_phy {
+	status = "disabled";
+};
+
+&pcie1 {
+	status = "disabled";
+};

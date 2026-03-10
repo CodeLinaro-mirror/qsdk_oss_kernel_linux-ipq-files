@@ -14,3 +14,55 @@
 	model = "Qualcomm Technologies, Inc. IPQ5210 RDP503";
 	compatible = "qcom,ipq5210-rdp503", "qcom,ipq5210";
 };
+
+&tlmm {
+	pcie0_default_state: pcie0-default-state {
+		pins = "gpio32";
+		function = "gpio";
+		drive-strength = <6>;
+		bias-pull-down;
+		output-low;
+	};
+
+	pcie1_default_state: pcie1-default-state {
+		pins = "gpio29";
+		function = "gpio";
+		drive-strength = <6>;
+		bias-pull-down;
+		output-low;
+	};
+};
+
+&pcie0_phy {
+	status = "disabled";
+};
+
+&pcie0 {
+	pinctrl-0 = <&pcie0_default_state>;
+	perst-gpio = <&tlmm 32 GPIO_ACTIVE_LOW>;
+	status = "disabled";
+
+	pcie0_rp {
+		reg = <0 0 0 0 0>;
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
+&pcie1_phy {
+	status = "disabled";
+};
+
+&pcie1 {
+	pinctrl-0 = <&pcie1_default_state>;
+	perst-gpio = <&tlmm 29 GPIO_ACTIVE_LOW>;
+	status = "disabled";
+
+	pcie0_rp {
+		reg = <0 0 0 0 0>;
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};

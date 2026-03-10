@@ -21,6 +21,9 @@ struct qce2204_priv;
 /* PPE queue scheduler priority number */
 #define QCE2204_PPE_QUEUE_SCH_PRI_NUM			8
 
+/* PPE CPU code num */
+#define QCE2204_PPE_CPU_CODE_NUM			256
+
 /* PPE internal priority and hash numbers */
 #define QCE2204_PPE_QUEUE_INTER_PRI_NUM			16
 #define QCE2204_PPE_QUEUE_HASH_NUM			256
@@ -414,6 +417,16 @@ struct qce2204_ppe_port_mtu_cfg {
 };
 
 /**
+ * struct qce2204_ppe_port_mru_cfg - Port MRU configuration
+ * @mru: Maximum receive unit
+ * @mru_cmd: MRU action command
+ */
+struct qce2204_ppe_port_mru_cfg {
+	u16 mru;
+	u8 mru_cmd;
+};
+
+/**
  * struct qce2204_ppe_eg_gen_ctrl_cfg - Egress general control configuration
  * @ath_type: Atheros header type for egress packets
  */
@@ -549,6 +562,9 @@ int qce2204_ppe_eg_vp_athtag_set(struct qce2204_priv *priv,
 int qce2204_ppe_port_mtu_set(struct qce2204_priv *priv,
 			      u32 port_id,
 			      struct qce2204_ppe_port_mtu_cfg *cfg);
+int qce2204_ppe_port_mru_set(struct qce2204_priv *priv,
+			      u32 port_id,
+			      struct qce2204_ppe_port_mru_cfg *cfg);
 int qce2204_ppe_eg_gen_ctrl_set(struct qce2204_priv *priv,
 				 struct qce2204_ppe_eg_gen_ctrl_cfg *cfg);
 int qce2204_setup_cpu_port_athtag(struct qce2204_priv *priv);

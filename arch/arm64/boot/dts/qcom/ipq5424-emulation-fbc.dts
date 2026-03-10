@@ -95,9 +95,6 @@
 #endif
 			};
 		};
-		userpd_1: userpd1 {
-			status = "okay";
-		};
 
 		ess-instance {
 			num_devices = <0x1>;

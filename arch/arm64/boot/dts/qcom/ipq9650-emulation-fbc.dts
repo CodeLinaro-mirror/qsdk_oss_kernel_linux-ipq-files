@@ -100,3 +100,15 @@
 	non-removable;
 	status = "okay";
 };
+
+&cmn_pll {
+	status = "disabled";
+};
+
+&qmp_tmel {
+	status = "okay";
+};
+
+&tmelcom {
+	status = "okay";
+};

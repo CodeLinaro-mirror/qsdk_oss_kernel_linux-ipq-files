@@ -74,80 +74,6 @@
 / {
 	model = "Qualcomm Technologies, Inc. IPQ5332/RDP481/AP-MI01.14";
 	compatible = "qcom,ipq5332-ap-mi01.14", "qcom,ipq5332-ap-rdp481", "qcom,ipq5332-rdp481", "qcom,ipq5332";
-#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
-	reserved-memory {
-		#address-cells = <2>;
-		#size-cells = <2>;
-		ranges;
-
-		q6_mem_regions: q6_mem_regions@4A900000  {
-			no-map;
-			reg = <0x0 0x4a900000 0x0 0x4C00000>;
-		};
-
-		q6_code_data: q6_code_data@4A900000 {
-			no-map;
-			reg = <0x0 0x4a900000 0x0 0x1400000>;
-		};
-
-		q6_ipq5332_data: q6_ipq5332_data@4BD00000 {
-			no-map;
-			reg = <0x0 0x4BD00000 0x0 0x1500000>;
-		};
-
-		m3_dump: m3_dump@4D200000 {
-			no-map;
-			reg = <0x0 0x4D200000 0x0 0x100000>;
-		};
-
-		q6_etr_region: q6_etr_dump@4D300000 {
-			no-map;
-			reg = <0x0 0x4D300000 0x0 0x100000>;
-		};
-
-		q6_ipq5332_caldb: q6_ipq5332_caldb@4D400000 {
-			no-map;
-			reg = <0x0 0x4D400000 0x0 0x500000>;
-		};
-
-		q6_qcn6432_data_1: q6_qcn6432_data_1@4D900000 {
-			no-map;
-			reg = <0x0 0x4D900000 0x0 0x1500000>;
-		};
-
-		m3_dump_qcn6432_1: m3_dump_qcn6432_1@4EE00000 {
-			no-map;
-			reg = <0x0 0x4EE00000 0x0 0x100000>;
-		};
-
-		q6_qcn6432_etr_1: q6_qcn6432_etr_1@4EF00000 {
-			no-map;
-			reg = <0x0 0x4EF00000 0x0 0x100000>;
-		};
-
-		q6_qcn6432_caldb_1: q6_qcn6432_caldb_1@4F000000 {
-			no-map;
-			reg = <0x0 0x4F000000 0x0 0x500000>;
-		};
-
-		mlo_global_mem0: mlo_global_mem_0@4FA00000 {
-			no-map;
-			reg = <0x0 0x4FA00000 0x0 0x1200000>;
-		};
-
-		qcn9224_pcie1: qcn9224_pcie1@50C00000 {
-			no-map;
-			reg = <0x0 0x50C00000 0x0 0x03200000>;
-		};
-
-		mhi_region1: dma_pool1@1 {
-			compatible = "shared-dma-pool";
-			no-map;
-			size = <0x0 0x00900000>;
-			alignment = <0x0 0x1000>;
-                };
-	};
-#else
 	reserved-memory {
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -185,7 +111,6 @@
 			alignment = <0x0 0x1000>;
 		};
 	};
-#endif
 	aliases {
 		serial0 = &blsp1_uart0;
 		serial1 = &blsp1_uart1;
@@ -530,16 +455,7 @@
 			upd-firmware-names = "IPQ5332/q6_fw1.mdt",
 					     "IPQ5332/q6_fw2.mdt";
 			q6_wcss_pd1: remoteproc_pd1 {
-#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
-				memory-region = <&q6_ipq5332_data>,
-						<&m3_dump>,
-						<&q6_etr_region>,
-						<&q6_ipq5332_caldb>,
-						<&mlo_global_mem0>;
-				status = "okay";
-#else
 				status = "disabled";
-#endif
 			};
 
 			q6_wcss_pd2: remoteproc_pd2 {
@@ -560,16 +476,7 @@
 				qcom,smem-state-names = "shutdown",
 							"stop",
 							"spawn";
-#if !defined(__RPROC_DISABLE_MPD_SUPPORT__)
-				memory-region = <&q6_qcn6432_data_1>,
-						<&m3_dump_qcn6432_1>,
-						<&q6_qcn6432_etr_1>,
-						<&q6_qcn6432_caldb_1>,
-						<&mlo_global_mem0>;
-				status = "okay";
-#else
 				status = "disabled";
-#endif
 			};
 		};
 	};
@@ -826,6 +733,10 @@
 	};
 };
 
+&qcom_test_userpd2 {
+	status = "okay";
+};
+
 &hs_m31phy_0 {
 	status = "okay";
 };
@@ -835,15 +746,9 @@
 };
 
 &wifi0 {
-#if defined(__RPROC_DISABLE_MPD_SUPPORT__)
 	qcom,rproc = <&q6v5_wcss>;
 	dump-region = <&q6_ipq5332_data>,
 		      <&mlo_global_mem0>;
-#else
-	qcom,multipd_arch;
-	qcom,rproc = <&q6_wcss_pd1>;
-	qcom,rproc_rpd = <&q6v5_wcss>;
-#endif
 	qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
 	qcom,bdf-addr = <0x4BD00000 0x4BD00000 0x4BD00000 0x0 0x0 0x0>;
 	qcom,caldb-addr = <0x4D400000 0x4D400000 0x4D400000 0x0 0x0 0x0>;
@@ -885,15 +790,9 @@
 };
 
 &wifi1 {
-#if defined(__RPROC_DISABLE_MPD_SUPPORT__)
 	qcom,rproc = <&q6v5_wcss>;
 	dump-region = <&q6_qcn6432_data_1>,
 		      <&mlo_global_mem0>;
-#else
-	qcom,multipd_arch;
-	qcom,rproc = <&q6_wcss_pd2>;
-	qcom,rproc_rpd = <&q6v5_wcss>;
-#endif
 	qcom,userpd-subsys-name = "q6v5_wcss_userpd2";
 	qcom,bdf-addr = <0x4D900000 0x4D900000 0x4D900000 0x0 0x0 0x0>;
 	qcom,caldb-addr = <0x4F000000 0x4F000000 0x4F000000 0x0 0x0 0x0>;

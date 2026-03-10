@@ -14,6 +14,7 @@
 
 #include <linux/bitfield.h>
 #include <linux/memblock.h>
+#include <linux/pci.h>
 #include <linux/pm_runtime.h>
 #include <linux/of.h>
 #include <linux/spinlock.h>
@@ -22,9 +23,11 @@
 #include <linux/elf.h>
 #include <linux/of_address.h>
 #include "commonmhitest.h"
+#include "../host/internal.h"
 
 #define QCN9000_DEFAULT_FW_FILE_NAME	"qcn9000/amss.bin"
 #define QCN9224_DEFAULT_FW_FILE_NAME	"qcn9224/amss.bin"
+#define QCC2072_DEFAULT_FW_FILE_NAME	"qcc2072/amss.bin"
 #define QCN9625_DEFAULT_FW_FILE_NAME	"qcn9625/amss.bin"
 #define QCN9589_DEFAULT_FW_FILE_NAME	"qcn9589/amss.bin"
 
@@ -39,16 +42,43 @@
 #define COREDUMP_DESC				"Q6-COREDUMP"
 #define Q6_SFR_DESC				"Q6-SFR"
 
-
 #define MHISTATUS				0x48
 #define MHICTRL					0x38
-#define MHICTRL_RESET_MASK			0x2
+#define QCN9625_BHI_EXECENV				0x128
+
+#define QCN9224_PCIE_REMAP_BAR_CTRL_OFFSET	0x310C
+#define QCN9625_PCIE_REMAP_BAR_CTRL_OFFSET	0x3278
+#define QCN9224_PCI_MHIREGLEN_REG		0x1E0E100
+#define QCN9224_PCI_MHI_REGION_END		0x1E0EFFC
+#define PCIE_LOCAL_REG_BASE			0x1E00000
+#define PCIE_LOCAL_REG_END			0x1E03FFF
+
+#define WINDOW_SHIFT				19
+#define QCN9224_WINDOW_VALUE_MASK		0x3f
+#define QCN9625_WINDOW_VALUE_MASK		0x7f
+#define WINDOW_ENABLE_BIT			0x40000000
+#define MAX_UNWINDOWED_ADDRESS			0x80000
+#define WINDOW_START				MAX_UNWINDOWED_ADDRESS
+#define WINDOW_RANGE_MASK			0x7FFFF
+
+#define QCN9625_Q6_BCR_RESET			0x1E381F0
 
 #define TIMEOUT_SAVE_DUMP_MS 300000
+
+static DEFINE_SPINLOCK(pci_reg_window_lock);
+
+#if IS_ENABLED(CONFIG_PCIEAER)
+#define RDDM_LINK_RECOVERY_RETRY		20
+#define RDDM_LINK_RECOVERY_RETRY_DELAY_MS	20
+#endif
 
 bool autostart = true;
 module_param(autostart, bool, 0);
 MODULE_PARM_DESC(autostart, "Do need to power up mhi during module load?");
+
+bool pblsbl_debug = true;
+module_param(pblsbl_debug, bool, 0);
+MODULE_PARM_DESC(pblsbl_debug, "Do need to dump pbl/sbl debug logs if mhi doesn't come up?");
 
 /* Timeout, to print boot debug logs, in seconds */
 int boot_debug_timeout = 7;
@@ -231,7 +261,7 @@ struct ramdump_header {
 
 irqreturn_t mhitest_msi_handlr(int irq_number, void *dev)
 {
-	printk("mhitest_msi_handlr irq_number==%d\n",irq_number);
+	pr_info("mhitest_msi_handlr irq_number==%d\n", irq_number);
 	return IRQ_HANDLED;
 }
 
@@ -837,6 +867,12 @@ void mhitest_sch_do_recovery(struct mhitest_platform *mplat,
 	int gfp = GFP_KERNEL;
 	struct mhitest_recovery_data *data;
 
+	/* Check if device is running using atomic operation */
+	if (!atomic_read(&mplat->running)) {
+		pr_info("Device not running, skipping recovery scheduling\n");
+		return;
+	}
+
 	if (in_interrupt() || irqs_disabled())
 		gfp = GFP_ATOMIC;
 
@@ -998,7 +1034,8 @@ int mhitest_pci_register_mhi(struct mhitest_platform *mplat)
 	mhi_ctrl->fbc_download = true;
 
 	if (mplat->device_id == QCN96XX_DEVICE_ID ||
-	    mplat->device_id == QCN95XX_DEVICE_ID)
+	    mplat->device_id == QCN95XX_DEVICE_ID ||
+	    mplat->device_id == QCC20XX_DEVICE_ID)
 		mhi_ctrl->standard_elf_image = true;
 
 	ret = mhi_register_controller(mhi_ctrl, &mhitest_mhi_config);
@@ -1119,6 +1156,262 @@ out:
 	return ret;
 }
 
+static int mhitest_get_bar_remap_ctrl_offset(struct mhitest_platform *mplat,
+					     u32 *reg)
+{
+	switch (mplat->device_id) {
+	case QCN90XX_DEVICE_ID:
+		fallthrough;
+	case QCN92XX_DEVICE_ID:
+		*reg = QCN9224_PCIE_REMAP_BAR_CTRL_OFFSET;
+		break;
+
+	case QCC20XX_DEVICE_ID:
+		fallthrough;
+	case QCN95XX_DEVICE_ID:
+		fallthrough;
+	case QCN96XX_DEVICE_ID:
+		*reg = QCN9625_PCIE_REMAP_BAR_CTRL_OFFSET;
+		break;
+
+	default:
+		pr_err("Unknown device type 0x%lx\n", mplat->device_id);
+		return -ENODEV;
+	}
+
+	return 0;
+}
+
+static int mhitest_pci_select_window(struct mhitest_platform *mplat, u32 addr)
+{
+	u32 window = 0, prev_window = 0, curr_window = 0, prev_cleared_window = 0;
+	volatile u32 write_val, read_val = 0;
+	u32 bar_remap_ctrl_offset = 0;
+	int retry = 0;
+	void __iomem *bar = NULL;
+
+	switch (mplat->device_id) {
+	case QCC20XX_DEVICE_ID:
+	case QCN92XX_DEVICE_ID:
+		window = (addr >> WINDOW_SHIFT) & QCN9224_WINDOW_VALUE_MASK;
+		break;
+	case QCN95XX_DEVICE_ID:
+	case QCN96XX_DEVICE_ID:
+		window = (addr >> WINDOW_SHIFT) & QCN9625_WINDOW_VALUE_MASK;
+		break;
+
+	default:
+		pr_err("Unknown device type 0x%lx\n", mplat->device_id);
+		return -ENODEV;
+	}
+
+	if (!mplat || !mplat->bar) {
+		pr_err("mplat is NULL or bar not assigned\n");
+		return -ENODEV;
+	}
+
+	bar = mplat->bar;
+
+	if (mhitest_get_bar_remap_ctrl_offset(mplat, &bar_remap_ctrl_offset)) {
+		pr_err("Failed to get bar remap ctrl offset\n");
+		return -ENODEV;
+	}
+
+	prev_window = readl_relaxed(bar + bar_remap_ctrl_offset);
+
+	/* Clear out last 6 or 7 bits of window register */
+	switch (mplat->device_id) {
+	case QCC20XX_DEVICE_ID:
+	case QCN92XX_DEVICE_ID:
+		prev_cleared_window = prev_window & ~(QCN9224_WINDOW_VALUE_MASK);
+		break;
+	case QCN95XX_DEVICE_ID:
+	case QCN96XX_DEVICE_ID:
+		prev_cleared_window = prev_window & ~(QCN9625_WINDOW_VALUE_MASK);
+		break;
+
+	default:
+		pr_err("Unknown device type 0x%lx\n", mplat->device_id);
+		return -ENODEV;
+	}
+
+	/* Write the new last 6 bits of window register. Only window 1 values
+	 * are changed. Window 2 and 3 are unaffected.
+	 */
+	curr_window = prev_cleared_window | window;
+
+	/* Skip writing into window register if the read value
+	 * is same as calculated value.
+	 */
+	if (curr_window == prev_window)
+		return 0;
+
+	write_val = WINDOW_ENABLE_BIT | curr_window;
+	writel_relaxed(write_val, bar + bar_remap_ctrl_offset);
+
+	read_val = readl_relaxed(bar + bar_remap_ctrl_offset);
+
+	/* If value written is not yet reflected, wait till it is reflected */
+	while ((read_val != write_val) && (retry < 100)) {
+		mdelay(1);
+		read_val = readl_relaxed(bar + bar_remap_ctrl_offset);
+		retry++;
+	}
+
+	if (retry >= 100 && read_val != write_val)
+		pr_err("retry count: %d", retry);
+
+	return 0;
+}
+
+static int mhitest_get_mhi_region_len(struct mhitest_platform *mplat,
+				      u32 *reg_start, u32 *reg_end)
+{
+	switch (mplat->device_id) {
+	case QCN92XX_DEVICE_ID:
+		fallthrough;
+	case QCN95XX_DEVICE_ID:
+		fallthrough;
+	case QCN96XX_DEVICE_ID:
+		fallthrough;
+	case QCC20XX_DEVICE_ID:
+		*reg_start = QCN9224_PCI_MHIREGLEN_REG;
+		*reg_end = QCN9224_PCI_MHI_REGION_END;
+		break;
+	default:
+		pr_err("Unknown device type 0x%lx\n", mplat->device_id);
+		return -ENODEV;
+	}
+
+	return 0;
+}
+
+int mhitest_pci_reg_read(struct mhitest_platform *mplat, u32 addr, u32 *val)
+{
+	int ret = 0;
+	u32 mhi_region_start_reg = 0;
+	u32 mhi_region_end_reg = 0;
+	unsigned long flags;
+	void __iomem *bar = NULL;
+
+	if (!mplat || !mplat->bar) {
+		pr_err("mplat is NULL or bar not assigned\n");
+		return -ENODEV;
+	}
+
+	bar = mplat->bar;
+
+	if (addr < MAX_UNWINDOWED_ADDRESS) {
+		*val = readl_relaxed(bar + addr);
+		return 0;
+	}
+
+	ret = mhitest_get_mhi_region_len(mplat, &mhi_region_start_reg,
+					 &mhi_region_end_reg);
+	if (ret) {
+		pr_err("MHI start and end region not assigned.\n");
+		return ret;
+	}
+
+	spin_lock_irqsave(&pci_reg_window_lock, flags);
+	ret = mhitest_pci_select_window(mplat, addr);
+	if (ret) {
+		pr_err("Failed to select window %d\n", ret);
+		goto out;
+	}
+
+	if ((addr >= PCIE_LOCAL_REG_BASE && addr <= PCIE_LOCAL_REG_END) ||
+	    (addr >= mhi_region_start_reg && addr <= mhi_region_end_reg)) {
+		if (addr >= mhi_region_start_reg && addr <= mhi_region_end_reg)
+			addr = addr - mhi_region_start_reg;
+
+		*val = readl_relaxed(bar + (addr & WINDOW_RANGE_MASK));
+	} else {
+		*val = readl_relaxed(bar + WINDOW_START + (addr & WINDOW_RANGE_MASK));
+	}
+
+out:
+	spin_unlock_irqrestore(&pci_reg_window_lock, flags);
+
+	return ret;
+}
+
+int mhitest_pci_reg_write(struct mhitest_platform *mplat, u32 addr, u32 val)
+{
+	int ret = 0;
+	u32 mhi_region_start_reg = 0;
+	u32 mhi_region_end_reg = 0;
+	unsigned long flags;
+	void __iomem *bar = NULL;
+
+	if (!mplat || !mplat->bar) {
+		pr_err("mplat is NULL or bar not assigned\n");
+		return -ENODEV;
+	}
+
+	bar = mplat->bar;
+
+	if (addr < MAX_UNWINDOWED_ADDRESS) {
+		writel_relaxed(val, bar + addr);
+		return 0;
+	}
+
+	ret = mhitest_get_mhi_region_len(mplat, &mhi_region_start_reg,
+					 &mhi_region_end_reg);
+	if (ret) {
+		pr_err("MHI start and end region not assigned.\n");
+		return ret;
+	}
+
+	spin_lock_irqsave(&pci_reg_window_lock, flags);
+
+	ret = mhitest_pci_select_window(mplat, addr);
+	if (ret) {
+		pr_err("Failed to select window %d\n", ret);
+		goto out;
+	}
+
+	if ((addr >= PCIE_LOCAL_REG_BASE && addr <= PCIE_LOCAL_REG_END) ||
+	    (addr >= mhi_region_start_reg && addr <= mhi_region_end_reg)) {
+		if (addr >= mhi_region_start_reg && addr <= mhi_region_end_reg)
+			addr = addr - mhi_region_start_reg;
+
+		writel_relaxed(val, bar + (addr & WINDOW_RANGE_MASK));
+	} else {
+		writel_relaxed(val, bar + WINDOW_START + (addr & WINDOW_RANGE_MASK));
+	}
+
+out:
+	spin_unlock_irqrestore(&pci_reg_window_lock, flags);
+
+	return ret;
+}
+
+void mhitest_q6_bcr_reset(struct mhitest_platform *mplat)
+{
+	int count = soc_reset_delay_ms / 100;
+	u32 device_ee = MHI_EE_MAX;
+
+	pr_info("Issuing Q6 BCR reset Reset\n");
+
+	mhitest_pci_reg_write(mplat, QCN9625_Q6_BCR_RESET, 1);
+
+	pr_info("Q6 bcr reset issued\n");
+
+	while (count >= 0) {
+		device_ee = readl_relaxed(mplat->bar + QCN9625_BHI_EXECENV);
+		if (device_ee == MHI_EE_PBL) {
+			pr_info("Target switched to PBL, reset success, count: %d\n", count);
+			break;
+		}
+		msleep(100);
+		count--;
+	}
+
+	if (count < 0)
+		pr_info("Failed to switch to PBL after BCR reset\n");
+}
+
 void mhitest_global_soc_reset(struct mhitest_platform *mplat)
 {
 	u32 val;
@@ -1165,7 +1458,7 @@ void mhitest_pci_disable_bus(struct mhitest_platform *mplat)
 
 	mhitest_global_soc_reset(mplat);
 
-	msleep(2000);
+	msleep(1000);
 
 	mhitest_reset_mhi_state(mplat);
 
@@ -1271,16 +1564,9 @@ static void mhitest_boot_debug_timeout_hdlr(struct timer_list *timer)
 	struct mhitest_platform *mplat = from_timer(mplat, timer,
 						    boot_debug_timer);
 
-	if (!mplat)
-		return;
-
-	if (mplat->running)
-		return;
-
-	if (MHITEST_IN_MISSION_MODE(mplat->mhi_ctrl->ee))
-		return;
-
-	if (mhi_scan_rddm_cookie(mplat->mhi_ctrl, DEVICE_RDDM_COOKIE))
+	if (!pblsbl_debug || !mplat || !mplat->mhi_ctrl || atomic_read(&mplat->running) ||
+	    MHITEST_IN_MISSION_MODE(mplat->mhi_ctrl->ee) ||
+	    mhi_scan_rddm_cookie(mplat->mhi_ctrl, DEVICE_RDDM_COOKIE))
 		return;
 
 	pr_debug("Dump MHI/PBL/SBL debug data every %ds during MHI power on\n",
@@ -1495,6 +1781,7 @@ int mhitest_pci_start_mhi(struct mhitest_platform *mplat)
 	case QCN92XX_DEVICE_ID:
 		qrtr_instance_id_reg = PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV0;
 		break;
+	case QCC20XX_DEVICE_ID:
 	case QCN95XX_DEVICE_ID:
 	case QCN96XX_DEVICE_ID:
 		qrtr_instance_id_reg =
@@ -1530,8 +1817,10 @@ int mhitest_pci_start_mhi(struct mhitest_platform *mplat)
 
 out1:
 	if (ret == -ETIMEDOUT) {
-		if (!mhi_scan_rddm_cookie(mplat->mhi_ctrl, DEVICE_RDDM_COOKIE))
+		if (!mhi_scan_rddm_cookie(mplat->mhi_ctrl, DEVICE_RDDM_COOKIE)) {
+			mhi_debug_reg_dump(mplat->mhi_ctrl);
 			mhitest_pci_dump_bl_sram_mem(mplat);
+		}
 	}
 
 	pr_debug("Exit-Error\n");
@@ -1540,10 +1829,10 @@ out1:
 
 int mhitest_prepare_start_mhi(struct mhitest_platform *mplat)
 {
-	if (mplat->running)
-		return 0;
-
 	int ret;
+
+	if (atomic_read(&mplat->running))
+		return 0;
 
 	/*
 	 * 1. power on, resume link if needed
@@ -1567,7 +1856,7 @@ int mhitest_prepare_start_mhi(struct mhitest_platform *mplat)
 		pr_err("Error ret: %d\n", ret);
 		goto out;
 	}
-	mplat->running = true;
+	atomic_set(&mplat->running, 1);
 
 out:
 	return ret;
@@ -1585,7 +1874,7 @@ static ssize_t state_show(struct device *dev,
 	if (!mplat)
 		return -ENOENT;
 
-	return sysfs_emit(buf, "%s\n", mplat->running ? "started" : "stopped");
+	return sysfs_emit(buf, "%s\n", atomic_read(&mplat->running) ? "started" : "stopped");
 }
 
 static ssize_t state_store(struct device *dev,
@@ -1606,13 +1895,13 @@ static ssize_t state_store(struct device *dev,
 			pr_err("Error preapare start mhi  ret:%d\n", ret);
 		}
 	} else if (sysfs_streq(buf, "stop")) {
-		if (mplat->running) {
+		if (atomic_read(&mplat->running)) {
 			mhitest_pci_soc_reset(mplat);
 			mhitest_pci_set_mhi_state(mplat, MHI_POWER_OFF);
 			mhitest_pci_set_mhi_state(mplat, MHI_DEINIT);
-			mplat->running = false;
+			atomic_set(&mplat->running, 0);
 			mhitest_global_soc_reset(mplat);
-			msleep(2000);
+			msleep(1000);
 			mhitest_reset_mhi_state(mplat);
 		}
 	} else {
@@ -1677,11 +1966,18 @@ int mhitest_pci_probe(struct pci_dev *pci_dev, const struct pci_device_id *id)
 	if (ret)
 		goto free_mplat;
 
+	/* Initialize recovery synchronization */
+	atomic_set(&mplat->recovery_in_progress, 0);
+	init_completion(&mplat->recovery_complete);
+
 	mhitest_store_mplat(mplat);
 
 	if (mplat->device_id == QCN92XX_DEVICE_ID)
 		snprintf(mplat->fw_name, sizeof(mplat->fw_name),
 			 QCN9224_DEFAULT_FW_FILE_NAME);
+	else if (mplat->device_id == QCC20XX_DEVICE_ID)
+		snprintf(mplat->fw_name, sizeof(mplat->fw_name),
+			 QCC2072_DEFAULT_FW_FILE_NAME);
 	else if (mplat->device_id == QCN96XX_DEVICE_ID)
 		snprintf(mplat->fw_name, sizeof(mplat->fw_name),
 			 QCN9625_DEFAULT_FW_FILE_NAME);
@@ -1732,7 +2028,7 @@ fail_probe:
 
 void mhitest_pci_soc_reset(struct mhitest_platform *mplat)
 {
-	if (!mplat->running)
+	if (!atomic_read(&mplat->running))
 		return;
 
 	if (mhi_get_exec_env(mplat->mhi_ctrl) == MHI_EE_RDDM) {
@@ -1769,12 +2065,33 @@ void mhitest_pci_remove(struct pci_dev *pci_dev)
 	mplat = get_mhitest_mplat_by_pcidev(pci_dev);
 	if (mplat) {
 		pr_debug("Going for shutdown\n");
-		if (mplat->running) {
-			mhitest_pci_soc_reset(mplat);
-			mhitest_pci_set_mhi_state(mplat, MHI_POWER_OFF);
-			mhitest_pci_set_mhi_state(mplat, MHI_DEINIT);
-			mplat->running = false;
+
+		/* CRITICAL: Set running=false FIRST to prevent new callbacks
+		 * from queuing new work. Atomic operations have implicit memory
+		 * barriers, so no explicit barriers needed.
+		 */
+		atomic_set(&mplat->running, 0);
+
+		/* Wait for any in-progress recovery to complete before cleanup */
+		if (atomic_read(&mplat->recovery_in_progress)) {
+			pr_info("Waiting for recovery to complete...\n");
+			wait_for_completion_timeout(&mplat->recovery_complete,
+						    msecs_to_jiffies(30000)); /* 30s timeout */
 		}
+
+		/* Now cancel and flush any pending work. Since running=false,
+		 * no new work can be queued by callbacks during or after this.
+		 */
+		if (mplat->event_wq) {
+			pr_info("Cancelling pending recovery work\n");
+			cancel_work_sync(&mplat->event_work);
+			flush_workqueue(mplat->event_wq);
+		}
+
+		/* Safe to cleanup resources - no work can access them anymore */
+		mhitest_pci_soc_reset(mplat);
+		mhitest_pci_set_mhi_state(mplat, MHI_POWER_OFF);
+		mhitest_pci_set_mhi_state(mplat, MHI_DEINIT);
 
 		mhitest_pci_remove_all(mplat);
 		mhitest_event_work_deinit(mplat);
@@ -1783,18 +2100,142 @@ void mhitest_pci_remove(struct pci_dev *pci_dev)
 	}
 }
 
+#if IS_ENABLED(CONFIG_PCIEAER)
+static const char *pcie_channel_state_to_string(pci_channel_state_t state)
+{
+	switch (state) {
+	case pci_channel_io_normal:
+		return "pci_channel_io_normal";
+	break;
+	case pci_channel_io_frozen:
+		return "pci_channel_io_frozen";
+	break;
+	case pci_channel_io_perm_failure:
+		return "pci_channel_io_perm_failure";
+	break;
+	}
+
+	return "Invalid state";
+}
+
+static pci_ers_result_t
+mhitest_pci_error_detected(struct pci_dev *pdev, pci_channel_state_t state)
+{
+	struct mhitest_platform *mplat;
+	int ret;
+
+	mplat = get_mhitest_mplat_by_pcidev(pdev);
+	if (!mplat) {
+		pr_err("Failed to get mhitest platform data\n");
+		return PCI_ERS_RESULT_DISCONNECT;
+	}
+
+	pr_info("%s pci channel state:%s\n", __func__, pcie_channel_state_to_string(state));
+	switch (state) {
+	/* Link down error */
+	case pci_channel_io_frozen:
+		ret = mhitest_pci_get_link_status(mplat);
+		if (ret) {
+			if (ret == PCIBIOS_DEVICE_NOT_FOUND) {
+				ret = pci_load_saved_state(pdev, mplat->pci_dev_default_state);
+				if (ret) {
+					pr_err("Failed to load the default state, ret:%d\n", ret);
+					return PCI_ERS_RESULT_DISCONNECT;
+				}
+				mplat->pci_dev_saved_state = pci_store_saved_state(pdev);
+				return PCI_ERS_RESULT_CAN_RECOVER;
+			}
+			pr_err("Failed to get pci link status:%d\n", ret);
+		}
+	break;
+	}
+
+	return PCI_ERS_RESULT_NONE;
+}
+
+static void mhitest_pci_resume(struct pci_dev *pdev)
+{
+	struct mhi_controller *mhi_ctrl;
+	struct mhitest_platform *mplat;
+	enum mhi_ee_type mhi_ee;
+	struct device *dev;
+	int retry = 0;
+	int ret;
+
+	mplat = get_mhitest_mplat_by_pcidev(pdev);
+	if (!mplat) {
+		pr_err("Failed to get mhitest platform data\n");
+		return;
+	}
+
+	ret = mhitest_pci_get_link_status(mplat);
+	if (ret) {
+		pr_err("Error not able to get pci link status:%d\n", ret);
+		return;
+	}
+
+	if (mplat->def_link_speed && mplat->def_link_width)
+		pr_info("AER Error recovered, now link is up");
+
+	pr_info("LINK RECOVERED - [%x:%04u:%02u:%02u] speed: GEN%d, width:x%d",
+		pdev->device,
+		pdev->bus->domain_nr,
+		pdev->bus->number,
+		PCI_SLOT(pdev->devfn),
+		mplat->def_link_speed,
+		mplat->def_link_width);
+
+	/* Restore the config space */
+	pci_load_and_free_saved_state(pdev, &mplat->pci_dev_saved_state);
+	pci_restore_state(pdev);
+
+	mhi_ctrl = mplat->mhi_ctrl;
+	dev = &mhi_ctrl->mhi_dev->dev;
+	pdev = to_pci_dev(mhi_ctrl->cntrl_dev);
+
+retry:
+	/*
+	 * After PCIe link resumes, 20 to 400 ms delay is observerved
+	 * before device moves to RDDM.
+	 */
+	msleep(RDDM_LINK_RECOVERY_RETRY_DELAY_MS);
+	mhi_ee = mhi_get_exec_env(mhi_ctrl);
+	if (mhi_ee == MHI_EE_RDDM) {
+		dev_info(dev, "Successfully moved to RDDM state\n");
+	} else if (retry++ < RDDM_LINK_RECOVERY_RETRY) {
+		goto retry;
+	} else {
+		dev_err(dev,
+			"Failed to move to RDDM state. Current EE state %s\n",
+			TO_MHI_EXEC_STR(mhi_ee));
+	}
+}
+#endif
+
 static const struct pci_device_id mhitest_pci_id_table[] = {
 	{QTI_PCI_VENDOR_ID, QCN90XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
 	{QTI_PCI_VENDOR_ID, QCN92XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
+	{QTI_PCI_VENDOR_ID, QCC20XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
 	{QTI_PCI_VENDOR_ID, QCN96XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
 	{QTI_PCI_VENDOR_ID, QCN95XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
+	{}
 };
+
+#if IS_ENABLED(CONFIG_PCIEAER)
+static const struct pci_error_handlers mhitest_pci_err_handler = {
+	.error_detected = mhitest_pci_error_detected,
+	.resume = mhitest_pci_resume,
+};
+#endif
 
 struct pci_driver mhitest_pci_driver = {
 	.name	  = "mhitest_pci",
 	.probe	  = mhitest_pci_probe,
 	.remove	  = mhitest_pci_remove,
 	.id_table = mhitest_pci_id_table,
+#if IS_ENABLED(CONFIG_PCIEAER)
+	.err_handler = &mhitest_pci_err_handler,
+#endif
 };
 
 int mhitest_pci_register(void)

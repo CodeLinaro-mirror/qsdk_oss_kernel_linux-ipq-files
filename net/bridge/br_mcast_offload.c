@@ -311,13 +311,16 @@ struct eht_snapshot *br_mcast_offload_eht_collect_snapshot(struct net_bridge_por
  *	Build netlink message from snapshot (no locks held)
  */
 int br_mcast_offload_mdb_fill_eht_hosts_from_snapshot(struct sk_buff *skb,
-		struct eht_snapshot *snapshot)
+		struct eht_snapshot *snapshot, u32 *idx)
 {
 	struct nlattr *nest, *host_nest, *src_nest, *src_entry_nest;
 	u32 i, j;
 	int addr_size;
 
 	if (!snapshot || !snapshot->num_hosts)
+		return 0;
+
+	if (*idx >= snapshot->num_hosts)
 		return 0;
 
 	switch (snapshot->proto) {
@@ -338,7 +341,7 @@ int br_mcast_offload_mdb_fill_eht_hosts_from_snapshot(struct sk_buff *skb,
 	if (!nest)
 		return -EMSGSIZE;
 
-	for (i = 0; i < snapshot->num_hosts; i++) {
+	for (i = *idx; i < snapshot->num_hosts; i++) {
 		struct eht_host_snapshot *host = &snapshot->hosts[i];
 
 		host_nest = nla_nest_start(skb, MDBA_MDB_EATTR_EHT_HOST_ENTRY);
@@ -391,6 +394,7 @@ int br_mcast_offload_mdb_fill_eht_hosts_from_snapshot(struct sk_buff *skb,
 	}
 
 	nla_nest_end(skb, nest);
+	*idx = i;
 	return 0;
 
 out_cancel_src:
@@ -398,7 +402,8 @@ out_cancel_src:
 out_cancel_host:
 	nla_nest_cancel(skb, host_nest);
 out_cancel:
-	nla_nest_cancel(skb, nest);
+	nla_nest_end(skb, nest);
+	*idx = i;
 	return -EMSGSIZE;
 }
 
@@ -541,6 +546,9 @@ static int br_mcast_offload_get_all_ips_for_mac(struct net_bridge_mcast *brmctx,
 				continue;
 
 			/* Found matching entry */
+			if (count >= max_ips)
+				break;
+
 			ip_list[count].proto = proto;
 			ip_list[count].vid = vid;
 
@@ -618,7 +626,7 @@ static bool br_mcast_offload_states_equal( enum br_mcast_filter mode1, const uni
  * Fills: consolidated_srcs with consolidated source list
  *	  consolidated_cnt with number of sources
  */
-static enum br_mcast_filter br_mcast_offload_consolidate_filter_modes(struct br_mcast_host_info *hosts, u32 host_count,
+static enum br_mcast_filter br_mcast_offload_consolidate_filter_modes(struct net_bridge *br, struct br_mcast_host_info *hosts, u32 host_count,
 						union nf_inet_addr *consolidated_srcs, u32 *consolidated_cnt, __be16 proto)
 {
 	bool has_exclude = false;
@@ -678,8 +686,12 @@ static enum br_mcast_filter br_mcast_offload_consolidate_filter_modes(struct br_
 			/* Mixed INCLUDE and EXCLUDE */
 			/* Result = EXCLUDE with (EXCLUDE sources - INCLUDE sources) */
 			/* First, collect all EXCLUDE sources */
-			union nf_inet_addr exclude_srcs[BR_MCAST_SRC_ENT_LIMIT];
+			union nf_inet_addr *exclude_srcs;
 			uint32_t exclude_cnt = 0;
+
+			/* Fetch and Initialize the memory for storing Exlude source list */
+			memset(br->g_mcast_params.g_exclude_srcs, 0, BR_MCAST_SRC_ENT_LIMIT * sizeof(union nf_inet_addr));
+			exclude_srcs = br->g_mcast_params.g_exclude_srcs;
 
 			for (i = 0; i < host_count; i++) {
 				if (hosts[i].filter_mode == BR_MCAST_SRCLIST_EXCLUDE) {
@@ -838,12 +850,16 @@ static int br_mcast_offload_update_shared_mac_state(struct net_bridge_port_group
 	struct net_bridge *br = pg->key.port->br;
 	struct net_bridge_mcast *brmctx = &br->multicast_ctx;
 	struct br_mcast_shared_mac_state *state;
-	struct br_ip ip_list[BR_MCAST_SRC_ENT_LIMIT];
-	struct br_mcast_host_info hosts[BR_MCAST_SRC_ENT_LIMIT];
-	union nf_inet_addr consolidated_srcs[BR_MCAST_SRC_ENT_LIMIT];
+	struct br_ip *ip_list;
+	struct br_mcast_host_info *hosts;
+	union nf_inet_addr *consolidated_srcs;
 	enum br_mcast_filter consolidated_mode;
 	uint32_t consolidated_cnt, ip_count, host_count = 0, i;
 	int ret;
+
+	/* Fetch and Initialize the memory to store IP list */
+	memset(br->g_mcast_params.g_ip_list, 0, BR_MCAST_SRC_ENT_LIMIT * sizeof(struct br_ip));
+	ip_list = br->g_mcast_params.g_ip_list;
 
 	/* Get all IPs for this MAC */
 	ip_count = br_mcast_offload_get_all_ips_for_mac(brmctx, mac, proto, vid, ifindex, ip_list, BR_MCAST_SRC_ENT_LIMIT);
@@ -853,6 +869,10 @@ static int br_mcast_offload_update_shared_mac_state(struct net_bridge_port_group
 		pr_debug("Shared MAC: Cannot find Hosts for the given MAC=%pM\n", mac);
 		return -EINVAL;
 	}
+
+	/* Fetch and Initialize the memory to store the hosts info */
+	memset(br->g_mcast_params.g_hosts, 0, BR_MCAST_SRC_ENT_LIMIT * sizeof(struct br_mcast_host_info));
+	hosts = br->g_mcast_params.g_hosts;
 
 	/* Get host info for each IP */
 	for (i = 0; i < ip_count; i++) {
@@ -867,9 +887,12 @@ static int br_mcast_offload_update_shared_mac_state(struct net_bridge_port_group
 		return 0;
 	}
 
+	/* Fetch and Initialize the memory to store the consolidated Sources */
+	memset(br->g_mcast_params.g_consolidated_srcs, 0, BR_MCAST_SRC_ENT_LIMIT * sizeof(union nf_inet_addr));
+	consolidated_srcs = br->g_mcast_params.g_consolidated_srcs;
+
 	/* Consolidate filter modes and source lists */
-	pr_debug("update_shared_mac_state: HOST Count = %d\n", host_count);
-	consolidated_mode = br_mcast_offload_consolidate_filter_modes(hosts, host_count, consolidated_srcs, &consolidated_cnt, proto);
+	consolidated_mode = br_mcast_offload_consolidate_filter_modes(br, hosts, host_count, consolidated_srcs, &consolidated_cnt, proto);
 
 	/* Look up existing state */
 	state = br_mcast_offload_shared_mac_state_lookup(brmctx, mac, proto, grp_ip, vid, ifindex);
@@ -1362,14 +1385,14 @@ static int br_mcast_offload_send_del_event(void *port_data, void *host_addr)
 	struct net_bridge_port_group *pg = (struct net_bridge_port_group *)port_data;
 	union net_bridge_eht_addr *h_addr = (union net_bridge_eht_addr *)host_addr;
 	struct net_bridge *br;
-	struct br_mcast_event grp_event;
+	struct br_mcast_event *grp_event;
+	struct net_bridge_mcast_port *pmctx;
 	struct net_bridge_mcast *brmctx;
 	struct br_ip host;
 	bool shared_mac;
 	enum br_mcast_event_type actual_event;
 	int event = 0, ret;
 
-	memset(&grp_event, 0, sizeof(grp_event));
 	memset(&host, 0, sizeof(struct br_ip));
 
 	if (!pg || !pg->key.port || !h_addr) {
@@ -1387,10 +1410,17 @@ static int br_mcast_offload_send_del_event(void *port_data, void *host_addr)
 	 * Dont send the DEL Event if FLUSH ALL Event
 	 * is already triggered for this port.
 	 */
-	if (pg->key.port->mcast_flush_all) {
+	pmctx = &pg->key.port->multicast_ctx;
+	if (pmctx->mcast_flush_all) {
 		pr_debug("Delete Send: Flush ALL event already triggered for this PORT\n");
 		return 0;
 	}
+
+	/*
+	 * Fetch and Initialize the Memory for Sending event notification.
+	 */
+	memset(&br->g_mcast_params.g_grp_event, 0, sizeof(struct br_mcast_event));
+	grp_event = &br->g_mcast_params.g_grp_event;
 
 	brmctx = &br->multicast_ctx;
 	host.proto = pg->key.addr.proto;
@@ -1402,19 +1432,33 @@ static int br_mcast_offload_send_del_event(void *port_data, void *host_addr)
 	if (br_mcast_offload_ip_map_lookup(brmctx, &host,
 					   pg->key.port->dev->ifindex,
 					   pg->key.addr.vid,
-					   grp_event.host_mac, &shared_mac)) {
+					   grp_event->host_mac, &shared_mac)) {
 		pr_debug("Delete Send: Unable to look up the HOST MAC address from the db\n");
 		return -EINVAL;
 	}
 
-	grp_event.ifindex = pg->key.port->dev->ifindex;
+	grp_event->ifindex = pg->key.port->dev->ifindex;
+
+	/*
+	 * Extract the VLAN IDs.
+	 */
+	if (is_vlan_dev(pg->key.port->dev)) {
+		struct net_device *vdev = pg->key.port->dev;
+		struct net_device *next_dev = vlan_dev_next_dev(vdev);
+
+		grp_event->inner_vid = vlan_dev_vlan_id(vdev);
+		if (is_vlan_dev(next_dev)) {
+			grp_event->outer_vid = vlan_dev_vlan_id(next_dev);
+		}
+	}
+
 	if (pg->key.addr.proto == htons(ETH_P_IP)) {
-		grp_event.is_v4 = true;
-		grp_event.grp_ip.ip = pg->key.addr.dst.ip4;
+		grp_event->is_v4 = true;
+		grp_event->grp_ip.ip = pg->key.addr.dst.ip4;
 #if IS_ENABLED(CONFIG_IPV6)
 	} else {
-		grp_event.is_v4 = false;
-		grp_event.grp_ip.in6 = pg->key.addr.dst.ip6;
+		grp_event->is_v4 = false;
+		grp_event->grp_ip.in6 = pg->key.addr.dst.ip6;
 #endif
 	}
 
@@ -1422,10 +1466,9 @@ static int br_mcast_offload_send_del_event(void *port_data, void *host_addr)
 		/* Handle shared MAC - consolidate all hosts */
 		struct br_mcast_shared_mac_state *state;
 
-		pr_debug("Delete Send: Shared MAC is true\n");
-		ret = br_mcast_offload_update_shared_mac_state(pg, grp_event.host_mac, &grp_event.grp_ip,
+		ret = br_mcast_offload_update_shared_mac_state(pg, grp_event->host_mac, &grp_event->grp_ip,
 								pg->key.addr.proto, pg->key.addr.vid,
-								grp_event.ifindex, &actual_event);
+								grp_event->ifindex, &actual_event);
 		if (ret)
 			return ret;
 
@@ -1435,8 +1478,8 @@ static int br_mcast_offload_send_del_event(void *port_data, void *host_addr)
                 }
 
 		/* Get the consolidated state */
-		state = br_mcast_offload_shared_mac_state_lookup(brmctx, grp_event.host_mac, pg->key.addr.proto,
-							&grp_event.grp_ip, pg->key.addr.vid, grp_event.ifindex);
+		state = br_mcast_offload_shared_mac_state_lookup(brmctx, grp_event->host_mac, pg->key.addr.proto,
+							&grp_event->grp_ip, pg->key.addr.vid, grp_event->ifindex);
 
 		if (!state && actual_event != BR_MCAST_EVENT_DEL) {
 			pr_debug("Delete Send: Failed to find shared MAC state\n");
@@ -1445,26 +1488,32 @@ static int br_mcast_offload_send_del_event(void *port_data, void *host_addr)
 
 		if (actual_event == BR_MCAST_EVENT_DEL) {
 			/* All hosts left - send DEL */
-			grp_event.src_filter = BR_MCAST_SRCLIST_INCLUDE;
-			grp_event.src_cnt = 0;
+			grp_event->src_filter = BR_MCAST_SRCLIST_INCLUDE;
+			grp_event->src_cnt = 0;
 			event = BR_MCAST_EVENT_DEL;
+
+			/* Free the consolidated state */
+			if (state) {
+				hlist_del_rcu(&state->hlist);
+				kfree_rcu(state, rcu);
+			}
 		} else {
 			/* Send consolidated state */
 			if ((state->filter_mode == BR_MCAST_SRCLIST_EXCLUDE) && (!state->src_cnt)) {
-				grp_event.src_filter = BR_MCAST_SRCLIST_IGNORE;
-				grp_event.src_cnt = 0;
+				grp_event->src_filter = BR_MCAST_SRCLIST_IGNORE;
+				grp_event->src_cnt = 0;
 			} else {
-				grp_event.src_filter = state->filter_mode;
-				grp_event.src_cnt = state->src_cnt;
-				memcpy(grp_event.src_list, state->src_list, state->src_cnt * sizeof(union nf_inet_addr));
+				grp_event->src_filter = state->filter_mode;
+				grp_event->src_cnt = state->src_cnt;
+				memcpy(grp_event->src_list, state->src_list, state->src_cnt * sizeof(union nf_inet_addr));
 			}
 
 			event = actual_event;
 		}
 	} else {
 		/* Single host - use existing logic */
-		grp_event.src_filter = BR_MCAST_SRCLIST_INCLUDE;
-		grp_event.src_cnt = 0;
+		grp_event->src_filter = BR_MCAST_SRCLIST_INCLUDE;
+		grp_event->src_cnt = 0;
 		event = pg->eht_event;
 	}
 
@@ -1472,7 +1521,7 @@ static int br_mcast_offload_send_del_event(void *port_data, void *host_addr)
 	 * This Notifier is invoked inside a spinlock.
 	 * The Receiver of this notification is expected to not call sleeping functions.
 	 */
-	atomic_notifier_call_chain(&br_mcast_event_notifier_list, event, (void *)&grp_event);
+	atomic_notifier_call_chain(&br_mcast_event_notifier_list, event, (void *)grp_event);
 	return 0;
 }
 
@@ -1485,14 +1534,13 @@ static int br_mcast_offload_send_update_event(void *port_data, void *host_addr)
 	struct net_bridge_port_group *pg = (struct net_bridge_port_group *)port_data;
 	union net_bridge_eht_addr *h_addr = (union net_bridge_eht_addr *)host_addr;
 	struct net_bridge *br;
-	struct br_mcast_event grp_event;
+	struct br_mcast_event *grp_event;
 	struct net_bridge_mcast *brmctx;
 	struct br_ip host;
 	bool shared_mac = false;
 	enum br_mcast_event_type actual_event;
 	int event = 0, ret;
 
-	memset(&grp_event, 0, sizeof(grp_event));
 	memset(&host, 0, sizeof(struct br_ip));
 
 	if (!pg || !pg->key.port || !h_addr) {
@@ -1506,25 +1554,45 @@ static int br_mcast_offload_send_update_event(void *port_data, void *host_addr)
 		return -EINVAL;
 	}
 
+	/*
+	 * Fetch and Initialize the Memory for Sending event notification.
+	 */
+	memset(&br->g_mcast_params.g_grp_event, 0, sizeof(struct br_mcast_event));
+	grp_event = &br->g_mcast_params.g_grp_event;
+
 	brmctx = &br->multicast_ctx;
 	host.proto = pg->key.addr.proto;
 	memcpy(&host.src, h_addr, sizeof(host.src));
 
 	/* Fetch the Host's MAC address */
 	if (br_mcast_offload_ip_map_lookup(brmctx, &host, pg->key.port->dev->ifindex, pg->key.addr.vid,
-						grp_event.host_mac, &shared_mac)) {
+						grp_event->host_mac, &shared_mac)) {
 		pr_debug("Update Send: Unable to look up the HOST MAC address from the db\n");
 		return -EINVAL;
 	}
 
-	grp_event.ifindex = pg->key.port->dev->ifindex;
+	grp_event->ifindex = pg->key.port->dev->ifindex;
+
+	/*
+	 * Extract the VLAN IDs.
+	 */
+	if (is_vlan_dev(pg->key.port->dev)) {
+		struct net_device *vdev = pg->key.port->dev;
+		struct net_device *next_dev = vlan_dev_next_dev(vdev);
+
+		grp_event->inner_vid = vlan_dev_vlan_id(vdev);
+		if (is_vlan_dev(next_dev)) {
+			grp_event->outer_vid = vlan_dev_vlan_id(next_dev);
+		}
+	}
+
 	if (pg->key.addr.proto == htons(ETH_P_IP)) {
-		grp_event.is_v4 = true;
-		grp_event.grp_ip.ip = pg->key.addr.dst.ip4;
+		grp_event->is_v4 = true;
+		grp_event->grp_ip.ip = pg->key.addr.dst.ip4;
 #if IS_ENABLED(CONFIG_IPV6)
 	} else {
-		grp_event.is_v4 = false;
-		grp_event.grp_ip.in6 = pg->key.addr.dst.ip6;
+		grp_event->is_v4 = false;
+		grp_event->grp_ip.in6 = pg->key.addr.dst.ip6;
 #endif
 	}
 
@@ -1532,10 +1600,9 @@ static int br_mcast_offload_send_update_event(void *port_data, void *host_addr)
 		/* Handle shared MAC - consolidate all hosts */
 		struct br_mcast_shared_mac_state *state;
 
-		pr_debug("Update Send: Shared MAC is true\n");
-		ret = br_mcast_offload_update_shared_mac_state(pg, grp_event.host_mac, &grp_event.grp_ip,
+		ret = br_mcast_offload_update_shared_mac_state(pg, grp_event->host_mac, &grp_event->grp_ip,
 								pg->key.addr.proto, pg->key.addr.vid,
-								grp_event.ifindex, &actual_event);
+								grp_event->ifindex, &actual_event);
 		if (ret)
 			return ret;
 
@@ -1545,8 +1612,8 @@ static int br_mcast_offload_send_update_event(void *port_data, void *host_addr)
 		}
 
 		/* Get the consolidated state */
-		state = br_mcast_offload_shared_mac_state_lookup(brmctx, grp_event.host_mac, pg->key.addr.proto,
-							&grp_event.grp_ip, pg->key.addr.vid, grp_event.ifindex);
+		state = br_mcast_offload_shared_mac_state_lookup(brmctx, grp_event->host_mac, pg->key.addr.proto,
+							&grp_event->grp_ip, pg->key.addr.vid, grp_event->ifindex);
 
 		if (!state && actual_event != BR_MCAST_EVENT_DEL) {
 			pr_debug("Update Send: Failed to find shared MAC state\n");
@@ -1560,12 +1627,12 @@ static int br_mcast_offload_send_update_event(void *port_data, void *host_addr)
 		} else {
 			/* Send consolidated state */
 			if ((state->filter_mode == BR_MCAST_SRCLIST_EXCLUDE) && (!state->src_cnt)) {
-				grp_event.src_filter = BR_MCAST_SRCLIST_IGNORE;
-				grp_event.src_cnt = 0;
+				grp_event->src_filter = BR_MCAST_SRCLIST_IGNORE;
+				grp_event->src_cnt = 0;
 			} else {
-				grp_event.src_filter = state->filter_mode;
-				grp_event.src_cnt = state->src_cnt;
-				memcpy(grp_event.src_list, state->src_list, state->src_cnt * sizeof(union nf_inet_addr));
+				grp_event->src_filter = state->filter_mode;
+				grp_event->src_cnt = state->src_cnt;
+				memcpy(grp_event->src_list, state->src_list, state->src_cnt * sizeof(union nf_inet_addr));
 			}
 
 			event = actual_event;
@@ -1587,13 +1654,13 @@ static int br_mcast_offload_send_update_event(void *port_data, void *host_addr)
 			return -EINVAL;
 		}
 
-		grp_event.src_cnt = eht_host->num_entries;
+		grp_event->src_cnt = eht_host->num_entries;
 		switch (eht_host->filter_mode) {
 		case MCAST_INCLUDE:
-			grp_event.src_filter = BR_MCAST_SRCLIST_INCLUDE;
+			grp_event->src_filter = BR_MCAST_SRCLIST_INCLUDE;
 			break;
 		case MCAST_EXCLUDE:
-			grp_event.src_filter = eht_host->num_entries ? BR_MCAST_SRCLIST_EXCLUDE : BR_MCAST_SRCLIST_IGNORE;
+			grp_event->src_filter = eht_host->num_entries ? BR_MCAST_SRCLIST_EXCLUDE : BR_MCAST_SRCLIST_IGNORE;
 			break;
 		default:
 			pr_debug("Update Send: Invalid Filter mode used by EHT host db\n");
@@ -1603,15 +1670,15 @@ static int br_mcast_offload_send_update_event(void *port_data, void *host_addr)
 		if (pg->key.addr.proto == htons(ETH_P_IP)) {
 			hlist_for_each_entry(entry, &eht_host->set_entries, host_list) {
 				if (entry->eht_set->src_addr.ip4) {
-					grp_event.src_list[i].ip = entry->eht_set->src_addr.ip4;
+					grp_event->src_list[i].ip = entry->eht_set->src_addr.ip4;
 					i++;
 				}
 			}
 #if IS_ENABLED(CONFIG_IPV6)
 		} else {
 			hlist_for_each_entry(entry, &eht_host->set_entries, host_list) {
-				if (ipv6_addr_any(&entry->eht_set->src_addr.ip6)) {
-					grp_event.src_list[i].in6 = entry->eht_set->src_addr.ip6;
+				if (!ipv6_addr_any(&entry->eht_set->src_addr.ip6)) {
+					grp_event->src_list[i].in6 = entry->eht_set->src_addr.ip6;
 					i++;
 				}
 			}
@@ -1625,7 +1692,7 @@ static int br_mcast_offload_send_update_event(void *port_data, void *host_addr)
 	 * This Notifier is invoked inside a spinlock.
 	 * The Receiver of this notification is expected to not call sleeping functions.
 	 */
-	atomic_notifier_call_chain(&br_mcast_event_notifier_list, event, (void *)&grp_event);
+	atomic_notifier_call_chain(&br_mcast_event_notifier_list, event, (void *)grp_event);
 	return 0;
 }
 
@@ -1636,16 +1703,36 @@ static int br_mcast_offload_send_update_event(void *port_data, void *host_addr)
 static int br_mcast_offload_send_flush_all_event(void *port_data)
 {
 	struct net_bridge_port *port = (struct net_bridge_port *)port_data;
-	struct br_mcast_event grp_event;
+	struct net_bridge *br;
+	struct br_mcast_event *grp_event;
 	int event;
 
-	if (!port || !port->dev) {
+	if (!port || !port->dev || !port->br) {
 		pr_debug("br_mcast: Invalid port in flush_all_event\n");
 		return -EINVAL;
 	}
 
-	memset(&grp_event, 0, sizeof(grp_event));
-	grp_event.ifindex = port->dev->ifindex;
+	/*
+	 * Fetch and Initialize the Memory for Sending event notification.
+	 */
+	br = port->br;
+	memset(&br->g_mcast_params.g_grp_event, 0, sizeof(struct br_mcast_event));
+	grp_event = &br->g_mcast_params.g_grp_event;
+
+	grp_event->ifindex = port->dev->ifindex;
+
+	/*
+	 * Extract the VLAN IDs.
+	 */
+	if (is_vlan_dev(port->dev)) {
+		struct net_device *vdev = port->dev;
+		struct net_device *next_dev = vlan_dev_next_dev(vdev);
+
+		grp_event->inner_vid = vlan_dev_vlan_id(vdev);
+		if (is_vlan_dev(next_dev)) {
+			grp_event->outer_vid = vlan_dev_vlan_id(next_dev);
+		}
+	}
 
 	event = BR_MCAST_EVENT_FLUSH_ALL;
 
@@ -1653,7 +1740,7 @@ static int br_mcast_offload_send_flush_all_event(void *port_data)
 	 * This Notifier is invoked inside a spinlock.
 	 * The Receiver of this notification is expected to not call sleeping functions.
 	 */
-	atomic_notifier_call_chain(&br_mcast_event_notifier_list, event, (void *)&grp_event);
+	atomic_notifier_call_chain(&br_mcast_event_notifier_list, event, (void *)grp_event);
 	return 0;
 }
 

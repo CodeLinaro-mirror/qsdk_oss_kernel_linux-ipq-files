@@ -535,6 +535,7 @@ void mhi_fuse_pci_remove(struct pci_dev *pci_dev)
 
 static const struct pci_device_id mhi_fuse_pci_id_table[] = {
 	{QTI_PCI_VENDOR_ID, QCN92XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
+	{}
 };
 
 struct pci_driver mhi_fuse_pci_driver = {
