@@ -1414,8 +1414,9 @@
 			compatible = "qcom,ipq5210-nsscc";
 			reg = <0x39b00000 0x100000>;
 			clocks = <&xo>,
-				 <&cmn_pll IPQ5210_NSS_CLK>,
+				 /* IPQ5210 use the reversed NSS & PPE clocks from CMN PLL. */
 				 <&cmn_pll IPQ5210_PPE_CLK>,
+				 <&cmn_pll IPQ5210_NSS_CLK>,
 				 <&gcc_gpll0_out_aux>,
 				 <&ess_uniphy 0>,
 				 <&ess_uniphy 1>,
