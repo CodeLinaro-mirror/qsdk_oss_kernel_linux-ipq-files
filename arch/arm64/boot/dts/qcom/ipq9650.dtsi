@@ -1404,7 +1404,7 @@
 		};
 
 		qusb_phy_1: phy@71000 {
-			compatible = "qcom,ipq9650-qusb2-phy";
+			compatible = "qcom,ipq9650-usb-hs-phy";
 			reg = <0x071000 0x114>;
 			#phy-cells = <0>;
 
@@ -1463,7 +1463,7 @@
 		};
 
 		qusb_phy_0: phy@7b000 {
-			compatible = "qcom,ipq9650-qusb2-phy";
+			compatible = "qcom,ipq9650-usb-hs-phy";
 			reg = <0x07b000 0x114>;
 			#phy-cells = <0>;
 
