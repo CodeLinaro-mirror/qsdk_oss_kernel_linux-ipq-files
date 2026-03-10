@@ -142,11 +142,27 @@
 		/* Listed all supported CPU frequencies and opp-supported-hw
 		 * values to select CPU frequencies based on the PLL LValue.
 		 * ------------------------------------------------------------
-		 * Frequency     1.2GHz	   1.4GHz	opp-supported-hw
+		 * Frequency     1.2GHz   1.4GHz	opp-supported-hw
 		 * ------------------------------------------------------------
+		 * 816000000       1	      1			0x3
+		 * 1008000000	   1	      1			0x3
 		 * 1200000000      1	      1			0x3
 		 * 1416000000      0	      1			0x1
 		 * -----------------------------------------------------------*/
+
+		opp-816000000 {
+			opp-hz = /bits/ 64 <816000000>;
+			opp-supported-hw = <0x3>;
+			opp-microvolt = <850000>;
+			clock-latency-ns = <200000>;
+		};
+
+		opp-1008000000 {
+			opp-hz = /bits/ 64 <1008000000>;
+			opp-supported-hw = <0x3>;
+			opp-microvolt = <850000>;
+			clock-latency-ns = <200000>;
+		};
 
 		opp-1200000000 {
 			opp-hz = /bits/ 64 <1200000000>;
