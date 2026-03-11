@@ -877,7 +877,7 @@ static void *prime_rproc_da_to_va(struct rproc *rproc, u64 da, /**< Device Addre
 
 	//Alow overflow of PDMEM into MLM region if using prime->mem_size (Carvout size vs pdmem_size)
 	if (offset < 0 || offset + len > prime->pdmem_size) {
-		dev_err(prime->dev, "da[0x%llX] + len[0x%lX] > 0x%zX\n", da, len, prime->pdmem_size);
+		dev_err(prime->dev, "da[0x%llX] + len[0x%zX] > 0x%zX\n", da, len, prime->pdmem_size);
 		return NULL;
 	}
 
@@ -1075,7 +1075,6 @@ static int prime_mem_mmap(struct file *file, struct vm_area_struct *vma)
 static long prime_mem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	struct qcom_prime *prime = file->private_data;
-	int ret;
 
 	switch (cmd) {
 	case PRIME_MEM_GET_REGION: {
@@ -1234,6 +1233,7 @@ static long prime_mem_ioctl(struct file *file, unsigned int cmd, unsigned long a
 						dev_dbg(prime->dev, "Mapped DMA SG[%d]: 0x%08llx (%d bytes)\n", sg_idx,
 							(uint64_t)sg_dma_address(sg), sg_dma_len(sg));
 						mem_data.device_dma_base_addr = (uint64_t)sg_dma_address(sg);
+#if IS_ENABLED(CONFIG_QCOM_SECURE_BUFFER)
 						if(prime->config_mmu)
 						{
 							#define QCOM_SCM_VMID_PRIME (93)
@@ -1242,6 +1242,7 @@ static long prime_mem_ioctl(struct file *file, unsigned int cmd, unsigned long a
 							u32 *src_vmids;
 							void *buf;
 							size_t buf_size;
+							int ret;
 
 							/* Allocate single buffer for all structures */
 							buf_size = sizeof(*mem_region) + sizeof(u32) + 2 * sizeof(*dest_perms);
@@ -1290,14 +1291,17 @@ static long prime_mem_ioctl(struct file *file, unsigned int cmd, unsigned long a
 								return ret;
 							}
 						}
+#endif
 					}
 				}
 				break;
 			case PRIME_MEM_DMA_FREE:
 				{
+#if IS_ENABLED(CONFIG_QCOM_SECURE_BUFFER)
 					if(prime->config_mmu)
 					{
 						int sg_idx;
+						int ret;
 						struct scatterlist *sg;
 						for_each_sgtable_dma_sg (mem_data.sg_table, sg, sg_idx) {
 							dev_dbg(prime->dev, "Unmapping DMA SG[%d]: 0x%08llx (%d bytes)\n", sg_idx,
@@ -1346,6 +1350,7 @@ static long prime_mem_ioctl(struct file *file, unsigned int cmd, unsigned long a
 							}
 						}
 					}
+#endif
 					dma_buf_unmap_attachment(mem_data.dma_attachment, mem_data.sg_table,
 								(enum dma_data_direction)mem_data.direction);
 					dma_buf_detach(mem_data.dma_buf, mem_data.dma_attachment);
@@ -1600,7 +1605,7 @@ static int prime_init_mmio(struct platform_device *pdev, struct qcom_prime *prim
 #endif /* BUILDROOT */
 
 
-	dev_dbg(dev, "Remapped PRIME memory to 0x%08llx from 0x%08llx", (uint64_t)prime->reg_ss_base, (uint64_t)pss->start);
+	dev_dbg(dev, "Remapped PRIME memory to 0x%px from 0x%pax", &prime->reg_ss_base, &pss->start);
 
 	/* get the interrupt exposed by PRIME */
 	int irq = platform_get_irq_byname(pdev, "boot-done");
@@ -1612,7 +1617,7 @@ static int prime_init_mmio(struct platform_device *pdev, struct qcom_prime *prim
 	prime->prime_boot_done_irq = irq;
 
 	/* setup interrupt handling */
-	ret = devm_request_threaded_irq(dev, prime->prime_boot_done_irq, NULL, prime_irq_boot_done, IRQF_TRIGGER_RISING | IRQF_ONESHOT, pdev->name, prime);
+	ret = devm_request_threaded_irq(dev, prime->prime_boot_done_irq, NULL, prime_irq_boot_done, IRQF_TRIGGER_RISING | IRQF_ONESHOT, "prime boot-done", prime);
 	if (ret) {
 		dev_dbg(dev, "Unable to register IRQ %d (error: %d)", irq, ret);
 		goto r_unmap;
@@ -1628,7 +1633,7 @@ static int prime_init_mmio(struct platform_device *pdev, struct qcom_prime *prim
 	prime->prime_task_done_irq = irq;
 
 	/* setup interrupt handling */
-	ret = devm_request_threaded_irq(dev, prime->prime_task_done_irq, NULL, prime_irq_task_done, IRQF_TRIGGER_RISING | IRQF_ONESHOT, pdev->name, prime);
+	ret = devm_request_threaded_irq(dev, prime->prime_task_done_irq, NULL, prime_irq_task_done, IRQF_TRIGGER_RISING | IRQF_ONESHOT, "prime task-done", prime);
 	if (ret) {
 		dev_dbg(dev, "Unable to register IRQ %d (error: %d)", irq, ret);
 		goto r_boot_irq;
@@ -1644,7 +1649,7 @@ static int prime_init_mmio(struct platform_device *pdev, struct qcom_prime *prim
 	prime->prime_error_irq = irq;
 
 	/* setup error interrupt handling */
-	ret = devm_request_threaded_irq(dev, prime->prime_error_irq, NULL, prime_irq_error, IRQF_TRIGGER_RISING | IRQF_ONESHOT, pdev->name, prime);
+	ret = devm_request_threaded_irq(dev, prime->prime_error_irq, NULL, prime_irq_error, IRQF_TRIGGER_RISING | IRQF_ONESHOT, "prime error", prime);
 	if (ret) {
 		dev_dbg(dev, "Unable to register error IRQ %d (error: %d)", irq, ret);
 		goto r_task_irq;
@@ -1660,7 +1665,7 @@ static int prime_init_mmio(struct platform_device *pdev, struct qcom_prime *prim
 	prime->prime_wdog_irq = irq;
 
 	/* setup wdog interrupt handling */
-	ret = devm_request_threaded_irq(dev, prime->prime_wdog_irq, NULL, prime_irq_wdog, IRQF_TRIGGER_RISING | IRQF_ONESHOT, pdev->name, prime);
+	ret = devm_request_threaded_irq(dev, prime->prime_wdog_irq, NULL, prime_irq_wdog, IRQF_TRIGGER_RISING | IRQF_ONESHOT, "prime wdog", prime);
 	if (ret) {
 		dev_dbg(dev, "Unable to register wdog IRQ %d (error: %d)", irq, ret);
 		goto r_error_irq;
@@ -1676,7 +1681,7 @@ static int prime_init_mmio(struct platform_device *pdev, struct qcom_prime *prim
 	prime->prime_misc_irq = irq;
 
 	/* setup misc interrupt handling */
-	ret = devm_request_threaded_irq(dev, prime->prime_misc_irq, NULL, prime_irq_misc, IRQF_TRIGGER_RISING | IRQF_ONESHOT, pdev->name, prime);
+	ret = devm_request_threaded_irq(dev, prime->prime_misc_irq, NULL, prime_irq_misc, IRQF_TRIGGER_RISING | IRQF_ONESHOT, "prime misc", prime);
 	if (ret) {
 		dev_dbg(dev, "Unable to register misc IRQ %d (error: %d)", irq, ret);
 		goto r_wdog_irq;
@@ -1742,6 +1747,10 @@ static int qcom_prime_probe(struct platform_device *pdev)
 #endif
 
 	fw_name = desc->firmware_name;
+
+	if (fw_name)
+		goto skip_fw_search;
+
 	ret = of_property_read_string(pdev->dev.of_node, "firmware-name", &fw_name);
 	if (ret < 0 && ret != -EINVAL && ret != -ENODATA) {
 		dev_err(dev, "Error reading firmware-name: %d\n", ret);
@@ -1764,7 +1773,7 @@ static int qcom_prime_probe(struct platform_device *pdev)
 		}
 	}
 
-
+skip_fw_search:
 	/* create an RPROC device */
 	rproc = rproc_alloc(&pdev->dev, pdev->name, &prime_rproc_ops, fw_name, sizeof(*prime));
 
@@ -1866,11 +1875,7 @@ r_rproc:
 	return ret;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
 static void qcom_prime_remove(struct platform_device *pdev)
-#else
-static int qcom_prime_remove(struct platform_device *pdev)
-#endif
 {
 	struct qcom_prime *prime = platform_get_drvdata(pdev);
 	int ret;
@@ -1915,9 +1920,6 @@ static int qcom_prime_remove(struct platform_device *pdev)
 	}
 	rproc_free(prime->rproc);
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 11, 0)
-	return 0;
-#endif
 }
 
 
@@ -1930,8 +1932,8 @@ static const struct prime_data prime_resource_init = {
 	.config_mmu = true,
 };
 
-static const struct prime_data prime_resource_init_xpu = {
-	.firmware_name = "qcom_prime.elf",
+static const struct prime_data prime_resource_init_ipq = {
+	.firmware_name = "qcom_prime_ipq.elf",
 	.pas_id = 81,
 	.ssr_name = "prime",
 	.auto_boot = false,
@@ -1954,7 +1956,7 @@ static const struct prime_data prime_resource_generic = {
 static const struct of_device_id prime_of_match[] = {
 	{ .compatible = "qcom,generic-primess-pas", .data = &prime_resource_generic },
 	{ .compatible = "qcom,sdxecho-primess-pas", .data = &prime_resource_init },
-	{ .compatible = "qcom,ipq9679-primess-pas", .data = &prime_resource_init_xpu },
+	{ .compatible = "qcom,ipq9650-primess-pas", .data = &prime_resource_init_ipq },
 	{},
 };
 MODULE_DEVICE_TABLE(of, prime_of_match);
@@ -1964,7 +1966,11 @@ MODULE_DEVICE_TABLE(of, prime_of_match);
  */
 static struct platform_driver prime_driver = {
 	.probe = qcom_prime_probe,
+#if LINUX_VERSION_CODE > KERNEL_VERSION(6, 11, 0)
 	.remove = qcom_prime_remove,
+#else
+	.remove_new = qcom_prime_remove,
+#endif
 	.driver = {
 		.name = "qcom_prime",
 		.of_match_table = prime_of_match,
