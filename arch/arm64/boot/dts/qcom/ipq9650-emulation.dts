@@ -398,7 +398,7 @@
 			reg = <0 0 0 0 0>;
 			memory-region = <&qcn9625_pcie2>, <&mlo_global_mem0>;
 			memory-region-names = "host-ddr-mem", "mlo-global-mem";
-			qcom,board_id = <0x1>;
+			qcom,board_id = <0x2001>;
 			qcom,wsi-controller;
 
 			ports {
