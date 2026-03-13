@@ -191,9 +191,11 @@
 		};
 
 		mdio@90000 {
+			/* Hold GPIO18 reset for Manhattan */
 			/* GPIO36 is for port 1 QCA81xx PHY */
 			/* GPIO37 is for huntington switch */
 			phy-reset-gpio = <
+				&tlmm 18 GPIO_ACTIVE_HIGH
 				&tlmm 36 GPIO_ACTIVE_LOW
 				&tlmm 37 GPIO_ACTIVE_LOW
 			>;
