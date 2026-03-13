@@ -2819,6 +2819,31 @@
 			       <&nsscc NSS_CC_PPE_EDMA_CFG_CLK_ARES>;
 			reset-names = "edma_rst",
 				"edma_cfg_rst";
+
+			clocks = <&nsscc NSS_CC_NSS_CSR_CLK>,
+				<&nsscc NSS_CC_NSSNOC_NSS_CSR_CLK>,
+				<&nsscc NSS_CC_PPE_EDMA_CLK>,
+				<&gcc GCC_NSSNOC_ATB_CLK>,
+				<&gcc GCC_NSS_TS_CLK>,
+				<&gcc GCC_NSSNOC_QOSGEN_REF_CLK>,
+				<&gcc GCC_NSSNOC_TIMEOUT_REF_CLK>,
+				<&gcc GCC_NSSNOC_SNOC_CLK>,
+				<&gcc GCC_NSSCFG_CLK>,
+				<&gcc GCC_NSSNOC_NSSCC_CLK>,
+				<&gcc GCC_NSSCC_CLK>,
+				<&gcc GCC_NSSNOC_XO_DCD_CLK>,
+				<&gcc GCC_NSSNOC_SNOC_1_CLK>,
+				<&gcc GCC_NSSNOC_PCNOC_1_CLK>,
+				<&gcc GCC_NSSNOC_MEMNOC_CLK>,
+				<&gcc GCC_NSSNOC_MEMNOC_1_CLK>;
+			clock-names = "nss-csr-clk", "nss-nssnoc-csr-clk",
+				"nss-edma-clk", "nss-nssnoc-atb-clk", "nss-ts-clk",
+				"nss-nssnoc-qosgen-ref-clk", "nss-nssnoc-timeout-ref-clk",
+				"nss-nssnoc-snoc-clk", "nss-nsscfg-clk", "nss-nssnoc-nsscc-clk",
+				"nss-nsscc-clk", "nss-nssnoc-xo-dcd-clk", "nss-nssnoc-snoc-1-clk",
+				"nss-nssnoc-pcnoc-1-clk", "nss-nssnoc-memnoc-clk",
+				"nss-nssnoc-mem-noc-1-clk";
+
 			qcom,rxdesc-ring-max = <24>;
 			qcom,rxfill-ring-max = <20>;
 			qcom,txdesc-ring-max = <24>;
@@ -2828,6 +2853,7 @@
 			qcom,rx-map-priority-level = <1>;
 			qcom,txdesc-fc-grp-map = <1 2 3 4 5 6>;
 			qcom,vp-id = <8>;
+
 			interrupts = <0 294 4>, <0 295 4>, <0 296 4>, <0 297 4>,
 				   <0 298 4>, <0 299 4>, <0 300 4>, <0 301 4>,
 				   <0 302 4>, <0 303 4>, <0 304 4>, <0 305 4>,
