@@ -219,5 +219,6 @@
 #define GCC_PCIE2_RCHNG_CLK					209
 #define GCC_PCIE3_RCHNG_CLK					210
 #define GCC_PCIE4_RCHNG_CLK					211
+#define GPLL0_MAIN						212
 
 #endif
