@@ -63,6 +63,12 @@
 			#clock-cells = <0>;
 		};
 
+		cmn_pll_nss_clk_462m: cmn-pll-nss-clk-462m {
+			compatible = "fixed-clock";
+			clock-frequency = <462000000>;
+			#clock-cells = <0>;
+		};
+
 		xo: xo {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
@@ -751,7 +757,8 @@
 				 <&pcie30_phy2_pipe_clk>,
 				 <&pcie30_phy3_pipe_clk>,
 				 <&pcie30_phy4_pipe_clk>,
-				 <&usb_pcie_wrapper_pipe_clk>;
+				 <&usb_pcie_wrapper_pipe_clk>,
+				 <&cmn_pll_nss_clk_462m>;
 			#clock-cells = <1>;
 			#reset-cells = <1>;
 			#power-domain-cells = <1>;
