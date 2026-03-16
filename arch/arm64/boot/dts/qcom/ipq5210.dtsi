@@ -1533,6 +1533,10 @@
 			reg = <0x7a00000 0x30000>;
 			uniphy_access_mode = "local bus";
 			#clock-cells = <1>;
+			assigned-clocks = <&nsscc NSS_CC_PORT4_RX_CLK_SRC>,
+					  <&nsscc NSS_CC_PORT4_TX_CLK_SRC>;
+			assigned-clock-parents = <&cmn_pll IPQ5210_EPHY_RAW_CLK>,
+						 <&cmn_pll IPQ5210_EPHY_RAW_CLK>;
 		};
 
 		ess_instance: ess-instance {
