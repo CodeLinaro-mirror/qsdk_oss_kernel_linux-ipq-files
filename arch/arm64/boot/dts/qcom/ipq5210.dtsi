@@ -2055,6 +2055,8 @@
 
 		/* EDMA host driver configuration */
 		edma@3ad00000 {
+			memory-region = <&ddrq_data_region> , <&ddrq_desc_region>;
+			memory-region-names = "ddrq_data_region", "ddrq_desc_region";
 			compatible = "qcom,edma";
 			reg = <0x3ad00000 0x1C5000>;
 			reg-names = "edma-reg-base";
