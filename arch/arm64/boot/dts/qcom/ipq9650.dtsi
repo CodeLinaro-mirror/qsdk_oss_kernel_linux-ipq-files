@@ -7,10 +7,12 @@
  */
 
 #include <dt-bindings/clock/qcom,ipq9650-cmn-pll.h>
+#include <dt-bindings/clock/qcom,apss-ipq.h>
 #include <dt-bindings/clock/qcom,ipq9650-gcc.h>
 #include <dt-bindings/clock/qcom,ipq9650-nsscc.h>
 #include <dt-bindings/reset/qcom,ipq9650-gcc.h>
 #include <dt-bindings/reset/qcom,ipq9650-nsscc.h>
+#include <dt-bindings/interconnect/qcom,ipq9650.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/mailbox/qcom-ipcc.h>
@@ -95,6 +97,10 @@
 			reg = <0x0>;
 			enable-method = "psci";
 			next-level-cache = <&L2_0>;
+			clocks = <&apss_clk APSS_SILVER_CORE_CLK>;
+			clock-names = "cpu";
+			operating-points-v2 = <&cpu0_opp_table>;
+			interconnects = <&apss_clk MASTER_CPU &apss_clk SLAVE_L3>;
 			#cooling-cells = <2>;
 			L2_0: l2-cache {
 				compatible = "cache";
@@ -115,6 +121,10 @@
 			reg = <0x100>;
 			enable-method = "psci";
 			next-level-cache = <&L2_100>;
+			clocks = <&apss_clk APSS_SILVER_CORE_CLK>;
+			clock-names = "cpu";
+			operating-points-v2 = <&cpu0_opp_table>;
+			interconnects = <&apss_clk MASTER_CPU &apss_clk SLAVE_L3>;
 			#cooling-cells = <2>;
 			L2_100: l2-cache {
 				compatible = "cache";
@@ -130,6 +140,10 @@
 			reg = <0x200>;
 			enable-method = "psci";
 			next-level-cache = <&L2_200>;
+			clocks = <&apss_clk APSS_SILVER_CORE_CLK>;
+			clock-names = "cpu";
+			operating-points-v2 = <&cpu0_opp_table>;
+			interconnects = <&apss_clk MASTER_CPU &apss_clk SLAVE_L3>;
 			#cooling-cells = <2>;
 			L2_200: l2-cache {
 				compatible = "cache";
@@ -145,6 +159,10 @@
 			reg = <0x300>;
 			enable-method = "psci";
 			next-level-cache = <&L2_300>;
+			clocks = <&apss_clk APSS_SILVER_CORE_CLK>;
+			clock-names = "cpu";
+			operating-points-v2 = <&cpu0_opp_table>;
+			interconnects = <&apss_clk MASTER_CPU &apss_clk SLAVE_L3>;
 			#cooling-cells = <2>;
 			L2_300: l2-cache {
 				compatible = "cache";
@@ -160,6 +178,10 @@
 			reg = <0x400>;
 			enable-method = "psci";
 			next-level-cache = <&L2_400>;
+			clocks = <&apss_clk APSS_GOLD_CORE_CLK>;
+			clock-names = "cpu";
+			operating-points-v2 = <&cpu4_opp_table>;
+			interconnects = <&apss_clk MASTER_CPU &apss_clk SLAVE_L3>;
 			#cooling-cells = <2>;
 			L2_400: l2-cache {
 				compatible = "cache";
@@ -191,6 +213,105 @@
 					cpu = <&CPU4>;
 				};
 			};
+		};
+	};
+
+	cpu0_opp_table: opp-table-cpu0 {
+		compatible = "operating-points-v2-kryo-cpu";
+		opp-shared;
+		nvmem-cells = <&apss_cpu0_freq>;
+		nvmem-cell-names = "cpu0_freq";
+
+		/* Listed all supported CPU frequencies and opp-supported-hw
+		 * values to select CPU frequencies based on the PLL LValue.
+		 * ------------------------------------------------------------
+		 * Frequency     1.3GHz	   1.9GHz(no limit)	opp-supported-hw
+		 * ------------------------------------------------------------
+		 * 840000000	   1	      1			0x3
+		 * 1368000000      1	      1			0x3
+		 * 1944000000      0	      1			0x1
+		 * -----------------------------------------------------------
+		 */
+
+		opp-840000000 {
+			opp-hz = /bits/ 64 <840000000>;
+			opp-supported-hw = <0x3>;
+			/* <target min max> */
+			opp-microvolt = <735000 735000 960000>;
+			clock-latency-ns = <200000>;
+			opp-peak-kBps = <720000>;
+		};
+
+		opp-1368000000 {
+			opp-hz = /bits/ 64 <1368000000>;
+			opp-supported-hw = <0x3>;
+			/* <target min max> */
+			opp-microvolt = <815000 735000 960000>;
+			clock-latency-ns = <200000>;
+			opp-peak-kBps = <1176000000>;
+		};
+
+		opp-1800000000 {
+			opp-hz = /bits/ 64 <1800000000>;
+			opp-supported-hw = <0x3>;
+			/* <target min max> */
+			opp-microvolt = <960000 735000 960000>;
+			clock-latency-ns = <200000>;
+			opp-peak-kBps = <1176000000>;
+		};
+
+		opp-1944000000 {
+			opp-hz = /bits/ 64 <1944000000>;
+			opp-supported-hw = <0x1>;
+			/* <target min max> */
+			opp-microvolt = <960000 735000 960000>;
+			clock-latency-ns = <200000>;
+			opp-peak-kBps = <1488000000>;
+		};
+	};
+
+	cpu4_opp_table: opp-table-cpu4 {
+		compatible = "operating-points-v2-kryo-cpu";
+		opp-shared;
+		nvmem-cells = <&apss_cpu4_freq>;
+		nvmem-cell-names = "cpu4_freq";
+
+		/* Listed all supported CPU frequencies and opp-supported-hw
+		 * values to select CPU frequencies based on the PLL LValue.
+		 * ------------------------------------------------------------
+		 * Frequency     0.720GHz    1.0GHz(no limit)	opp-supported-hw
+		 * ------------------------------------------------------------
+		 * 456000000	   1	      1			0x3
+		 * 720000000       1	      1			0x3
+		 * 1032000000      0	      1			0x1
+		 * -----------------------------------------------------------
+		 */
+
+		opp-456000000 {
+			opp-hz = /bits/ 64 <456000000>;
+			opp-supported-hw = <0x3>;
+			/* <target min max> */
+			opp-microvolt = <735000 735000 960000>;
+			clock-latency-ns = <200000>;
+			opp-peak-kBps = <720000>;
+		};
+
+		opp-720000000 {
+			opp-hz = /bits/ 64 <720000000>;
+			opp-supported-hw = <0x3>;
+			/* <target min max> */
+			opp-microvolt = <815000 735000 960000>;
+			clock-latency-ns = <200000>;
+			opp-peak-kBps = <1176000000>;
+		};
+
+		opp-1032000000 {
+			opp-hz = /bits/ 64 <1032000000>;
+			opp-supported-hw = <0x3>;
+			/* <target min max> */
+			opp-microvolt = <960000 735000 960000>;
+			clock-latency-ns = <200000>;
+			opp-peak-kBps = <1488000000>;
 		};
 	};
 
@@ -426,6 +547,23 @@
 			tsens_base1: base1@422 {
 				reg  = <0x422 0x2>;
 				bits = <5 10>;
+			};
+		};
+
+		softsku@a6000 {
+			compatible = "qcom,qfprom";
+			reg = <0xA6000 0x1000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			apss_cpu0_freq: apss_cpu0_freq@234 {
+				reg = <0x234 0x1>;
+				bits = <0 8>;
+			};
+
+			apss_cpu4_freq: apss_cpu4_freq@294 {
+				reg = <0x294 0x1>;
+				bits = <0 8>;
 			};
 		};
 
@@ -672,6 +810,16 @@
 				clock-output-names = "gcc_pcie2_pipe_clk_src";
 				#clock-cells = <0>;
 			};
+		};
+
+		apss_clk: apss-clock@fa80000 {
+			compatible = "qcom,apss-ipq9650-clk";
+			reg = <0x0fa80000 0x30000>;
+			clocks = <&xo>, <&gcc GPLL0>;
+			clock-names = "xo", "gpll0";
+			#clock-cells = <1>;
+			#interconnect-cells = <1>;
+			status = "disabled";
 		};
 
 		tlmm: pinctrl@1000000 {
