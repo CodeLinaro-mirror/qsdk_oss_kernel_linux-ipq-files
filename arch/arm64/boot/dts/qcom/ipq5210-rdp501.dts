@@ -134,6 +134,10 @@
 	};
 };
 
+&i2c0 {
+	status = "disabled";
+};
+
 &nsscc {
 	assigned-clocks = <&nsscc NSS_CC_EPHY_RX_CLK_SRC>,
 			  <&nsscc NSS_CC_EPHY_TX_CLK_SRC>;
