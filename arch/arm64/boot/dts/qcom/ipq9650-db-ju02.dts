@@ -32,6 +32,12 @@
 				};
 			};
 
+			i2c0: i2c@1a88000 {
+				pinctrl-0 = <&qup_i2c0_default>;
+				pinctrl-names = "default";
+				status = "disabled";
+			};
+
 			i2c1: i2c@1a8c000 {
 				pinctrl-0 = <&qup_i2c1_default>;
 				pinctrl-names = "default";
@@ -170,6 +176,21 @@
 };
 
 &tlmm {
+	qup_i2c0_default: qup-i2c0-default-state {
+		qup_i2c0_scl {
+			pins = "gpio33";
+			function = "qup_se2_l1";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+		qup_i2c0_sda {
+			pins = "gpio34";
+			function = "qup_se2_l0";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+	};
+
 	pcie0_default_state: pcie0-default-state {
 		perst-n-pins {
 			pins = "gpio25";
