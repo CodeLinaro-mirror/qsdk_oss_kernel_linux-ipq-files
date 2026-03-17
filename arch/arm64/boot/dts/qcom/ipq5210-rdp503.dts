@@ -252,6 +252,9 @@
 			reset-names = "gephy_sys_reset",
 				 "gephy_rx_reset",
 				 "gephy_tx_reset";
+
+			pinctrl-0 = <&phy_led0>;
+			pinctrl-names = "default";
 		};
 
 		ess-instance {
@@ -409,6 +412,13 @@
 			drive-strength = <8>;
 			bias-disable;
 		};
+	};
+
+	phy_led0: phy-led0-state {
+		pins = "gpio23";
+		function = "Led00";
+		drive-strength = <2>;
+		bias-pull-down;
 	};
 };
 
