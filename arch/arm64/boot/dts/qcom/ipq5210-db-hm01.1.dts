@@ -350,15 +350,3 @@
 		};
 	};
 };
-
-&qusb_phy_0 {
-	status = "disabled";
-};
-
-&ssphy_0 {
-	status = "disabled";
-};
-
-&usb3 {
-	status = "disabled";
-};
