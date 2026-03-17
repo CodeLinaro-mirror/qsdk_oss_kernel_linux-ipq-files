@@ -149,8 +149,12 @@
 		mdio:mdio@90000 {
 			pinctrl-0 = <&mdio1_pins &mdio0_pins>;
 			pinctrl-names = "default";
-			/*gpio51 for huntington reset*/
-			phy-reset-gpio = <&tlmm 51 GPIO_ACTIVE_LOW>;
+			/*gpio51 for manhattan reset*/
+			/*gpio24 for huntington reset*/
+			phy-reset-gpio = <
+				&tlmm 51 GPIO_ACTIVE_HIGH
+				&tlmm 24 GPIO_ACTIVE_LOW
+			>;
 			status = "okay";
 
 			ethernet-phy-package@0 {
@@ -489,8 +493,6 @@
 			num_devices = <0x2>;
 
 			ess-switch@3a000000 {
-				pinctrl-0 = <&sfp_pins>;
-				pinctrl-names = "default";
 				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
 				switch_lan_bmp = <0x0>; /* lan port bitmap */
 				switch_wan_bmp = <0x4>; /* wan port bitmap */
@@ -1040,22 +1042,6 @@
 		drive-strength = <8>;
 		bias-pull-up;
 	};
-
-	sfp_pins: sfp-state {
-		sfp_rx {
-			pins = "gpio45";
-			function = "rx1";
-			bias-disable;
-		};
-		sfp_tx {
-			pins = "gpio24";
-			function = "gpio";
-			drive-strength = <8>;
-			bias-pull-down;
-			output-low;
-		};
-	};
-
 };
 
 &license_manager {
