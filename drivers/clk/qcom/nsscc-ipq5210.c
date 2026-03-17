@@ -189,7 +189,6 @@ static struct clk_rcg2 nss_cc_ppe_clk_src = {
 		.name = "nss_cc_ppe_clk_src",
 		.parent_data = nss_cc_ppe_parent_data_ppe,
 		.num_parents = ARRAY_SIZE(nss_cc_ppe_parent_data_ppe),
-		.flags = CLK_SET_RATE_PARENT,
 		.ops = &clk_rcg2_ops,
 	},
 };
@@ -1875,7 +1874,6 @@ static struct clk_rcg2 nss_cc_eip_bfdcd_clk_src = {
 		.name = "nss_cc_eip_bfdcd_clk_src",
 		.parent_data = nss_cc_ppe_parent_data_eip,
 		.num_parents = ARRAY_SIZE(nss_cc_ppe_parent_data_eip),
-		.flags = CLK_SET_RATE_PARENT,
 		.ops = &clk_rcg2_ops,
 	},
 };
