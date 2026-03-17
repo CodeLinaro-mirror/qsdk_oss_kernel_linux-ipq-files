@@ -94,6 +94,41 @@ int tmelcom_secboot_sec_auth(u32 sw_id, void *metadata, size_t size)
 }
 EXPORT_SYMBOL_GPL(tmelcom_secboot_sec_auth);
 
+int tmelcom_secboot_sec_auth_v2(u32 sw_id, void *metadata, size_t size)
+{
+	struct device *dev = tmelcom_get_device();
+	struct tmel_secboot_sec_auth_v2 msg = {0};
+	dma_addr_t elf_buf_phys;
+	void *elf_buf;
+	int ret;
+
+	if (!dev || !metadata)
+		return -EINVAL;
+
+	elf_buf = dma_alloc_coherent(dev, size, &elf_buf_phys, GFP_KERNEL);
+	if (!elf_buf)
+		return -ENOMEM;
+
+	memcpy(elf_buf, metadata, size);
+
+	msg.req.sw_id = sw_id;
+	msg.req.elf_buf.buf = (u32)elf_buf_phys;
+	msg.req.elf_buf.buf_len = (u32)size;
+	msg.req.ns_integrity_check = 1;
+	msg.req.reserved = 0;
+
+	ret = tmelcom_process_request(TMEL_MSG_UID_SECBOOT_SEC_AUTH_V2, &msg,
+				      sizeof(msg));
+	if (ret || msg.resp.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d, msg.status = 0x%x\n",
+			__func__, ret, msg.resp.status);
+
+	dma_free_coherent(dev, size, elf_buf, elf_buf_phys);
+
+	return ret ? ret : msg.resp.status;
+}
+EXPORT_SYMBOL_GPL(tmelcom_secboot_sec_auth_v2);
+
 int tmelcom_secboot_teardown(u32 sw_id, u32 secondary_sw_id)
 {
 	struct device *dev = tmelcom_get_device();
