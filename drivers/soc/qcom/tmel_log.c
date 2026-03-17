@@ -133,6 +133,8 @@ static void dump_fuse_v2(unsigned int addr, const struct tmellog_data *data)
 	fuse = kzalloc(sizeof(struct fuse_payload), GFP_KERNEL);
 	if (!fuse)
 		return;
+
+	fuse->fuse_addr = addr;
 	if (data->tmelcom_support) {
 		ret = tmelcom_fuse_list_read((struct tmel_fuse_payload *)fuse,
 					    sizeof(struct fuse_payload));
