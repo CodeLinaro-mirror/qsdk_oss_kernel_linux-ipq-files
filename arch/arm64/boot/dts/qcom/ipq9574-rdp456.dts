@@ -323,7 +323,8 @@
 			boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
 					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
-			memory-region = <&qcn9224_pcie0>, <&mhi_region0>;
+			memory-region = <&qcn9224_pcie0>, <&mhi_region0>, <&mlo_global_mem0>;
+			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
 			qcom,early_cal_enabled = "supported";
 			qcom,caldata_offset = <0x26800>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
@@ -333,7 +334,30 @@
 #endif
 			qcom,caldb_size = <0x800000>;
 			qcom,board_id = <0x11>;
+			qcom,msi = <0x10>;
 			qcom,wsi = <&wsi>;
+			qcom,wsi-controller;
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+
+					wifi0_wsi_tx: endpoint {
+						remote-endpoint = <&wifi1_wsi_rx>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+
+					wifi0_wsi_rx: endpoint {
+						remote-endpoint = <&wifi3_wsi_tx>;
+					};
+				};
+			};
 		};
 	};
 };
@@ -356,7 +380,8 @@
 			boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
 					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
-			memory-region = <&qcn9224_pcie1>, <&mhi_region1>;
+			memory-region = <&qcn9224_pcie1>, <&mhi_region1>, <&mlo_global_mem0>;
+			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
 			qcom,early_cal_enabled = "supported";
 			qcom,caldata_offset = <0x58800>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
@@ -366,7 +391,29 @@
 #endif
 			qcom,caldb_size = <0x800000>;
 			qcom,board_id = <0x12>;
+			qcom,msi = <0x10>;
 			qcom,wsi = <&wsi>;
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+
+					wifi1_wsi_tx: endpoint {
+						remote-endpoint = <&wifi2_wsi_rx>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+
+					wifi1_wsi_rx: endpoint {
+						remote-endpoint = <&wifi0_wsi_tx>;
+					};
+				};
+			};
 		};
 	};
 };
@@ -389,7 +436,8 @@
 			boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
 					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
-			memory-region = <&qcn9224_pcie2>, <&mhi_region2>;
+			memory-region = <&qcn9224_pcie2>, <&mhi_region2>, <&mlo_global_mem0>;
+			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
 			qcom,early_cal_enabled = "supported";
 			qcom,caldata_offset = <0x8A800>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
@@ -400,6 +448,27 @@
 			qcom,caldb_size = <0x800000>;
 			qcom,board_id = <0x14>;
 			qcom,wsi = <&wsi>;
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+
+					wifi2_wsi_tx: endpoint {
+						remote-endpoint = <&wifi3_wsi_rx>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+
+					wifi2_wsi_rx: endpoint {
+						remote-endpoint = <&wifi1_wsi_tx>;
+					};
+				};
+			};
 		};
 	};
 };
@@ -422,7 +491,8 @@
 			boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
 					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
-			memory-region = <&qcn9224_pcie3>, <&mhi_region3>;
+			memory-region = <&qcn9224_pcie3>, <&mhi_region3>, <&mlo_global_mem0>;
+			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
 			qcom,early_cal_enabled = "supported";
 			qcom,caldata_offset = <0xBC800>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
@@ -433,6 +503,27 @@
 			qcom,caldb_size = <0x800000>;
 			qcom,board_id = <0x13>;
 			qcom,wsi = <&wsi>;
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+
+					wifi3_wsi_tx: endpoint {
+						remote-endpoint = <&wifi0_wsi_rx>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+
+					wifi3_wsi_rx: endpoint {
+						remote-endpoint = <&wifi2_wsi_tx>;
+					};
+				};
+			};
 		};
 	};
 };
