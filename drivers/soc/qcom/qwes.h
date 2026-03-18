@@ -37,6 +37,7 @@ struct prov_resp {
 	void *provresp_buf;
 	unsigned int req_buf_len;
 	unsigned int resp_buf_len;
+	u8 device_id;
 };
 
 struct attest_resp {
@@ -46,11 +47,13 @@ struct attest_resp {
 	unsigned int req_buf_len;
 	unsigned int claim_buf_len;
 	unsigned int resp_buf_len;
+	u8 device_id;
 };
 
 struct get_key {
 	void *buf;
 	unsigned int len;
+	u8 device_id;
 };
 
 #define GET_KEY		_IOWR('a', 'a', struct get_key)

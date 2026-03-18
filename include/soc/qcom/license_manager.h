@@ -177,11 +177,13 @@ struct ttime_get_req_params {
 	void *params_buf;
 	u32 buf_len;
 	u32 used_buf_len;
+	u8 device_id;
 };
 
 struct ttime_set {
 	void *ttime_buf;
 	u32 buf_len;
+	u8 device_id;
 };
 
 struct lm_install_resp {
@@ -193,17 +195,20 @@ struct lm_install_resp {
 struct lm_install_info {
 	struct lm_install_resp lm_resp[TMEL_BOUND_MAX_LICENSE_FILES];
 	u32 num_of_resp;
+	u8 device_id;
 };
 
 struct lm_get_toBeDel_lic {
 	u64 identifiers[TMEL_BOUND_MAX_LICENSE_FILES];
 	u32 used_len;
+	u8 device_id;
 };
 
 struct lm_license_check_cbor {
 	void *buf;
 	u32 buf_len;
 	u32 used_len;
+	u8 device_id;
 };
 
 #define GET_FID_INFO 		_IOWR('L', 1, struct client_target_info)
@@ -215,6 +220,7 @@ struct lm_license_check_cbor {
 #define LICENSE_INSTALL		_IOWR('L', 7, struct lm_install_info)
 #define GET_TOBEDEL_LICENSES	_IOWR('L', 8, struct lm_get_toBeDel_lic)
 #define LICENSE_CHECK		_IOWR('L', 9, struct lm_license_check_cbor)
+#define DEVICE_COUNT		_IOR('L', 10, int)
 
 enum req_type {
 	INTERNAL,

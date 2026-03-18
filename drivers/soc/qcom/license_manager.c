@@ -1173,6 +1173,15 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			}
 		break;
 
+		case DEVICE_COUNT:
+			/* Return the device count - for now returning 1 (SoC device) */
+			ret = put_user(1, (int __user *)arg);
+			if (ret) {
+				dev_err(svc->dev, "IOCTL: Get device count failed\n");
+				return ret;
+			}
+		break;
+
 		case LICENSE_INSTALL:
 			if (!svc->tmel_bounded) {
 				dev_err(svc->dev, "License install not supported\n");
@@ -1185,12 +1194,28 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				return -ENOMEM;
 			}
 
-			/* Install license files to TME-L */
-			ret = lm_install_licenses_to_tmel(install_info);
+			ret = copy_from_user(install_info, argp, sizeof(struct lm_install_info));
 			if (ret) {
-				dev_err(svc->dev, "IOCTL: Install License to tmel error\n");
+				dev_err(svc->dev, "IOCTL: LICENSE_INSTALL copy from user error\n");
 				kfree(install_info);
 				return ret;
+			}
+
+			/* Route based on device_id */
+			if (((struct lm_install_info *)install_info)->device_id == 1) {
+				/* SoC device, use IPC */
+				ret = lm_install_licenses_to_tmel((struct lm_install_info *)install_info);
+				if (ret) {
+					dev_err(svc->dev, "IOCTL: Install License to tmel error\n");
+					kfree(install_info);
+					return ret;
+				}
+			} else {
+				/* PCIe device, use QMI - not yet implemented */
+				dev_err(svc->dev, "License install for PCIe device %d not yet implemented\n",
+					((struct lm_install_info *)install_info)->device_id);
+				kfree(install_info);
+				return -ENOTSUPP;
 			}
 
 			ret = copy_to_user(argp, install_info, sizeof(struct lm_install_info));
@@ -1213,13 +1238,30 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				return -ENOMEM;
 			}
 
-			ret = tmelcom_licensing_get_toBeDel_licenses(toBeDel_lic->identifiers,
-								     sizeof(toBeDel_lic->identifiers),
-								     &toBeDel_lic->used_len);
+			ret = copy_from_user(toBeDel_lic, argp, sizeof(struct lm_get_toBeDel_lic));
 			if (ret) {
-				dev_err(svc->dev, "get_toBeDel_lic with TMEL failed: %d\n", ret);
+				dev_err(svc->dev, "IOCTL: GET_TOBEDEL_LICENSES copy from user error\n");
 				kfree(toBeDel_lic);
 				return ret;
+			}
+
+			/* Route based on device_id */
+			if (toBeDel_lic->device_id == 1) {
+				/* SoC device, use IPC */
+				ret = tmelcom_licensing_get_toBeDel_licenses(toBeDel_lic->identifiers,
+									     sizeof(toBeDel_lic->identifiers),
+									     &toBeDel_lic->used_len);
+				if (ret) {
+					dev_err(svc->dev, "get_toBeDel_lic with TMEL failed: %d\n", ret);
+					kfree(toBeDel_lic);
+					return ret;
+				}
+			} else {
+				/* PCIe device, use QMI - not yet implemented */
+				dev_err(svc->dev, "Get toBeDel licenses for PCIe device %d not yet implemented\n",
+					toBeDel_lic->device_id);
+				kfree(toBeDel_lic);
+				return -ENOTSUPP;
 			}
 
 			ret = copy_to_user(argp, toBeDel_lic, sizeof(struct lm_get_toBeDel_lic));
