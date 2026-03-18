@@ -14,6 +14,7 @@
 / {
 	aliases {
 		serial0 = &uart1;
+		serial1 = &uart0;
 	};
 
 	chosen {
@@ -24,6 +25,11 @@
 	soc@0 {
 		qupv3: geniqup@1ac0000 {
 			status = "okay";
+
+			uart0: serial@1a90000 {
+				pinctrl-0 = <&qup_uart0_default>;
+				pinctrl-names = "default";
+			};
 
 			uart1: serial@1a84000 {
 				pinctrl-0 = <&qup_uart1_default>;
@@ -61,6 +67,11 @@
 			};
 		};
 	};
+};
+
+&pwm {
+	pinctrl-0 = <&pwm_default_state>;
+	pinctrl-names = "default";
 };
 
 &sleep_clk {
@@ -124,6 +135,13 @@
 	gpio_keys_default: gpio-keys-default-state {
 		pins = "gpio25";
 		function = "gpio";
+		drive-strength = <6>;
+		bias-pull-down;
+	};
+
+	pwm_default_state: pwm-default-state {
+		pins = "gpio11";
+		function = "pwm_out20";
 		drive-strength = <6>;
 		bias-pull-down;
 	};
@@ -200,6 +218,36 @@
 			pins = "gpio9";
 			function = "qup_se0_l1";
 			drive-strength = <8>;
+			bias-pull-down;
+		};
+	};
+
+	qup_uart0_default: qup-uart0-default-state {
+		qup_uart0_tx {
+			pins = "gpio40";
+			function = "qup_se4_l2";
+			drive-strength = <6>;
+			bias-pull-down;
+		};
+
+		qup_uart0_rx {
+			pins = "gpio41";
+			function = "qup_se4_l3";
+			drive-strength = <6>;
+			bias-pull-down;
+		};
+
+		qup_uart0_cts {
+			pins = "gpio42";
+			function = "qup_se4_l0";
+			drive-strength = <6>;
+			bias-pull-down;
+		};
+
+		qup_uart0_rfr {
+			pins = "gpio43";
+			function = "qup_se4_l1";
+			drive-strength = <6>;
 			bias-pull-down;
 		};
 	};
