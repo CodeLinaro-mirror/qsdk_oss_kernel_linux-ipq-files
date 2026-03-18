@@ -52,6 +52,23 @@
 			status = "okay";
 			compatible = "qcom,mdio-ahb-ipq52xx";
 			reg = <0x1400000 0x200000>;  /* Base address: 0x1400000, Size: 2MB */
+			clocks = <&gcc GCC_MDIO_GEPHY_AHB_CLK>,
+				<&gcc GCC_GEPHY_SYS_CLK>,
+				<&nsscc NSS_CC_EPHY_RX_CLK>,
+				<&nsscc NSS_CC_EPHY_TX_CLK>,
+				<&cmn_pll IPQ5210_EPHY_RAW_CLK>;
+			clock-names = "mdio_gephy_ahb_clk",
+				"gephy_sys_clk",
+				"gephy_rx_clk",
+				"gephy_tx_clk",
+				"gephy_raw_clk";
+
+			resets = <&gcc GCC_GEPHY_SYS_ARES>,
+				 <&nsscc NSS_CC_EPHY_RX_CLK_ARES>,
+				 <&nsscc NSS_CC_EPHY_TX_CLK_ARES>;
+			reset-names = "gephy_sys_reset",
+				 "gephy_rx_reset",
+				 "gephy_tx_reset";
 		};
 
 		ess-instance {
@@ -62,7 +79,7 @@
 				switch_wan_bmp = <0x40>; /* wan port bitmap */
 				switch_mac_mode = <0x0>; /* PSGMII for malibu PHY */
 				switch_mac_mode1 = <0xff>; /* unused */
-				switch_mac_mode2 = <0x1b>; /* XGSPON */
+				switch_mac_mode2 = <0xff>;
 
 				qcom,port_phyinfo {
 					port@0 {
@@ -188,24 +205,16 @@
 			memory-region-names = "host-ddr-mem", "mlo-global-mem";
 			qcom,board_id = <0x1041>;
 			status = "okay";
-			qcom,wsi-controller;
 			ports {
 				#address-cells = <1>;
 				#size-cells = <0>;
 
 				port@0 {
 					reg = <0>;
-
-					wifi0_wsi_tx: endpoint {
-						remote-endpoint = <&wifi0_wsi_rx>;
-					};
 				};
 
 				port@1 {
 					reg = <1>;
-					wifi0_wsi_rx: endpoint {
-						remote-endpoint = <&wifi0_wsi_tx>;
-					};
 				};
 			};
 		};

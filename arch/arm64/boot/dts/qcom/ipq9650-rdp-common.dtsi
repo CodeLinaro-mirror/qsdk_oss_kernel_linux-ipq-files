@@ -11,6 +11,7 @@
 #include <dt-bindings/clock/qcom,qce2204-nsscc.h>
 #include <dt-bindings/reset/qcom,qce2204-nsscc.h>
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
 
 #include "ipq9650.dtsi"
 
@@ -41,6 +42,20 @@
 			compatible = "fixed-clock";
 			clock-frequency = <312500000>;
 			#clock-cells = <0>;
+		};
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+		pinctrl-0 = <&gpio_keys_default>;
+		pinctrl-names = "default";
+		status = "disabled";
+
+		button-wps {
+			label = "wps";
+			linux,code = <KEY_WPS_BUTTON>;
+			gpios = <&tlmm 19 GPIO_ACTIVE_LOW>;
+			debounce-interval = <60>;
 		};
 	};
 
@@ -287,6 +302,28 @@
 };
 
 &tlmm {
+	gpio_keys_default: gpio-keys-default-state {
+		pins = "gpio19";
+		function = "gpio";
+		drive-strength = <8>;
+		bias-pull-down;
+	};
+
+	qup_i2c1_default: qup-i2c1-default-state {
+		qup_i2c1_scl {
+			pins = "gpio16";
+			function = "qup_se3_l1";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+		qup_i2c1_sda {
+			pins = "gpio17";
+			function = "qup_se3_l0";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+	};
+
 	qup_spi0_default: qup-spi0-default-state {
 		qup_spi0_clk {
 			pins = "gpio6";
@@ -320,14 +357,14 @@
 	qup_uart1_default: qup-uart1-default-state {
 		qup_uart1_tx: tx-pins {
 			pins = "gpio44";
-			function = "qup_se6_l3";
+			function = "qup_se6_l2";
 			drive-strength = <8>;
 			bias-pull-down;
 		};
 
 		qup_uart1_rx: rx-pins {
 			pins = "gpio43";
-			function = "qup_se6_l2";
+			function = "qup_se6_l3";
 			drive-strength = <8>;
 			bias-pull-down;
 		};

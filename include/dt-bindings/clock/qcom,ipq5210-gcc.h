@@ -138,4 +138,17 @@
 #define GCC_PCNOC_BFDCD_CLK_SRC					128
 #define GCC_PCIE0_PIPE_CLK_SRC					129
 #define GCC_PCIE1_PIPE_CLK_SRC					130
+#define GCC_PON_APB_CLK						131
+#define GCC_PON_TM_CLK						132
+#define GCC_PON_TM2X_CLK					133
+#define GCC_PON_TM2X_CLK_SRC					134
+#define GCC_SLEEP_CLK_SRC					135
+#define GCC_USB0_PIPE_CLK_SRC					136
+#define GCC_LPASS_SWAY_CLK					137
+#define GCC_CNOC_LPASS_CFG_CLK					138
+#define GCC_LPASS_CORE_AXIM_CLK					139
+#define GCC_SNOC_LPASS_CLK					140
+#define GCC_LPASS_SWAY_CLK_SRC					141
+#define GCC_LPASS_AXIM_CLK_SRC					142
+#define GPLL0_MAIN						143
 #endif

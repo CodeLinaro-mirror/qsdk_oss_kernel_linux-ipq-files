@@ -84,6 +84,7 @@ enum {
 	MSM8996_ID,
 	MSM8953_ID,
 	IPQ807x_ID,
+	IPQ9650_ID,
 };
 
 struct msm_apm_ctrl_dev {
@@ -234,6 +235,9 @@ free_events:
 /* 8953 register offset definition */
 #define MSM8953_APM_DLY_CNTR	0x2ac
 
+/* 9650 register offset definition */
+#define IPQ9650_APM_DLY_CNTR	0x8
+
 /* Register field shift definitions */
 #define APM_CTL_SEL_SWITCH_DLY_SHIFT	0
 #define APM_CTL_RESUME_CLK_DLY_SHIFT	8
@@ -257,6 +261,7 @@ static int msm8953_apm_ctrl_init(struct platform_device *pdev,
 	struct device *dev = &pdev->dev;
 	struct resource *res;
 	u32 delay_counter, val = 0, regval = 0;
+	unsigned int apm_dly_offset;
 	int rc = 0;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pm-apcc-glb");
@@ -305,11 +310,13 @@ static int msm8953_apm_ctrl_init(struct platform_device *pdev,
 		}
 	}
 
+	apm_dly_offset = (ctrl->msm_id != IPQ9650_ID) ? MSM8953_APM_DLY_CNTR : IPQ9650_APM_DLY_CNTR;
+
 	/*
 	 * Initial APM register configuration required before starting
 	 * APM HW controller.
 	 */
-	regval = readl_relaxed(ctrl->reg_base + MSM8953_APM_DLY_CNTR);
+	regval = readl_relaxed(ctrl->reg_base + apm_dly_offset);
 	val = regval;
 
 	if (of_find_property(dev->of_node, "qcom,apm-post-halt-delay", NULL)) {
@@ -369,7 +376,7 @@ static int msm8953_apm_ctrl_init(struct platform_device *pdev,
 	}
 
 	if (val != regval) {
-		writel_relaxed(val, ctrl->reg_base + MSM8953_APM_DLY_CNTR);
+		writel_relaxed(val, ctrl->reg_base + apm_dly_offset);
 		/* make sure write completes before return */
 		mb();
 	}
@@ -559,6 +566,10 @@ static int msm8996_apm_switch_to_apcc(struct msm_apm_ctrl_dev *ctrl_dev)
 #define MSM8953_APCC_APM_MODE              0x000002a8
 #define MSM8953_APCC_APM_CTL_STS           0x000002b0
 
+/* 9650 registe offset definitions */
+#define IPQ9650_APCC_APM_MODE              0x4
+#define IPQ9650_APCC_APM_CTL_STS           0xc
+
 /* 8953 constants */
 #define MSM8953_APM_SWITCH_TIMEOUT_US      500
 
@@ -662,6 +673,8 @@ static int apply_apm_override(struct msm_apm_ctrl_dev *ctrl_dev, u32 done_val)
 
 static int msm8953_apm_switch_to_mx(struct msm_apm_ctrl_dev *ctrl_dev)
 {
+	unsigned int apm_ctl_sts_offset = MSM8953_APCC_APM_CTL_STS;
+	unsigned int apm_offset = MSM8953_APCC_APM_MODE;
 	int timeout = MSM8953_APM_SWITCH_TIMEOUT_US;
 	u32 regval;
 	int ret = 0;
@@ -669,16 +682,21 @@ static int msm8953_apm_switch_to_mx(struct msm_apm_ctrl_dev *ctrl_dev)
 
 	spin_lock_irqsave(&ctrl_dev->lock, flags);
 
+	if (ctrl_dev->msm_id == IPQ9650_ID) {
+		apm_ctl_sts_offset = IPQ9650_APCC_APM_CTL_STS;
+		apm_offset = IPQ9650_APCC_APM_MODE;
+	}
+
 	/* Switch arrays to MX supply and wait for its completion */
 	writel_relaxed(MSM8953_APM_MX_MODE_VAL, ctrl_dev->reg_base +
-		       MSM8953_APCC_APM_MODE);
+		       apm_offset);
 
 	/* Ensure write above completes before delaying */
 	mb();
 
 	while (timeout > 0) {
 		regval = readl_relaxed(ctrl_dev->reg_base +
-					MSM8953_APCC_APM_CTL_STS);
+				       apm_ctl_sts_offset);
 		if ((regval & MSM8953_APM_CTL_STS_MASK) ==
 				MSM8953_APM_MX_DONE_VAL)
 			break;
@@ -688,6 +706,7 @@ static int msm8953_apm_switch_to_mx(struct msm_apm_ctrl_dev *ctrl_dev)
 	}
 
 	if (timeout == 0 && ctrl_dev->apm_override_quirk) {
+		/* To-Do: Need a separate sequence for IPQ9650 */
 		ret = apply_apm_override(ctrl_dev, MSM8953_APM_MX_DONE_VAL);
 		if (!ret)
 			timeout = MSM8953_APM_SWITCH_TIMEOUT_US;
@@ -709,6 +728,8 @@ static int msm8953_apm_switch_to_mx(struct msm_apm_ctrl_dev *ctrl_dev)
 
 static int msm8953_apm_switch_to_apcc(struct msm_apm_ctrl_dev *ctrl_dev)
 {
+	unsigned int apm_ctl_sts_offset = MSM8953_APCC_APM_CTL_STS;
+	unsigned int apm_offset = MSM8953_APCC_APM_MODE;
 	int timeout = MSM8953_APM_SWITCH_TIMEOUT_US;
 	u32 regval;
 	int ret = 0;
@@ -716,16 +737,21 @@ static int msm8953_apm_switch_to_apcc(struct msm_apm_ctrl_dev *ctrl_dev)
 
 	spin_lock_irqsave(&ctrl_dev->lock, flags);
 
+	if (ctrl_dev->msm_id == IPQ9650_ID) {
+		apm_ctl_sts_offset = IPQ9650_APCC_APM_CTL_STS;
+		apm_offset = IPQ9650_APCC_APM_MODE;
+	}
+
 	/* Switch arrays to APCC supply and wait for its completion */
 	writel_relaxed(MSM8953_APM_APCC_MODE_VAL, ctrl_dev->reg_base +
-		       MSM8953_APCC_APM_MODE);
+		       apm_offset);
 
 	/* Ensure write above completes before delaying */
 	mb();
 
 	while (timeout > 0) {
 		regval = readl_relaxed(ctrl_dev->reg_base +
-					MSM8953_APCC_APM_CTL_STS);
+				       apm_ctl_sts_offset);
 		if ((regval & MSM8953_APM_CTL_STS_MASK) ==
 				MSM8953_APM_APCC_DONE_VAL)
 			break;
@@ -735,6 +761,7 @@ static int msm8953_apm_switch_to_apcc(struct msm_apm_ctrl_dev *ctrl_dev)
 	}
 
 	if (timeout == 0 && ctrl_dev->apm_override_quirk) {
+		/* To-Do: Need a separate sequence for IPQ9650 */
 		ret = apply_apm_override(ctrl_dev, MSM8953_APM_APCC_DONE_VAL);
 		if (!ret)
 			timeout = MSM8953_APM_SWITCH_TIMEOUT_US;
@@ -764,6 +791,7 @@ static int msm_apm_switch_to_mx(struct msm_apm_ctrl_dev *ctrl_dev)
 		break;
 	case MSM8953_ID:
 	case IPQ807x_ID:
+	case IPQ9650_ID:
 		ret = msm8953_apm_switch_to_mx(ctrl_dev);
 		break;
 	}
@@ -781,6 +809,7 @@ static int msm_apm_switch_to_apcc(struct msm_apm_ctrl_dev *ctrl_dev)
 		break;
 	case MSM8953_ID:
 	case IPQ807x_ID:
+	case IPQ9650_ID:
 		ret = msm8953_apm_switch_to_apcc(ctrl_dev);
 		break;
 	}
@@ -984,6 +1013,10 @@ static struct of_device_id msm_apm_match_table[] = {
 		.compatible = "qcom,ipq807x-apm",
 		.data = (void *)(uintptr_t)IPQ807x_ID,
 	},
+	{
+		.compatible = "qcom,ipq9650-apm",
+		.data = (void *)(uintptr_t)IPQ9650_ID,
+	},
 	{}
 };
 
@@ -1027,6 +1060,7 @@ static int msm_apm_probe(struct platform_device *pdev)
 		break;
 	case MSM8953_ID:
 	case IPQ807x_ID:
+	case IPQ9650_ID:
 		ret = msm8953_apm_ctrl_init(pdev, ctrl);
 		if (ret) {
 			dev_err(dev, "Failed to initialize APM controller device: ret=%d\n",

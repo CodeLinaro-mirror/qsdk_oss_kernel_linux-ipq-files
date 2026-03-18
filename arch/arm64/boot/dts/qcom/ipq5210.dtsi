@@ -86,6 +86,7 @@
 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
+			#cooling-cells = <2>;
 		};
 
 		CPU1: cpu@1 {
@@ -97,6 +98,7 @@
 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
+			#cooling-cells = <2>;
 		};
 
 		CPU2: cpu@2 {
@@ -108,6 +110,7 @@
 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
+			#cooling-cells = <2>;
 		};
 
 		CPU3: cpu@3 {
@@ -119,6 +122,7 @@
 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
+			#cooling-cells = <2>;
 		};
 
 		L2_0: l2-cache {
@@ -142,11 +146,27 @@
 		/* Listed all supported CPU frequencies and opp-supported-hw
 		 * values to select CPU frequencies based on the PLL LValue.
 		 * ------------------------------------------------------------
-		 * Frequency     1.2GHz	   1.4GHz	opp-supported-hw
+		 * Frequency     1.2GHz   1.4GHz	opp-supported-hw
 		 * ------------------------------------------------------------
+		 * 816000000       1	      1			0x3
+		 * 1008000000	   1	      1			0x3
 		 * 1200000000      1	      1			0x3
 		 * 1416000000      0	      1			0x1
 		 * -----------------------------------------------------------*/
+
+		opp-816000000 {
+			opp-hz = /bits/ 64 <816000000>;
+			opp-supported-hw = <0x3>;
+			opp-microvolt = <850000>;
+			clock-latency-ns = <200000>;
+		};
+
+		opp-1008000000 {
+			opp-hz = /bits/ 64 <1008000000>;
+			opp-supported-hw = <0x3>;
+			opp-microvolt = <850000>;
+			clock-latency-ns = <200000>;
+		};
 
 		opp-1200000000 {
 			opp-hz = /bits/ 64 <1200000000>;
@@ -297,7 +317,6 @@
 			interrupts = <GIC_SPI 52 IRQ_TYPE_EDGE_RISING>;
 			interrupt-names = "combined";
 			#thermal-sensor-cells = <1>;
-			status = "disabled";
 		};
 
 		rng: rng@4c3000 {
@@ -1414,8 +1433,9 @@
 			compatible = "qcom,ipq5210-nsscc";
 			reg = <0x39b00000 0x100000>;
 			clocks = <&xo>,
-				 <&cmn_pll IPQ5210_NSS_CLK>,
+				 /* IPQ5210 use the reversed NSS & PPE clocks from CMN PLL. */
 				 <&cmn_pll IPQ5210_PPE_CLK>,
+				 <&cmn_pll IPQ5210_NSS_CLK>,
 				 <&gcc_gpll0_out_aux>,
 				 <&ess_uniphy 0>,
 				 <&ess_uniphy 1>,
@@ -1513,6 +1533,10 @@
 			reg = <0x7a00000 0x30000>;
 			uniphy_access_mode = "local bus";
 			#clock-cells = <1>;
+			assigned-clocks = <&nsscc NSS_CC_PORT4_RX_CLK_SRC>,
+					  <&nsscc NSS_CC_PORT4_TX_CLK_SRC>;
+			assigned-clock-parents = <&cmn_pll IPQ5210_EPHY_RAW_CLK>,
+						 <&cmn_pll IPQ5210_EPHY_RAW_CLK>;
 		};
 
 		ess_instance: ess-instance {
@@ -2174,7 +2198,7 @@
 
 			trips {
 				ethphy-critical {
-					temperature = <120000>;
+					temperature = <125000>;
 					hysteresis = <9000>;
 					type = "critical";
 				};
@@ -2188,7 +2212,7 @@
 
 			trips {
 				pon-uniphy-critical {
-					temperature = <120000>;
+					temperature = <125000>;
 					hysteresis = <9000>;
 					type = "critical";
 				};
@@ -2202,37 +2226,60 @@
 
 			trips {
 				nss-top-critical {
-					temperature = <120000>;
+					temperature = <125000>;
 					hysteresis = <9000>;
 					type = "critical";
 				};
 			};
 		};
 
-		a53ss-cm-dist-ts-0-thermal {
+		cpu0-thermal {
 			polling-delay-passive = <0>;
 			polling-delay = <0>;
 			thermal-sensors = <&tsens 14>;
 
 			trips {
-				a53ss-cm-dist-ts-0-critical {
+				cpu-critical {
 					temperature = <120000>;
 					hysteresis = <9000>;
 					type = "critical";
 				};
+
+				cpu0_thermal_alert: cpu-passive {
+					temperature = <110000>;
+					hysteresis = <9000>;
+					type = "passive";
+				};
+			};
+
+			cooling-maps {
+				map0 {
+					trip = <&cpu0_thermal_alert>;
+					/* Set maximum frequency as 816 MHz */
+					cooling-device = <&CPU0 3 3>,
+							 <&CPU1 3 3>,
+							 <&CPU2 3 3>,
+							 <&CPU3 3 3>;
+				};
 			};
 		};
 
-		a53ss-cm-dist-ts-1-thermal {
+		cpu1-thermal {
 			polling-delay-passive = <0>;
 			polling-delay = <0>;
 			thermal-sensors = <&tsens 15>;
 
 			trips {
-				a53ss-cm-dist-ts-1-critical {
+				cpu-critical {
 					temperature = <120000>;
 					hysteresis = <9000>;
 					type = "critical";
+				};
+
+				cpu-passive {
+					temperature = <110000>;
+					hysteresis = <9000>;
+					type = "passive";
 				};
 			};
 		};

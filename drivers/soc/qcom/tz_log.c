@@ -145,7 +145,12 @@ static int get_non_encrypted_tz_log(char *buf, uint32_t diag_start,
 
 	if (diag_start) {
 		virt_iobase = ioremap(diag_start, diag_size);
+		if (!virt_iobase) {
+			pr_err("ioremap failed for TZ diag memory\n");
+			return -1;
+		}
 		memcpy_fromio((void *)buf, virt_iobase, diag_size - 1);
+		iounmap(virt_iobase);
 	} else {
 		pr_err("Unable to fetch TZ diag memory\n");
 		return -1;
@@ -212,7 +217,7 @@ int parse_encrypted_log(char *ker_buf, uint32_t buf_len, char *copy_buf,
 
 	len += print_text("\nKey : ", encr_log_head->key,
 		TZBSP_AES_256_ENCRYPTED_KEY_SIZE,
-		copy_buf + len, display_buf_size);
+		copy_buf + len, display_buf_size - len);
 	len += print_text("\nNonce : ", encr_log_head->nonce,
 		TZBSP_NONCE_LEN,
 		copy_buf + len, display_buf_size - len);
@@ -360,7 +365,6 @@ static int tz_hvc_log_open(struct inode *inode, struct file *file)
 	}
 
 out_success:
-	mutex_unlock(&tz_hvc_log->lock);
 	return 0;
 
 out_err:
@@ -452,14 +456,16 @@ static int qti_tzlog_probe(struct platform_device *pdev)
 		if (!imem_np) {
 			dev_err(&pdev->dev,
 				"tz_log_buf_addr imem DT node does not exist\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto free_mem;
 		}
 
 		imem_base = of_iomap(imem_np, 0);
 		if (!imem_base) {
 			dev_err(&pdev->dev,
 				"tz_log_buf_addr imem offset mapping failed\n");
-			return -ENOMEM;
+			ret = -ENOMEM;
+			goto free_mem;
 		}
 
 		memcpy_fromio(&tz_hvc_log->log_buf_start, imem_base, 4);

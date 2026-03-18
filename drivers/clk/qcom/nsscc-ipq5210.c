@@ -43,8 +43,8 @@ enum {
 
 enum {
 	P_XO,
-	P_CMN_PLL_NSS_CLK_429M,
 	P_CMN_PLL_NSS_CLK_375M,
+	P_CMN_PLL_NSS_CLK_429M,
 	P_GCC_GPLL0_OUT_AUX,
 	P_UNIPHY0_NSS_RX_CLK,
 	P_UNIPHY0_NSS_TX_CLK,
@@ -816,6 +816,7 @@ static struct clk_rcg2 nss_cc_port4_rx_clk_src = {
 		.parent_data = gcc_xo_ephy_uniphy0_rx,
 		.num_parents = ARRAY_SIZE(gcc_xo_ephy_uniphy0_rx),
 		.ops = &clk_rcg2_fm_ops,
+		.flags = CLK_SET_RATE_NO_REPARENT,
 	},
 };
 
@@ -873,6 +874,7 @@ static struct clk_rcg2 nss_cc_port4_tx_clk_src = {
 		.parent_data = gcc_xo_ephy_uniphy0_tx,
 		.num_parents = ARRAY_SIZE(gcc_xo_ephy_uniphy0_tx),
 		.ops = &clk_rcg2_fm_ops,
+		.flags = CLK_SET_RATE_NO_REPARENT,
 	},
 };
 
