@@ -164,4 +164,14 @@
 		drive-strength = <2>;
 		bias-pull-down;
 	};
+
+	mdio-state {
+		mux_0 {
+			drive-strength = <4>;
+		};
+
+		mux_1 {
+			drive-strength = <4>;
+		};
+	};
 };
