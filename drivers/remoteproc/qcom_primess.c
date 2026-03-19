@@ -33,9 +33,17 @@
 #include <linux/interconnect.h>
 #include <linux/firmware/qcom/qcom_scm.h>
 #include <linux/soc/qcom/mdt_loader.h>
+#include <linux/tmelcom_ipc.h>
 #endif
 
 #include "prime_dev.h"
+
+#define IPQ9650_GCC_BASE 0x01800000
+#define IPQ9676_GCC_SIZE 0x40000
+
+/* GCC register offsets (base: ipq9650_GCC_BASE) */
+#define GCC_SNOC_PRIMESS_AXIM_CBCR		0x2E0E0
+#define GCC_CNOC_PRIMESS_AHBS_CBCR		0x310BC
 
 
 struct iuss_dev {
@@ -73,8 +81,12 @@ struct qcom_prime {
 
 
   int pas_id;
+  bool tmelcom_support;
 
   struct completion start_done;
+
+  void *metadata;
+  size_t metadata_len;
 
   /* PRIME lifecycle and SWIF mapping protection */
   bool prime_started;              /* True after successful prime_start(), false after prime_stop() */
@@ -148,6 +160,7 @@ struct prime_data {
 	bool auto_boot;
 	const char *qmp_name;
 	bool config_mmu;
+	bool tmelcom_support;
 };
 
 static void signal_userspace(struct qcom_prime *prime, int irq_id)
@@ -630,7 +643,7 @@ static int prime_set_clk_bw(struct qcom_prime* prime, enum prime_clk_level clk_l
 
 	dev_dbg(dev, "Set clk_level=%d, clk_rate=%lu, ddr_bw=%u, cpu_bw=%u\n", clk_level, clk_rate, ddr_bw, cpu_bw);
 
-	#if 1
+	#if 0
 	{
 		dev_dbg(dev, "Delay for 0.25ms before reading GCC registers\n");
 		usleep_range(250, 250);
@@ -706,6 +719,8 @@ static int prime_start_clock(struct qcom_prime* prime, enum prime_clk_level clk_
 {
 	struct device *dev = prime->dev;
 	int ret;
+	void __iomem *gcc_base;
+	u32 val;
 
 	struct prime_bw_table_val mem_cfg_bw = prime_bw_table[clk_level];
 
@@ -715,10 +730,31 @@ static int prime_start_clock(struct qcom_prime* prime, enum prime_clk_level clk_
 		goto r_clk;
 	}
 
+	/* These clocks are supposed to be configured by ARCG, temporarily
+	 * configure them here till ARCG enables these.
+	 */
+	gcc_base = ioremap(IPQ9650_GCC_BASE, IPQ9676_GCC_SIZE);
+	if (IS_ERR_OR_NULL(gcc_base)) {
+		dev_err(dev, "Failed to ioremap gcc region\n");
+		return PTR_ERR(gcc_base);
+	}
+
+	/* Configure GCC_SNOC_PRIMESS_AXIM_CBCR */
+	val = readl(gcc_base + GCC_SNOC_PRIMESS_AXIM_CBCR);
+	val |= 0x1;
+	writel(val, gcc_base + GCC_SNOC_PRIMESS_AXIM_CBCR);
+	mdelay(1);
+
+	/* Configure GCC_CNOC_PRIMESS_AHBS_CBCR */
+	val = readl(gcc_base + GCC_CNOC_PRIMESS_AHBS_CBCR);
+	val |= 0x1;
+	writel(val, gcc_base + GCC_CNOC_PRIMESS_AHBS_CBCR);
+	mdelay(1);
+
+	iounmap(gcc_base);
 
 	dev_dbg(dev, "Enable Voter\n");
 	//TODO:  Any delay needed between clk calls and starting the subsystem?
-	u32 val;
 	// Enable bit 1 in the voter
 	writel(PRIME_KM_VOTE_BIT, prime->reg_ss_base + PRIMESS_VOTER_FW_EN_CFG);
 	// readback to allow time for cfg to flush.
@@ -786,8 +822,27 @@ static int prime_load(struct rproc *rproc, const struct firmware *fw)
 		}
 	}
 
-	ret = qcom_mdt_load(prime->dev, fw, rproc->firmware, prime->pas_id,
-		prime->mem_region, prime->mem_phys, prime->mem_size, &prime->mem_reloc);
+	/* Use tmelcom path for IPQ platforms, standard PIL/PAS path for others */
+	if (prime->tmelcom_support) {
+		dev_dbg(prime->dev, "Loading firmware via tmelcom (qcom_mdt_load_no_init)\n");
+
+		/* Read metadata for tmelcom authentication */
+		prime->metadata = qcom_mdt_read_metadata(fw, &prime->metadata_len,
+							 rproc->firmware, prime->dev);
+		if (IS_ERR(prime->metadata)) {
+			ret = PTR_ERR(prime->metadata);
+			dev_err(prime->dev, "error %d reading firmware %s metadata\n",
+				ret, rproc->firmware);
+			return ret;
+		}
+
+		ret = qcom_mdt_load_no_init(prime->dev, fw, rproc->firmware, prime->pas_id,
+			prime->mem_region, prime->mem_phys, prime->mem_size, &prime->mem_reloc);
+	} else {
+		dev_dbg(prime->dev, "Loading firmware via standard PIL/PAS (qcom_mdt_load)\n");
+		ret = qcom_mdt_load(prime->dev, fw, rproc->firmware, prime->pas_id,
+			prime->mem_region, prime->mem_phys, prime->mem_size, &prime->mem_reloc);
+	}
 
 	devm_iounmap(prime->dev, prime->mem_region);
 	prime->mem_region = NULL;
@@ -833,7 +888,16 @@ static int prime_stop(struct rproc *rproc)
 	}
 	mask_irqs(prime);
 #else
-	if((ret = qcom_scm_pas_shutdown(prime->pas_id)) < 0) {
+	/* Use tmelcom path for IPQ platforms, standard PIL/PAS path for others */
+	if (prime->tmelcom_support) {
+		dev_dbg(prime->dev, "Stopping firmware via tmelcom (tmelcom_secboot_teardown)\n");
+		ret = tmelcom_secboot_teardown(prime->pas_id, 0);
+	} else {
+		dev_dbg(prime->dev, "Stopping firmware via standard PIL/PAS (qcom_scm_pas_shutdown)\n");
+		ret = qcom_scm_pas_shutdown(prime->pas_id);
+	}
+
+	if (ret < 0) {
 		dev_dbg(prime->dev, "Error Shutting Down Core\n");
 		goto done;
 	}
@@ -904,7 +968,14 @@ static int prime_start(struct rproc *rproc)
 	//Initial boot clear pending
 	unmask_irqs(prime, 0xff);
 
-	ret = qcom_scm_pas_auth_and_reset(prime->pas_id);
+	/* Use tmelcom path for IPQ platforms, standard PIL/PAS path for others */
+	if (prime->tmelcom_support) {
+		dev_dbg(prime->dev, "Starting firmware via tmelcom (tmelcom_secboot_sec_auth)\n");
+		ret = tmelcom_secboot_sec_auth_v2(prime->pas_id, prime->metadata, prime->metadata_len);
+	} else {
+		dev_dbg(prime->dev, "Starting firmware via standard PIL/PAS (qcom_scm_pas_auth_and_reset)\n");
+		ret = qcom_scm_pas_auth_and_reset(prime->pas_id);
+	}
 #endif
 	if (ret) {
 		dev_err(prime->dev, "Auth and reset failed for remoteproc %s: %d\n", rproc->name, ret);
@@ -1788,6 +1859,7 @@ skip_fw_search:
 	prime->rproc = rproc;
 	prime->pas_id = desc->pas_id;
 	prime->config_mmu = desc->config_mmu;
+	prime->tmelcom_support = desc->tmelcom_support;
 	init_completion(&prime->start_done);
 
 	/* Initialize PRIME lifecycle and SWIF mapping protection */
@@ -1934,11 +2006,12 @@ static const struct prime_data prime_resource_init = {
 
 static const struct prime_data prime_resource_init_ipq = {
 	.firmware_name = "qcom_prime_ipq.elf",
-	.pas_id = 81,
+	.pas_id = 0xc3,
 	.ssr_name = "prime",
 	.auto_boot = false,
 	.qmp_name = "prime",
 	.config_mmu = false,
+	.tmelcom_support = true,
 };
 
 static const struct prime_data prime_resource_generic = {

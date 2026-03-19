@@ -77,6 +77,30 @@ struct tmel_secboot_sec_auth {
 	struct tmel_secboot_sec_auth_resp resp;
 } __packed;
 
+struct tmel_secboot_sec_auth_req_v2 {
+	u32 sw_id;
+	struct tmel_msg_param_type_buf_in elf_buf;
+	struct tmel_msg_param_type_buf_in region_list;
+	u32 relocate;
+	u32 ns_integrity_check:1;
+	u32 reserved:31;
+	struct tmel_msg_param_type_buf_in reserved_buf;
+} __packed;
+
+struct tmel_secboot_sec_auth_resp_v2 {
+	u32 first_seg_addr;
+	u32 first_seg_len;
+	u32 entry_addr;
+	u32 extended_error;
+	u32 status;
+	u32 key_handle;
+} __packed;
+
+struct tmel_secboot_sec_auth_v2 {
+	struct tmel_secboot_sec_auth_req_v2 req;
+	struct tmel_secboot_sec_auth_resp_v2 resp;
+} __packed;
+
 struct tmel_secboot_teardown_req {
 	u32 sw_id;
 	u32 secondary_sw_id;
@@ -550,6 +574,7 @@ int tmelcom_qwes_device_provision(u32 *req_buf, u32 req_buf_len, u32 *resp_buf,
 				  u32 resp_buf_len, u32 *resp_buf_size);
 int tmelcom_fuse_list_read(struct tmel_fuse_payload *fuse, size_t size);
 int tmelcom_secboot_sec_auth(u32 sw_id, void *metadata, size_t size);
+int tmelcom_secboot_sec_auth_v2(u32 sw_id, void *metadata, size_t size);
 int tmelcom_secboot_teardown(u32 sw_id, u32 secondary_sw_id);
 int tmelcom_licensing_check(void *cbor_req, u32 req_len, void *cbor_resp,
 			    u32 resp_len, u32 *used_resp_len);
