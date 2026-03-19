@@ -1632,7 +1632,7 @@
 
 		seccrypt: qcom,seccrypt {
 			compatible = "qcom,seccrypt";
-			status = "disabled";
+			status = "okay";
 		};
 
 		tmelcom: qcom,tmelcom-qmp-client {
