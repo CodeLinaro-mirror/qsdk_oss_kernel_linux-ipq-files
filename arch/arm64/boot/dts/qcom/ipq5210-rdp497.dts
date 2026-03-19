@@ -125,9 +125,33 @@
 	};
 };
 
+&i2c2 {
+	pinctrl-0 = <&qup_i2c2_default>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
 &nsscc {
 	assigned-clocks = <&nsscc NSS_CC_EPHY_RX_CLK_SRC>,
 			  <&nsscc NSS_CC_EPHY_TX_CLK_SRC>;
 	assigned-clock-parents = <&nsscc NSS_CC_PORT4_RX_DIV_CLK_SRC>,
 				 <&nsscc NSS_CC_PORT4_TX_DIV_CLK_SRC>;
+};
+
+&tlmm {
+	qup_i2c2_default: qup-i2c2-default-state {
+		qup_i2c2_scl {
+			pins = "gpio52";
+			function = "qup_se5_l01";
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+
+		qup_i2c2_sda {
+			pins = "gpio53";
+			function = "qup_se5_l11";
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+	};
 };
