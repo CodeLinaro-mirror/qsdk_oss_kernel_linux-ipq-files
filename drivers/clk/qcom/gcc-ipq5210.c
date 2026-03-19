@@ -3311,6 +3311,14 @@ static int gcc_ipq5210_probe(struct platform_device *pdev)
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
+	/* Configure GCC_PON_TM2X_CFG_RCGR to 400MHz */
+	regmap_write(regmap, 0x3c008, 0x205);
+	regmap_update_bits(regmap, 0x3c004, BIT(0), BIT(0));
+	/* Turn on the PON clocks */
+	regmap_update_bits(regmap, 0x3c00c, BIT(0), BIT(0));
+	regmap_update_bits(regmap, 0x3c014, BIT(0), BIT(0));
+	regmap_update_bits(regmap, 0x3c01c, BIT(0), BIT(0));
+
 	ret = qcom_cc_really_probe(&pdev->dev, &ipq5210_desc, regmap);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to register GCC clocks ret=%d\n", ret);
