@@ -464,7 +464,7 @@
 			reg = <0 0 0 0 0>;
 			memory-region = <&qcn9625_pcie1>, <&mlo_global_mem0>;
 			memory-region-names = "host-ddr-mem", "mlo-global-mem";
-			qcom,board_id = <0x1>;
+			qcom,board_id = <0x2001>;
 
 			ports {
 				#address-cells = <1>;
@@ -497,7 +497,7 @@
 			reg = <0 0 0 0 0>;
 			memory-region = <&qcn9625_pcie2>, <&mlo_global_mem0>;
 			memory-region-names = "host-ddr-mem", "mlo-global-mem";
-			qcom,board_id = <0x4>;
+			qcom,board_id = <0x2004>;
 
 			ports {
 				#address-cells = <1>;
@@ -530,7 +530,7 @@
 			reg = <0 0 0 0 0>;
 			memory-region = <&qcn9625_pcie3>, <&mlo_global_mem0>;
 			memory-region-names = "host-ddr-mem", "mlo-global-mem";
-			qcom,board_id = <0x2>;
+			qcom,board_id = <0x2002>;
 
 			ports {
 				#address-cells = <1>;
