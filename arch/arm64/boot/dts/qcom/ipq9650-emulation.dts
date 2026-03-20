@@ -64,26 +64,46 @@
 		CPU0: cpu@0 {
 			enable-method = "qcom,arm-cortex-acc";
 			qcom,acc = <&acc0>;
+			/delete-property/ clocks;
+			/delete-property/ clock-names;
+			/delete-property/ operating-points-v2;
+			/delete-property/ interconnects;
 		};
 
 		CPU1: cpu@100 {
 			enable-method = "qcom,arm-cortex-acc";
 			qcom,acc = <&acc1>;
+			/delete-property/ clocks;
+			/delete-property/ clock-names;
+			/delete-property/ operating-points-v2;
+			/delete-property/ interconnects;
 		};
 
 		CPU2: cpu@200 {
 			enable-method = "qcom,arm-cortex-acc";
 			qcom,acc = <&acc2>;
+			/delete-property/ clocks;
+			/delete-property/ clock-names;
+			/delete-property/ operating-points-v2;
+			/delete-property/ interconnects;
 		};
 
 		CPU3: cpu@300 {
 			enable-method = "qcom,arm-cortex-acc";
 			qcom,acc = <&acc3>;
+			/delete-property/ clocks;
+			/delete-property/ clock-names;
+			/delete-property/ operating-points-v2;
+			/delete-property/ interconnects;
 		};
 
 		CPU4: cpu@400 {
 			enable-method = "qcom,arm-cortex-acc";
 			qcom,acc = <&acc4>;
+			/delete-property/ clocks;
+			/delete-property/ clock-names;
+			/delete-property/ operating-points-v2;
+			/delete-property/ interconnects;
 		};
 	};
 

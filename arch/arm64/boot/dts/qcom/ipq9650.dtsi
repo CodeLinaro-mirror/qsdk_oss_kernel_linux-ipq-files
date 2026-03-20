@@ -477,6 +477,7 @@
 			interrupts = <GIC_SPI 105 IRQ_TYPE_EDGE_RISING>;
 			interrupt-names = "combined";
 			#thermal-sensor-cells = <1>;
+			status = "disabled";
 		};
 
 		efuse@a4000 {

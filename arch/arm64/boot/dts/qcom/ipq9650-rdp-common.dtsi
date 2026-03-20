@@ -25,6 +25,43 @@
 		bootargs-append = " clk_ignore_unused";
 	};
 
+	cpus: cpus {
+		CPU0: cpu@0 {
+			/delete-property/ clocks;
+			/delete-property/ clock-names;
+			/delete-property/ operating-points-v2;
+			/delete-property/ interconnects;
+		};
+
+		CPU1: cpu@100 {
+			/delete-property/ clocks;
+			/delete-property/ clock-names;
+			/delete-property/ operating-points-v2;
+			/delete-property/ interconnects;
+		};
+
+		CPU2: cpu@200 {
+			/delete-property/ clocks;
+			/delete-property/ clock-names;
+			/delete-property/ operating-points-v2;
+			/delete-property/ interconnects;
+		};
+
+		CPU3: cpu@300 {
+			/delete-property/ clocks;
+			/delete-property/ clock-names;
+			/delete-property/ operating-points-v2;
+			/delete-property/ interconnects;
+		};
+
+		CPU4: cpu@400 {
+			/delete-property/ clocks;
+			/delete-property/ clock-names;
+			/delete-property/ operating-points-v2;
+			/delete-property/ interconnects;
+		};
+	};
+
 	clocks {
 		qce2204_xo: qce2204-xo {
 			compatible = "fixed-clock";
