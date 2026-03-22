@@ -366,13 +366,13 @@ static int process_multi_threshold_regulator(struct device *dev,
 	if (!desc->name)
 		return -ENOMEM;
 
+	desc->of_match = reg_data->regulator_name;
 	desc->type = REGULATOR_VOLTAGE;
 	desc->ops = &multi_threshold_regulator_ops;
 	desc->owner = THIS_MODULE;
 
 	config.dev = dev;
 	config.driver_data = reg_info;
-	config.of_node = dev->of_node;
 
 	rdev = devm_regulator_register(dev, desc, &config);
 	if (IS_ERR(rdev))
