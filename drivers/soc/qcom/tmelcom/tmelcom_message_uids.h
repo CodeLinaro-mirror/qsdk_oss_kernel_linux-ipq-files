@@ -101,6 +101,8 @@ ________________________________________________________________________________
 #define TMEL_ACTION_SECBOOT_XIP_AUTH                     0x0B   /* Deprecated. */
 #define TMEL_ACTION_SECBOOT_GET_STATE                    0x0C
 #define TMEL_ACTION_SECBOOT_UPDATE_ARB_VER_SWID_LIST     0x0D
+#define TMEL_ACTION_SECBOOT_GET_DEBUG_STATE_VECTOR       0x0E
+#define TMEL_ACTION_SECBOOT_SEC_AUTH_V2                  0x0F
 
 /*----------------------------------------------------------------------------
   Action ID's for TMEL_MSG_CRYPTO
@@ -295,6 +297,10 @@ ________________________________________________________________________________
  */
 #define TMEL_MSG_UID_SECBOOT_SEC_AUTH    TMEL_MSG_UID_CREATE(TMEL_MSG_SECBOOT,\
                                             TMEL_ACTION_SECBOOT_SEC_AUTH)
+
+/* Elf Image Signature & Segment Hash Verification Request V2. */
+#define TMEL_MSG_UID_SECBOOT_SEC_AUTH_V2  TMEL_MSG_UID_CREATE(TMEL_MSG_SECBOOT,\
+					     TMEL_ACTION_SECBOOT_SEC_AUTH_V2)
 
 /*
  * Elf Image Signature Verification Request.
