@@ -979,11 +979,14 @@ static int prime_start(struct rproc *rproc)
 #endif
 	if (ret) {
 		dev_err(prime->dev, "Auth and reset failed for remoteproc %s: %d\n", rproc->name, ret);
+		if (prime->tmelcom_support)
+			(void)tmelcom_secboot_teardown(prime->pas_id, 0);
+
 		return ret;
 	}
 
 	// This isn't a guaranteed sync point as there will potentially be 3 IRQs from PRIME... Treated more as a proof of life since auth_and_reset will be blocking until booted.
-	if (!wait_for_completion_timeout(&prime->start_done, msecs_to_jiffies(5000))) {
+	if (!wait_for_completion_timeout(&prime->start_done, msecs_to_jiffies(10000))) {
 		dev_err(prime->dev, "Boot completion timeout after 5 seconds\n");
 		return -ETIMEDOUT;
 	}
