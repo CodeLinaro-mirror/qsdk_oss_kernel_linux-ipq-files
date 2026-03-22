@@ -366,25 +366,32 @@
 
 &CPU0 {
 	cpu-supply = <&ipq9650_s1>;
+	/delete-property/ cpu-supply;
 };
 
 &CPU1 {
 	cpu-supply = <&ipq9650_s1>;
+	/delete-property/ cpu-supply;
 };
 
 &CPU2 {
 	cpu-supply = <&ipq9650_s1>;
+	/delete-property/ cpu-supply;
 };
 
 &CPU3 {
 	cpu-supply = <&ipq9650_s1>;
+	/delete-property/ cpu-supply;
 };
 
 &CPU4 {
 	cpu-supply = <&ipq9650_s1>;
+	/delete-property/ cpu-supply;
 };
 
 &remoteproc_cdsp {
 	cx-supply = <&ipq9650_s2>;
 	mx-supply = <&ipq9650_s4>;
+	/delete-property/ mx-supply;
+	/delete-property/ cx-supply;
 };
