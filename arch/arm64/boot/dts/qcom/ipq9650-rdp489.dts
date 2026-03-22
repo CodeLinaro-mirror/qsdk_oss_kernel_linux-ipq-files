@@ -166,6 +166,13 @@
 			nvmem-cells = <&apc_nom_fuse>;
 			nvmem-cell-names = "cpr_apc_nom";
 			status = "disabled";
+
+			apc: apc {
+				regulator-min-microvolt = <600000>;
+				regulator-max-microvolt = <957000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
 		};
 	};
 };
@@ -341,26 +348,26 @@
 };
 
 &CPU0 {
-	cpu-supply = <&apc_rail>;
+	cpu-supply = <&apc>;
 	/delete-property/ cpu-supply;
 };
 
 &CPU1 {
-	cpu-supply = <&apc_rail>;
+	cpu-supply = <&apc>;
 	/delete-property/ cpu-supply;
 };
 
 &CPU2 {
-	cpu-supply = <&apc_rail>;
+	cpu-supply = <&apc>;
 	/delete-property/ cpu-supply;
 };
 
 &CPU3 {
-	cpu-supply = <&apc_rail>;
+	cpu-supply = <&apc>;
 	/delete-property/ cpu-supply;
 };
 
 &CPU4 {
-	cpu-supply = <&apc_rail>;
+	cpu-supply = <&apc>;
 	/delete-property/ cpu-supply;
 };
