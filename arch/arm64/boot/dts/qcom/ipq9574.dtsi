@@ -2883,7 +2883,7 @@
 			interrupts = <GIC_SPI 3 IRQ_TYPE_EDGE_RISING>;
 			clocks = <&sleep_clk>;
 			timeout-sec = <30>;
-			qcom,restart-reason = <&imem 0x7a4 0x1>;
+			qcom,restart-reason = <&imem 0x7a4 0x1 0x20>;
 		};
 
 		apcs_glb: mailbox@b111000 {
