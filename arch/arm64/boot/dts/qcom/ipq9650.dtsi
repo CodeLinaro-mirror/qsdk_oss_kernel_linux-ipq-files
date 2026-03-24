@@ -106,7 +106,7 @@
 			clocks = <&apss_clk APSS_SILVER_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu0_opp_table>;
-			interconnects = <&apss_clk MASTER_CPU &apss_clk SLAVE_L3>;
+			interconnects = <&apss_clk MASTER_CPU_SILVER &apss_clk SLAVE_L3>;
 			#cooling-cells = <2>;
 			L2_0: l2-cache {
 				compatible = "cache";
@@ -130,7 +130,7 @@
 			clocks = <&apss_clk APSS_SILVER_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu0_opp_table>;
-			interconnects = <&apss_clk MASTER_CPU &apss_clk SLAVE_L3>;
+			interconnects = <&apss_clk MASTER_CPU_SILVER &apss_clk SLAVE_L3>;
 			#cooling-cells = <2>;
 			L2_100: l2-cache {
 				compatible = "cache";
@@ -149,7 +149,7 @@
 			clocks = <&apss_clk APSS_SILVER_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu0_opp_table>;
-			interconnects = <&apss_clk MASTER_CPU &apss_clk SLAVE_L3>;
+			interconnects = <&apss_clk MASTER_CPU_SILVER &apss_clk SLAVE_L3>;
 			#cooling-cells = <2>;
 			L2_200: l2-cache {
 				compatible = "cache";
@@ -168,7 +168,7 @@
 			clocks = <&apss_clk APSS_SILVER_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu0_opp_table>;
-			interconnects = <&apss_clk MASTER_CPU &apss_clk SLAVE_L3>;
+			interconnects = <&apss_clk MASTER_CPU_SILVER &apss_clk SLAVE_L3>;
 			#cooling-cells = <2>;
 			L2_300: l2-cache {
 				compatible = "cache";
@@ -187,7 +187,7 @@
 			clocks = <&apss_clk APSS_GOLD_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu4_opp_table>;
-			interconnects = <&apss_clk MASTER_CPU &apss_clk SLAVE_L3>;
+			interconnects = <&apss_clk MASTER_CPU_GOLD &apss_clk SLAVE_L3>;
 			#cooling-cells = <2>;
 			L2_400: l2-cache {
 				compatible = "cache";
@@ -254,7 +254,7 @@
 			/* <target min max> */
 			opp-microvolt = <815000 735000 960000>;
 			clock-latency-ns = <200000>;
-			opp-peak-kBps = <1176000000>;
+			opp-peak-kBps = <1176000>;
 		};
 
 		opp-1800000000 {
@@ -263,7 +263,7 @@
 			/* <target min max> */
 			opp-microvolt = <960000 735000 960000>;
 			clock-latency-ns = <200000>;
-			opp-peak-kBps = <1176000000>;
+			opp-peak-kBps = <1488000>;
 		};
 
 		opp-1944000000 {
@@ -272,7 +272,7 @@
 			/* <target min max> */
 			opp-microvolt = <960000 735000 960000>;
 			clock-latency-ns = <200000>;
-			opp-peak-kBps = <1488000000>;
+			opp-peak-kBps = <1488000>;
 		};
 	};
 
@@ -308,7 +308,7 @@
 			/* <target min max> */
 			opp-microvolt = <815000 735000 960000>;
 			clock-latency-ns = <200000>;
-			opp-peak-kBps = <1176000000>;
+			opp-peak-kBps = <1176000>;
 		};
 
 		opp-1032000000 {
@@ -317,7 +317,7 @@
 			/* <target min max> */
 			opp-microvolt = <960000 735000 960000>;
 			clock-latency-ns = <200000>;
-			opp-peak-kBps = <1488000000>;
+			opp-peak-kBps = <1488000>;
 		};
 	};
 
