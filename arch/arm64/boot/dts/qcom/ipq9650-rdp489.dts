@@ -102,6 +102,72 @@
 			local-mac-address = [000000000000];
 			qcom,ppe-offload-disabled = <0>;
 		};
+
+		efuse@a4000 {
+			apc_turl1_fuse: apc_turl1_fuse@3fc {
+				reg = <0x3fc 0x2>;
+				bits = <3 7>;
+			};
+
+			apc_nom_fuse: apc_nom_fuse@3fd {
+				reg = <0x3fd 0x2>;
+				bits = <2 7>;
+			};
+
+			apc_svs_fuse: apc_svs_fuse@3fe {
+				reg = <0x3fe 0x1>;
+				bits = <1 7>;
+			};
+
+			nsp_cx_nom_fuse: nsp_cx_nom_fuse@403 {
+				reg = <0x403 0x2>;
+				bits = <6 7>;
+			};
+
+			nsp_cx_svs_fuse: nsp_cx_svs_fuse@406 {
+				reg = <0x406 0x2>;
+				bits = <2 7>;
+			};
+
+			nsp_mx_nom_fuse: nsp_mx_nom_fuse@40b {
+				reg = <0x40b 0x2>;
+				bits = <6 7>;
+			};
+		};
+
+		apc_rail: apc-gpio-regulator {
+			compatible = "regulator-gpio";
+			regulator-name = "vdd-apc";
+			regulator-type = "voltage";
+			regulator-boot-on;
+			regulator-always-on;
+			regulator-min-microvolt = <600000>;
+			regulator-max-microvolt = <957000>;
+			regulator-ramp-delay = <250>; /* 20ms */
+			gpios = <&tlmm 33 GPIO_ACTIVE_HIGH>,
+				<&tlmm 34 GPIO_ACTIVE_HIGH>,
+				<&tlmm 35 GPIO_ACTIVE_HIGH>;
+			gpios-states = <0x7>;
+			states = <600000 0x0>,
+				 <660000 0x1>,
+				 <740000 0x2>,
+				 <804000 0x3>,
+				 <753000 0x4>,
+				 <815000 0x5>,
+				 <895000 0x6>,
+				 <957000 0x7>;
+			status = "disabled";
+		};
+
+		qcom,gpio-regulator {
+			compatible = "qcom,ipq9650-gpio-regulator";
+			reg = <0xa4000 0x739>;
+			reg-names = "fuse_base";
+			apc-supply = <&apc_rail>;
+			nvmem-cells = <&apc_nom_fuse>;
+			nvmem-cell-names = "cpr_apc_nom";
+			status = "disabled";
+		};
 	};
 };
 
@@ -337,4 +403,24 @@
 			output-low;
 		};
 	};
+};
+
+&CPU0 {
+	cpu-supply = <&apc_rail>;
+};
+
+&CPU1 {
+	cpu-supply = <&apc_rail>;
+};
+
+&CPU2 {
+	cpu-supply = <&apc_rail>;
+};
+
+&CPU3 {
+	cpu-supply = <&apc_rail>;
+};
+
+&CPU4 {
+	cpu-supply = <&apc_rail>;
 };
