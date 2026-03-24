@@ -1183,8 +1183,10 @@
 
 		sdhc: mmc@7804000 {
 			compatible = "qcom,ipq5210-sdhci", "qcom,sdhci-msm-v5";
-			reg = <0x07804000 0x1000>, <0x07805000 0x1000>;
-			reg-names = "hc", "cqhci";
+			reg = <0x07804000 0x1000>,
+			      <0x07805000 0x1000>,
+			      <0x07808000 0x2000>;
+			reg-names = "hc", "cqhci", "ice";
 
 			interrupts = <GIC_SPI 63 IRQ_TYPE_LEVEL_HIGH>,
 				     <GIC_SPI 66 IRQ_TYPE_LEVEL_HIGH>;
@@ -1192,8 +1194,12 @@
 
 			clocks = <&gcc GCC_SDCC1_AHB_CLK>,
 				 <&gcc GCC_SDCC1_APPS_CLK>,
-				 <&xo>;
-			clock-names = "iface", "core", "xo";
+				 <&xo>,
+				 <&gcc GCC_SDCC1_ICE_CORE_CLK>;
+			clock-names = "iface", "core", "xo", "ice";
+			assigned-clocks = <&gcc GCC_SDCC1_ICE_CORE_CLK>;
+			assigned-clock-rates = <300000000>;
+			supports-cqe;
 
 			status = "disabled";
 		};
