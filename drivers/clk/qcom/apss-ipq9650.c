@@ -380,7 +380,8 @@ static const struct regmap_config apss_regmap_config = {
 #define IPQ_APPS_PLL_ID			(9650 * 3)	/* some unique value */
 
 static struct qcom_icc_hws_data icc_cpu_l3[] = {
-	{ MASTER_CPU, SLAVE_L3, L3_CORE_CLK },
+	{ MASTER_CPU_SILVER, SLAVE_L3, L3_CORE_CLK },
+	{ MASTER_CPU_GOLD, SLAVE_L3, L3_CORE_CLK },
 };
 
 static const struct qcom_cc_desc apss_desc = {
