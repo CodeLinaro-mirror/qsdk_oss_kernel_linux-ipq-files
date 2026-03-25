@@ -94,7 +94,7 @@
 	pinctrl-0 = <&qup_i2c0_default>;
 	pinctrl-names = "default";
 
-	status = "okay";
+	status = "disabled";
 };
 
 &qusb_phy_0 {

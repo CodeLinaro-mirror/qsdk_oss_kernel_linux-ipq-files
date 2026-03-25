@@ -393,6 +393,11 @@
 	};
 };
 
+&i2c0 {
+	clock-frequency = <100000>;
+
+	status = "okay";
+};
 
 &tlmm {
 	pcie0_default_state: pcie0-default-state {

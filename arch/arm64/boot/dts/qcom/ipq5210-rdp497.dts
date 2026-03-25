@@ -128,9 +128,17 @@
 	};
 };
 
+&i2c0 {
+	clock-frequency = <100000>;
+
+	status = "okay";
+};
+
 &i2c2 {
 	pinctrl-0 = <&qup_i2c2_default>;
 	pinctrl-names = "default";
+	clock-frequency = <100000>;
+
 	status = "okay";
 };
 
