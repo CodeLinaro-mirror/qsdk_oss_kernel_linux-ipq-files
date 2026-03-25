@@ -890,6 +890,12 @@ static int share_bootargs_to_q6(struct device *dev)
 		return ret;
 	}
 
+	/* Validate smem_id to prevent out-of-bounds TOC access */
+	if (smem_id >= 512) {
+		dev_err(dev, "smem id %u exceeds TOC size (max: 511)\n", smem_id);
+		return -EINVAL;
+	}
+
 	ret = qcom_smem_alloc(REMOTE_PID, smem_id, Q6_BOOT_ARGS_SMEM_SIZE);
 	if (ret && ret != -EEXIST) {
 		dev_err(dev, "failed to allocate q6 bootargs smem segment\n");
@@ -931,7 +937,7 @@ static int share_bootargs_to_q6(struct device *dev)
 	bootargs_arr = kzalloc(cnt, GFP_KERNEL);
 	if (!bootargs_arr) {
 		dev_err(dev, "failed to allocate memory\n");
-		return PTR_ERR(bootargs_arr);
+		return -ENOMEM;
 	}
 
 	for (tmp = 0; tmp < cnt; tmp++) {

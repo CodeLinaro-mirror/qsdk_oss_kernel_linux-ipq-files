@@ -437,7 +437,7 @@ static int gpio_regulator_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	bool fix_volt_max = false;
 	u8 cpr_fuse = 0;
-	int ret;
+	int ret = 0;
 
 	reg_data = of_device_get_match_data(dev);
 	if (!reg_data)
