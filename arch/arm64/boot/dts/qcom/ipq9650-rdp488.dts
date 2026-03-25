@@ -198,12 +198,12 @@
 };
 
 &pcie1_phy {
-	status = "disabled";
+	status = "okay";
 };
 
 &pcie1 {
 	perst-gpio = <&tlmm 28 GPIO_ACTIVE_LOW>;
-	status = "disabled";
+	status = "okay";
 
 	pcie1_rp {
 		reg = <0 0 0 0 0>;
@@ -231,12 +231,12 @@
 };
 
 &pcie2_phy {
-	status = "disabled";
+	status = "okay";
 };
 
 &pcie2 {
 	perst-gpio = <&tlmm 52 GPIO_ACTIVE_LOW>;
-	status = "disabled";
+	status = "okay";
 
 	pcie2_rp {
 		reg = <0 0 0 0 0>;
@@ -264,12 +264,12 @@
 };
 
 &pcie3_phy {
-	status = "disabled";
+	status = "okay";
 };
 
 &pcie3 {
 	perst-gpio = <&tlmm 41 GPIO_ACTIVE_LOW>;
-	status = "disabled";
+	status = "okay";
 
 	pcie3_rp {
 		reg = <0 0 0 0 0>;
