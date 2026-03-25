@@ -596,7 +596,7 @@
 				reg = <0x1a88000 0x4000>;
 				clocks = <&gcc GCC_QUPV3_WRAP_SE2_CLK>;
 				clock-names = "se";
-				clock-frequency = <400000>;
+				clock-frequency = <100000>;
 				interrupts = <GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>;
 				assigned-clocks = <&gcc GCC_QUPV3_WRAP_SE2_CLK>;
 				assigned-clock-rates = <32000000>;
@@ -620,7 +620,7 @@
 				reg = <0x1a94000 0x4000>;
 				clocks = <&gcc GCC_QUPV3_WRAP_SE5_CLK>;
 				clock-names = "se";
-				clock-frequency = <400000>;
+				clock-frequency = <100000>;
 				interrupts = <GIC_SPI 143 IRQ_TYPE_LEVEL_HIGH>;
 				assigned-clocks = <&gcc GCC_QUPV3_WRAP_SE5_CLK>;
 				assigned-clock-rates = <32000000>;
