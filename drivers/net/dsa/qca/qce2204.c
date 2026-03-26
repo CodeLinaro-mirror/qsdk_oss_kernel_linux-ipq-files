@@ -315,6 +315,13 @@ static int qce2204_change_tag_protocol(struct dsa_switch *ds, enum dsa_tag_proto
 			dev_err(priv->dev, "Failed to teardown none tag VSI: %d\n", ret);
 			return ret;
 		}
+
+		/* Teardown none tag RSTP configuration */
+		ret = qce2204_teardown_none_tag_rstp(priv);
+		if (ret) {
+			dev_err(priv->dev, "Failed to teardown none tag RSTP: %d\n", ret);
+			return ret;
+		}
 	}
 
 	/* Setup new protocol configuration */
@@ -340,6 +347,13 @@ static int qce2204_change_tag_protocol(struct dsa_switch *ds, enum dsa_tag_proto
 		ret = qce2204_setup_none_tag_vsi(priv);
 		if (ret) {
 			dev_err(priv->dev, "Failed to setup none tag VSI: %d\n", ret);
+			return ret;
+		}
+
+		/* Setup none tag RSTP configuration */
+		ret = qce2204_setup_none_tag_rstp(priv);
+		if (ret) {
+			dev_err(priv->dev, "Failed to setup none tag RSTP: %d\n", ret);
 			return ret;
 		}
 	}

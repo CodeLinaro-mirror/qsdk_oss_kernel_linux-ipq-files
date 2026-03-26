@@ -19,6 +19,9 @@
 
 #define QCE2204_CPU_PORT_ID				0
 #define QCE2204_ATHTAG_TYPE				0xaaaa
+#define QCE2204_PPE_RSTP_ACL				0	/* RSTP reserved ACL index */
+#define QCE2204_PPE_RSTP_VP					64	/* RSTP reserved virtual port which starts from 64 */
+#define QCE2204_RSTP_ATHTAG_TYPE			0xfefe	/* RSTP Atheros header type */
 #define QCE2204_NUM_PORTS				6
 #define QCE2204_NUM_CPU_PORTS				2
 #define QCE2204_MDIO_REG_BASE_OFFSET		0x07000000
