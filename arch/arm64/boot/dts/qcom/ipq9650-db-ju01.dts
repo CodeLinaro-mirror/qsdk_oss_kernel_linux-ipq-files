@@ -365,6 +365,15 @@
 	};
 };
 
+&ess_uniphy {
+	assigned-clocks = <&cmn_pll IPQ9650_PCS0_CLK>,
+			  <&cmn_pll IPQ9650_PCS1_CLK>,
+			  <&cmn_pll IPQ9650_PCS2_CLK>;
+	assigned-clock-rates = <31250000>,
+			       <46875000>,
+			       <46875000>;
+};
+
 &CPU0 {
 	cpu-supply = <&ipq9650_s1>;
 	/delete-property/ cpu-supply;
