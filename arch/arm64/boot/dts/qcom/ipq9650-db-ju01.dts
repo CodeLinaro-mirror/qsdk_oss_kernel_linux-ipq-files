@@ -147,40 +147,37 @@
 };
 
 &mdio {
-	phy-reset-gpio = <&tlmm 18 GPIO_ACTIVE_LOW>, /* Reset for QCE1204. */
-			 <&tlmm 14 GPIO_ACTIVE_LOW>, /* Reset for UNIPHY1 QCA81XXs. */
-			 <&tlmm 15 GPIO_ACTIVE_LOW>; /* Reset for UNIPHY2 QCA81XXs. */
-
-	phy4: ethernet-phy@8 {
-		compatible = "ethernet-phy-ieee802.3-c45";
-		reg = <8>;
-	};
-
-	phy5: ethernet-phy@c {
-		compatible = "ethernet-phy-ieee802.3-c45";
-		reg = <12>;
-	};
+	phy-reset-gpio = <&tlmm 18 GPIO_ACTIVE_LOW>; /* Reset for QCE1204. */
 };
 
 &ess_switch {
-	switch_mac_mode1 = <0xd>; /* mac mode for uniphy instance1 */
-	switch_mac_mode2 = <0xd>; /* mac mode for uniphy instance2 */
+	pinctrl-0 = <&sfp_pins>;
+	pinctrl-names = "default";
+
+	switch_mac_mode1 = <0x18>; /* mac mode for uniphy instance1 */
+	switch_mac_mode2 = <0x18>; /* mac mode for uniphy instance2 */
 
 	qcom,port_phyinfo {
 		port@4 {
 			port_id = <5>;
-			phy_address = <8>;
-			phy-handle = <&phy4>;
-			phy-mode = "usxgmii";
-			ethernet-phy-ieee802.3-c45;
+			forced-speed = <25000>;
+			forced-duplex = <1>;
+			fixed-link {
+				speed = <25000>;
+				full-duplex;
+				pause;
+			};
 		};
 
 		port@5 {
 			port_id = <6>;
-			phy_address = <12>;
-			phy-handle = <&phy5>;
-			phy-mode = "usxgmii";
-			ethernet-phy-ieee802.3-c45;
+			forced-speed = <25000>;
+			forced-duplex = <1>;
+			fixed-link {
+				speed = <25000>;
+				full-duplex;
+				pause;
+			};
 		};
 	};
 };
@@ -361,6 +358,36 @@
 			function = "sdc_data";
 			drive-strength = <8>;
 			bias-pull-up;
+		};
+	};
+
+	sfp_pins: sfp-state {
+		sfp1_rx {
+			pins = "gpio46";
+			function = "rx_los10";
+			bias-disable;
+		};
+
+		sfp1_tx {
+			pins = "gpio15";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-down;
+			output-low;
+		};
+
+		sfp2_rx {
+			pins = "gpio45";
+			function = "rx_los20";
+			bias-disable;
+		};
+
+		sfp2_tx {
+			pins = "gpio18";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-down;
+			output-low;
 		};
 	};
 };
