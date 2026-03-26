@@ -489,8 +489,7 @@
 };
 
 &i2c0 {
-	pinctrl-0 = <&qup_i2c0_default>;
-	pinctrl-names = "default";
+	clock-frequency = <100000>;
 
 	status = "okay";
 };
