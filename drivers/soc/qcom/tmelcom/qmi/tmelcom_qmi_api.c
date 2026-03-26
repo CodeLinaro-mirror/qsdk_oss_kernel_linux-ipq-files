@@ -87,9 +87,9 @@ int tmelcom_qmi_init_attestation(int attach_num, u8 *rsp_buf, u32 rsp_buf_len,
 	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
 		tmelcom_qmi_err(client, "QMI request failed: ipc_status=%u, status=0x%x\n",
 				resp->ipc_status, resp->status);
-		ret = resp->ipc_status ? -EIO : (resp->status ? resp->status : -EIO);
+		ret = -EIO;
 		atomic_inc(&client->stats.errors);
-		client->stats.last_error_code = resp->status;
+		client->stats.last_error_code = resp->ipc_status ? resp->ipc_status : resp->status;
 		goto out_unlock;
 	}
 
@@ -209,9 +209,9 @@ int tmelcom_qmi_dev_attestation(int attach_num, u8 *att_req, u32 att_req_len,
 	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
 		tmelcom_qmi_err(client, "QMI request failed: ipc_status=%u, status=0x%x\n",
 				resp->ipc_status, resp->status);
-		ret = resp->ipc_status ? -EIO : (resp->status ? resp->status : -EIO);
+		ret = -EIO;
 		atomic_inc(&client->stats.errors);
-		client->stats.last_error_code = resp->status;
+		client->stats.last_error_code = resp->ipc_status ? resp->ipc_status : resp->status;
 		goto out_unlock;
 	}
 
@@ -317,9 +317,9 @@ int tmelcom_qmi_dev_provision(int attach_num, u8 *prov_req, u32 prov_req_len,
 	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
 		tmelcom_qmi_err(client, "QMI request failed: ipc_status=%u, status=0x%x\n",
 				resp->ipc_status, resp->status);
-		ret = resp->ipc_status ? -EIO : (resp->status ? resp->status : -EIO);
+		ret = -EIO;
 		atomic_inc(&client->stats.errors);
-		client->stats.last_error_code = resp->status;
+		client->stats.last_error_code = resp->ipc_status ? resp->ipc_status : resp->status;
 		goto out_unlock;
 	}
 
@@ -427,9 +427,9 @@ int tmelcom_qmi_lic_install(int attach_num, u8 *license, u32 license_len,
 	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
 		tmelcom_qmi_err(client, "QMI request failed: ipc_status=%u, status=0x%x\n",
 				resp->ipc_status, resp->status);
-		ret = resp->ipc_status ? -EIO : (resp->status ? resp->status : -EIO);
+		ret = -EIO;
 		atomic_inc(&client->stats.errors);
-		client->stats.last_error_code = resp->status;
+		client->stats.last_error_code = resp->ipc_status ? resp->ipc_status : resp->status;
 		goto out_unlock;
 	}
 
@@ -541,9 +541,9 @@ int tmelcom_qmi_lic_feature_status(int attach_num, u8 *request, u32 req_len,
 	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
 		tmelcom_qmi_err(client, "QMI request failed: ipc_status=%u, status=0x%x\n",
 				resp->ipc_status, resp->status);
-		ret = resp->ipc_status ? -EIO : (resp->status ? resp->status : -EIO);
+		ret = -EIO;
 		atomic_inc(&client->stats.errors);
-		client->stats.last_error_code = resp->status;
+		client->stats.last_error_code = resp->ipc_status ? resp->ipc_status : resp->status;
 		goto out_unlock;
 	}
 
@@ -632,9 +632,9 @@ int tmelcom_qmi_ttime_get_params(int attach_num, u8 *params, u32 buf_len,
 	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
 		tmelcom_qmi_err(client, "QMI request failed: ipc_status=%u, status=0x%x\n",
 				resp->ipc_status, resp->status);
-		ret = resp->ipc_status ? -EIO : (resp->status ? resp->status : -EIO);
+		ret = -EIO;
 		atomic_inc(&client->stats.errors);
-		client->stats.last_error_code = resp->status;
+		client->stats.last_error_code = resp->ipc_status ? resp->ipc_status : resp->status;
 		goto out_unlock;
 	}
 
@@ -733,9 +733,9 @@ int tmelcom_qmi_ttime_set(int attach_num, u8 *ttime_data, u32 buf_len)
 	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
 		tmelcom_qmi_err(client, "QMI request failed: ipc_status=%u, status=0x%x\n",
 				resp->ipc_status, resp->status);
-		ret = resp->ipc_status ? -EIO : (resp->status ? resp->status : -EIO);
+		ret = -EIO;
 		atomic_inc(&client->stats.errors);
-		client->stats.last_error_code = resp->status;
+		client->stats.last_error_code = resp->ipc_status ? resp->ipc_status : resp->status;
 		goto out_unlock;
 	}
 
@@ -821,9 +821,9 @@ int tmelcom_qmi_lic_clean(int attach_num, u64 *identifiers, u32 id_buf_len,
 	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
 		tmelcom_qmi_err(client, "QMI request failed: ipc_status=%u, status=0x%x\n",
 				resp->ipc_status, resp->status);
-		ret = resp->ipc_status ? -EIO : (resp->status ? resp->status : -EIO);
+		ret = -EIO;
 		atomic_inc(&client->stats.errors);
-		client->stats.last_error_code = resp->status;
+		client->stats.last_error_code = resp->ipc_status ? resp->ipc_status : resp->status;
 		goto out_unlock;
 	}
 
@@ -981,10 +981,9 @@ int tmelcom_qmi_secboot_get_arb_version(int attach_num, u32 sw_id, u32 *version)
 	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
 		tmelcom_qmi_err(client, "QMI request failed: ipc_status=%u, status=0x%x\n",
 				resp->ipc_status, resp->status);
-		/* Ensure negative error code for kernel convention */
-		ret = resp->ipc_status ? -EIO : (resp->status ? resp->status : -EIO);
+		ret = -EIO;
 		atomic_inc(&client->stats.errors);
-		client->stats.last_error_code = resp->status;
+		client->stats.last_error_code = resp->ipc_status ? resp->ipc_status : resp->status;
 		goto out_unlock;
 	}
 
@@ -1067,9 +1066,9 @@ int tmelcom_qmi_secboot_update_arb_version_list(int attach_num)
 	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
 		tmelcom_qmi_err(client, "QMI request failed: ipc_status=%u, status=0x%x\n",
 				resp->ipc_status, resp->status);
-		ret = resp->ipc_status ? -EIO : (resp->status ? resp->status : -EIO);
+		ret = -EIO;
 		atomic_inc(&client->stats.errors);
-		client->stats.last_error_code = resp->status;
+		client->stats.last_error_code = resp->ipc_status ? resp->ipc_status : resp->status;
 		goto out_unlock;
 	}
 
@@ -1158,9 +1157,9 @@ int tmelcom_qmi_get_ecc_public_key(int attach_num, u32 key_type, void *buf,
 	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
 		tmelcom_qmi_err(client, "QMI request failed: ipc_status=%u, status=0x%x\n",
 				resp->ipc_status, resp->status);
-		ret = resp->ipc_status ? -EIO : (resp->status ? resp->status : -EIO);
+		ret = -EIO;
 		atomic_inc(&client->stats.errors);
-		client->stats.last_error_code = resp->status;
+		client->stats.last_error_code = resp->ipc_status ? resp->ipc_status : resp->status;
 		goto out_unlock;
 	}
 
@@ -1256,9 +1255,9 @@ int tmelcom_qmi_read_fuse(int attach_num, u32 fuse_addr, u32 *fuse_val_lsb,
 	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
 		tmelcom_qmi_err(client, "QMI request failed: ipc_status=%u, status=0x%x\n",
 				resp->ipc_status, resp->status);
-		ret = resp->ipc_status ? -EIO : (resp->status ? resp->status : -EIO);
+		ret = -EIO;
 		atomic_inc(&client->stats.errors);
-		client->stats.last_error_code = resp->status;
+		client->stats.last_error_code = resp->ipc_status ? resp->ipc_status : resp->status;
 		goto out_unlock;
 	}
 
@@ -1353,13 +1352,11 @@ int tmelcom_qmi_tmel_version_read(int attach_num, u8 *version_info, u32 buf_len,
 
 	/* Check response */
 	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
-		tmelcom_qmi_err(client,
-				"QMI request failed: result=%u, error=%u, status=0x%x, ipc_status=%u\n",
-				resp->resp.result, resp->resp.error,
-				resp->status, resp->ipc_status);
+		tmelcom_qmi_err(client, "QMI request failed: ipc_status=%u, status=0x%x\n",
+				resp->ipc_status, resp->status);
 		ret = -EIO;
 		atomic_inc(&client->stats.errors);
-		client->stats.last_error_code = resp->status;
+		client->stats.last_error_code = resp->ipc_status ? resp->ipc_status : resp->status;
 		goto out_unlock;
 	}
 
@@ -1473,6 +1470,8 @@ int tmelcom_qmi_dpr_image_load(int attach_num, u8 *image_data, u32 image_size)
 				resp->resp.result, resp->resp.error);
 		ret = -EIO;
 		atomic_inc(&client->stats.errors);
+		client->stats.last_error_code =
+			resp->resp.result ? resp->resp.result : resp->resp.error;
 		goto out_unlock;
 	}
 
@@ -1575,9 +1574,9 @@ int tmelcom_qmi_fuse_blow(int attach_num, u8 *fuse_data, u32 fuse_data_size)
 	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
 		tmelcom_qmi_err(client, "QMI request failed: ipc_status=%u, status=0x%x\n",
 				resp->ipc_status, resp->status);
-		ret = resp->ipc_status ? -EIO : (resp->status ? resp->status : -EIO);
+		ret = -EIO;
 		atomic_inc(&client->stats.errors);
-		client->stats.last_error_code = resp->status;
+		client->stats.last_error_code = resp->ipc_status ? resp->ipc_status : resp->status;
 		goto out_unlock;
 	}
 
@@ -1590,3 +1589,92 @@ out_unlock:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(tmelcom_qmi_fuse_blow);
+
+/**
+ * tmelcom_qmi_get_chip_params() - Get chip parameters (chip ID and serial number)
+ * @client: Pointer to QMI client
+ * @chip_id: Pointer to store chip ID
+ * @serial_number: Pointer to store serial number
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int tmelcom_qmi_get_chip_params(struct tmelcom_qmi_client *client,
+				u32 *chip_id, u64 *serial_number)
+{
+	struct qmi_get_chip_params_req_msg_v01 req = {0};
+	struct qmi_get_chip_params_resp_msg_v01 *resp;
+	struct qmi_txn txn;
+	int ret;
+
+	if (!client || !chip_id || !serial_number)
+		return -EINVAL;
+
+	resp = kzalloc(sizeof(*resp), GFP_KERNEL);
+	if (!resp)
+		return -ENOMEM;
+
+	mutex_lock(&client->lock);
+
+	/* Initialize transaction */
+	ret = qmi_txn_init(&client->qmi, &txn,
+			   qmi_get_chip_params_resp_msg_v01_ei, resp);
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Failed to init transaction: %d\n", ret);
+		goto out_unlock;
+	}
+
+	/* Send request */
+	ret = qmi_send_request(&client->qmi, &client->sq, &txn,
+			       QMI_GET_CHIP_PARAMS_REQ_V01,
+			       QMI_GET_CHIP_PARAMS_REQ_MSG_V01_MAX_MSG_LEN,
+			       qmi_get_chip_params_req_msg_v01_ei, &req);
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Failed to send request: %d\n", ret);
+		qmi_txn_cancel(&txn);
+		atomic_inc(&client->stats.errors);
+		goto out_unlock;
+	}
+
+	atomic_inc(&client->stats.requests_sent);
+	client->stats.last_request_time = ktime_get();
+
+	/* Wait for response */
+	ret = qmi_txn_wait(&txn, msecs_to_jiffies(qmi_timeout_ms));
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Transaction timeout: %d\n", ret);
+		atomic_inc(&client->stats.timeouts);
+		goto out_unlock;
+	}
+
+	atomic_inc(&client->stats.responses_received);
+	client->stats.last_response_time = ktime_get();
+
+	/* Check response */
+	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
+		tmelcom_qmi_err(client, "QMI request failed: ipc_status=%u, status=0x%x\n",
+				resp->ipc_status, resp->status);
+		ret = -EIO;
+		atomic_inc(&client->stats.errors);
+		client->stats.last_error_code = resp->ipc_status ? resp->ipc_status : resp->status;
+		goto out_unlock;
+	}
+
+	/* Extract chip parameters from response */
+	if (resp->chip_id_valid)
+		*chip_id = resp->chip_id;
+	else
+		*chip_id = 0;
+
+	if (resp->serial_number_valid)
+		*serial_number = resp->serial_number;
+	else
+		*serial_number = 0;
+
+	ret = 0;
+
+out_unlock:
+	mutex_unlock(&client->lock);
+	kfree(resp);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tmelcom_qmi_get_chip_params);
