@@ -841,14 +841,14 @@
 			mdio_slv_state: mdio-slv-state {
 				mdc_slv {
 					pins = "gpio20";
-					function = "mdc_slv";
+					function = "mdc_slv0";
 					drive-strength = <8>;
 					bias-disable;
 				};
 
 				mdio_slv {
 					pins = "gpio21";
-					function = "mdio_slv";
+					function = "mdio_slv0";
 					drive-strength = <8>;
 					bias-pull-up;
 				};
@@ -2382,6 +2382,12 @@
 			reg = <0x7a00000 0x30000>;
 			uniphy_access_mode = "local bus";
 			#clock-cells = <1>;
+			assigned-clocks = <&cmn_pll IPQ9650_PCS0_CLK>,
+					  <&cmn_pll IPQ9650_PCS1_CLK>,
+					  <&cmn_pll IPQ9650_PCS2_CLK>;
+			assigned-clock-rates = <31250000>,
+					       <31250000>,
+					       <31250000>;
 		};
 
 		ess_instance: ess-instance {
