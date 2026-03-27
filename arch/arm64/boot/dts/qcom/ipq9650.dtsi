@@ -3087,7 +3087,7 @@
 			       <&nsscc NSS_CC_NSSNOC_EIP_CLK>,
 			       <&nsscc NSS_CC_EIP_PPE_CLK>;
 			clock-names = "crypto_clk","crypto_nocclk","crypto_ppeclk";
-			clock-frequency = /bits/ 64 <600000000 600000000 300000000>;
+			clock-frequency = /bits/ 64 <800000000 800000000 462000000>;
 			resets = <&nsscc NSS_CC_EIP_PPE_CLK_ARES>, <&nsscc NSS_CC_EIP_CLK_ARES>, <&nsscc NSS_CC_NSSNOC_EIP_CLK_ARES>;
 			reset-names = "eip_ppe_clk", "eip_clk", "eip_host_clk";
 			qcom,inline-enabled;
