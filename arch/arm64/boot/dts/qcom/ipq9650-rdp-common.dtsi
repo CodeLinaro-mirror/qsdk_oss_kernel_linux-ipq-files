@@ -379,3 +379,11 @@
 &xo_clk {
 	clock-frequency = <48000000>;
 };
+
+&qmp_tmel {
+	status = "okay";
+};
+
+&tmelcom {
+	status = "okay";
+};
