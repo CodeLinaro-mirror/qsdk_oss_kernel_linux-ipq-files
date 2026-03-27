@@ -35,7 +35,7 @@
 				#address-cells = <1>;
 				#size-cells = <0>;
 				reg = <0x0>;
-				qcom,package-mode = "psgmii";
+				qcom,package-mode = "qsgmii";
 				phy0: ethernet-phy@0 {
 					reg = <0>;
 				};
@@ -80,7 +80,7 @@
 			ess_switch: ess-switch@3a000000 {
 				switch_lan_bmp = <0x1e>; /* lan port bitmap */
 				switch_wan_bmp = <0x40>; /* wan port bitmap */
-				switch_mac_mode = <0x0>; /* PSGMII for malibu PHY */
+				switch_mac_mode = <0xb>; /* QSGMII for malibu PHY */
 				switch_mac_mode1 = <0xff>; /* unused */
 				switch_mac_mode2 = <0xff>;
 
@@ -89,19 +89,19 @@
 						port_id = <1>;
 						phy_address = <0>;
 						phy-handle = <&phy0>;
-						phy-mode = "psgmii";
+						phy-mode = "qsgmii";
 					};
 					port@1 {
 						port_id = <2>;
 						phy_address = <1>;
 						phy-handle = <&phy1>;
-						phy-mode = "psgmii";
+						phy-mode = "qsgmii";
 					};
 					port@2 {
 						port_id = <3>;
 						phy_address = <2>;
 						phy-handle = <&phy2>;
-						phy-mode = "psgmii";
+						phy-mode = "qsgmii";
 					};
 					port@3 {
 						port_id = <4>;
