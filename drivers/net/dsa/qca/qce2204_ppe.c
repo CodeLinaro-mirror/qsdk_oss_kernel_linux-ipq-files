@@ -1994,6 +1994,121 @@ int qce2204_ppe_eg_gen_ctrl_set(struct qce2204_priv *priv,
 	return regmap_write(priv->regmap, QCE2204_PPE_EG_GEN_CTRL_ADDR, reg_val);
 }
 
+static int qce2204_config_mdio_backpressure_gpio(struct qce2204_priv *priv)
+{
+	int ret;
+
+	ret = qce2204_mdio_write(priv->bus, QCE2204_MDIO_SOC_PHY_ADDR,
+				 QCE2204_GPIO18_CFG_REG,
+				 QCE2204_GPIO_MDIO_BACKPRESSURE_CFG);
+	if (ret) {
+		dev_err(priv->dev,
+			"Failed to configure GPIO18 MDIO backpressure, reg=0x%x val=0x%x ret=%d\n",
+			QCE2204_GPIO18_CFG_REG,
+			QCE2204_GPIO_MDIO_BACKPRESSURE_CFG, ret);
+		return ret;
+	}
+
+	ret = qce2204_mdio_write(priv->bus, QCE2204_MDIO_SOC_PHY_ADDR,
+				 QCE2204_GPIO19_CFG_REG,
+				 QCE2204_GPIO_MDIO_BACKPRESSURE_CFG);
+	if (ret) {
+		dev_err(priv->dev,
+			"Failed to configure GPIO19 MDIO backpressure, reg=0x%x val=0x%x ret=%d\n",
+			QCE2204_GPIO19_CFG_REG,
+			QCE2204_GPIO_MDIO_BACKPRESSURE_CFG, ret);
+		return ret;
+	}
+
+	dev_info(priv->dev, "Configured GPIO18/19 for MDIO backpressure\n");
+
+	return 0;
+}
+
+/**
+ * qce2204_ppe_mdio_backpressure_set - Configure MDIO backpressure
+ * @priv: QCE2204 private data
+ * @cfg: MDIO backpressure configuration
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int qce2204_ppe_mdio_backpressure_set(struct qce2204_priv *priv,
+				      struct qce2204_ppe_mdio_backpressure_cfg *cfg)
+{
+	u32 reg_val;
+	int ret;
+
+	if (!priv || !cfg)
+		return -EINVAL;
+
+	ret = regmap_read(priv->regmap, QCE2204_PPE_MDIO_MASTER_CTRL0_ADDR, &reg_val);
+	if (ret)
+		return ret;
+
+	reg_val &= ~QCE2204_PPE_MDIO_MASTER_CTRL0_TRIGGER_EN;
+	reg_val |= FIELD_PREP(QCE2204_PPE_MDIO_MASTER_CTRL0_TRIGGER_EN,
+			      cfg->trigger_en ? 1 : 0);
+	reg_val &= ~QCE2204_PPE_MDIO_MASTER_CTRL0_TIMER_EN;
+	reg_val |= FIELD_PREP(QCE2204_PPE_MDIO_MASTER_CTRL0_TIMER_EN,
+			      cfg->timer_en ? 1 : 0);
+	reg_val &= ~QCE2204_PPE_MDIO_MASTER_CTRL0_DIV_FACTOR;
+	reg_val |= FIELD_PREP(QCE2204_PPE_MDIO_MASTER_CTRL0_DIV_FACTOR,
+			      cfg->div_factor);
+	reg_val &= ~QCE2204_PPE_MDIO_MASTER_CTRL0_PREAMBLE;
+	reg_val |= FIELD_PREP(QCE2204_PPE_MDIO_MASTER_CTRL0_PREAMBLE,
+			      cfg->preamble);
+
+	ret = regmap_write(priv->regmap, QCE2204_PPE_MDIO_MASTER_CTRL0_ADDR, reg_val);
+	if (ret)
+		return ret;
+
+	ret = regmap_read(priv->regmap, QCE2204_PPE_MDIO_MASTER_CTRL1_ADDR, &reg_val);
+	if (ret)
+		return ret;
+
+	reg_val &= ~QCE2204_PPE_MDIO_MASTER_CTRL1_TIMER_CNT;
+	reg_val |= FIELD_PREP(QCE2204_PPE_MDIO_MASTER_CTRL1_TIMER_CNT,
+			      cfg->timer_cnt);
+
+	ret = regmap_write(priv->regmap, QCE2204_PPE_MDIO_MASTER_CTRL1_ADDR, reg_val);
+	if (ret)
+		return ret;
+
+	ret = regmap_read(priv->regmap, QCE2204_PPE_CROSSCHIP_BP_CTRL_ADDR, &reg_val);
+	if (ret)
+		return ret;
+
+	reg_val &= ~QCE2204_PPE_CROSSCHIP_BP_CTRL_CROSSCHIP_BP_EN;
+	reg_val |= FIELD_PREP(QCE2204_PPE_CROSSCHIP_BP_CTRL_CROSSCHIP_BP_EN,
+			      cfg->crosschip_bp_en ? 1 : 0);
+	reg_val &= ~QCE2204_PPE_CROSSCHIP_BP_CTRL_CROSSCHIP_BP_MODE;
+	reg_val |= FIELD_PREP(QCE2204_PPE_CROSSCHIP_BP_CTRL_CROSSCHIP_BP_MODE,
+			      cfg->crosschip_bp_mode ? 1 : 0);
+
+	return regmap_write(priv->regmap, QCE2204_PPE_CROSSCHIP_BP_CTRL_ADDR, reg_val);
+}
+
+/* Initialize mdio backpressure config */
+static int qce2204_mdio_backpressure_init(struct qce2204_priv *priv)
+{
+	struct qce2204_ppe_mdio_backpressure_cfg cfg = {};
+	int ret;
+
+	ret = qce2204_config_mdio_backpressure_gpio(priv);
+	if (ret)
+		return ret;
+
+	cfg.trigger_en = true;
+	cfg.timer_en = true;
+	cfg.div_factor = 3;
+	cfg.preamble = 2;
+	cfg.timer_cnt = 0xc8;
+	cfg.crosschip_bp_en = true;
+	cfg.crosschip_bp_mode = priv->bp_mode;
+
+	return qce2204_ppe_mdio_backpressure_set(priv, &cfg);
+}
+
 /**
  * qce2204_ppe_port_mtu_set - Configure port MTU
  * @priv: QCE2204 private data
@@ -3133,6 +3248,11 @@ int qce2204_ppe_hw_init(struct qce2204_priv *priv)
 	ret = qce2204_ppe_athtag_init(priv);
 	if (ret)
 		return ret;
+
+	ret = qce2204_mdio_backpressure_init(priv);
+	if (ret) {
+		return ret;
+	}
 
 	dev_info(priv->dev, "PPE hardware initialized successfully\n");
 	return 0;
