@@ -387,3 +387,7 @@
 &tmelcom {
 	status = "okay";
 };
+
+&apps_iommu {
+	status = "okay";
+};
