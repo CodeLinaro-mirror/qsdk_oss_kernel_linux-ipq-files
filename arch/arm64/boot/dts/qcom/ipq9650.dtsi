@@ -78,6 +78,7 @@
 
 		gcc_gpll0_out_aux: gcc-gpll0-out-aux {
 			compatible = "fixed-clock";
+			clock-frequency = <800000000>;
 			#clock-cells = <0>;
 		};
 
@@ -682,7 +683,7 @@
 			#clock-cells = <1>;
 			assigned-clocks = <&cmn_pll IPQ9650_CMN_PLL_CLK>;
 			assigned-clock-rates-u64 = /bits/ 64 <12000000000>;
-			status = "disabled";
+			status = "okay";
 		};
 
 		pcie3_phy: phy@b4000 {
