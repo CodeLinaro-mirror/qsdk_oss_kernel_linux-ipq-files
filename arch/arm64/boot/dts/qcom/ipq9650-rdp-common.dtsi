@@ -424,3 +424,7 @@
 &xo_clk {
 	clock-frequency = <48000000>;
 };
+
+&apps_iommu {
+	status = "okay";
+};
