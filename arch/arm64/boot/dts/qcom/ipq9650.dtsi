@@ -681,6 +681,7 @@
 			#clock-cells = <1>;
 			assigned-clocks = <&cmn_pll IPQ9650_CMN_PLL_CLK>;
 			assigned-clock-rates-u64 = /bits/ 64 <12000000000>;
+			status = "disabled";
 		};
 
 		pcie3_phy: phy@b4000 {
