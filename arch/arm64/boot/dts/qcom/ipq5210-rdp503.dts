@@ -362,21 +362,29 @@
 			device_type = "network";
 			compatible = "qcom,nss-dp";
 			qcom,id = <5>;
-			reg = <0x3a001800 0x200>;
-			qcom,mactype = <0>;
+			reg = <0x3A504000 0x4000>;
+			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
 			qcom,ppe-offload-disabled = <0>;
+			pinctrl-0 = <&pps_state>;
+			pinctrl-names = "default";
+			interrupts = <GIC_SPI 359 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "pps_in";
+			clocks = <&nsscc NSS_CC_XGMAC1_PTP_REF_CLK>;
+			clock-names = "ptp";
 		};
 
 		dp6 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
 			qcom,id = <6>;
-			reg = <0x3A001A00 0x200>;
+			reg = <0x3A508000 0x4000>;
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
 			qcom,ppe-offload-disabled = <0>;
 			qcom,gem_port = <1>;
+			clocks = <&nsscc NSS_CC_XGMAC2_PTP_REF_CLK>;
+			clock-names = "ptp";
 		};
 	};
 };
