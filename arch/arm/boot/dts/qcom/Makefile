@@ -28,6 +28,8 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	ipq5210-rdp503.dtb \
 	ipq5210-rdp504.dtb \
 	ipq5210-rdp505.dtb \
+	ipq5210-rdp511.dtb \
+	ipq5210-rdp512.dtb \
 	ipq5210-db-hm01.1.dtb \
 	ipq5210-db-hm02.1.dtb \
 	ipq5424-rdp464.dtb \
