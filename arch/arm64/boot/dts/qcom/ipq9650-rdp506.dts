@@ -45,7 +45,7 @@
 			i2c1: i2c@1a8c000 {
 				pinctrl-0 = <&qup_i2c1_default>;
 				pinctrl-names = "default";
-				status = "disabled";
+				status = "okay";
 
 				pmic@68 {
 					compatible = "mps,mp8899";
@@ -55,7 +55,7 @@
 						/* APC_CX */
 						ipq9650_s1: buck1 {
 							regulator-name = "buck1";
-							regulator-min-microvolt = <550000>;
+							regulator-min-microvolt = <735000>;
 							regulator-max-microvolt = <960000>;
 							regulator-always-on;
 							regulator-boot-on;
@@ -64,14 +64,14 @@
 						/* NSP_CX */
 						ipq9650_s2: buck2 {
 							regulator-name = "buck2";
-							regulator-min-microvolt = <550000>;
+							regulator-min-microvolt = <735000>;
 							regulator-max-microvolt = <960000>;
 						};
 
 						/* NSP_MX */
 						ipq9650_s4: buck4 {
 							regulator-name = "buck4";
-							regulator-min-microvolt = <550000>;
+							regulator-min-microvolt = <735000>;
 							regulator-max-microvolt = <960000>;
 						};
 					};
@@ -373,27 +373,22 @@
 
 &CPU0 {
 	cpu-supply = <&ipq9650_s1>;
-	/delete-property/ cpu-supply;
 };
 
 &CPU1 {
 	cpu-supply = <&ipq9650_s1>;
-	/delete-property/ cpu-supply;
 };
 
 &CPU2 {
 	cpu-supply = <&ipq9650_s1>;
-	/delete-property/ cpu-supply;
 };
 
 &CPU3 {
 	cpu-supply = <&ipq9650_s1>;
-	/delete-property/ cpu-supply;
 };
 
 &CPU4 {
 	cpu-supply = <&ipq9650_s1>;
-	/delete-property/ cpu-supply;
 };
 
 &remoteproc_cdsp {
