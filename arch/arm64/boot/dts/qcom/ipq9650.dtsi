@@ -2975,6 +2975,8 @@
 		};
 
 		edma@2ad00000 {
+			memory-region = <&ddrq_data_region>, <&ddrq_desc_region>;
+			memory-region-names = "ddrq_data_region", "ddrq_desc_region";
 			compatible = "qcom,edma";
 			reg = <0x2ad00000 0x1c5000>;
 			reg-names = "edma-reg-base";
@@ -3058,6 +3060,7 @@
 				   "rxfill_16", "rxfill_17", "rxfill_18", "rxfill_19",
 
 				   "misc_err";
+
 		};
 
 		nss-ppe {
