@@ -472,13 +472,15 @@
 			reg = <0x4a9000 0x1000>,
 			      <0x4a8000 0x1000>;
 			nvmem-cells = <&tsens_mode>, <&tsens_base0>, <&tsens_base1>,
-				      <&s5>, <&s6>, <&s7>, <&s8>, <&s9>, <&s10>, <&s11>;
+				      <&s5>, <&s6>, <&s7>, <&s8>, <&s9>, <&s10>, <&s11>,
+				      <&s12>, <&s13>, <&s14>, <&s15>;
 			nvmem-cell-names = "mode", "base0", "base1", "s5", "s6",
-					   "s7", "s8", "s9", "s10", "s11";
+					   "s7", "s8", "s9", "s10", "s11",
+					   "s12", "s13", "s14", "s15";
 			interrupts = <GIC_SPI 105 IRQ_TYPE_EDGE_RISING>;
 			interrupt-names = "combined";
 			#thermal-sensor-cells = <1>;
-			status = "disabled";
+			status = "okay";
 		};
 
 		efuse@a4000 {
