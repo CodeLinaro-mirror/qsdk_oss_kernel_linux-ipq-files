@@ -1381,7 +1381,7 @@ EXPORT_SYMBOL_GPL(tmelcom_qmi_tmel_version_read);
 
 /**
  * tmelcom_qmi_dpr_image_load() - Load DPR image
- * @attach_num: Attach number - dynamically mapped based on sorted instance IDs
+ * @client: Pointer to QMI client
  * @image_data: Pointer to the image data (already loaded by caller)
  * @image_size: Size of the image data
  *
@@ -1390,27 +1390,20 @@ EXPORT_SYMBOL_GPL(tmelcom_qmi_tmel_version_read);
  *
  * Return: 0 on success, negative error code on failure
  */
-int tmelcom_qmi_dpr_image_load(int attach_num, u8 *image_data, u32 image_size)
+int tmelcom_qmi_dpr_image_load(struct tmelcom_qmi_client *client, u8 *image_data, u32 image_size)
 {
-	struct tmelcom_qmi_client *client;
 	struct qmi_dpr_image_load_req_msg_v01 *req;
 	struct qmi_dpr_image_load_resp_msg_v01 *resp;
 	struct qmi_txn txn;
 	int ret;
 
-	if (!image_data || !image_size)
+	if (!client || !image_data || !image_size)
 		return -EINVAL;
 
 	if (image_size > QMI_TME_DPR_IMAGE_BUFFER_SIZE_V01) {
 		pr_err("tmelcom_qmi: Image size %u exceeds maximum %u\n",
 		       image_size, QMI_TME_DPR_IMAGE_BUFFER_SIZE_V01);
 		return -EINVAL;
-	}
-
-	client = tmelcom_qmi_get_client(attach_num);
-	if (!client) {
-		pr_err("tmelcom_qmi: No client for attach number %d\n", attach_num);
-		return TMELCOM_QMI_ERR_NO_CLIENT;
 	}
 
 	req = kzalloc(sizeof(*req), GFP_KERNEL);
@@ -1466,12 +1459,12 @@ int tmelcom_qmi_dpr_image_load(int attach_num, u8 *image_data, u32 image_size)
 
 	/* Check response */
 	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
-		tmelcom_qmi_err(client, "QMI request failed: result=%u, error=%u\n",
-				resp->resp.result, resp->resp.error);
+		tmelcom_qmi_err(client, "QMI request failed: ipc_status=%u, status=0x%x\n",
+				resp->ipc_status, resp->status);
 		ret = -EIO;
 		atomic_inc(&client->stats.errors);
 		client->stats.last_error_code =
-			resp->resp.result ? resp->resp.result : resp->resp.error;
+		    resp->ipc_status ? resp->ipc_status : resp->status;
 		goto out_unlock;
 	}
 
