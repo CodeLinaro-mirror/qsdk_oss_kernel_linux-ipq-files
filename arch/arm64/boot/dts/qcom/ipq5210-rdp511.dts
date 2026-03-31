@@ -14,4 +14,32 @@
 / {
 	model = "Qualcomm Technologies, Inc. IPQ5210 RDP511";
 	compatible = "qcom,ipq5210-rdp511", "qcom,ipq5210";
+
+	aliases {
+		serial0 = &uart1;
+	};
+};
+
+&tlmm {
+	pcie0_default_state: pcie0-default-state {
+		pins = "gpio32";
+		function = "gpio";
+		drive-strength = <6>;
+		bias-pull-down;
+		output-low;
+	};
+};
+
+&pcie0_phy {
+	status = "okay";
+};
+
+&pcie0 {
+	pinctrl-0 = <&pcie0_default_state>;
+	perst-gpio = <&tlmm 32 GPIO_ACTIVE_LOW>;
+	status = "okay";
+
+	pcie0_rp {
+		reg = <0 0 0 0 0>;
+	};
 };
