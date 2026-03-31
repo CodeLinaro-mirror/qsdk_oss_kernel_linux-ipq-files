@@ -11,6 +11,7 @@
 #include <linux/mutex.h>
 #include <linux/platform_device.h>
 #include <linux/debugfs.h>
+#include <linux/workqueue.h>
 
 /* ===== QMI TME Service Definitions ===== */
 /* Copied from qmi_tme_service_v01.h */
@@ -289,6 +290,10 @@ struct qmi_dpr_image_load_req_msg_v01 {
 
 struct qmi_dpr_image_load_resp_msg_v01 {
 	struct qmi_response_type_v01 resp;
+	u32 status;
+	u32 ipc_status;
+	u8 entry_addr_valid;
+	u32 entry_addr;
 };
 
 struct qmi_tme_tmel_version_read_req_msg_v01 {
@@ -397,6 +402,9 @@ extern struct qmi_elem_info qmi_get_chip_params_resp_msg_v01_ei[];
 #define QRTR_INSTANCE_BASE 7
 #define TME_QMI_TIMEOUT_MS 5000
 #define TME_QMI_MAX_MSG_LEN 4122  /* Largest message size */
+
+#define DPR_QCN9625_FIRMWARE_DIR "qcn9625"
+#define CHIP_ID_QCN9625 0x111317cb
 
 /* Domain to attach number mapping node */
 struct domain_attach_node {
