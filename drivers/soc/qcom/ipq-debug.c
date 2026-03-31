@@ -302,7 +302,8 @@ static int ipq_debug_probe(struct platform_device *pdev)
 {
 	struct restart_reason *reason;
 	unsigned int q6_reason;
-	void __iomem *imem_base, *q6_base;
+	void __iomem *imem_base;
+	void __iomem *q6_base;
 	struct device_node *np;
 	int ret;
 
@@ -339,13 +340,15 @@ static int ipq_debug_probe(struct platform_device *pdev)
 	if (IS_ERR_OR_NULL(reason->wr_addr))
 		return PTR_ERR(reason->wr_addr);
 
-	q6_base = ipq_debug_parse_address(&pdev->dev,
-					  "qcom,imem-restart-reason-buf-q6-addr");
-	if (IS_ERR_OR_NULL(q6_base))
-		return PTR_ERR(q6_base);
+	np = of_find_node_by_name(NULL, "restart-reason-buf-q6-addr@7b4");
+	if (np) {
+		q6_base = ipq_debug_parse_address(&pdev->dev, "qcom,imem-restart-reason-buf-q6-addr");
+		if (IS_ERR_OR_NULL(q6_base))
+			return PTR_ERR(q6_base);
 
-	memcpy_fromio(&q6_reason, q6_base, 4);
-	iounmap(q6_base);
+		memcpy_fromio(&q6_reason, q6_base, 4);
+		iounmap(q6_base);
+	}
 
 	reason->panic_blk.notifier_call = debug_panic_handler;
 	ret = atomic_notifier_chain_register(&panic_notifier_list,
