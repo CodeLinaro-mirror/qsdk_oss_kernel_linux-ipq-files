@@ -23,6 +23,7 @@
 #include <linux/firmware/qcom/qcom_scm.h>
 #include <linux/tmelcom_ipc.h>
 #include <linux/soc/qcom/smem.h>
+#include <linux/tmelcom_qmi.h>
 
 #include "soc/qcom/license_manager.h"
 
@@ -66,6 +67,7 @@ MODULE_PARM_DESC(use_license_partition, "Use license files from rootfs: 0,1");
 
 static DEFINE_MUTEX(license_valid_lock);
 static atomic_t buf_use_count = ATOMIC_INIT(0);
+static DEFINE_SPINLOCK(device_list_lock);
 
 struct qmi_elem_info qmi_lm_feature_list_req_msg_v01_ei[] = {
 	{
@@ -316,11 +318,11 @@ static int lm_read_license_file(struct lm_svc_ctx *svc, const char *filename)
 	void *buf;
 	int ret;
 
-	dev_dbg(dev,"License file: %s\n",filename);
+	dev_dbg(dev, "License file: %s\n", filename);
 
 	ret = request_firmware(&license, filename, dev);
-	if(ret || !license->data || !license->size) {
-		dev_err(svc->dev,"%s file is not present\n", filename);
+	if (ret || !license->data || !license->size) {
+		dev_err(svc->dev, "%s file is not present\n", filename);
 		/* if ret is zero, then call release_firmware */
 		if (!ret)
 			release_firmware(license);
@@ -727,19 +729,54 @@ void lm_free_license(void *buf, dma_addr_t dma_addr, size_t buf_len) {
 }
 EXPORT_SYMBOL_GPL(lm_free_license);
 
+/**
+ * validate_device_id() - Validate device_id is within valid range
+ * @svc: License manager service context
+ * @device_id: Device ID to validate
+ *
+ * Return: 0 if valid, -EINVAL if invalid
+ */
+static int validate_device_id(struct lm_svc_ctx *svc, u8 device_id)
+{
+	if (device_id < 1) {
+		dev_err(svc->dev, "Invalid device_id: %d (must be >= 1)\n", device_id);
+		return -EINVAL;
+	}
+
+	if (device_id > svc->device_count) {
+		dev_err(svc->dev, "Invalid device_id: %d (exceeds device_count %d)\n",
+			device_id, svc->device_count);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int lm_install_license(struct lm_svc_ctx *svc, const char *filename,
-			      struct lm_install_resp *install_resp)
+			      struct lm_install_resp *install_resp, u8 device_id,
+			      u32 operation, int attach_num)
 {
 	const struct firmware *license = NULL;
 	struct device *dev = svc->dev;
+	char full_path[256];
 	void *lic_data_buf;
 	int ret;
 
-	dev_dbg(dev,"License file: %s\n",filename);
+	/* Build device-specific license file path */
+	if (device_id == 1) {
+		/* SoC device - use base license directory */
+		snprintf(full_path, sizeof(full_path), "%s", filename);
+	} else {
+		/* Attach - use attach directory based on attach_num */
+		snprintf(full_path, sizeof(full_path), "./license/attach%d/%s",
+			 attach_num, filename);
+	}
 
-	ret = request_firmware(&license, filename, dev);
-	if(ret || !license->data || !license->size) {
-		dev_err(dev,"%s file is not present\n", filename);
+	dev_dbg(dev, "License file: %s\n", full_path);
+
+	ret = request_firmware(&license, full_path, dev);
+	if (ret || !license->data || !license->size) {
+		dev_err(dev, "%s file is not present\n", full_path);
 		/* if ret is zero, then call release_firmware */
 		if (!ret)
 			release_firmware(license);
@@ -755,14 +792,35 @@ static int lm_install_license(struct lm_svc_ctx *svc, const char *filename,
 
 	memcpy(lic_data_buf, license->data, license->size);
 
-	/* Install the license via IPC and get the response */
-	ret = tmelcom_licensing_install(lic_data_buf, license->size,
-					&install_resp->identifier,
-					LICENSE_IDENT_MAX_LEN,
-					&install_resp->ident_len,
-					&install_resp->flags);
+	/* Validate device_id */
+	ret = validate_device_id(svc, device_id);
+	if (ret) {
+		kfree(lic_data_buf);
+		goto err_license;
+	}
+
+	/* Route based on device_id */
+	if (device_id == 1) {
+		/* SoC device, use IPC - operation not used for IPC */
+		ret = tmelcom_licensing_install(lic_data_buf, license->size,
+						&install_resp->identifier,
+						LICENSE_IDENT_MAX_LEN,
+						&install_resp->ident_len,
+						&install_resp->flags);
+	} else if (device_id > 1) {
+		/* Attach: attach_num = device_id - 1 */
+		int attach_num = device_id - 1;
+
+		ret = tmelcom_qmi_lic_install(attach_num, lic_data_buf,
+					       license->size, operation,
+					       (u8 *)&install_resp->identifier,
+					       LICENSE_IDENT_MAX_LEN,
+					       &install_resp->ident_len,
+					       &install_resp->flags);
+	}
+
 	if (ret)
-		dev_err(dev, "%s Install IPC status:%d\n", filename, ret);
+		dev_err(dev, "%s Install status:%d\n", filename, ret);
 
 	kfree(lic_data_buf);
 err_license:
@@ -771,8 +829,11 @@ err_license:
 	return ret;
 }
 
-static int lm_install_licenses_to_tmel(struct lm_install_info *install_info)
+static int lm_install_licenses_to_tmel(struct lm_install_info *install_info,
+					u32 operation, int attach_num)
 {
+	u8 device_id = install_info->device_id;
+	char license_info_path[256];
 	int ret = 0, file_count = 0, files_accounted = 0;
 	const struct firmware *licenseinfo = NULL;
 	struct lm_install_resp install_resp;
@@ -782,21 +843,49 @@ static int lm_install_licenses_to_tmel(struct lm_install_info *install_info)
 	char *token = NULL;
 	char *ptr = NULL;
 
+	/* Validate device_id */
+	ret = validate_device_id(svc, device_id);
+	if (ret)
+		return ret;
+
+	/* For Attach (device_id > 1), check if QMI client is ready */
+	if (device_id > 1) {
+		int check_attach_num = device_id - 1;
+
+		if (!tmelcom_qmi_is_client_ready(check_attach_num)) {
+			dev_warn(dev,
+				 "QMI client not ready for device %d (attach%d)\n",
+				 device_id, check_attach_num);
+			return -EAGAIN;  /* Return error to indicate not ready */
+		}
+	}
+
 	lic_info_buf = kzalloc(MAX_LICENSE_INFO_SIZE, GFP_KERNEL);
 	if(!lic_info_buf)
 		return -ENOMEM;
 
-	/* Request the license_info.conf file */
-	ret = request_firmware_into_buf(&licenseinfo, LICENSE_INFO_CONF_PATH, dev,
+	/* Build device-specific license_info.conf path */
+	if (device_id == 1) {
+		/* SoC device - use base license directory */
+		snprintf(license_info_path, sizeof(license_info_path),
+			 "%s", LICENSE_INFO_CONF_PATH);
+	} else {
+		/* Attach - use attach directory based on attach_num */
+		snprintf(license_info_path, sizeof(license_info_path),
+			 "./license/attach%d/license_info.conf", attach_num);
+	}
+
+	/* Request the device-specific license_info.conf file */
+	ret = request_firmware_into_buf(&licenseinfo, license_info_path, dev,
 					lic_info_buf, MAX_LICENSE_INFO_SIZE);
 
 	if(ret || !licenseinfo->data || !licenseinfo->size) {
-		dev_err(dev, "%s file is not valid\n",LICENSE_INFO_CONF_PATH);
 		/* if ret is zero, then call release_firmware */
 		if (!ret)
 			release_firmware(licenseinfo);
 		kfree(lic_info_buf);
-		return -ENOENT;
+		/* Return success (0) instead of error - missing licenses is not an error */
+		return 0;
 	}
 
 	file_count = lm_check_license_info(licenseinfo, &ptr);
@@ -827,7 +916,8 @@ static int lm_install_licenses_to_tmel(struct lm_install_info *install_info)
 
 		memset(&install_resp, 0, sizeof(struct lm_install_resp));
 
-		ret = lm_install_license(svc, token, &install_resp);
+		ret = lm_install_license(svc, token, &install_resp, device_id,
+					 operation, attach_num);
 		if (ret < 0 && ret != -ENOENT)
 			goto err_licenseinfo;
 		else {
@@ -860,7 +950,7 @@ static int lm_release(struct inode *inode, struct file *file)
 
 static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-	void *nonce_buf, *ecdsa_buf, *ttime_buf, *install_info;
+	void *nonce_buf, *ecdsa_buf, *ttime_buf;
 	struct client_target_info *client_info = NULL;
 	dma_addr_t nonce_dma_addr, ecdsa_dma_addr;
 	struct lm_get_toBeDel_lic *toBeDel_lic;
@@ -1006,15 +1096,32 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				return -EINVAL;
 			}
 
+			/* Validate device_id from userspace */
+			ret = validate_device_id(svc, ttime_rp.device_id);
+			if (ret)
+				return ret;
+
 			ttime_buf = kzalloc(TTIME_REQ_PARAMS_SIZE, GFP_KERNEL);
 			if (!ttime_buf) {
 				dev_err(svc->dev, "IOCTL: TTIME get req params mem alloc failed\n");
 				return -ENOMEM;
 			}
 
-			ret = tmelcom_ttime_get_req_params(ttime_buf, TTIME_REQ_PARAMS_SIZE, &ttime_buf_used_len);
+			/* Route based on device_id */
+			if (ttime_rp.device_id == 1) {
+				/* SoC device, use IPC */
+				ret = tmelcom_ttime_get_req_params(ttime_buf, TTIME_REQ_PARAMS_SIZE, &ttime_buf_used_len);
+			} else if (ttime_rp.device_id > 1) {
+				/* Attach: attach_num = device_id - 1 */
+				int attach_num = ttime_rp.device_id - 1;
+
+				ret = tmelcom_qmi_ttime_get_params(attach_num, ttime_buf,
+								   TTIME_REQ_PARAMS_SIZE,
+								   &ttime_buf_used_len);
+			}
+
 			if (ret) {
-				dev_err(svc->dev, "IOCTL: TTIME get req params IPC failed: %d\n", ret);
+				dev_err(svc->dev, "IOCTL: TTIME get req params failed: %d\n", ret);
 				goto err_params;
 			}
 
@@ -1045,6 +1152,11 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				return -EINVAL;
 			}
 
+			/* Validate device_id from userspace */
+			ret = validate_device_id(svc, ttime_st.device_id);
+			if (ret)
+				return ret;
+
 			ttime_buf = kzalloc(ttime_st.buf_len, GFP_KERNEL);
 			if (!ttime_buf) {
 				dev_err(svc->dev, "IOCTL: TTIME set mem alloc failed\n");
@@ -1057,11 +1169,28 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				goto set_err;
 			}
 
-			ret = tmelcom_ttime_set(ttime_buf, ttime_st.buf_len);
+			/* Route based on device_id */
+			if (ttime_st.device_id == 1) {
+				/* SoC device, use IPC */
+				ret = tmelcom_ttime_set(ttime_buf, ttime_st.buf_len);
+			} else if (ttime_st.device_id > 1) {
+				/* Attach: attach_num = device_id - 1 */
+				int attach_num = ttime_st.device_id - 1;
+
+				ret = tmelcom_qmi_ttime_set(attach_num, ttime_buf,
+							     ttime_st.buf_len);
+			}
+
 			if (ret) {
-				dev_err(svc->dev, "IOCTL: TTIME set IPC failed: %d\n", ret);
+				dev_err(svc->dev,
+					"IOCTL: TTIME set failed: %d Device %d\n",
+					ret, ttime_st.device_id);
 				goto set_err;
 			}
+
+			/* Skip the Enforcement if it not for the SoC */
+			if (ttime_st.device_id != 1)
+				goto set_err;
 
 			if (list_empty(&lm_svc->soc_hw_feature_list)) {
 				dev_err(svc->dev, "SoC HW feature list empty\n");
@@ -1117,6 +1246,13 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				goto licnese_check_err;
 			}
 
+			/* Validate device_id from userspace */
+			ret = validate_device_id(svc, lm_cbor.device_id);
+			if (ret) {
+				ret = -EINVAL;
+				goto licnese_check_err;
+			}
+
 			cbor_req = kzalloc(sizeof(u8) * lm_cbor.used_len, GFP_KERNEL);
 			if (!cbor_req) {
 				dev_err(svc->dev, "IOCTL: LICENSE CHECK mem alloc failed\n");
@@ -1137,10 +1273,25 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				goto license_check_free_req;
 			}
 
+			/* Route based on device_id */
+			if (lm_cbor.device_id == 1) {
+				/* SoC device, use IPC */
+				ret = tmelcom_licensing_check(cbor_req, lm_cbor.used_len, cbor_resp, lm_cbor.buf_len, &cbor_resp_used_len);
+			} else if (lm_cbor.device_id > 1) {
+				/* Attach: attach_num = device_id - 1 */
+				int attach_num = lm_cbor.device_id - 1;
 
-			ret = tmelcom_licensing_check(cbor_req, lm_cbor.used_len, cbor_resp, lm_cbor.buf_len, &cbor_resp_used_len);
+				ret = tmelcom_qmi_lic_feature_status(attach_num, cbor_req,
+								      lm_cbor.used_len,
+								      cbor_resp,
+								      lm_cbor.buf_len,
+								      &cbor_resp_used_len);
+			}
+
 			if (ret) {
-				dev_err(svc->dev, "%s: Licensing check IPC failed: %d\n", __func__, ret);
+				dev_err(svc->dev,
+					"%s: Licensing check failed: %d\n",
+					__func__, ret);
 				goto license_check_free_resp;
 			}
 
@@ -1174,73 +1325,87 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		break;
 
 		case DEVICE_COUNT:
-			/* Return the device count - for now returning 1 (SoC device) */
-			ret = put_user(1, (int __user *)arg);
+			ret = put_user(svc->device_count, (int __user *)arg);
 			if (ret) {
 				dev_err(svc->dev, "IOCTL: Get device count failed\n");
 				return ret;
 			}
 		break;
 
-		case LICENSE_INSTALL:
+		case LICENSE_INSTALL: {
+			struct lm_install_info *lm_install_info;
+			int attach_num;
+
 			if (!svc->tmel_bounded) {
 				dev_err(svc->dev, "License install not supported\n");
 				return -EINVAL;
 			}
 
-			install_info = kzalloc(sizeof(struct lm_install_info), GFP_KERNEL);
-			if (!install_info) {
-				dev_err(svc->dev, "IOCTL: License install mem alloc error\n");
+			lm_install_info = kzalloc(sizeof(*lm_install_info),
+						  GFP_KERNEL);
+			if (!lm_install_info)
 				return -ENOMEM;
-			}
 
-			ret = copy_from_user(install_info, argp, sizeof(struct lm_install_info));
+			/* Copy from user to get device_id */
+			ret = copy_from_user(lm_install_info, argp, sizeof(struct lm_install_info));
 			if (ret) {
-				dev_err(svc->dev, "IOCTL: LICENSE_INSTALL copy from user error\n");
-				kfree(install_info);
+				dev_err(svc->dev, "IOCTL: License install copy from user error\n");
+				kfree(lm_install_info);
 				return ret;
 			}
 
-			/* Route based on device_id */
-			if (((struct lm_install_info *)install_info)->device_id == 1) {
-				/* SoC device, use IPC */
-				ret = lm_install_licenses_to_tmel((struct lm_install_info *)install_info);
-				if (ret) {
-					dev_err(svc->dev, "IOCTL: Install License to tmel error\n");
-					kfree(install_info);
-					return ret;
-				}
-			} else {
-				/* PCIe device, use QMI - not yet implemented */
-				dev_err(svc->dev, "License install for PCIe device %d not yet implemented\n",
-					((struct lm_install_info *)install_info)->device_id);
-				kfree(install_info);
-				return -ENOTSUPP;
+			/* Validate device_id from userspace */
+			ret = validate_device_id(svc, lm_install_info->device_id);
+			if (ret) {
+				kfree(lm_install_info);
+				return ret;
 			}
 
-			ret = copy_to_user(argp, install_info, sizeof(struct lm_install_info));
+			/* Calculate attach_num: device_id 1 = SoC (-1),
+			 * device_id 2+ = attach_num (device_id - 1)
+			 */
+			attach_num = (lm_install_info->device_id == 1) ? -1 :
+				     (lm_install_info->device_id - 1);
+
+			/* Install license files to TME-L with DOWNLOAD operation */
+			ret = lm_install_licenses_to_tmel(lm_install_info,
+						QMI_TME_LIC_OPERATION_DOWNLOAD_V01,
+						attach_num);
+			if (ret) {
+				dev_err(svc->dev, "IOCTL: Install License to tmel error\n");
+				kfree(lm_install_info);
+				return ret;
+			}
+
+			ret = copy_to_user(argp, lm_install_info, sizeof(struct lm_install_info));
 			if (ret)
 				dev_err(svc->dev, "copy to user error\n");
 
-			kfree(install_info);
-
+			kfree(lm_install_info);
+		}
 		break;
 
 		case GET_TOBEDEL_LICENSES:
 			if (!svc->tmel_bounded) {
-				dev_err(svc->dev, "License install not supported\n");
+				dev_err(svc->dev, "License cleanup not supported\n");
 				return -EINVAL;
 			}
 
-			toBeDel_lic = kzalloc(sizeof(struct lm_get_toBeDel_lic), GFP_KERNEL);
-			if (!toBeDel_lic) {
-				dev_err(svc->dev, "IOCTL: get_toBeDel_lic mem alloc error\n");
+			toBeDel_lic = kzalloc(sizeof(*toBeDel_lic), GFP_KERNEL);
+			if (!toBeDel_lic)
 				return -ENOMEM;
-			}
 
+			/* Copy from user to get device_id */
 			ret = copy_from_user(toBeDel_lic, argp, sizeof(struct lm_get_toBeDel_lic));
 			if (ret) {
-				dev_err(svc->dev, "IOCTL: GET_TOBEDEL_LICENSES copy from user error\n");
+				dev_err(svc->dev, "IOCTL: get_toBeDel_lic copy from user error\n");
+				kfree(toBeDel_lic);
+				return ret;
+			}
+
+			/* Validate device_id from userspace */
+			ret = validate_device_id(svc, toBeDel_lic->device_id);
+			if (ret) {
 				kfree(toBeDel_lic);
 				return ret;
 			}
@@ -1248,25 +1413,32 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			/* Route based on device_id */
 			if (toBeDel_lic->device_id == 1) {
 				/* SoC device, use IPC */
-				ret = tmelcom_licensing_get_toBeDel_licenses(toBeDel_lic->identifiers,
-									     sizeof(toBeDel_lic->identifiers),
-									     &toBeDel_lic->used_len);
-				if (ret) {
-					dev_err(svc->dev, "get_toBeDel_lic with TMEL failed: %d\n", ret);
-					kfree(toBeDel_lic);
-					return ret;
-				}
-			} else {
-				/* PCIe device, use QMI - not yet implemented */
-				dev_err(svc->dev, "Get toBeDel licenses for PCIe device %d not yet implemented\n",
-					toBeDel_lic->device_id);
+				ret = tmelcom_licensing_get_toBeDel_licenses(
+						toBeDel_lic->identifiers,
+						sizeof(toBeDel_lic->identifiers),
+						&toBeDel_lic->used_len);
+			} else if (toBeDel_lic->device_id > 1) {
+				/* Attach: attach_num = device_id - 1 */
+				int attach_num = toBeDel_lic->device_id - 1;
+				u32 delete_count = 0;
+
+				ret = tmelcom_qmi_lic_clean(attach_num,
+						toBeDel_lic->identifiers,
+						sizeof(toBeDel_lic->identifiers),
+						&toBeDel_lic->used_len,
+						&delete_count);
+			}
+
+			if (ret) {
+				dev_err(svc->dev, "get_toBeDel_lic failed for device %d: %d\n",
+					toBeDel_lic->device_id, ret);
 				kfree(toBeDel_lic);
-				return -ENOTSUPP;
+				return ret;
 			}
 
 			ret = copy_to_user(argp, toBeDel_lic, sizeof(struct lm_get_toBeDel_lic));
 			if (ret)
-				dev_err(svc->dev, "IOCTL: ECDSA copy to user error\n");
+				dev_err(svc->dev, "IOCTL: get_toBeDel_lic copy to user error\n");
 
 			kfree(toBeDel_lic);
 		break;
@@ -1621,6 +1793,19 @@ static ssize_t show_tmel_bounded(struct kobject *k, struct kobj_attribute *attr,
 static struct kobj_attribute lm_tmel_bounded_attr =
 	__ATTR(tmel_bounded, 0400, show_tmel_bounded,  NULL);
 
+/* Show function for device_count sysfs attribute */
+static ssize_t show_device_count(struct kobject *k,
+				  struct kobj_attribute *attr, char *buf)
+{
+	struct lm_svc_ctx *svc = lm_svc;
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", svc->device_count);
+}
+
+/* Define the device_count attribute */
+static struct kobj_attribute lm_device_count_attr =
+	__ATTR(device_count, 0400, show_device_count, NULL);
+
 static void lm_qmi_svc_bye_cb(struct qmi_handle *qmi, unsigned int node)
 {
 	struct feature_info *itr, *tmp;
@@ -1637,6 +1822,156 @@ static void lm_qmi_svc_bye_cb(struct qmi_handle *qmi, unsigned int node)
 		}
 	}
 }
+
+/**
+ * register_device_in_list() - Register a device in the devices list
+ * @svc: License manager service context
+ * @domain_num: Attach number (or -1 for SoC)
+ * @is_soc: True if this is the SoC device
+ *
+ * Must be called with device_list_lock held
+ *
+ * Return: device_id on success, 0 on failure
+ */
+static u8 register_device_in_list(struct lm_svc_ctx *svc, int domain_num, bool is_soc)
+{
+	struct device_info *new_dev;
+	u8 device_id;
+	int attach_num = 0;
+
+	/* Allocate new device info */
+	new_dev = kzalloc(sizeof(*new_dev), GFP_ATOMIC);
+	if (!new_dev)
+		return 0;
+
+	new_dev->domain_num = domain_num;
+	new_dev->is_soc = is_soc;
+
+	/* Add to list and assign device_id based on position */
+	list_add_tail(&new_dev->node, &svc->devices_list);
+
+	/* Count position in list to get device_id and attach_num */
+	device_id = 0;
+	list_for_each_entry(new_dev, &svc->devices_list, node) {
+		device_id++;
+		/* For attach, attach_num is sequential (1, 2, 3...) */
+		if (!new_dev->is_soc) {
+			attach_num++;
+			new_dev->attach_num = attach_num;
+		} else {
+			new_dev->attach_num = -1;
+		}
+	}
+
+	/* Update device count */
+	svc->device_count = device_id;
+	return device_id;
+}
+
+/* QMI client notification handler */
+static int license_manager_qmi_notify(struct notifier_block *nb,
+				       unsigned long action, void *data)
+{
+	struct tmelcom_qmi_notify_data *notify = data;
+	struct lm_svc_ctx *svc = lm_svc;
+	struct device_info *dev_info;
+	unsigned long flags;
+	u8 device_id = 0;
+	int count = 0;
+	bool already_registered = false;
+
+	if (!svc)
+		return NOTIFY_OK;
+
+	/* Only process notifications if ep-tmel-bounded is enabled */
+	if (!svc->ep_tmel_bounded)
+		return NOTIFY_OK;
+
+	if (action == TMELCOM_QMI_CLIENT_CONNECTED) {
+		struct lm_install_info *install_info;
+		int ret;
+		int attach_num = -1;
+
+		spin_lock_irqsave(&device_list_lock, flags);
+
+		/* Check if device already registered */
+		list_for_each_entry(dev_info, &svc->devices_list, node) {
+			count++;
+			if (dev_info->domain_num == notify->domain_num && !dev_info->is_soc) {
+				device_id = count;
+				already_registered = true;
+				break;
+			}
+		}
+
+		/* Register new device if not found */
+		if (!already_registered)
+			device_id = register_device_in_list(svc,
+						notify->domain_num, false);
+
+		spin_unlock_irqrestore(&device_list_lock, flags);
+
+		if (device_id == 0) {
+			dev_err(svc->dev, "Failed to register device for domain_num %d\n",
+				notify->domain_num);
+			return NOTIFY_OK;
+		}
+
+		dev_dbg(svc->dev,
+			"QMI client connected for domain_num %d (device_id %d)\n",
+			notify->domain_num, device_id);
+
+		/* Get attach_num for this device */
+		spin_lock_irqsave(&device_list_lock, flags);
+		list_for_each_entry(dev_info, &svc->devices_list, node) {
+			if (dev_info->domain_num == notify->domain_num && !dev_info->is_soc) {
+				attach_num = dev_info->attach_num;
+				break;
+			}
+		}
+		spin_unlock_irqrestore(&device_list_lock, flags);
+
+		if (attach_num < 0) {
+			dev_err(svc->dev, "Failed to find attach_num for domain_num %d\n",
+				notify->domain_num);
+			return NOTIFY_OK;
+		}
+
+		/* Check if QMI client is ready before attempting license operations */
+		if (!tmelcom_qmi_is_client_ready(attach_num)) {
+			dev_info(svc->dev, "QMI client not ready yet for attach_num %d, skipping license install\n",
+				 attach_num);
+			return NOTIFY_OK;
+		}
+
+		install_info = kzalloc(sizeof(*install_info), GFP_KERNEL);
+		if (!install_info)
+			return NOTIFY_OK;
+
+		/* Set device_id in install_info */
+		install_info->device_id = device_id;
+
+		/* Install license files to TME-L via QMI with IMPORT */
+		ret = lm_install_licenses_to_tmel(install_info,
+					QMI_TME_LIC_OPERATION_IMPORT_V01,
+					attach_num);
+		if (ret) {
+			dev_err(svc->dev, "Failed to install licenses for device %d (attach%d): %d\n",
+				device_id, attach_num, ret);
+		}
+
+		kfree(install_info);
+	} else if (action == TMELCOM_QMI_CLIENT_DISCONNECTED) {
+		dev_info(svc->dev, "QMI client disconnected for domain_num %d\n",
+			 notify->domain_num);
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block license_manager_nb = {
+	.notifier_call = license_manager_qmi_notify,
+};
 
 static struct qmi_ops lm_server_ops = {
 	.bye = lm_qmi_svc_bye_cb,
@@ -1666,6 +2001,7 @@ static int license_manager_probe(struct platform_device *pdev)
 	svc->license_feature = of_property_read_bool(node, "license-feature");
 
 	svc->tmel_bounded = of_property_read_bool(node, "tmel-bounded");
+	svc->ep_tmel_bounded = of_property_read_bool(node, "ep-tmel-bounded");
 
 	INIT_LIST_HEAD(&svc->soc_hw_feature_list);
 
@@ -1728,9 +2064,34 @@ static int license_manager_probe(struct platform_device *pdev)
 	}
 
 	INIT_LIST_HEAD(&svc->clients_feature_list);
+	INIT_LIST_HEAD(&svc->devices_list);
 
 	svc->dev = dev;
 	lm_svc = svc;
+
+	/* Initialize devices_list with SoC device (device_id=1) */
+	{
+		unsigned long flags;
+		spin_lock_irqsave(&device_list_lock, flags);
+		register_device_in_list(svc, -1, true);  /* SoC device with domain_num=-1 */
+		spin_unlock_irqrestore(&device_list_lock, flags);
+	}
+
+	/* Register for QMI client notifications if ep-tmel-bounded */
+	if (svc->ep_tmel_bounded) {
+		/* Register for QMI client notifications */
+		ret = tmelcom_qmi_register_notifier(&license_manager_nb);
+		if (ret) {
+			dev_warn(dev,
+				 "QMI notifier registration failed: %d\n",
+				 ret);
+			/* Don't fail probe - attach support will be
+			 * available when QMI is ready
+			 */
+		} else {
+			dev_info(dev, "Registered for QMI client notifications (ep-tmel-bounded)\n");
+		}
+	}
 
 	/* Creating a directory in /sys/kernel/ */
 	lm_kobj = kobject_create_and_add("license_manager", kernel_kobj);
@@ -1745,6 +2106,10 @@ static int license_manager_probe(struct platform_device *pdev)
 		}
 		if (sysfs_create_file(lm_kobj, &lm_tmel_bounded_attr.attr)) {
 			dev_err(dev, "Cannot create tmel_bounded sysfs file for lm\n");
+			kobject_put(lm_kobj);
+		}
+		if (sysfs_create_file(lm_kobj, &lm_device_count_attr.attr)) {
+			dev_err(dev, "Cannot create device_count sysfs file for lm\n");
 			kobject_put(lm_kobj);
 		}
 	} else {
@@ -1776,9 +2141,14 @@ free_lm_svc:
 static int license_manager_remove(struct platform_device *pdev)
 {
 	struct lm_soc_hw_feat *hw_feat_iter, *hw_feat_temp;
+	struct device_info *dev_iter, *dev_temp;
 	struct device *dev = &pdev->dev;
 	struct lm_svc_ctx *svc = lm_svc;
 	struct feature_info *iter, *temp;
+
+	/* Unregister QMI notifier if ep-tmel-bounded */
+	if (svc->ep_tmel_bounded)
+		tmelcom_qmi_unregister_notifier(&license_manager_nb);
 
 	qmi_handle_release(svc->lm_svc_hdl);
 
@@ -1795,6 +2165,15 @@ static int license_manager_remove(struct platform_device *pdev)
 					 &svc->soc_hw_feature_list, node) {
 			list_del(&hw_feat_iter->node);
 			kfree(hw_feat_iter);
+		}
+	}
+
+	/* Clean up device list */
+	if (!list_empty(&svc->devices_list)) {
+		list_for_each_entry_safe(dev_iter, dev_temp,
+					 &svc->devices_list, node) {
+			list_del(&dev_iter->node);
+			kfree(dev_iter);
 		}
 	}
 
