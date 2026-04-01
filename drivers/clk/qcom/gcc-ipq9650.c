@@ -81,16 +81,16 @@ static struct clk_fixed_factor gpll0_div2 = {
 };
 
 static struct clk_alpha_pll_postdiv gpll0 = {
-        .offset = 0x20000,
-        .regs = clk_alpha_pll_regs[CLK_ALPHA_PLL_TYPE_LUCID],
-        .width = 4,
-        .clkr.hw.init = &(const struct clk_init_data) {
-               .name = "gpll0",
-                .parent_hws = (const struct clk_hw *[]) {
-                                &gpll0_main.clkr.hw },
-                .num_parents = 1,
-                .ops = &clk_alpha_pll_postdiv_ro_ops,
-        },
+	.offset = 0x20000,
+	.regs = clk_alpha_pll_regs[CLK_ALPHA_PLL_TYPE_LUCID],
+	.width = 4,
+	.clkr.hw.init = &(const struct clk_init_data) {
+		.name = "gpll0",
+		.parent_hws = (const struct clk_hw *[]) {
+			&gpll0_main.clkr.hw },
+		.num_parents = 1,
+		.ops = &clk_lucid_pll_passthrough_ops,
+	},
 };
 
 static struct clk_alpha_pll gpll2 = {
