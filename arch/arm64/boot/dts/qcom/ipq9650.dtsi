@@ -1960,7 +1960,6 @@
 				      "uniphy2_tx";
 			#clock-cells = <1>;
 			#reset-cells = <1>;
-			#interconnect-cells = <1>;
 		};
 
 		pcie3: pcie@30000000 {
