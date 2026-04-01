@@ -49,6 +49,8 @@
 #define QMI_TME_QBEC_KEY_READ_RESP_V01 0x000F
 #define QMI_TME_FUSE_BLOW_REQ_V01 0x0009
 #define QMI_TME_FUSE_BLOW_RESP_V01 0x0009
+#define QMI_GET_CHIP_PARAMS_REQ_V01 0x0010
+#define QMI_GET_CHIP_PARAMS_RESP_V01 0x0010
 
 /* Max sizes */
 #define QMI_TME_MAX_KEY_SIZE_V01 128
@@ -100,6 +102,8 @@
 #define QMI_TME_QBEC_KEY_READ_RESP_MSG_V01_MAX_MSG_LEN 167
 #define QMI_TME_FUSE_BLOW_REQ_MSG_V01_MAX_MSG_LEN 4108
 #define QMI_TME_FUSE_BLOW_RESP_MSG_V01_MAX_MSG_LEN 21
+#define QMI_GET_CHIP_PARAMS_REQ_MSG_V01_MAX_MSG_LEN 7
+#define QMI_GET_CHIP_PARAMS_RESP_MSG_V01_MAX_MSG_LEN 47
 
 /* Message structures */
 struct qmi_tme_init_attestation_req_msg_v01 {
@@ -336,6 +340,24 @@ struct qmi_tme_fuse_blow_resp_msg_v01 {
 	u32 ipc_status;
 };
 
+struct qmi_get_chip_params_req_msg_v01 {
+	u32 reserved;
+};
+
+struct qmi_get_chip_params_resp_msg_v01 {
+	struct qmi_response_type_v01 resp;
+	u32 status;
+	u32 ipc_status;
+	u8 chip_id_valid;
+	u32 chip_id;
+	u8 serial_number_valid;
+	u64 serial_number;
+	u8 chip_id_verified_valid;
+	u8 chip_id_verified;
+	u8 serial_verified_valid;
+	u8 serial_verified;
+};
+
 /* Element info array declarations */
 extern struct qmi_elem_info qmi_tme_init_attestation_req_msg_v01_ei[];
 extern struct qmi_elem_info qmi_tme_init_attestation_resp_msg_v01_ei[];
@@ -367,6 +389,8 @@ extern struct qmi_elem_info qmi_qbec_key_read_req_msg_v01_ei[];
 extern struct qmi_elem_info qmi_qbec_key_read_resp_msg_v01_ei[];
 extern struct qmi_elem_info qmi_tme_fuse_blow_req_msg_v01_ei[];
 extern struct qmi_elem_info qmi_tme_fuse_blow_resp_msg_v01_ei[];
+extern struct qmi_elem_info qmi_get_chip_params_req_msg_v01_ei[];
+extern struct qmi_elem_info qmi_get_chip_params_resp_msg_v01_ei[];
 
 /* ===== Driver Internal Definitions ===== */
 
@@ -411,6 +435,8 @@ struct tmelcom_qmi_client {
 	struct tmelcom_qmi_stats stats;
 	struct dentry *debugfs_dir;  /* For debugfs */
 	struct kobject *sysfs_kobj;  /* For sysfs */
+	u32 chip_id;
+	u64 serial_number;
 };
 
 /* Internal functions */
