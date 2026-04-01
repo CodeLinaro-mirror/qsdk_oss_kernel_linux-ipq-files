@@ -43,9 +43,15 @@
 #include <crypto/hash.h>
 #include <crypto/sha2.h>
 
+#ifdef CONFIG_OPTEE
+#include <linux/tee_drv.h>
+#include <linux/uuid.h>
+#endif
+
 #define QFPROM_MAX_VERSION_EXCEEDED             0x10
 #define QFPROM_IS_AUTHENTICATE_CMD_RSP_SIZE	0x2
 
+#define SECURE_BOOT_FUSE_ADDR_IPQ5210	0xA40E0
 #define SECURE_BOOT_FUSE_ADDR_IPQ5424	0xA40E0
 #define SECURE_BOOT_FUSE_ADDR_IPQ9650	0xA40E8
 #define OEM_SEC_BOOT_ENABLE		BIT(7)
@@ -1236,6 +1242,317 @@ static struct device_attribute rootfs_attr =
 
 struct kobject *sec_kobj;
 
+#ifdef CONFIG_OPTEE
+/*
+ * --------------------------------------------------------------------------
+ * OP-TEE based FuseIPQ support
+ *
+ * This implementation reads the sec.elf file (same sysfs interface as the
+ * existing SCM-based flow).
+ *
+ * echo "/tmp/spare_fuse_sec.elf" > /sys/devices/system/qfprom/qfprom0/sec_dat
+ *
+ * It allocates two TEE shared memory buffers:
+ *   1. ELF buffer  - complete sec.elf content
+ *   2. Loadable Region list - Physical addresses to LOAD segment start and end.
+ *
+ * OP-TEE/TME detects region-based mode when param[1].size % 8 == 0 and >= 8.
+ * --------------------------------------------------------------------------
+ */
+
+#define FUSEIPQ_TA_UUID \
+	UUID_INIT(0x7e5e8c5d, 0x5375, 0x4ab0, \
+		  0x8b, 0x11, 0x95, 0x14, 0x96, 0x65, 0xdc, 0x88)
+
+/* Command ID sent to the fuseipq TA */
+#define FUSEIPQ_CMD_BLOW_FUSE	0x03U
+
+/*
+ * TmeRegion_t - physical address range descriptor
+ * @start_addr: inclusive start physical address
+ * @end_addr:   exclusive end physical address (= start + size)
+ */
+struct tme_region {
+	u32 start_addr;
+	u32 end_addr;
+};
+
+static int fuseipq_tee_match(struct tee_ioctl_version_data *ver, const void *data)
+{
+	return ver->impl_id == TEE_IMPL_ID_OPTEE;
+}
+
+/*
+ * fuseipq_blow_fuse_optee - blow fuses via OP-TEE fuseipq Trusted Application
+ * @elf:         kernel virtual address of sec.elf data
+ * @elf_size:    size of sec.elf in bytes
+ * @fuse_status: output - TA-level provisioning status code
+ *
+ * Returns 0 on successful TEE round-trip (check @fuse_status for TA result),
+ * or negative errno on TEE communication failure.
+ */
+static int fuseipq_blow_fuse_optee(const void *elf, size_t elf_size,
+				   u64 *fuse_status)
+{
+	struct tee_context *ctx;
+	struct tee_ioctl_open_session_arg sess_arg;
+	struct tee_ioctl_invoke_arg inv_arg;
+	struct tee_param param[4];
+	struct tee_shm *shm_elf = NULL;
+	struct tee_shm *shm_regions = NULL;
+	void *va_elf, *va_regions;
+	phys_addr_t pa_elf;
+	const uuid_t ta_uuid = FUSEIPQ_TA_UUID;
+	struct tme_region *regions_k = NULL;
+	int ld_seg_cnt, region_cnt, ret;
+	size_t regions_sz;
+	u32 md_size = 0;
+
+	if (!elf || !elf_size || !fuse_status)
+		return -EINVAL;
+
+	*fuse_status = 0;
+
+	ctx = tee_client_open_context(NULL, fuseipq_tee_match, NULL, NULL);
+	if (IS_ERR(ctx))
+		return -ENODEV;
+
+	memset(&sess_arg, 0, sizeof(sess_arg));
+	export_uuid((u8 *)sess_arg.uuid, &ta_uuid);
+	sess_arg.clnt_login = TEE_IOCTL_LOGIN_PUBLIC;
+
+	ret = tee_client_open_session(ctx, &sess_arg, NULL);
+	if (ret < 0 || sess_arg.ret != 0) {
+		pr_err("fuseipq: open_session failed ret=%d ta_ret=0x%x\n",
+		       ret, sess_arg.ret);
+		ret = -EACCES;
+		goto out_ctx;
+	}
+
+	/* SHM #1: ELF buffer */
+	shm_elf = tee_shm_alloc_kernel_buf(ctx, elf_size);
+	if (IS_ERR(shm_elf)) {
+		ret = -ENOMEM;
+		shm_elf = NULL;
+		goto out_sess;
+	}
+
+	va_elf = tee_shm_get_va(shm_elf, 0);
+	if (IS_ERR(va_elf)) {
+		ret = -ENOMEM;
+		goto out_shm_elf;
+	}
+	memcpy(va_elf, elf, elf_size);
+
+	ret = tee_shm_get_pa(shm_elf, 0, &pa_elf);
+	if (ret) {
+		pr_err("fuseipq: tee_shm_get_pa failed: %d\n", ret);
+		ret = -EIO;
+		goto out_shm_elf;
+	}
+
+	/*
+	 * Use parse_n_extract_ld_segment() to extract PT_LOAD segment info.
+	 * It populates the global ld_seg_buff with {start_addr, end_addr} pairs
+	 * where addresses are computed as (unsigned int)pa_elf + phdr->p_offset.
+	 */
+	ld_seg_cnt = parse_n_extract_ld_segment((void *)elf, &md_size,
+						(unsigned int)pa_elf);
+	if (ld_seg_cnt < 0) {
+		pr_err("fuseipq: parse_n_extract_ld_segment failed: %d\n",
+		       ld_seg_cnt);
+		ret = ld_seg_cnt;
+		goto out_shm_elf;
+	}
+
+	/*
+	 * Build TmeRegion_t array:
+	 *   regions[0]    = sec_dat location (full ELF physical range)
+	 *   regions[1..N] = PT_LOAD segments from ld_seg_buff
+	 */
+	region_cnt = ld_seg_cnt;
+	regions_k = kcalloc(region_cnt, sizeof(*regions_k), GFP_KERNEL);
+	if (!regions_k) {
+		ret = -ENOMEM;
+		kfree(ld_seg_buff);
+		ld_seg_buff = NULL;
+		goto out_shm_elf;
+	}
+
+	for (int i = 0; i < ld_seg_cnt; i++) {
+		regions_k[i].start_addr = ld_seg_buff[i].start_addr;
+		regions_k[i].end_addr   = ld_seg_buff[i].end_addr;
+	}
+
+	kfree(ld_seg_buff);
+	ld_seg_buff = NULL;
+
+	regions_sz = (size_t)region_cnt * sizeof(struct tme_region);
+
+	/* SHM #2: Region list (size must be multiple of 8 for OP-TEE mode detection) */
+	shm_regions = tee_shm_alloc_kernel_buf(ctx, regions_sz);
+	if (IS_ERR(shm_regions)) {
+		ret = -ENOMEM;
+		shm_regions = NULL;
+		goto out_regions_k;
+	}
+
+	va_regions = tee_shm_get_va(shm_regions, 0);
+	if (IS_ERR(va_regions)) {
+		ret = -ENOMEM;
+		goto out_shm_regions;
+	}
+	memcpy(va_regions, regions_k, regions_sz);
+
+	/* Invoke CMD_BLOW_FUSE
+	 * param[0]: MEMREF_INPUT  - ELF buffer
+	 * param[1]: MEMREF_INPUT  - region list (TmeRegion_t[], size % 8 == 0)
+	 * param[2]: VALUE_OUTPUT  - fuse provisioning status
+	 * param[3]: NONE
+	 */
+	memset(param, 0, sizeof(param));
+	param[0].attr = TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INPUT;
+	param[0].u.memref.shm      = shm_elf;
+	param[0].u.memref.size     = md_size;
+	param[0].u.memref.shm_offs = 0;
+
+	param[1].attr = TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INPUT;
+	param[1].u.memref.shm      = shm_regions;
+	param[1].u.memref.size     = regions_sz;
+	param[1].u.memref.shm_offs = 0;
+
+	param[2].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_OUTPUT;
+	param[2].u.value.a = 0;
+	param[3].attr = TEE_IOCTL_PARAM_ATTR_TYPE_NONE;
+
+	memset(&inv_arg, 0, sizeof(inv_arg));
+	inv_arg.func       = FUSEIPQ_CMD_BLOW_FUSE;
+	inv_arg.session    = sess_arg.session;
+	inv_arg.num_params = 4;
+
+	ret = tee_client_invoke_func(ctx, &inv_arg, param);
+	if (ret < 0 || inv_arg.ret != 0) {
+		pr_err("fuseipq: invoke_func failed ret=%d ta_ret=0x%x\n",
+		       ret, inv_arg.ret);
+		ret = -EIO;
+		goto out_shm_regions;
+	}
+
+	*fuse_status = param[2].u.value.a;
+	ret = 0;
+
+out_shm_regions:
+	if (shm_regions)
+		tee_shm_free(shm_regions);
+out_regions_k:
+	kfree(regions_k);
+out_shm_elf:
+	if (shm_elf)
+		tee_shm_free(shm_elf);
+out_sess:
+	tee_client_close_session(ctx, sess_arg.session);
+out_ctx:
+	tee_client_close_context(ctx);
+	return ret;
+}
+
+/*
+ * store_sec_dat (CONFIG_OPTEE variant)
+ *
+ * Reads the sec.elf file written to the sysfs attribute, then calls
+ * fuseipq_blow_fuse_optee() to authenticate and blow fuses via OP-TEE.
+ */
+static ssize_t
+store_sec_dat(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int ret = count;
+	loff_t size;
+	u64 fuse_status = 0;
+	char *path;
+	struct file *fptr = NULL;
+	struct kstat st;
+	void *ptr = NULL;
+	size_t req_order = 0;
+	struct page *req_page = NULL;
+	struct device_node *np;
+
+	path = kstrndup(buf, count, GFP_KERNEL);
+	if (!path)
+		return -ENOMEM;
+
+	strim(path);
+
+	fptr = filp_open(path, O_RDONLY, 0);
+	kfree(path);
+	if (IS_ERR(fptr)) {
+		pr_err("%s File open failed, %ld\n", buf, PTR_ERR(fptr));
+		return PTR_ERR(fptr);
+	}
+
+	np = of_find_node_by_name(NULL, "qfprom");
+	if (!np) {
+		pr_err("Unable to find qfprom node\n");
+		goto file_close;
+	}
+
+	ret = vfs_getattr(&fptr->f_path, &st, STATX_SIZE, AT_STATX_SYNC_AS_STAT);
+	if (ret) {
+		pr_err("Getting file attributes failed\n");
+		goto file_close;
+	}
+	size = st.size;
+
+	req_order = get_order(size);
+	req_page = alloc_pages(GFP_KERNEL, req_order);
+	if (!req_page) {
+		ret = -ENOMEM;
+		goto file_close;
+	}
+
+	ptr = page_address(req_page);
+	memset(ptr, 0, size);
+
+	ret = kernel_read(fptr, ptr, size, 0);
+	if (ret != size) {
+		pr_err("File read failed\n");
+		ret = ret < 0 ? ret : -EIO;
+		goto free_page;
+	}
+
+	if (!IS_ELF(*((Elf32_Ehdr *)ptr))) {
+		pr_err("OP-TEE sec_dat: expected ELF (sec.elf) input\n");
+		ret = -EINVAL;
+		goto free_page;
+	}
+
+	ret = fuseipq_blow_fuse_optee(ptr, size, &fuse_status);
+	if (ret) {
+		pr_err("OP-TEE fuse blow failed: %d\n", ret);
+		ret = -EIO;
+		goto free_page;
+	}
+
+	if (fuse_status == FUSEPROV_INVALID_HASH)
+		pr_info("Invalid sec.dat\n");
+	else if (fuse_status == IMAGE_AUTH_FAILURE)
+		pr_info("Image authentication failed\n");
+	else if (fuse_status == FUSEPROV_SUCCESS)
+		pr_info("Fuse Blow Success\n");
+	else
+		pr_info("Fuse blow failed with err code : 0x%llx\n", fuse_status);
+
+	ret = count;
+
+free_page:
+	free_pages((unsigned long)page_address(req_page), req_order);
+file_close:
+	filp_close(fptr, NULL);
+	of_node_put(np);
+	return ret;
+}
+
+#else /* !CONFIG_OPTEE - original SCM-based implementation */
+
 static ssize_t
 store_sec_dat(struct device *dev, struct device_attribute *attr,
 	      const char *buf, size_t count)
@@ -1382,12 +1699,19 @@ out:
 	return ret;
 }
 
+#endif /* CONFIG_OPTEE */
+
 static struct device_attribute sec_dat_attr =
 	__ATTR(sec_dat, 0200, NULL, store_sec_dat);
 
 static const struct qfprom_node_cfg ipq9574_qfprom_node_cfg = {
 	.is_rlbk_support	=	true,
 	.secure_boot_fuse_addr	=	0,
+};
+
+static const struct qfprom_node_cfg ipq5210_qfprom_node_cfg = {
+	.is_rlbk_support	=	false,
+	.secure_boot_fuse_addr	=	SECURE_BOOT_FUSE_ADDR_IPQ5210,
 };
 
 static const struct qfprom_node_cfg ipq5332_qfprom_node_cfg = {
@@ -1681,6 +2005,9 @@ static const struct of_device_id qcom_qfprom_dt_match[] = {
 	{
 		.compatible = "qcom,qfprom-ipq9574-sec",
 		.data = (void *)&ipq9574_qfprom_node_cfg,
+	}, {
+		.compatible = "qcom,qfprom-ipq5210-sec",
+		.data = (void *)&ipq5210_qfprom_node_cfg,
 	}, {
 		.compatible = "qcom,qfprom-ipq5332-sec",
 		.data = (void *)&ipq5332_qfprom_node_cfg,

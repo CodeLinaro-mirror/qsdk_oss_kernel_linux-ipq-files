@@ -306,6 +306,11 @@
 			};
 		};
 
+		qfprom {
+			compatible = "qcom,qfprom-ipq5210-sec";
+			version-commit-enable = <0x1>;
+		};
+
 		tsens: thermal-sensor@4a9000 {
 			compatible = "qcom,ipq5210-tsens";
 			reg = <0x4a9000 0x1000>,
