@@ -1667,6 +1667,143 @@ struct qmi_elem_info qmi_tme_fuse_blow_resp_msg_v01_ei[] = {
 
 /* ===== Response Handlers ===== */
 
+struct qmi_elem_info qmi_get_chip_params_req_msg_v01_ei[] = {
+	{
+		.data_type      = QMI_UNSIGNED_4_BYTE,
+		.elem_len       = 1,
+		.elem_size      = sizeof(u32),
+		.array_type       = NO_ARRAY,
+		.tlv_type       = 0x01,
+		.offset         = offsetof(struct
+					   qmi_get_chip_params_req_msg_v01,
+					   reserved),
+	},
+	{
+		.data_type      = QMI_EOTI,
+		.array_type       = NO_ARRAY,
+		.tlv_type       = QMI_COMMON_TLV_TYPE,
+	},
+};
+
+struct qmi_elem_info qmi_get_chip_params_resp_msg_v01_ei[] = {
+	{
+		.data_type      = QMI_STRUCT,
+		.elem_len       = 1,
+		.elem_size      = sizeof(struct qmi_response_type_v01),
+		.array_type       = NO_ARRAY,
+		.tlv_type       = 0x02,
+		.offset         = offsetof(struct
+					   qmi_get_chip_params_resp_msg_v01,
+					   resp),
+		.ei_array      = qmi_response_type_v01_ei,
+	},
+	{
+		.data_type      = QMI_UNSIGNED_4_BYTE,
+		.elem_len       = 1,
+		.elem_size      = sizeof(u32),
+		.array_type       = NO_ARRAY,
+		.tlv_type       = 0x03,
+		.offset         = offsetof(struct
+					   qmi_get_chip_params_resp_msg_v01,
+					   status),
+	},
+	{
+		.data_type      = QMI_UNSIGNED_4_BYTE,
+		.elem_len       = 1,
+		.elem_size      = sizeof(u32),
+		.array_type       = NO_ARRAY,
+		.tlv_type       = 0x04,
+		.offset         = offsetof(struct
+					   qmi_get_chip_params_resp_msg_v01,
+					   ipc_status),
+	},
+	{
+		.data_type      = QMI_OPT_FLAG,
+		.elem_len       = 1,
+		.elem_size      = sizeof(u8),
+		.array_type       = NO_ARRAY,
+		.tlv_type       = 0x10,
+		.offset         = offsetof(struct
+					   qmi_get_chip_params_resp_msg_v01,
+					   chip_id_valid),
+	},
+	{
+		.data_type      = QMI_UNSIGNED_4_BYTE,
+		.elem_len       = 1,
+		.elem_size      = sizeof(u32),
+		.array_type       = NO_ARRAY,
+		.tlv_type       = 0x10,
+		.offset         = offsetof(struct
+					   qmi_get_chip_params_resp_msg_v01,
+					   chip_id),
+	},
+	{
+		.data_type      = QMI_OPT_FLAG,
+		.elem_len       = 1,
+		.elem_size      = sizeof(u8),
+		.array_type       = NO_ARRAY,
+		.tlv_type       = 0x11,
+		.offset         = offsetof(struct
+					   qmi_get_chip_params_resp_msg_v01,
+					   serial_number_valid),
+	},
+	{
+		.data_type      = QMI_UNSIGNED_8_BYTE,
+		.elem_len       = 1,
+		.elem_size      = sizeof(u64),
+		.array_type       = NO_ARRAY,
+		.tlv_type       = 0x11,
+		.offset         = offsetof(struct
+					   qmi_get_chip_params_resp_msg_v01,
+					   serial_number),
+	},
+	{
+		.data_type      = QMI_OPT_FLAG,
+		.elem_len       = 1,
+		.elem_size      = sizeof(u8),
+		.array_type       = NO_ARRAY,
+		.tlv_type       = 0x12,
+		.offset         = offsetof(struct
+					   qmi_get_chip_params_resp_msg_v01,
+					   chip_id_verified_valid),
+	},
+	{
+		.data_type      = QMI_UNSIGNED_1_BYTE,
+		.elem_len       = 1,
+		.elem_size      = sizeof(u8),
+		.array_type       = NO_ARRAY,
+		.tlv_type       = 0x12,
+		.offset         = offsetof(struct
+					   qmi_get_chip_params_resp_msg_v01,
+					   chip_id_verified),
+	},
+	{
+		.data_type      = QMI_OPT_FLAG,
+		.elem_len       = 1,
+		.elem_size      = sizeof(u8),
+		.array_type       = NO_ARRAY,
+		.tlv_type       = 0x13,
+		.offset         = offsetof(struct
+					   qmi_get_chip_params_resp_msg_v01,
+					   serial_verified_valid),
+	},
+	{
+		.data_type      = QMI_UNSIGNED_1_BYTE,
+		.elem_len       = 1,
+		.elem_size      = sizeof(u8),
+		.array_type       = NO_ARRAY,
+		.tlv_type       = 0x13,
+		.offset         = offsetof(struct
+					   qmi_get_chip_params_resp_msg_v01,
+					   serial_verified),
+	},
+	{
+		.data_type      = QMI_EOTI,
+		.array_type       = NO_ARRAY,
+		.tlv_type       = QMI_COMMON_TLV_TYPE,
+	},
+};
+
 static void tmelcom_qmi_response_handler(struct qmi_handle *qmi,
 					 struct sockaddr_qrtr *sq,
 					 struct qmi_txn *txn,
@@ -1787,6 +1924,13 @@ static const struct qmi_msg_handler tme_qmi_msg_handlers[] = {
 		.msg_id = QMI_TME_FUSE_BLOW_RESP_V01,
 		.ei = qmi_tme_fuse_blow_resp_msg_v01_ei,
 		.decoded_size = sizeof(struct qmi_tme_fuse_blow_resp_msg_v01),
+		.fn = tmelcom_qmi_response_handler,
+	},
+	{
+		.type = QMI_RESPONSE,
+		.msg_id = QMI_GET_CHIP_PARAMS_RESP_V01,
+		.ei = qmi_get_chip_params_resp_msg_v01_ei,
+		.decoded_size = sizeof(struct qmi_get_chip_params_resp_msg_v01),
 		.fn = tmelcom_qmi_response_handler,
 	},
 	{} /* Sentinel */
@@ -2096,6 +2240,25 @@ static ssize_t tmel_version_show(struct kobject *kobj,
 	return sysfs_emit(buf, "%s\n", version_info);
 }
 
+/* Chip Parameters - read-only, returns chip ID and serial number */
+static ssize_t chip_params_show(struct kobject *kobj,
+				struct kobj_attribute *attr, char *buf)
+{
+	struct tmelcom_qmi_client *client = kobj_to_client(kobj);
+	int ret;
+
+	if (!client)
+		return -ENODEV;
+
+	ret = tmelcom_qmi_get_chip_params(client, &client->chip_id,
+					  &client->serial_number);
+	if (ret)
+		return sysfs_emit(buf, "Error retrieving chip params: %d\n", ret);
+
+	return sysfs_emit(buf, "chip_id: 0x%x\nserial_number: 0x%llx\n",
+			  client->chip_id, client->serial_number);
+}
+
 /* Fuse Blow - write file path, read file and pass contents to QMI */
 static ssize_t fuse_blow_store(struct kobject *kobj,
 			       struct kobj_attribute *attr,
@@ -2226,6 +2389,7 @@ static struct kobj_attribute get_ecc_public_key_attr =
 static struct kobj_attribute dump_fuse_attr =
 	__ATTR(dump_fuse, 0644, fuse_read_show, fuse_read_store);
 static struct kobj_attribute tmel_version_attr = __ATTR_RO(tmel_version);
+static struct kobj_attribute chip_params_attr = __ATTR_RO(chip_params);
 static struct kobj_attribute sec_elf_attr =
 	__ATTR(sec_elf, 0200, NULL, fuse_blow_store);
 
@@ -2237,6 +2401,7 @@ static struct attribute *qmi_client_attrs[] = {
 	&get_ecc_public_key_attr.attr,
 	&dump_fuse_attr.attr,
 	&tmel_version_attr.attr,
+	&chip_params_attr.attr,
 	&sec_elf_attr.attr,
 	NULL,
 };
@@ -2347,6 +2512,7 @@ static int tmelcom_qmi_probe(struct platform_device *pdev)
 	struct tmelcom_qmi_pdata *pdata;
 	struct tmelcom_qmi_client *client;
 	char dir_name[32];
+	int attach_num;
 	int ret;
 
 	client = devm_kzalloc(&pdev->dev, sizeof(*client), GFP_KERNEL);
@@ -2402,6 +2568,19 @@ static int tmelcom_qmi_probe(struct platform_device *pdev)
 
 	mutex_unlock(&tmelcom_qmi_clients_lock);
 
+	ret = tmelcom_qmi_get_chip_params(client, &client->chip_id,
+					  &client->serial_number);
+	if (ret == 0) {
+		dev_dbg(&pdev->dev,
+			"Chip params: chip_id=0x%x, serial_number=0x%llx\n",
+			client->chip_id, client->serial_number);
+	} else {
+		dev_warn(&pdev->dev,
+			 "Failed to retrieve chip params: %d\n", ret);
+		client->chip_id = 0;
+		client->serial_number = 0;
+	}
+
 	/* Create debugfs directory */
 	snprintf(dir_name, sizeof(dir_name), "domain_%d", client->domain_num);
 	client->debugfs_dir = debugfs_create_dir(dir_name, tmelcom_qmi_debugfs);
@@ -2450,11 +2629,11 @@ static int tmelcom_qmi_probe(struct platform_device *pdev)
 				client->sysfs_kobj = NULL;
 				/* Don't fail probe for sysfs errors - just warn */
 			} else {
-				int attach_num = domain_to_attach_num(client->domain_num);
-				dev_info(&pdev->dev,
-					 "Sysfs: /sys/kernel/tmelcomm/qmi/%d/ (instance_id=0x%x, attach_num=%d)\n",
-					 client->domain_num, client->instance_id,
-					 attach_num);
+				attach_num = domain_to_attach_num(client->domain_num);
+				dev_dbg(&pdev->dev,
+					"Sysfs: /sys/kernel/tmelcomm/qmi/%d/ (instance_id=0x%x, attach_num=%d)\n",
+					client->domain_num, client->instance_id,
+					attach_num);
 			}
 		}
 	}
@@ -2462,15 +2641,16 @@ static int tmelcom_qmi_probe(struct platform_device *pdev)
 	atomic_inc(&client_count);
 	platform_set_drvdata(pdev, client);
 
-	dev_info(&pdev->dev,
-		 "TME QMI client registered for PCIe domain %d\n",
-		 client->domain_num);
+	dev_dbg(&pdev->dev,
+		"TME QMI client registered for PCIe domain %d\n",
+		client->domain_num);
+
 	{
-		int attach_num = domain_to_attach_num(client->domain_num);
-		dev_info(&pdev->dev,
-			 "  node=0x%x port=%u instance_id=0x%x attach_num=%d\n",
-			 client->sq.sq_node, client->sq.sq_port,
-			 client->instance_id, attach_num);
+		attach_num = domain_to_attach_num(client->domain_num);
+		dev_dbg(&pdev->dev,
+			"node=0x%x port=%u instance_id=0x%x attach_num=%d\n",
+			client->sq.sq_node, client->sq.sq_port,
+			client->instance_id, attach_num);
 	}
 
 	/* Notify registered listeners about the new connection */
