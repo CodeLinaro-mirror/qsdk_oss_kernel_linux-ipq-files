@@ -264,6 +264,23 @@
 	};
 };
 
+&pcie3_phy {
+	status = "okay";
+};
+
+&pcie3 {
+	perst-gpio = <&tlmm 41 GPIO_ACTIVE_LOW>;
+	status = "okay";
+
+	pcie3_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
 &qcn9625_pcie1 {
 	status = "okay";
 };
