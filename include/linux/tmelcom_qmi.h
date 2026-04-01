@@ -225,6 +225,16 @@ int tmelcom_qmi_tmel_version_read(int attach_num, u8 *version_info, u32 buf_len,
 int tmelcom_qmi_fuse_blow(int attach_num, u8 *secdat_data, u32 data_len);
 
 /**
+ * tmelcom_qmi_dpr_image_load() - Load DPR image
+ * @attach_num: Attach number - dynamically mapped based on sorted instance IDs
+ * @image_data: Pointer to the image data
+ * @image_size: Size of the image data
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int tmelcom_qmi_dpr_image_load(struct tmelcom_qmi_client *client, u8 *image_data, u32 image_size);
+
+/**
  * tmelcom_qmi_get_chip_params() - Get chip parameters (chip ID and serial number)
  * @attach_num: Attach number - dynamically mapped based on sorted instance IDs
  * @chip_id: Pointer to store chip ID (output)
@@ -410,8 +420,14 @@ static inline int tmelcom_qmi_fuse_blow(int attach_num, u8 *secdat_data, u32 dat
 	return -ENODEV;
 }
 
-static inline int tmelcom_qmi_get_chip_params(int attach_num, u32 *chip_id,
-					      u32 *serial_number)
+static inline int tmelcom_qmi_dpr_image_load(struct tmelcom_qmi_client *client,
+					     u8 *image_data, u32 image_size)
+{
+	return -ENODEV;
+}
+
+static inline int tmelcom_qmi_get_chip_params(struct tmelcom_qmi_client *client,
+					      u32 *chip_id, u64 *serial_number)
 {
 	return -ENODEV;
 }

@@ -19,6 +19,9 @@
 #include <linux/sort.h>
 #include <linux/fs.h>
 #include <linux/vmalloc.h>
+#include <linux/firmware.h>
+#include <linux/dirent.h>
+#include <linux/namei.h>
 
 #include "tmelcom_qmi_internal.h"
 
@@ -1329,6 +1332,42 @@ struct qmi_elem_info qmi_dpr_image_load_resp_msg_v01_ei[] = {
 		.ei_array	= qmi_response_type_v01_ei,
 	},
 	{
+		.data_type	= QMI_UNSIGNED_4_BYTE,
+		.elem_len	= 1,
+		.elem_size	= sizeof(u32),
+		.array_type	= NO_ARRAY,
+		.tlv_type	= 0x03,
+		.offset		= offsetof(struct qmi_dpr_image_load_resp_msg_v01,
+					   status),
+	},
+	{
+		.data_type	= QMI_UNSIGNED_4_BYTE,
+		.elem_len	= 1,
+		.elem_size	= sizeof(u32),
+		.array_type	= NO_ARRAY,
+		.tlv_type	= 0x04,
+		.offset		= offsetof(struct qmi_dpr_image_load_resp_msg_v01,
+					   ipc_status),
+	},
+	{
+		.data_type	= QMI_OPT_FLAG,
+		.elem_len	= 1,
+		.elem_size	= sizeof(u8),
+		.array_type	= NO_ARRAY,
+		.tlv_type	= 0x10,
+		.offset		= offsetof(struct qmi_dpr_image_load_resp_msg_v01,
+					   entry_addr_valid),
+	},
+	{
+		.data_type	= QMI_UNSIGNED_4_BYTE,
+		.elem_len	= 1,
+		.elem_size	= sizeof(u32),
+		.array_type	= NO_ARRAY,
+		.tlv_type	= 0x10,
+		.offset		= offsetof(struct qmi_dpr_image_load_resp_msg_v01,
+					   entry_addr),
+	},
+	{
 		.data_type	= QMI_EOTI,
 		.array_type	= NO_ARRAY,
 		.tlv_type	= QMI_COMMON_TLV_TYPE,
@@ -2505,6 +2544,137 @@ static int client_count_show(struct seq_file *s, void *unused)
 }
 DEFINE_SHOW_ATTRIBUTE(client_count);
 
+/**
+ * get_dpr_firmware_dir() - Get DPR firmware directory for chip ID
+ * @chip_id: Chip ID to check
+ *
+ * Return: Firmware directory path, or NULL if chip ID not supported
+ */
+static const char *get_dpr_firmware_dir(u32 chip_id)
+{
+	switch (chip_id) {
+	case CHIP_ID_QCN9625:
+		return DPR_QCN9625_FIRMWARE_DIR;
+	default:
+		return NULL;
+	}
+}
+
+/**
+ * load_dpr_image_for_client() - Load DPR image for a client based on serial number
+ * @client: QMI client structure
+ *
+ * Tries to load DPR images in priority order:
+ * 1. First tries: DPR_0x<serial_number>.elf
+ * 2. Fallback: DPR_COMMON.elf
+ *
+ * Files should be placed in /lib/firmware/qcn9625/
+ *
+ * This function is non-fatal - errors are logged but don't fail probe.
+ *
+ * Return: 0 on success, negative error code on failure (non-fatal)
+ */
+static int load_dpr_image_for_client(struct tmelcom_qmi_client *client)
+{
+	const struct firmware *fw = NULL;
+	void *image_data = NULL;
+	const char *firmware_dir;
+	char *firmware_path = NULL;
+	int ret, len;
+
+	if (!client || client->serial_number == 0) {
+		dev_info(&client->pdev->dev,
+			 "Skipping DPR load: no valid serial number\n");
+		return -EINVAL;
+	}
+
+	firmware_dir = get_dpr_firmware_dir(client->chip_id);
+	if (!firmware_dir) {
+		dev_info(&client->pdev->dev,
+			 "DPR loading not supported for chip_id=0x%x\n",
+			 client->chip_id);
+		return -EOPNOTSUPP;
+	}
+
+	firmware_path = kmalloc(PATH_MAX, GFP_KERNEL);
+	if (!firmware_path)
+		return -ENOMEM;
+
+	dev_dbg(&client->pdev->dev,
+		"Searching for DPR image: chip_id=0x%x, serial=0x%llx\n",
+		client->chip_id, client->serial_number);
+
+	/* Try 1: Load serial-specific file (DPR_0x<serial>.elf) */
+	len = snprintf(firmware_path, PATH_MAX,
+		       "%s/DPR_0x%llx.elf",
+		       firmware_dir, client->serial_number);
+	if (len >= PATH_MAX) {
+		dev_err(&client->pdev->dev,
+			"DPR firmware path too long (would be %d chars)\n", len);
+		ret = -ENAMETOOLONG;
+		goto free_path;
+	}
+
+	ret = request_firmware(&fw, firmware_path, &client->pdev->dev);
+	if (ret == 0) {
+		dev_dbg(&client->pdev->dev,
+			"Loaded serial-specific DPR: %s\n", firmware_path);
+		goto load_image;
+	}
+
+	/* Try 2: Load common file (DPR_COMMON.elf) as fallback */
+	len = snprintf(firmware_path, PATH_MAX,
+		       "%s/DPR_COMMON.elf", firmware_dir);
+	if (len >= PATH_MAX) {
+		dev_err(&client->pdev->dev,
+			"DPR firmware path too long (would be %d chars)\n", len);
+		ret = -ENAMETOOLONG;
+		goto free_path;
+	}
+
+	ret = request_firmware(&fw, firmware_path, &client->pdev->dev);
+	if (ret) {
+		dev_warn(&client->pdev->dev,
+			 "No DPR image found (tried serial-specific and common): %d\n",
+			 ret);
+		goto free_path;
+	}
+
+	dev_dbg(&client->pdev->dev,
+		"Loaded common DPR: %s\n", firmware_path);
+
+load_image:
+	image_data = vzalloc(fw->size);
+	if (!image_data) {
+		ret = -ENOMEM;
+		goto cleanup;
+	}
+
+	memcpy(image_data, fw->data, fw->size);
+
+	ret = tmelcom_qmi_dpr_image_load(client, (u8 *)image_data, fw->size);
+
+	if (ret == 0) {
+		dev_info(&client->pdev->dev,
+			 "DPR image loaded successfully: %s (size=%zu bytes)\n",
+			 firmware_path, fw->size);
+	} else {
+		dev_err(&client->pdev->dev,
+			"DPR image load failed: %s (size=%zu bytes): error %d\n",
+			firmware_path, fw->size, ret);
+	}
+
+cleanup:
+	if (fw)
+		release_firmware(fw);
+	if (image_data)
+		vfree(image_data);
+free_path:
+	kfree(firmware_path);
+
+	return ret;
+}
+
 /* ===== Platform Driver ===== */
 
 static int tmelcom_qmi_probe(struct platform_device *pdev)
@@ -2662,6 +2832,15 @@ static int tmelcom_qmi_probe(struct platform_device *pdev)
 		blocking_notifier_call_chain(&tmelcom_qmi_notifier_list,
 					     TMELCOM_QMI_CLIENT_CONNECTED,
 					     &notify_data);
+	}
+
+	/* Load DPR image if chip params are valid */
+	if (client->chip_id != 0 && client->serial_number != 0) {
+		ret = load_dpr_image_for_client(client);
+		if (ret) {
+			dev_warn(&pdev->dev,
+				 "DPR loading failed: %d (non-fatal)\n", ret);
+		}
 	}
 
 	return 0;
