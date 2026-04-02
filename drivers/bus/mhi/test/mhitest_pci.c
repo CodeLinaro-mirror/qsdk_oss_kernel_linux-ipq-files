@@ -1190,6 +1190,11 @@ static int mhitest_pci_select_window(struct mhitest_platform *mplat, u32 addr)
 	int retry = 0;
 	void __iomem *bar = NULL;
 
+	if (!mplat || !mplat->bar) {
+		pr_err("mplat is NULL or bar not assigned\n");
+		return -ENODEV;
+	}
+
 	switch (mplat->device_id) {
 	case QCC20XX_DEVICE_ID:
 	case QCN92XX_DEVICE_ID:
@@ -1202,11 +1207,6 @@ static int mhitest_pci_select_window(struct mhitest_platform *mplat, u32 addr)
 
 	default:
 		pr_err("Unknown device type 0x%lx\n", mplat->device_id);
-		return -ENODEV;
-	}
-
-	if (!mplat || !mplat->bar) {
-		pr_err("mplat is NULL or bar not assigned\n");
 		return -ENODEV;
 	}
 
