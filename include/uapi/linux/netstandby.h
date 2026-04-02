@@ -39,6 +39,8 @@ enum netstandby_notif_type {
 	NETSTANDBY_NOTIF_ENTER_COMPLETE = 0,	/**< Enter complete notification */
 	NETSTANDBY_NOTIF_EXIT_COMPLETE,		/**< Exit complete notification */
 	NETSTANDBY_NOTIF_TRIGGER,		/**< Trigger wakeup trigger */
+	NETSTANDBY_NOTIF_ENTER_FAILED,          /**< Enter failed notification */
+	NETSTANDBY_NOTIF_EXIT_FAILED,           /**< Exit failed notification */
 };
 
 /*
