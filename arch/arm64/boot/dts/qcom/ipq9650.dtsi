@@ -2611,11 +2611,11 @@
 						port_id = <0>;
 						ucast_queue = <128 255>;
 						mcast_queue = <256 263>;
-						l0sp = <26 41>;
+						l0sp = <26 44>;
 						l0cdrr = <128 255>;
 						l0edrr = <128 255>;
-						l1cdrr = <26 41>;
-						l1edrr = <26 41>;
+						l1cdrr = <26 44>;
+						l1edrr = <26 44>;
 					};
 
 					port@1 {
@@ -2709,11 +2709,11 @@
 					reserved {
 						ucast_queue = <0 0>;
 						mcast_queue = <0 0>;
-						l0sp = <42 63>;
+						l0sp = <45 63>;
 						l0cdrr = <0 0>;
 						l0edrr = <0 0>;
-						l1cdrr = <42 63>;
-						l1edrr = <42 63>;
+						l1cdrr = <45 63>;
+						l1edrr = <45 63>;
 					};
 				};
 
@@ -2735,15 +2735,17 @@
 								/* SSID groups with 4 priorities on L1 */
 								sp = <38>;
 								sp_loop_pri = <4>;
+								sp_max_pri = <4>;
 								/* cpri cdrr epri edrr */
-								cfg = <0 38 0 38>;
+								cfg = <0 26 0 26>;
 							};
 
 							group@2 {
 								sp = <42>;
 								sp_loop_pri = <3>;
+								sp_max_pri = <1>;
 								/* cpri cdrr epri edrr */
-								cfg = <0 42 0 42>;
+								cfg = <0 26 0 26>;
 							};
 						};
 
