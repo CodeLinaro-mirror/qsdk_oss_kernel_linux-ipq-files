@@ -1573,7 +1573,7 @@
 			assigned-clocks = <&gcc GCC_USB1_MASTER_CLK>,
 					  <&gcc GCC_USB1_MOCK_UTMI_CLK>;
 			assigned-clock-rates = <200000000>,
-					       <24000000>;
+					       <60000000>;
 
 			resets = <&gcc GCC_USB1_BCR>;
 			qcom,select-utmi-as-pipe-clk;
@@ -1584,7 +1584,7 @@
 				reg = <0x1e00000 0xe000>;
 				clocks = <&gcc GCC_USB1_MOCK_UTMI_CLK>;
 				clock-names = "ref";
-				interrupts = <GIC_SPI 386 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 383 IRQ_TYPE_LEVEL_HIGH>;
 				phys = <&qusb_phy_1>;
 				phy-names = "usb2-phy";
 				tx-fifo-resize;
@@ -1660,9 +1660,8 @@
 
 			assigned-clocks = <&gcc GCC_USB0_MASTER_CLK>,
 					  <&gcc GCC_USB0_MOCK_UTMI_CLK>;
-			/* To Do - Need to re-check with VI team about utmi clock rate (24MHz/60MHz) */
 			assigned-clock-rates = <200000000>,
-					       <24000000>;
+					       <60000000>;
 
 			resets = <&gcc GCC_USB_BCR>;
 			status = "disabled";
