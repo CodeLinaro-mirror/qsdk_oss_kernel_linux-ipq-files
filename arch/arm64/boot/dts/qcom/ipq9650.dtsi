@@ -827,7 +827,7 @@
 			clock-names = "xo", "gpll0";
 			#clock-cells = <1>;
 			#interconnect-cells = <1>;
-			status = "disabled";
+			status = "okay";
 		};
 
 		tlmm: pinctrl@1000000 {
