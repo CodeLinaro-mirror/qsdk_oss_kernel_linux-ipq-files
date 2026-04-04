@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+# IPQ9650 NoC device tree source
+#
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+%YAML 1.2
+---
+title: Qualcomm IPQ9650 NoC Trace Probe Driver
+
+description:
+  The NoC (Network-on-Chip) trace probe driver provides monitoring and
+  profiling capabilities for the IPQ9650 SoC's interconnect fabric.
+
+properties:
+  compatible:
+    const: qcom,noc-tprobe-driver
+
+  status:
+    description: Device status
+    enum:
+      - okay
+      - disabled
+
+required:
+  - compatible
+
+additionalProperties: false
+
+examples:
+  - |
+    soc {
+        #address-cells = <1>;
+        #size-cells = <1>;
+
+        noc-tprobe-driver {
+            compatible = "qcom,noc-tprobe-driver";
+            status = "okay";
+        };
+    };

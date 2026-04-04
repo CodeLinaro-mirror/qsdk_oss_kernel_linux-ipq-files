@@ -1,0 +1,163 @@
+# SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+# IPQ9650 NoC device tree source
+#
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+
+%YAML 1.2
+---
+
+title: Qualcomm IPQ9650 APSS Component Driver
+
+description:
+  The APSS (Application Processor Subsystem) component driver provides
+  performance monitoring and profiling capabilities for the IPQ9650 SoC's
+  application processor subsystem using histogram probes, trace probes,
+  and event counters.
+
+properties:
+  compatible:
+    enum:
+      - qcom,apss-comp-driver
+      - qcom,llcc-be-apss-comp-driver
+
+  reg:
+    minItems: 3
+    maxItems: 9
+
+  reg-names:
+    minItems: 3
+    maxItems: 9
+    items:
+      enum:
+        - histprobe-base
+        - histctrl-base
+        - traceprobe-base
+        - eventcounter-base
+        - apss-cti-base
+        - core-cti-base
+        - gemnoc-chm-ec-base
+        - gemnoc-pcnoc-ec-base
+        - gemnoc-anoc-ec-base
+
+  hist_bin_width:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: Histogram bin width configuration
+
+  ddr_addr_min_low:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: Lower 32 bits of minimum DDR address
+
+  ddr_addr_min_high:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: Upper 32 bits of minimum DDR address
+
+  ddr_addr_max_low:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: Lower 32 bits of maximum DDR address
+
+  ddr_addr_max_high:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: Upper 32 bits of maximum DDR address
+
+  trace_probe_extid_base:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: Trace probe external ID base value
+
+  trace_probe_extid_mask:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: Trace probe external ID mask
+
+  ec_ctl1_base_val:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: Event counter control 1 base value
+
+  apss_cti_num:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: APSS CTI (Cross Trigger Interface) number
+
+  apss_cti_trigout_start:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: APSS CTI trigger out start index
+
+  apss_chi_read_event_id:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: APSS CHI read event ID
+
+  apss_chi_write_event_id:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: APSS CHI write event ID
+
+  apss_chi_cmo_event_id:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: APSS CHI CMO (Cache Maintenance Operation) event ID
+
+  apss_chi_all_event_id:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: APSS CHI all events ID
+
+  gemnoc_chm_ec_freq:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: GEMNOC CHM event counter frequency in MHz
+
+  gemnoc_pcnoc_ec_freq:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: GEMNOC PCNOC event counter frequency in MHz
+
+  gemnoc_anoc_ec_freq:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: GEMNOC ANOC event counter frequency in MHz
+
+  status:
+    description: Device status
+    enum:
+      - okay
+      - disabled
+
+required:
+  - compatible
+  - reg
+  - reg-names
+
+additionalProperties: false
+
+examples:
+  - |
+    soc {
+        #address-cells = <1>;
+        #size-cells = <1>;
+
+        apss-comp-driver@4304400 {
+            compatible = "qcom,apss-comp-driver";
+            reg = <0x4304800 0x400>,
+                  <0x4304400 0x400>,
+                  <0x4305800 0x1000>,
+                  <0x431A000 0x1000>,
+                  <0x680E000 0x1500>,
+                  <0x6010000 0x1500>,
+                  <0x431A000 0x1000>,
+                  <0x431B000 0x1000>,
+                  <0x431C000 0x1000>;
+            reg-names = "histprobe-base", "histctrl-base", "traceprobe-base",
+                        "eventcounter-base", "apss-cti-base", "core-cti-base",
+                        "gemnoc-chm-ec-base", "gemnoc-pcnoc-ec-base",
+                        "gemnoc-anoc-ec-base";
+            hist_bin_width = <0x2018>;
+            ddr_addr_min_low = <0x80000000>;
+            ddr_addr_min_high = <0x0>;
+            ddr_addr_max_low = <0xffffffff>;
+            ddr_addr_max_high = <0xfff>;
+            trace_probe_extid_base = <0x4000>;
+            trace_probe_extid_mask = <0xff00>;
+            ec_ctl1_base_val = <180>;
+            apss_cti_num = <9>;
+            apss_cti_trigout_start = <2>;
+            apss_chi_read_event_id = <180>;
+            apss_chi_write_event_id = <182>;
+            apss_chi_cmo_event_id = <184>;
+            apss_chi_all_event_id = <186>;
+            gemnoc_chm_ec_freq = <800>;
+            gemnoc_pcnoc_ec_freq = <266>;
+            gemnoc_anoc_ec_freq = <342>;
+            status = "okay";
+        };
+    };

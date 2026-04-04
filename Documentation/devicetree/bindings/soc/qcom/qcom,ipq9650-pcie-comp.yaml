@@ -1,0 +1,152 @@
+# SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+# IPQ9650 NoC device tree source
+#
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+%YAML 1.2
+---
+title: Qualcomm IPQ9650 PCIe Component Driver
+
+description:
+  The PCIe component driver provides performance monitoring and profiling
+  capabilities for the IPQ9650 SoC's PCIe lanes using histogram probes,
+  histogram controllers, trace probes, and event counters.
+
+properties:
+  compatible:
+    enum:
+      - qcom,pcie-1lane-0-comp-driver-juhu
+      - qcom,pcie-2lane-0-comp-driver-juhu
+      - qcom,pcie-2lane-1-comp-driver-juhu
+      - qcom,pcie-2lane-2-comp-driver-juhu
+
+  reg:
+    items:
+      - description: HistProbe base address
+      - description: HistCtrl base address
+      - description: TraceProbe base address
+      - description: EventCounter base address
+      - description: Core CTI base address
+
+  reg-names:
+    items:
+      - const: histprobe-base
+      - const: histctrl-base
+      - const: traceprobe-base
+      - const: eventcounter-base
+      - const: core-cti-base
+
+  hist_bin_width:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: Histogram bin width configuration
+
+  ddr_addr_min_low:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: Lower 32 bits of minimum DDR address
+
+  ddr_addr_min_high:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: Upper 32 bits of minimum DDR address
+
+  ddr_addr_max_low:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: Lower 32 bits of maximum DDR address
+
+  ddr_addr_max_high:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: Upper 32 bits of maximum DDR address
+
+  trace_probe_extid_base:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: Trace probe external ID base value
+
+  trace_probe_extid_mask:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: Trace probe external ID mask
+
+  ec_ctl1_base_val:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: Event counter control 1 base value
+
+  core_cti_num:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: Core CTI (Cross Trigger Interface) number
+
+  core_cti_trigout_start:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: Core CTI trigger out start index
+
+  ec_cti_num:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: Event counter CTI number
+
+  ec_cti_trigout:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: Event counter CTI trigger out index
+
+  status:
+    description: Device status
+    enum:
+      - okay
+      - disabled
+
+required:
+  - compatible
+  - reg
+  - reg-names
+
+additionalProperties: false
+
+examples:
+  - |
+    soc {
+        #address-cells = <1>;
+        #size-cells = <1>;
+
+        pcie-1lane-0-comp-driver@601400 {
+            compatible = "qcom,pcie-1lane-0-comp-driver-juhu";
+            reg = <0x602800 0x400>,
+                  <0x601400 0x400>,
+                  <0x604000 0x1000>,
+                  <0x605000 0x1000>,
+                  <0x6010000 0x1500>;
+            reg-names = "histprobe-base", "histctrl-base", "traceprobe-base",
+                        "eventcounter-base", "core-cti-base";
+            hist_bin_width = <0x2018>;
+            ddr_addr_min_low = <0x0>;
+            ddr_addr_min_high = <0x0>;
+            ddr_addr_max_low = <0xffffffff>;
+            ddr_addr_max_high = <0xff>;
+            trace_probe_extid_base = <0x4500>;
+            trace_probe_extid_mask = <0xff00>;
+            ec_ctl1_base_val = <4>;
+            core_cti_num = <11>;
+            core_cti_trigout_start = <6>;
+            ec_cti_num = <13>;
+            ec_cti_trigout = <1>;
+            status = "disabled";
+        };
+
+        pcie-2lane-0-comp-driver@601C00 {
+            compatible = "qcom,pcie-2lane-0-comp-driver-juhu";
+            reg = <0x602C00 0x400>,
+                  <0x601C00 0x400>,
+                  <0x604000 0x1000>,
+                  <0x605000 0x1000>,
+                  <0x6010000 0x1500>;
+            reg-names = "histprobe-base", "histctrl-base", "traceprobe-base",
+                        "eventcounter-base", "core-cti-base";
+            hist_bin_width = <0x2018>;
+            ddr_addr_min_low = <0x0>;
+            ddr_addr_min_high = <0x0>;
+            ddr_addr_max_low = <0xffffffff>;
+            ddr_addr_max_high = <0xff>;
+            trace_probe_extid_base = <0x4600>;
+            trace_probe_extid_mask = <0xff00>;
+            ec_ctl1_base_val = <4>;
+            core_cti_num = <15>;
+            core_cti_trigout_start = <4>;
+            ec_cti_num = <13>;
+            ec_cti_trigout = <1>;
+            status = "okay";
+        };
+    };

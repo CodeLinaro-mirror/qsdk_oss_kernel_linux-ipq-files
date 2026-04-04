@@ -538,7 +538,7 @@
 		reg-bit-position = <0xffffffff>, <0xffffffff>;
 	};
 
-	soc@0 {
+	soc: soc@0 {
 		compatible = "simple-bus";
 		#address-cells = <1>;
 		#size-cells = <1>;
@@ -3973,3 +3973,5 @@
 		};
 	};
 };
+
+#include "ipq9650-noc.dtsi"
