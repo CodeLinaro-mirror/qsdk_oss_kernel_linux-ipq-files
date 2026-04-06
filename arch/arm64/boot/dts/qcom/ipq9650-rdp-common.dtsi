@@ -49,7 +49,7 @@
 		compatible = "gpio-keys";
 		pinctrl-0 = <&gpio_keys_default>;
 		pinctrl-names = "default";
-		status = "disabled";
+		status = "okay";
 
 		button-wps {
 			label = "wps";
