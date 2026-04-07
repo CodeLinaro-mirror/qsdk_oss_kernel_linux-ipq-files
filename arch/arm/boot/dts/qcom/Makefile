@@ -98,6 +98,7 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	ipq9574-db-al02-c3.dtb \
 	ipq9574-rdp475-c1.dtb \
 	ipq9650-db-ju01.dtb \
+	ipq9650-db-ju01-c1.dtb \
 	ipq9650-db-ju02.dtb \
 	ipq9650-emulation.dtb \
 	ipq9650-emulation-fbc.dtb \
