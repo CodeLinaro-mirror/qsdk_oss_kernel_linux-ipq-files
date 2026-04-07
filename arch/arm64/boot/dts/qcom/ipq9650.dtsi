@@ -1289,6 +1289,15 @@
 			};
 		};
 
+		dcc@60ff000 {
+			compatible = "qcom,dcc-v2-ipq5332";
+			reg = <0x060ff000 0x1000>,
+			      <0x06088000 0x1000>;
+			reg-names = "dcc-base", "dcc-ram-base";
+			dcc-ram-offset = <0x8000>;
+			status = "disabled";
+		};
+
 		etm0: etm@6880000 {
 			compatible = "arm,coresight-etm4x", "arm,primecell";
 			reg = <0x06880000 0x1000>;
