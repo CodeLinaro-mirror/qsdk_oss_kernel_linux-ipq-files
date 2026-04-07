@@ -224,4 +224,7 @@
 #define GCC_USB3PHY_0_PHY_BCR					214
 #define GCC_USB_BCR						215
 #define GCC_USB_CMN_LDO_BCR					216
+#define GCC_UNIPHY1_XLGPCS_ARES					217
+#define GCC_UNIPHY2_XLGPCS_ARES					218
+
 #endif
