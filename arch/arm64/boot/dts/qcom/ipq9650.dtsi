@@ -897,6 +897,15 @@
 					bias-pull-up;
 				};
 			};
+
+			pps_state: pps-state {
+				pps-pins {
+					pins = "gpio50";
+					function = "tsn";
+					drive-strength = <8>;
+					bias-pull-down;
+				};
+			};
 		};
 
 		gcc: clock-controller@1800000 {
