@@ -229,7 +229,7 @@
 			reg = <0 0 0 0 0>;
 			memory-region = <&qcn9625_pcie1>, <&mlo_global_mem0>;
 			memory-region-names = "host-ddr-mem", "mlo-global-mem";
-			qcom,board_id = <0x5009>;
+			qcom,board_id = <0x501b>;
 
 			ports {
 				#address-cells = <1>;
@@ -237,10 +237,18 @@
 
 				port@0 {
 					reg = <0>;
+
+					wifi1_wsi_tx: endpoint {
+						remote-endpoint = <&wifi3_wsi_rx>;
+					};
 				};
 
 				port@1 {
 					reg = <1>;
+
+					wifi1_wsi_rx: endpoint {
+						remote-endpoint = <&wifi2_wsi_tx>;
+					};
 				};
 			};
 		};
@@ -262,7 +270,8 @@
 			reg = <0 0 0 0 0>;
 			memory-region = <&qcn9625_pcie2>, <&mlo_global_mem0>;
 			memory-region-names = "host-ddr-mem", "mlo-global-mem";
-			qcom,board_id = <0x501b>;
+			qcom,board_id = <0x200b>;
+			qcom,wsi-controller;
 
 			ports {
 				#address-cells = <1>;
@@ -270,10 +279,18 @@
 
 				port@0 {
 					reg = <0>;
+
+					wifi2_wsi_tx: endpoint {
+						remote-endpoint = <&wifi1_wsi_rx>;
+					};
 				};
 
 				port@1 {
 					reg = <1>;
+
+					wifi2_wsi_rx: endpoint {
+						remote-endpoint = <&wifi3_wsi_tx>;
+					};
 				};
 			};
 		};
@@ -293,6 +310,30 @@
 
 		qcom,mhi@0 {
 			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9625_pcie3>, <&mlo_global_mem0>;
+			memory-region-names = "host-ddr-mem", "mlo-global-mem";
+			qcom,board_id = <0x5009>;
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+
+					wifi3_wsi_tx: endpoint {
+						remote-endpoint = <&wifi2_wsi_rx>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+
+					wifi3_wsi_rx: endpoint {
+						remote-endpoint = <&wifi1_wsi_tx>;
+					};
+				};
+			};
 		};
 	};
 };
@@ -302,6 +343,10 @@
 };
 
 &qcn9625_pcie2 {
+	status = "okay";
+};
+
+&qcn9625_pcie3 {
 	status = "okay";
 };
 
