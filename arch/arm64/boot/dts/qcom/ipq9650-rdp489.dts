@@ -157,22 +157,22 @@
 			regulator-type = "voltage";
 			regulator-boot-on;
 			regulator-always-on;
-			regulator-min-microvolt = <600000>;
-			regulator-max-microvolt = <957000>;
+			regulator-min-microvolt = <732000>;
+			regulator-max-microvolt = <952000>;
 			regulator-ramp-delay = <250>; /* 20ms */
 			gpios = <&tlmm 33 GPIO_ACTIVE_HIGH>,
 				<&tlmm 34 GPIO_ACTIVE_HIGH>,
 				<&tlmm 35 GPIO_ACTIVE_HIGH>;
 			gpios-states = <0x7>;
-			states = <600000 0x0>,
+			states = <660000 0x0>,
 				 <660000 0x1>,
-				 <740000 0x2>,
-				 <804000 0x3>,
-				 <753000 0x4>,
-				 <815000 0x5>,
-				 <895000 0x6>,
-				 <957000 0x7>;
-			status = "disabled";
+				 <732000 0x2>,
+				 <792000 0x3>,
+				 <756000 0x4>,
+				 <817000 0x5>,
+				 <890000 0x6>,
+				 <952000 0x7>;
+			status = "okay";
 		};
 
 		qcom,gpio-regulator {
@@ -185,8 +185,8 @@
 			status = "disabled";
 
 			apc: apc {
-				regulator-min-microvolt = <600000>;
-				regulator-max-microvolt = <957000>;
+				regulator-min-microvolt = <732000>;
+				regulator-max-microvolt = <952000>;
 				regulator-boot-on;
 				regulator-always-on;
 			};
@@ -454,26 +454,60 @@
 };
 
 &CPU0 {
-	cpu-supply = <&apc>;
-	/delete-property/ cpu-supply;
+	cpu-supply = <&apc_rail>;
 };
 
 &CPU1 {
-	cpu-supply = <&apc>;
-	/delete-property/ cpu-supply;
+	cpu-supply = <&apc_rail>;
 };
 
 &CPU2 {
-	cpu-supply = <&apc>;
-	/delete-property/ cpu-supply;
+	cpu-supply = <&apc_rail>;
 };
 
 &CPU3 {
-	cpu-supply = <&apc>;
-	/delete-property/ cpu-supply;
+	cpu-supply = <&apc_rail>;
 };
 
 &CPU4 {
-	cpu-supply = <&apc>;
-	/delete-property/ cpu-supply;
+	cpu-supply = <&apc_rail>;
+};
+
+&cpu0_opp_table {
+	opp-840000000 {
+		/* <target min max> */
+		opp-microvolt = <732000 732000 952000>;
+	};
+
+	opp-1368000000 {
+		/* <target min max> */
+		opp-microvolt = <817000 732000 952000>;
+	};
+
+	opp-1800000000 {
+		/* <target min max> */
+		opp-microvolt = <952000 732000 952000>;
+	};
+
+	opp-1944000000 {
+		/* <target min max> */
+		opp-microvolt = <952000 732000 952000>;
+	};
+};
+
+&cpu4_opp_table {
+	opp-456000000 {
+		/* <target min max> */
+		opp-microvolt = <732000 732000 952000>;
+	};
+
+	opp-720000000 {
+		/* <target min max> */
+		opp-microvolt = <817000 732000 952000>;
+	};
+
+	opp-1032000000 {
+		/* <target min max> */
+		opp-microvolt = <952000 732000 952000>;
+	};
 };
