@@ -89,7 +89,7 @@ static struct clk_alpha_pll_postdiv gpll0 = {
 		.parent_hws = (const struct clk_hw *[]) {
 			       &gpll0_main.clkr.hw },
 		.num_parents = 1,
-		.ops = &clk_alpha_pll_postdiv_ro_ops,
+		.ops = &clk_lucid_pll_passthrough_ops,
 	},
 };
 
