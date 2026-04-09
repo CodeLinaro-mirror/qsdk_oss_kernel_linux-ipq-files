@@ -1,0 +1,77 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * IPQ9650 512MB Memory device tree source
+ *
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ */
+
+/ {
+	/*                    512MB Profile
+	 * +==========+==============+========================+
+	 * |         |              |                         |
+	 * |  Region | Start Offset |          Size           |
+	 * |         |              |                         |
+	 * +---------+--------------+-------------------------+
+	 * |         |              |                         |
+	 * | QCN9625 |    DYNAMIC   |          37MB           |
+	 * | PCIe1   |              |                         |
+	 * |         |              |                         |
+	 * +---------+--------------+-------------------------+
+	 * |         |              |                         |
+	 * | QCN9625 |    DYNAMIC   |          37MB           |
+	 * | PCIe2   |              |                         |
+	 * |         |              |                         |
+	 * +---------+--------------+-------------------------+
+	 * |         |              |                         |
+	 * | QCN9625 |    DYNAMIC   |          37MB           |
+	 * | PCIe3   |              |                         |
+	 * |         |              |                         |
+	 * +---------+--------------+-------------------------+
+	 * |         |              |                         |
+	 * |  MLO    |    DYNAMIC   |          18MB           |
+	 * |         |              |                         |
+	 * +==================================================+
+	 * |                                                  |
+	 * |                                                  |
+	 * |                                                  |
+	 * |             Rest of memory for Linux             |
+	 * |                                                  |
+	 * |                                                  |
+	 * |                                                  |
+	 * +==================================================+
+	 */
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		qcn9625_pcie1: qcn9625_pcie1@1 {
+			no-map;
+			size = <0x0 0x02500000>;
+			alignment = <0x0 0x100000>;
+			status = "disabled";
+		};
+
+		qcn9625_pcie2: qcn9625_pcie2@2 {
+			no-map;
+			size = <0x0 0x02500000>;
+			alignment = <0x0 0x100000>;
+			status = "disabled";
+		};
+
+		qcn9625_pcie3: qcn9625_pcie3@3 {
+			no-map;
+			size = <0x0 0x02500000>;
+			alignment = <0x0 0x100000>;
+			status = "disabled";
+		};
+
+		mlo_global_mem0: mlo_global_mem_0@0 {
+			no-map;
+			size = <0x0 0x1200000>;
+			alignment = <0x0 0x100000>;
+			status = "disabled";
+		};
+	};
+};

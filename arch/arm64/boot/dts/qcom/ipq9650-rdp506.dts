@@ -9,7 +9,11 @@
 /dts-v1/;
 
 #include "ipq9650-rdp-common.dtsi"
+#ifdef __IPQ_MEM_PROFILE_512_MB__
+#include "ipq9650-512MB-default-memory.dtsi"
+#else
 #include "ipq9650-default-memory.dtsi"
+#endif
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ9650 RDP506";
