@@ -218,6 +218,7 @@ static int ipq_pwm_probe(struct platform_device *pdev)
 {
 	struct ipq_pwm_chip *pwm;
 	struct device *dev = &pdev->dev;
+	u32 npwm;
 	int ret;
 
 	pwm = devm_kzalloc(dev, sizeof(*pwm), GFP_KERNEL);
@@ -242,7 +243,12 @@ static int ipq_pwm_probe(struct platform_device *pdev)
 
 	pwm->chip.dev = dev;
 	pwm->chip.ops = &ipq_pwm_ops;
-	pwm->chip.npwm = 4;
+
+	ret = of_property_read_u32(dev->of_node, "pwm-npwm", &npwm);
+	if (!ret)
+		pwm->chip.npwm = npwm;
+	else
+		pwm->chip.npwm = 4;
 
 	ret = pwmchip_add(&pwm->chip);
 	if (ret < 0) {
