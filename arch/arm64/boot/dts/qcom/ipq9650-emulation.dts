@@ -140,11 +140,11 @@
 				status = "okay";
 			};
 
-			i2c0: i2c@1a88000 {
+			i2c1: i2c@1a88000 {
 				status = "okay";
 			};
 
-			i2c1: i2c@1a8c000 {
+			i2c2: i2c@1a8c000 {
 				status = "okay";
 			};
 		};

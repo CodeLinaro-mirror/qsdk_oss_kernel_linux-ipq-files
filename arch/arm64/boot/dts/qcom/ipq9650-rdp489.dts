@@ -41,6 +41,13 @@
 					spi-max-frequency = <50000000>;
 				};
 			};
+
+			i2c3: i2c@1a90000 {
+				pinctrl-0 = <&qup_i2c3_default>;
+				pinctrl-names = "default";
+				status = "disabled";
+			};
+
 		};
 
 		dp1 {
@@ -402,6 +409,21 @@
 };
 
 &tlmm {
+	qup_i2c3_default: qup-i2c3-default-state {
+		qup_i2c3_scl {
+			pins = "gpio14";
+			function = "qup_se4_l1";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+		qup_i2c3_sda {
+			pins = "gpio15";
+			function = "qup_se4_l0";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+	};
+
 	pcie0_default_state: pcie0-default-state {
 		perst-n-pins {
 			pins = "gpio25";

@@ -41,14 +41,20 @@
 				};
 			};
 
-			i2c0: i2c@1a88000 {
+			i2c0: i2c@1a84000 {
 				pinctrl-0 = <&qup_i2c0_default>;
 				pinctrl-names = "default";
 				status = "disabled";
 			};
 
-			i2c1: i2c@1a8c000 {
+			i2c1: i2c@1a88000 {
 				pinctrl-0 = <&qup_i2c1_default>;
+				pinctrl-names = "default";
+				status = "disabled";
+			};
+
+			i2c2: i2c@1a8c000 {
+				pinctrl-0 = <&qup_i2c2_default>;
 				pinctrl-names = "default";
 				status = "okay";
 
@@ -83,14 +89,8 @@
 				};
 			};
 
-			i2c2: i2c@1a84000 {
-				pinctrl-0 = <&qup_i2c2_default>;
-				pinctrl-names = "default";
-				status = "disabled";
-			};
-
-			i2c3: i2c@1a9c000 {
-				pinctrl-0 = <&qup_i2c3_default>;
+			i2c4: i2c@1a9c000 {
+				pinctrl-0 = <&qup_i2c4_default>;
 				pinctrl-names = "default";
 				status = "disabled";
 			};
@@ -282,11 +282,11 @@
 };
 
 &qusb_phy_1 {
-	status = "disabled";
+	status = "okay";
 };
 
 &usb2 {
-	status = "disabled";
+	status = "okay";
 };
 
 &qusb_phy_0 {
@@ -304,12 +304,27 @@
 &tlmm {
 	qup_i2c0_default: qup-i2c0-default-state {
 		qup_i2c0_scl {
+			pins = "gpio10";
+			function = "qup_se1_l1";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+		qup_i2c0_sda {
+			pins = "gpio11";
+			function = "qup_se1_l0";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+	};
+
+	qup_i2c1_default: qup-i2c1-default-state {
+		qup_i2c1_scl {
 			pins = "gpio33";
 			function = "qup_se2_l1";
 			drive-strength = <8>;
 			bias-pull-up;
 		};
-		qup_i2c0_sda {
+		qup_i2c1_sda {
 			pins = "gpio34";
 			function = "qup_se2_l0";
 			drive-strength = <8>;
@@ -317,33 +332,18 @@
 		};
 	};
 
-	qup_i2c2_default: qup-i2c2-default-state {
-		qup_i2c2_scl {
-			pins = "gpio10";
-			function = "qup_se1_l1";
-			drive-strength = <8>;
-			bias-pull-up;
-		};
-		qup_i2c2_sda {
-			pins = "gpio11";
-			function = "qup_se1_l0";
-			drive-strength = <8>;
-			bias-pull-up;
-		};
-	};
-
-	qup_i2c3_default: qup-i2c3-default-state {
-		qup_i2c3_scl {
+	qup_i2c4_default: qup-i2c4-default-state {
+		qup_i2c4_scl {
 			pins = "gpio39";
 			function = "qup_se7_l1";
 			drive-strength = <8>;
-			bias-pull-up;
+			bias-pull-down;
 		};
-		qup_i2c3_sda {
+		qup_i2c4_sda {
 			pins = "gpio38";
 			function = "qup_se7_l0";
 			drive-strength = <8>;
-			bias-pull-up;
+			bias-pull-down;
 		};
 	};
 
