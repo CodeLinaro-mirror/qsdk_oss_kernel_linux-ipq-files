@@ -1640,6 +1640,7 @@ static struct clk_branch nss_cc_nssnoc_ce_axi_clk = {
 static const struct freq_tbl ftbl_nss_cc_eip_bfdcd_clk_src[] = {
 	F(462000000, P_CMN_PLL_NSS_CLK_462M, 1, 0, 0),
 	F(750000000, P_CMN_PLL_NSS_CLK_750M, 1, 0, 0),
+	F(800000000, P_GCC_GPLL0_OUT_AUX, 1, 0, 0),
 	{ }
 };
 
