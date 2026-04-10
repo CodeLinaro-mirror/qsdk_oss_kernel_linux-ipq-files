@@ -642,6 +642,12 @@ static inline int tmelcom_secboot_sec_auth(u32 sw_id, void *metadata,
 	return -EOPNOTSUPP;
 }
 
+static inline int tmelcom_secboot_sec_auth_v2(u32 sw_id, void *metadata,
+					      size_t size)
+{
+	return -EOPNOTSUPP;
+}
+
 static inline int tmelcom_secboot_teardown(u32 sw_id, u32 secondary_sw_id)
 {
 	return -EOPNOTSUPP;

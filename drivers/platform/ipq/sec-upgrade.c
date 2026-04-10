@@ -1049,7 +1049,7 @@ static bool elf_has_nand_preamble_magic(void *va_addr)
  *   |--------------------|
  *   |SBL_MAGIC (12bytes) |
  *   |--------------------|
- *   |SBL_CONTENT(118K)   |
+ *   |SBL_CONTENT         |
  *   |--------------------|
  *   |SBL_MAGIC (12bytes) |
  *   ----------------------
@@ -1075,8 +1075,9 @@ static void remove_nand_preamble_n_magic_bytes(void **data, long *img_size)
 			*img_size = *img_size - SBL_MAGIC_NUM_OFFSET;
 		}
 	}
-	*data += NAND_PREAMBLE_SIZE;
 	*img_size -= NAND_PREAMBLE_SIZE;
+	memmove(xbl_nand_data, xbl_nand_data + NAND_PREAMBLE_SIZE, *img_size);
+	pr_debug("Nand preamble & magic bytes removed!\n");
 }
 
 static ssize_t
@@ -1102,7 +1103,6 @@ store_sec_auth(struct device *dev,
 	u64 status = 0;
 	char *alg_name;
 	size_t digest_size;
-	bool xbl_nand = false;
 	struct device_node *node;
 	struct reserved_mem *rmem = NULL;
 
@@ -1134,36 +1134,58 @@ store_sec_auth(struct device *dev,
 	}
 	size = data_size;
 	data_size = 0;
+	np = of_find_node_by_name(NULL, "qfprom");
+	if (!np) {
+		pr_err("Unable to find qfprom node\n");
+		vfree(data);
+		goto free_mem;
+	}
 
 	if (data != NULL) {
-		if (elf_has_nand_preamble_magic(data)) {
-			xbl_nand = true;
-			remove_nand_preamble_n_magic_bytes(&data, &size);
+		if (of_device_is_compatible(np, "qcom,qfprom-ipq9650-sec")) {
+			if (sw_type != QCOM_CONTAINER_IMG_SW_ID) {
+				pr_err("Invalid SWID:%lx for container image\n",
+				       sw_type);
+				ret = -EINVAL;
+				goto free_np;
+			}
+			ret = tmelcom_secboot_sec_auth_v2(sw_type, data, size);
+			if (ret) {
+				pr_err("Container image auth failed with error:0x%x\n", ret);
+			} else {
+				ret = count;
+				pr_info("Container image auth success\n");
+			}
+			goto free_np;
 		}
+
+		if (elf_has_nand_preamble_magic(data))
+			remove_nand_preamble_n_magic_bytes(&data, &size);
+
 		if(is_compressed(data, &info)) {
 			out_data = vzalloc(info.memsize);
 			if(!out_data) {
 				pr_err("%s: Memory allocation failed for %#x bytes\n",
 				       __func__, info.memsize);
-				goto free_data;
+				goto free_np;
 			}
 			if(!img_decompress(data + info.offset, info.filesz, out_data, &info)) {
 				printk("Uncompressed!\n");
 				if(!IS_ELF(*((Elf32_Ehdr*) out_data))) {
 					printk("Invalid uncompressed Image\n");
-					goto free_out_data;
+					goto free_np;
 				} else {
 					printk("uncompressed MBN extracted!\n");
 					size = info.memsize;
 				}
 			} else {
 				printk("Failed uncompress!\n");
-				goto free_out_data;
+				goto free_np;
 			}
 		}
 	} else {
 		pr_err("%s data is null\n",sec_auth_token[QTI_SEC_IMG_ADDR]);
-		goto free_mem;
+		goto free_np;
 	}
 
 	if (sec_auth_token[QTI_SEC_HASH_ADDR]) {
@@ -1173,7 +1195,7 @@ store_sec_auth(struct device *dev,
 			pr_err("%s File open failed\n", sec_auth_token[QTI_SEC_HASH_ADDR]);
 			ret = -EINVAL;
 			hash_data = NULL;
-			goto free_data;
+			goto free_np;
 		}
 		hash_size = data_size;
 		hash_file_buf = kzalloc(hash_size, GFP_KERNEL);
@@ -1181,7 +1203,7 @@ store_sec_auth(struct device *dev,
 		if (!hash_file_buf) {
 			ret = -ENOMEM;
 			vfree(hash_data);
-			goto free_data;
+			goto free_np;
 		}
 		if (hash_data) {
 			memcpy(hash_file_buf, hash_data, hash_size);
@@ -1189,16 +1211,8 @@ store_sec_auth(struct device *dev,
 			hash_data = NULL;
 		} else {
 			pr_err("%s data is null\n", sec_auth_token[QTI_SEC_HASH_ADDR]);
-			goto hash_buf_alloc_err;
+			goto free_np;
 		}
-	}
-
-	np = of_find_node_by_name(NULL, "qfprom");
-	if (!np) {
-		pr_err("Unable to find qfprom node\n");
-		if (xbl_nand)
-			data -= NAND_PREAMBLE_SIZE;
-		goto hash_buf_alloc_err;
 	}
 
 	ret = of_property_read_u32(np, "img-size", &img_size);
@@ -1332,7 +1346,7 @@ store_sec_auth(struct device *dev,
 		if (ret || status) {
 			pr_err("sec_upgrade_authentication failed return=%d status: %llx\n",
 			       ret, status);
-			goto un_map;
+			goto free_ld_buff;
 		}
 	}
 	ret = count;
@@ -1344,14 +1358,9 @@ un_map:
 	iounmap(file_buf);
 free_np:
 	of_node_put(np);
-hash_buf_alloc_err:
 	kfree(hash_file_buf);
-free_out_data:
 	if(out_data)
 		vfree(out_data);
-free_data:
-	if (xbl_nand)
-		data -= NAND_PREAMBLE_SIZE;
 	vfree(data);
 free_mem:
 	kfree(sec_auth_str);
@@ -2109,24 +2118,17 @@ static int qfprom_probe(struct platform_device *pdev)
 		if (err)
 			scm_cmd_id = QCOM_KERNEL_AUTH_CMD;
 
-		/*
-		 * Checking if secure sysupgrade scm_call is supported
-		 */
-		if (!qcom_scm_sec_auth_available(scm_cmd_id)) {
-			pr_info("qcom_scm_sec_auth_available is not supported\n");
-		} else {
-			sec_kobj = kobject_create_and_add("sec_upgrade", NULL);
-			if (!sec_kobj) {
-				pr_info("Failed to register sec_upgrade sysfs\n");
-				return -ENOMEM;
-			}
+		sec_kobj = kobject_create_and_add("sec_upgrade", NULL);
+		if (!sec_kobj) {
+			pr_info("Failed to register sec_upgrade sysfs\n");
+			return -ENOMEM;
+		}
 
-			err = sysfs_create_file(sec_kobj, &sec_attr.attr);
-			if (err) {
-				pr_info("Failed to register sec_auth sysfs\n");
-				kobject_put(sec_kobj);
-				sec_kobj = NULL;
-			}
+		err = sysfs_create_file(sec_kobj, &sec_attr.attr);
+		if (err) {
+			pr_info("Failed to register sec_auth sysfs\n");
+			kobject_put(sec_kobj);
+			sec_kobj = NULL;
 		}
 
 		if (sec_kobj) {
