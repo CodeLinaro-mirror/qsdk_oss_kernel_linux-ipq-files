@@ -483,6 +483,4 @@
 &remoteproc_cdsp {
 	cx-supply = <&ipq9650_s2>;
 	mx-supply = <&ipq9650_s4>;
-	/delete-property/ cx-supply;
-	/delete-property/ mx-supply;
 };
