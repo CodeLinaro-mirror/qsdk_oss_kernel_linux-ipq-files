@@ -158,6 +158,26 @@
 			};
 		};
 
+		cdsp_cx_rail: cdsp-cx-gpio-regulator {
+			compatible = "regulator-gpio";
+			regulator-name = "vdd-cdsp-cx";
+			regulator-type = "voltage";
+			regulator-min-microvolt = <750000>;
+			regulator-max-microvolt = <815000>;
+			enable-gpio = <&tlmm 20 GPIO_ACTIVE_HIGH>;
+			enable-active-high;
+			gpios = <&tlmm 17 GPIO_ACTIVE_HIGH>,
+				<&tlmm 21 GPIO_ACTIVE_HIGH>;
+			gpios-states = <0x3>;
+			states = <600000 0x0>,
+				 <660000 0x1>,
+				 <750000 0x2>,
+				 <815000 0x3>;
+			pinctrl-0 = <&cdsp_default_state>;
+			pinctrl-names = "default";
+			status = "okay";
+		};
+
 		apc_rail: apc-gpio-regulator {
 			compatible = "regulator-gpio";
 			regulator-name = "vdd-apc";
@@ -473,6 +493,32 @@
 			output-low;
 		};
 	};
+
+	cdsp_default_state: cdsp-default-state {
+		vsel0-pins {
+			pins = "gpio17";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-up;
+			output-high;
+		};
+
+		vsel1-pins {
+			pins = "gpio21";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-up;
+			output-high;
+		};
+
+		ena-pins {
+			pins = "gpio20";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-up;
+			output-high;
+		};
+	};
 };
 
 &CPU0 {
@@ -532,4 +578,8 @@
 		/* <target min max> */
 		opp-microvolt = <952000 732000 952000>;
 	};
+};
+
+&remoteproc_cdsp {
+	cx-supply = <&cdsp_cx_rail>;
 };
