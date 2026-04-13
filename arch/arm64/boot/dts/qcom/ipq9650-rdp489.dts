@@ -580,6 +580,10 @@
 	};
 };
 
+&cdsp_power {
+	vdd-cx-supply = <&cdsp_cx_rail>;
+};
+
 &remoteproc_cdsp {
-	cx-supply = <&cdsp_cx_rail>;
+	cx-supply = <&cdsp_vdd_cx>;
 };
