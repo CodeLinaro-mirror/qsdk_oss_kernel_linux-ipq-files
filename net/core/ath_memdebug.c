@@ -4,11 +4,25 @@
  */
 
 #include <linux/export.h>
+#include <linux/mempool.h>
+#include <linux/dmapool.h>
+#include <linux/uaccess.h>
+#include <linux/vmalloc.h>
+#include <linux/string.h>
+#include <linux/device.h>
+#include <linux/types.h>
 #include <linux/rbtree.h>
 #include <linux/debugfs.h>
 #include <linux/spinlock.h>
 #include <linux/module.h>
 #include <linux/skbuff.h>
+#include <linux/percpu.h>
+#include <linux/io.h>
+#include <linux/gfp.h>
+#include <linux/slab.h>
+#include <linux/mm.h>
+#include <linux/dma-mapping.h>
+#include <linux/err.h>
 #include <net/netlink.h>
 
 #define FUNC_OBJ_ARR_SIZE 500
@@ -32,6 +46,7 @@ struct athmem_func_obj {
 	int line;
 	int count;
 	unsigned long long size;
+	unsigned long long actual_size;
 };
 
 struct athmem_debug_object {
@@ -39,6 +54,7 @@ struct athmem_debug_object {
 	unsigned long long pointer;
 	size_t size;
 	int line;
+	size_t actual_size;
 	const char *func;
 };
 
@@ -120,6 +136,7 @@ static inline void athmem_remove_dup(struct rb_node *node)
 		if (obj->func == athmem_func_obj_arr[i].func &&
 		    obj->line == athmem_func_obj_arr[i].line) {
 			athmem_func_obj_arr[i].size +=  obj->size;
+			athmem_func_obj_arr[i].actual_size += obj->actual_size;
 			athmem_func_obj_arr[i].count++;
 			return;
 		}
@@ -130,6 +147,7 @@ static inline void athmem_remove_dup(struct rb_node *node)
 		athmem_func_obj_arr[i].line =  obj->line;
 		athmem_func_obj_arr[i].size =  obj->size;
 		athmem_func_obj_arr[i].count = 1;
+		athmem_func_obj_arr[i].actual_size = obj->actual_size;
 		athmem_func_obj_arr_len++;
 	} else {
 		pr_err("functions stats buffer is full\n");
@@ -188,19 +206,21 @@ static int athmem_copy_memory_stats(int is_panic)
 		if (!athmem_flag_limit_op || i < 10) {
 			if (!athmem_flag_print_only_fn_adds) {
 				len += scnprintf(buf + len, buf_len - len,
-						 "func : %s (%p) \t line : %d count : %d size %llu\n",
+						 "func : %s (%p) \t line : %d count : %d requested %llu actual %llu\n",
 						 (char *)athmem_func_obj_arr[i].func,
 						 (char *)athmem_func_obj_arr[i].func,
 						 athmem_func_obj_arr[i].line,
 						 athmem_func_obj_arr[i].count,
-						 athmem_func_obj_arr[i].size);
+						 athmem_func_obj_arr[i].size,
+						 athmem_func_obj_arr[i].actual_size);
 			} else {
 				len += scnprintf(buf + len, buf_len - len,
-						 "func : %p \t line : %d count : %d size %llu\n",
+						 "func : %p \t line : %d count : %d requested %llu actual %llu\n",
 						 (char *)athmem_func_obj_arr[i].func,
 						 athmem_func_obj_arr[i].line,
 						 athmem_func_obj_arr[i].count,
-						 athmem_func_obj_arr[i].size);
+						 athmem_func_obj_arr[i].size,
+						 athmem_func_obj_arr[i].actual_size);
 			}
 		}
 		total_size += athmem_func_obj_arr[i].size;
@@ -347,7 +367,8 @@ static int athmem_debug_debugfs_add(void)
 }
 
 static void athmem_create_object(unsigned long long ptr, size_t size,
-				 gfp_t gfp, int line, const char *func)
+				 size_t actual_size, gfp_t gfp,
+				 int line, const char *func)
 {
 	unsigned long flags;
 	struct athmem_debug_object *object, *parent;
@@ -367,6 +388,7 @@ static void athmem_create_object(unsigned long long ptr, size_t size,
 
 	object->pointer = ptr;
 	object->size = size;
+	object->actual_size = actual_size;
 	object->line = line;
 	object->func = func;
 
@@ -403,12 +425,12 @@ void ath_upate_oom_panic(int is_panic)
 }
 EXPORT_SYMBOL(ath_upate_oom_panic);
 
-void ath_update_free(void *ptr)
+void ath_update_free(const void *ptr)
 {
 	if (athmem_flag_stop_tracking || !athmem_flag_init_done)
 		return;
 
-	athmem_delete_obj_full((unsigned long)ptr);
+	athmem_delete_obj_full((unsigned long)(uintptr_t)ptr);
 }
 EXPORT_SYMBOL(ath_update_free);
 
@@ -425,10 +447,11 @@ EXPORT_SYMBOL(ath_update_free_skb_list);
 
 void ath_update_alloc(void *ptr, int len, int line, const char *func, int is_txskb)
 {
-	if (!ptr || athmem_flag_stop_tracking || (athmem_flag_track_only_txskb && !is_txskb))
+	if (!ptr || athmem_flag_stop_tracking ||
+	    (athmem_flag_track_only_txskb && !is_txskb))
 		return;
 
-	athmem_create_object((unsigned long)ptr, len, GFP_ATOMIC, line, func);
+	athmem_create_object((unsigned long)ptr, len, len, GFP_ATOMIC, line, func);
 }
 EXPORT_SYMBOL(ath_update_alloc);
 
@@ -436,7 +459,9 @@ void *ath_kmalloc(size_t len, gfp_t flags, int line, const char *func)
 {
 	void *addr = kmalloc(len, flags);
 
-	ath_update_alloc(addr, len, line, func, 0);
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, len, ksize(addr),
+				     flags, line, func);
 	return addr;
 }
 EXPORT_SYMBOL(ath_kmalloc);
@@ -446,7 +471,9 @@ void *ath_kmemdup(const void *src, size_t len, gfp_t flags, int line,
 {
 	void *addr = (void *)kmemdup(src, len, flags);
 
-	ath_update_alloc(addr, len, line, func, 0);
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, len, ksize(addr),
+				     flags, line, func);
 	return addr;
 }
 EXPORT_SYMBOL(ath_kmemdup);
@@ -455,7 +482,9 @@ void *ath_kzalloc(size_t len, gfp_t flags, int line, const char *func)
 {
 	void *addr = kzalloc(len, flags);
 
-	ath_update_alloc(addr, len, line, func, 0);
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, len, ksize(addr),
+				     flags, line, func);
 	return addr;
 }
 EXPORT_SYMBOL(ath_kzalloc);
@@ -463,87 +492,108 @@ EXPORT_SYMBOL(ath_kzalloc);
 void *ath_netdev_alloc_skb(struct net_device *dev, unsigned int len,
 			   int line, const char *func)
 {
-	void *addr = netdev_alloc_skb(dev, len);
+	struct sk_buff *skb = netdev_alloc_skb(dev, len);
 
-	ath_update_alloc(addr, len, line, func, 0);
-	return addr;
+	if (skb && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)skb, len, skb->truesize,
+				     GFP_KERNEL, line, func);
+	return skb;
 }
 EXPORT_SYMBOL(ath_netdev_alloc_skb);
 
 void *ath_netdev_alloc_skb_fast(struct net_device *dev, unsigned int len,
 				int line, const char *func)
 {
-	void *addr = netdev_alloc_skb_fast(dev, len);
+	struct sk_buff *skb = netdev_alloc_skb_fast(dev, len);
 
-	ath_update_alloc(addr, len, line, func, 0);
-	return addr;
+	if (skb && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)skb, len, skb->truesize,
+				     GFP_ATOMIC, line, func);
+	return skb;
 }
 EXPORT_SYMBOL(ath_netdev_alloc_skb_fast);
 
 void *ath_netdev_alloc_skb_no_skb_reset(struct net_device *dev, unsigned int len,
 					gfp_t flags, int line, const char *func)
 {
-	void *addr = __netdev_alloc_skb_no_skb_reset(dev, len, flags);
+	struct sk_buff *skb = __netdev_alloc_skb_no_skb_reset(dev, len, flags);
 
-	ath_update_alloc(addr, len, line, func, 0);
-	return addr;
+	if (skb && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)skb, len, skb->truesize,
+				     flags, line, func);
+	return skb;
 }
 EXPORT_SYMBOL(ath_netdev_alloc_skb_no_skb_reset);
 
 void *ath_dev_alloc_skb(unsigned int len, int line, const char *func)
 {
-	void *addr = dev_alloc_skb(len);
+	struct sk_buff *skb = dev_alloc_skb(len);
 
-	ath_update_alloc(addr, len, line, func, 0);
-	return addr;
+	if (skb && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)skb, len, skb->truesize,
+				     GFP_ATOMIC, line, func);
+	return skb;
 }
 EXPORT_SYMBOL(ath_dev_alloc_skb);
 
 void *ath_skb_copy(const struct sk_buff *skb, gfp_t flags, int line,
 		   const char *func)
 {
-	void *addr = skb_copy(skb, flags);
+	struct sk_buff *new_skb = skb_copy(skb, flags);
 
-	ath_update_alloc(addr, skb->truesize, line, func, 0);
-	return addr;
+	if (new_skb && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)new_skb, skb->truesize,
+				     new_skb->truesize, flags, line, func);
+	return new_skb;
 }
 EXPORT_SYMBOL(ath_skb_copy);
 
 void *ath_skb_clone(struct sk_buff *skb, gfp_t flags, int line,
 		    const char *func)
 {
-	void *addr = skb_clone(skb, flags);
+	struct sk_buff *new_skb = skb_clone(skb, flags);
+	size_t clone_sz = SKB_DATA_ALIGN(sizeof(struct sk_buff));
 
-	ath_update_alloc(addr, skb->truesize, line, func, 0);
-	return addr;
+	if (new_skb && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)new_skb, clone_sz,
+				     clone_sz, flags, line, func);
+	return new_skb;
 }
 EXPORT_SYMBOL(ath_skb_clone);
 
 void *ath_skb_clone_sk(struct sk_buff *skb, int line, const char *func)
 {
-	void *addr = skb_clone_sk(skb);
+	struct sk_buff *new_skb = skb_clone_sk(skb);
+	size_t clone_sz = SKB_DATA_ALIGN(sizeof(struct sk_buff));
 
-	ath_update_alloc(addr, skb->truesize, line, func, 0);
-	return addr;
+	if (new_skb && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)new_skb, clone_sz,
+				     clone_sz, GFP_ATOMIC, line, func);
+	return new_skb;
 }
 EXPORT_SYMBOL(ath_skb_clone_sk);
 
 void *ath_skb_share_check(struct sk_buff *skb, gfp_t flags, int line,
 			  const char *func)
 {
-	void *addr = skb_share_check(skb, flags);
+	struct sk_buff *new_skb = skb_share_check(skb, flags);
+	size_t clone_sz = SKB_DATA_ALIGN(sizeof(struct sk_buff));
 
-	ath_update_alloc(addr, skb->truesize, line, func, 0);
-	return addr;
+	if (new_skb && new_skb != skb && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)new_skb, clone_sz,
+				     clone_sz, flags, line, func);
+	return new_skb;
 }
 EXPORT_SYMBOL(ath_skb_share_check);
 
 void *ath_nlmsg_new(size_t len, gfp_t flags, int line, const char *func)
 {
-	void *addr = nlmsg_new(len, flags);
+	struct sk_buff *skb = nlmsg_new(len, flags);
 
-	ath_update_alloc(addr, len, line, func, 0);
-	return addr;
+	if (skb && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)skb, nlmsg_total_size(len),
+				     skb->truesize, flags, line, func);
+	return skb;
 }
 EXPORT_SYMBOL(ath_nlmsg_new);
 
@@ -551,7 +601,9 @@ void *ath_vmalloc(unsigned long len, int line, const char *func)
 {
 	void *addr = vmalloc(len);
 
-	ath_update_alloc(addr, len, line, func, 0);
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, len, PAGE_ALIGN(len),
+				     GFP_KERNEL, line, func);
 	return addr;
 }
 EXPORT_SYMBOL(ath_vmalloc);
@@ -560,7 +612,9 @@ void *ath_vzalloc(unsigned long len, int line, const char *func)
 {
 	void *addr = vzalloc(len);
 
-	ath_update_alloc(addr, len, line, func, 0);
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, len, PAGE_ALIGN(len),
+				     GFP_KERNEL, line, func);
 	return addr;
 }
 EXPORT_SYMBOL(ath_vzalloc);
@@ -571,7 +625,9 @@ void *ath_dma_alloc_coherent(struct device *dev, size_t len,
 {
 	void *addr = dma_alloc_coherent(dev, len, handle, flags);
 
-	ath_update_alloc(addr, len, line, func, 0);
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, len, PAGE_ALIGN(len),
+				     flags, line, func);
 	return addr;
 }
 EXPORT_SYMBOL(ath_dma_alloc_coherent);
@@ -581,7 +637,9 @@ void *ath_kcalloc(size_t n, size_t len, gfp_t flags, int line,
 {
 	void *addr = kcalloc(n, len, flags);
 
-	ath_update_alloc(addr, (n * len), line, func, 0);
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, n * len, ksize(addr),
+				     flags, line, func);
 	return addr;
 }
 EXPORT_SYMBOL(ath_kcalloc);
@@ -611,7 +669,546 @@ EXPORT_SYMBOL(ath_dma_free_coherent);
 
 void ath_kfree_sensitive(const void *ptr)
 {
-	ath_update_free((void *)ptr);
+	ath_update_free(ptr);
 	kfree_sensitive(ptr);
 }
 EXPORT_SYMBOL(ath_kfree_sensitive);
+
+/* Per-CPU allocation tracking */
+void __percpu *ath_alloc_percpu_gfp(size_t size, size_t align, gfp_t flags,
+				    int line, const char *func)
+{
+	void __percpu *addr = __alloc_percpu_gfp(size, align, flags);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, size,
+				     size * num_possible_cpus(),
+				     flags, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_alloc_percpu_gfp);
+
+void __percpu *ath_alloc_percpu(size_t size, size_t align, int line, const char *func)
+{
+	void __percpu *addr = __alloc_percpu(size, align);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, size,
+				     size * num_possible_cpus(),
+				     GFP_KERNEL, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_alloc_percpu);
+
+void ath_free_percpu(void __percpu *ptr)
+{
+	ath_update_free(ptr);
+	free_percpu(ptr);
+}
+EXPORT_SYMBOL(ath_free_percpu);
+
+/* Page allocation tracking */
+unsigned long ath_get_free_pages(gfp_t flags, unsigned int order,
+				 int line, const char *func)
+{
+	unsigned long addr = __get_free_pages(flags, order);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object(addr, PAGE_SIZE << order, PAGE_SIZE << order,
+				     flags, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_get_free_pages);
+
+unsigned long ath_get_zeroed_page(gfp_t flags, int line, const char *func)
+{
+	unsigned long addr = get_zeroed_page(flags);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object(addr, PAGE_SIZE, PAGE_SIZE,
+				     flags, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_get_zeroed_page);
+
+void ath_free_pages(unsigned long addr, unsigned int order)
+{
+	ath_update_free((void *)addr);
+	free_pages(addr, order);
+}
+EXPORT_SYMBOL(ath_free_pages);
+
+void *ath_page_frag_alloc(struct page_frag_cache *nc, unsigned int fragsz,
+			  gfp_t gfp_mask, int line, const char *func)
+{
+	void *addr = page_frag_alloc(nc, fragsz, gfp_mask);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, fragsz, fragsz,
+				     gfp_mask, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_page_frag_alloc);
+
+/* kmem_cache allocation tracking */
+void *ath_kmem_cache_alloc(struct kmem_cache *cachep, gfp_t flags,
+			   int line, const char *func)
+{
+	void *addr = kmem_cache_alloc(cachep, flags);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, kmem_cache_size(cachep),
+				     kmem_cache_size(cachep), flags, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_kmem_cache_alloc);
+
+void *ath_kmem_cache_zalloc(struct kmem_cache *cachep, gfp_t flags,
+			    int line, const char *func)
+{
+	void *addr = kmem_cache_zalloc(cachep, flags);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, kmem_cache_size(cachep),
+				     kmem_cache_size(cachep), flags, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_kmem_cache_zalloc);
+
+void ath_kmem_cache_free(struct kmem_cache *cachep, void *objp)
+{
+	ath_update_free(objp);
+	kmem_cache_free(cachep, objp);
+}
+EXPORT_SYMBOL(ath_kmem_cache_free);
+
+/* krealloc tracking */
+void *ath_krealloc(const void *ptr, size_t new_size, gfp_t flags,
+		   int line, const char *func)
+{
+	void *addr;
+
+	addr = krealloc(ptr, new_size, flags);
+	if (!addr)
+		return NULL;
+
+	if (ptr)
+		ath_update_free(ptr);
+	if (!athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, new_size, ksize(addr),
+				     flags, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_krealloc);
+
+/* kvmalloc tracking */
+void *ath_kvmalloc(size_t size, gfp_t flags, int line, const char *func)
+{
+	void *addr = kvmalloc(size, flags);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, size,
+				     is_vmalloc_addr(addr) ? PAGE_ALIGN(size)
+							   : ksize(addr),
+				     flags, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_kvmalloc);
+
+void *ath_kvzalloc(size_t size, gfp_t flags, int line, const char *func)
+{
+	void *addr = kvzalloc(size, flags);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, size,
+				     is_vmalloc_addr(addr) ? PAGE_ALIGN(size)
+							   : ksize(addr),
+				     flags, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_kvzalloc);
+
+void *ath_kvcalloc(size_t n, size_t size, gfp_t flags, int line, const char *func)
+{
+	void *addr = kvcalloc(n, size, flags);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, n * size,
+				     is_vmalloc_addr(addr) ? PAGE_ALIGN(n * size)
+							   : ksize(addr),
+				     flags, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_kvcalloc);
+
+void ath_kvfree(const void *addr)
+{
+	ath_update_free(addr);
+	kvfree(addr);
+}
+EXPORT_SYMBOL(ath_kvfree);
+
+/* ------------------------------------------------------------------ */
+/* kmalloc family - additional variants                                 */
+/* ------------------------------------------------------------------ */
+
+void *ath_kmalloc_array(size_t n, size_t size, gfp_t flags, int line, const char *func)
+{
+	void *addr = kmalloc_array(n, size, flags);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, n * size, ksize(addr),
+				     flags, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_kmalloc_array);
+
+void *ath_kmalloc_node(size_t size, gfp_t flags, int node, int line, const char *func)
+{
+	void *addr = kmalloc_node(size, flags, node);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, size, ksize(addr),
+				     flags, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_kmalloc_node);
+
+void *ath_kzalloc_node(size_t size, gfp_t flags, int node, int line, const char *func)
+{
+	void *addr = kzalloc_node(size, flags, node);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, size, ksize(addr),
+				     flags, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_kzalloc_node);
+
+void *ath_krealloc_array(void *ptr, size_t new_n, size_t new_size, gfp_t flags,
+			 int line, const char *func)
+{
+	void *addr = krealloc_array(ptr, new_n, new_size, flags);
+
+	if (!addr)
+		return NULL;
+	if (ptr)
+		ath_update_free(ptr);
+	if (!athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, new_n * new_size,
+				     ksize(addr), flags, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_krealloc_array);
+
+/* ------------------------------------------------------------------ */
+/* vmalloc family - additional variants                                 */
+/* ------------------------------------------------------------------ */
+
+void *ath___vmalloc(unsigned long size, gfp_t gfp_mask, int line, const char *func)
+{
+	void *addr = __vmalloc(size, gfp_mask);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, size, PAGE_ALIGN(size),
+				     gfp_mask, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath___vmalloc);
+
+void *ath_vmalloc_user(unsigned long size, int line, const char *func)
+{
+	void *addr = vmalloc_user(size);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, size, PAGE_ALIGN(size),
+				     GFP_KERNEL, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_vmalloc_user);
+
+void *ath_vmalloc_node(unsigned long size, int node, int line, const char *func)
+{
+	void *addr = vmalloc_node(size, node);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, size, PAGE_ALIGN(size),
+				     GFP_KERNEL, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_vmalloc_node);
+
+void *ath_vzalloc_node(unsigned long size, int node, int line, const char *func)
+{
+	void *addr = vzalloc_node(size, node);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, size, PAGE_ALIGN(size),
+				     GFP_KERNEL, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_vzalloc_node);
+
+void *ath_vmalloc_32(unsigned long size, int line, const char *func)
+{
+	void *addr = vmalloc_32(size);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, size, PAGE_ALIGN(size),
+				     GFP_KERNEL, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_vmalloc_32);
+
+/* ------------------------------------------------------------------ */
+/* String duplication tracking                                          */
+/* ------------------------------------------------------------------ */
+
+char *ath_kstrdup(const char *s, gfp_t gfp, int line, const char *func)
+{
+	char *addr = kstrdup(s, gfp);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, strlen(s) + 1,
+				     ksize(addr), gfp, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_kstrdup);
+
+char *ath_kstrndup(const char *s, size_t len, gfp_t gfp, int line, const char *func)
+{
+	char *addr = kstrndup(s, len, gfp);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, len + 1,
+				     ksize(addr), gfp, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_kstrndup);
+
+char *ath_kmemdup_nul(const char *s, size_t len, gfp_t gfp, int line, const char *func)
+{
+	char *addr = kmemdup_nul(s, len, gfp);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, len + 1,
+				     ksize(addr), gfp, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_kmemdup_nul);
+
+void *ath_memdup_user(const void __user *src, size_t len, int line, const char *func)
+{
+	void *addr = memdup_user(src, len);
+
+	if (!IS_ERR_OR_NULL(addr) && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, len, ksize(addr),
+				     GFP_KERNEL, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_memdup_user);
+
+void *ath_memdup_user_nul(const void __user *src, size_t len, int line, const char *func)
+{
+	void *addr = memdup_user_nul(src, len);
+
+	if (!IS_ERR_OR_NULL(addr) && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, len + 1, ksize(addr),
+				     GFP_KERNEL, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_memdup_user_nul);
+
+/* ------------------------------------------------------------------ */
+/* page_frag - additional variants                                      */
+/* ------------------------------------------------------------------ */
+
+void *ath_page_frag_alloc_align(struct page_frag_cache *nc, unsigned int fragsz,
+				gfp_t gfp_mask, unsigned int align_mask,
+				int line, const char *func)
+{
+	void *addr = page_frag_alloc_align(nc, fragsz, gfp_mask, align_mask);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, fragsz, fragsz,
+				     gfp_mask, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_page_frag_alloc_align);
+
+void ath_page_frag_free(void *addr)
+{
+	ath_update_free(addr);
+	page_frag_free(addr);
+}
+EXPORT_SYMBOL(ath_page_frag_free);
+
+/* ------------------------------------------------------------------ */
+/* kmem_cache - node variant                                            */
+/* ------------------------------------------------------------------ */
+
+void *ath_kmem_cache_alloc_node(struct kmem_cache *cachep, gfp_t flags,
+				int node, int line, const char *func)
+{
+	void *addr = kmem_cache_alloc_node(cachep, flags, node);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, kmem_cache_size(cachep),
+				     kmem_cache_size(cachep), flags, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_kmem_cache_alloc_node);
+
+/* ------------------------------------------------------------------ */
+/* kvmalloc family - additional variants                                */
+/* ------------------------------------------------------------------ */
+
+void *ath_kvmalloc_node(size_t size, gfp_t flags, int node, int line, const char *func)
+{
+	void *addr = kvmalloc_node(size, flags, node);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, size,
+				     is_vmalloc_addr(addr) ? PAGE_ALIGN(size)
+							   : ksize(addr),
+				     flags, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_kvmalloc_node);
+
+void *ath_kvrealloc(const void *p, size_t oldsize, size_t newsize, gfp_t flags,
+		    int line, const char *func)
+{
+	void *addr = kvrealloc(p, oldsize, newsize, flags);
+
+	if (!addr)
+		return NULL;
+	if (p)
+		ath_update_free(p);
+	if (!athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, newsize,
+				     is_vmalloc_addr(addr) ? PAGE_ALIGN(newsize)
+							   : ksize(addr),
+				     flags, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_kvrealloc);
+
+void *ath_kvmemdup(const void *src, size_t len, gfp_t flags, int line, const char *func)
+{
+	void *addr = kvmemdup(src, len, flags);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, len,
+				     is_vmalloc_addr(addr) ? PAGE_ALIGN(len)
+							   : ksize(addr),
+				     flags, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_kvmemdup);
+
+/* ------------------------------------------------------------------ */
+/* DMA pool tracking                                                    */
+/* ------------------------------------------------------------------ */
+
+void *ath_dma_pool_alloc(struct dma_pool *pool, gfp_t mem_flags,
+			 dma_addr_t *handle, int line, const char *func)
+{
+	void *addr = dma_pool_alloc(pool, mem_flags, handle);
+
+	if (addr && !athmem_flag_stop_tracking)
+		/*
+		 * dma_pool element size is an internal field not exposed by
+		 * the API; record size=0 so the entry is still tracked for
+		 * leak detection via caller/line info.
+		 */
+		athmem_create_object((unsigned long)addr, 0, 0,
+				     mem_flags, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_dma_pool_alloc);
+
+void ath_dma_pool_free(struct dma_pool *pool, void *vaddr, dma_addr_t addr)
+{
+	ath_update_free(vaddr);
+	dma_pool_free(pool, vaddr, addr);
+}
+EXPORT_SYMBOL(ath_dma_pool_free);
+
+void *ath_dmam_alloc_attrs(struct device *dev, size_t size, dma_addr_t *dma_handle,
+			   gfp_t gfp, unsigned long attrs, int line, const char *func)
+{
+	void *addr = dmam_alloc_attrs(dev, size, dma_handle, gfp, attrs);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, size, PAGE_ALIGN(size),
+				     gfp, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_dmam_alloc_attrs);
+
+/* ------------------------------------------------------------------ */
+/* devm (device-managed) allocation tracking                            */
+/* ------------------------------------------------------------------ */
+
+void *ath_devm_kmalloc(struct device *dev, size_t size, gfp_t gfp,
+		       int line, const char *func)
+{
+	void *addr = devm_kmalloc(dev, size, gfp);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, size, ksize(addr),
+				     gfp, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_devm_kmalloc);
+
+void *ath_devm_kmalloc_array(struct device *dev, size_t n, size_t size,
+			     gfp_t flags, int line, const char *func)
+{
+	void *addr = devm_kmalloc_array(dev, n, size, flags);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, n * size, ksize(addr),
+				     flags, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_devm_kmalloc_array);
+
+void ath_devm_kfree(struct device *dev, const void *p)
+{
+	ath_update_free(p);
+	devm_kfree(dev, p);
+}
+EXPORT_SYMBOL(ath_devm_kfree);
+
+void *ath_devm_kmemdup(struct device *dev, const void *src, size_t len,
+		       gfp_t gfp, int line, const char *func)
+{
+	void *addr = devm_kmemdup(dev, src, len, gfp);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object((unsigned long)addr, len, ksize(addr),
+				     gfp, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_devm_kmemdup);
+
+unsigned long ath_devm_get_free_pages(struct device *dev, gfp_t gfp_mask,
+				      unsigned int order, int line, const char *func)
+{
+	unsigned long addr = devm_get_free_pages(dev, gfp_mask, order);
+
+	if (addr && !athmem_flag_stop_tracking)
+		athmem_create_object(addr, PAGE_SIZE << order, PAGE_SIZE << order,
+				     gfp_mask, line, func);
+	return addr;
+}
+EXPORT_SYMBOL(ath_devm_get_free_pages);
+
+void ath_devm_free_pages(struct device *dev, unsigned long addr)
+{
+	ath_update_free((void *)addr);
+	devm_free_pages(dev, addr);
+}
+EXPORT_SYMBOL(ath_devm_free_pages);
