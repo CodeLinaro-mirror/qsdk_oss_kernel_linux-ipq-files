@@ -6,6 +6,7 @@
 
 #include <linux/clk-provider.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 #include <linux/interconnect-provider.h>
@@ -119,6 +120,7 @@ static struct clk_alpha_pll silver_apss_pll = {
 				.fw_name = "xo",
 			},
 			.num_parents = 1,
+			.flags = CLK_IS_CRITICAL,
 			.ops = &clk_alpha_pll_zonda_ops,
 		},
 	},
@@ -139,6 +141,7 @@ static struct clk_alpha_pll gold_apss_pll = {
 				.fw_name = "xo",
 			},
 			.num_parents = 1,
+			.flags = CLK_IS_CRITICAL,
 			.ops = &clk_alpha_pll_zonda_ops,
 		},
 	},
@@ -183,6 +186,7 @@ static struct clk_alpha_pll l3_pll = {
 				.fw_name = "xo",
 			},
 			.num_parents = 1,
+			.flags = CLK_IS_CRITICAL,
 			.ops = &clk_alpha_pll_zonda_ops,
 		},
 	},
@@ -355,18 +359,18 @@ static struct clk_branch l3_core_clk = {
 
 static struct clk_hw *apss_hws[] = {
 	&silver_apss_pll_gfmux.hw,
-	&gold_apss_pll_gfmux.hw,
 	&l3_pll_gfmux.hw,
+	&gold_apss_pll_gfmux.hw,
 };
 
 static struct clk_regmap *apss_clks[] = {
 	[APSS_PLL_EARLY] = &silver_apss_pll.clkr,
+	[APSS_SILVER_CORE_CLK] = &apss_silver_core_clk.clkr,
+	[L3_PLL] = &l3_pll.clkr,
+	[L3_CORE_CLK] = &l3_core_clk.clkr,
 	[APSS_GOLD_PLL] = &gold_apss_pll.clkr,
 	[APSS_GOLD_PLL_POSTDIV] = &gold_apss_pll_postdiv.clkr,
-	[L3_PLL] = &l3_pll.clkr,
-	[APSS_SILVER_CORE_CLK] = &apss_silver_core_clk.clkr,
 	[APSS_GOLD_CORE_CLK] = &apss_gold_core_clk.clkr,
-	[L3_CORE_CLK] = &l3_core_clk.clkr,
 };
 
 static const struct regmap_config apss_regmap_config = {
@@ -391,20 +395,38 @@ static const struct qcom_cc_desc apss_desc = {
 	.icc_hws = icc_cpu_l3,
 	.num_icc_hws = ARRAY_SIZE(icc_cpu_l3),
 	.icc_first_node_id = IPQ_APPS_PLL_ID,
+	.clk_hws = apss_hws,
+	.num_clk_hws = ARRAY_SIZE(apss_hws),
+};
+
+static const struct qcom_cc_desc apss_silver_only_desc = {
+	.config = &apss_regmap_config,
+	.clks = apss_clks,
+	.num_clks = APSS_GOLD_PLL,
+	.icc_hws = icc_cpu_l3,
+	.num_icc_hws = 1,
+	.icc_first_node_id = IPQ_APPS_PLL_ID,
+	.clk_hws = apss_hws,
+	.num_clk_hws = 2,
 };
 
 /**
  * apss_ipq9650_probe() - Probe the IPQ9650 APSS clock controller
  * @pdev: platform device
  *
- * Maps the APSS register region, configures the Silver, Gold, and L3
- * Zonda PLLs with their initial SVS settings, registers the GFMUX
- * clocks, and registers all regmap-based clocks via qcom_cc_really_probe().
+ * Maps the APSS register region, detects Cortex-A78 Gold core presence
+ * via of_find_compatible_node(), and conditionally configures the Gold PLL.
+ * Always configures Silver and L3 Zonda PLLs. Registers GFMUX clocks and
+ * all regmap-based clocks via qcom_cc_really_probe(). When the A78 core is
+ * absent (32-bit configuration), Gold PLL clock entries are skipped and the
+ * MASTER_CPU_GOLD ICC path is excluded from registration.
  *
  * Return: 0 on success, negative error code on failure
  */
 static int apss_ipq9650_probe(struct platform_device *pdev)
 {
+	const struct qcom_cc_desc *desc = &apss_desc;
+	struct device_node *a78_node;
 	struct regmap *regmap;
 	struct clk_gfm *gfm;
 	void __iomem *base;
@@ -419,23 +441,30 @@ static int apss_ipq9650_probe(struct platform_device *pdev)
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
-	/* Configure PLLs with initial settings */
+	/* Configure PLLs with initial SVS settings */
 	clk_zonda_pll_configure(&silver_apss_pll, regmap, &silver_apss_pll_config);
-	clk_zonda_pll_configure(&gold_apss_pll, regmap, &gold_apss_pll_config);
 	clk_zonda_pll_configure(&l3_pll, regmap, &l3_pll_config);
 
-	/* Register GFMUX clocks */
-	for (i = 0; i < ARRAY_SIZE(apss_hws); i++) {
+	/*
+	 * Detect Cortex-A78 Gold core presence from the device tree.
+	 */
+	a78_node = of_find_compatible_node(NULL, "cpu", "arm,cortex-a78");
+	if (a78_node) {
+		of_node_put(a78_node);
+		clk_zonda_pll_configure(&gold_apss_pll, regmap, &gold_apss_pll_config);
+	} else {
+		desc = &apss_silver_only_desc;
+		dev_dbg(&pdev->dev,
+			"Cortex-A78 absent: skipping Gold PLL initialization\n");
+	}
+
+	for (i = 0; i < desc->num_clk_hws; i++) {
 		gfm = to_clk_gfm(apss_hws[i]);
 		gfm->base = base;
-
-		ret = devm_clk_hw_register(&pdev->dev, apss_hws[i]);
-		if (ret)
-			return ret;
 	}
 
 	/* Register all other clocks */
-	ret = qcom_cc_really_probe(&pdev->dev, &apss_desc, regmap);
+	ret = qcom_cc_really_probe(&pdev->dev, desc, regmap);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to register APSS clocks\n");
 		return ret;

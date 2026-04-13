@@ -42,8 +42,14 @@
 				};
 			};
 
-			i2c1: i2c@1a8c000 {
-				pinctrl-0 = <&qup_i2c1_default>;
+			i2c0: i2c@1a84000 {
+				pinctrl-0 = <&qup_i2c0_default>;
+				pinctrl-names = "default";
+				status = "disabled";
+			};
+
+			i2c2: i2c@1a8c000 {
+				pinctrl-0 = <&qup_i2c2_default>;
 				pinctrl-names = "default";
 				status = "okay";
 
@@ -87,6 +93,12 @@
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
 			qcom,ppe-offload-disabled = <0>;
+			pinctrl-0 = <&pps_state>;
+			pinctrl-names = "default";
+			interrupts = <GIC_SPI 362 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "pps_in";
+			clocks = <&nsscc NSS_CC_XGMAC0_PTP_REF_CLK>;
+			clock-names = "ptp";
 		};
 
 		dp2 {
@@ -97,6 +109,8 @@
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
 			qcom,ppe-offload-disabled = <0>;
+			clocks = <&nsscc NSS_CC_XGMAC1_PTP_REF_CLK>;
+			clock-names = "ptp";
 		};
 
 		dp3 {
@@ -107,6 +121,8 @@
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
 			qcom,ppe-offload-disabled = <0>;
+			clocks = <&nsscc NSS_CC_XGMAC2_PTP_REF_CLK>;
+			clock-names = "ptp";
 		};
 
 		dp4 {
@@ -117,6 +133,8 @@
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
 			qcom,ppe-offload-disabled = <0>;
+			clocks = <&nsscc NSS_CC_XGMAC3_PTP_REF_CLK>;
+			clock-names = "ptp";
 		};
 
 		dp5 {
@@ -127,6 +145,8 @@
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
 			qcom,ppe-offload-disabled = <0>;
+			clocks = <&nsscc NSS_CC_XGMAC4_PTP_REF_CLK>;
+			clock-names = "ptp";
 		};
 
 		dp6 {
@@ -137,6 +157,8 @@
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
 			qcom,ppe-offload-disabled = <0>;
+			clocks = <&nsscc NSS_CC_XGMAC5_PTP_REF_CLK>;
+			clock-names = "ptp";
 		};
 	};
 };
@@ -221,10 +243,18 @@
 
 				port@0 {
 					reg = <0>;
+
+					wifi1_wsi_tx: endpoint {
+						remote-endpoint = <&wifi3_wsi_rx>;
+					};
 				};
 
 				port@1 {
 					reg = <1>;
+
+					wifi1_wsi_rx: endpoint {
+						remote-endpoint = <&wifi2_wsi_tx>;
+					};
 				};
 			};
 		};
@@ -247,6 +277,7 @@
 			memory-region = <&qcn9625_pcie2>, <&mlo_global_mem0>;
 			memory-region-names = "host-ddr-mem", "mlo-global-mem";
 			qcom,board_id = <0x2001>;
+			qcom,wsi-controller;
 
 			ports {
 				#address-cells = <1>;
@@ -254,10 +285,18 @@
 
 				port@0 {
 					reg = <0>;
+
+					wifi2_wsi_tx: endpoint {
+						remote-endpoint = <&wifi1_wsi_rx>;
+					};
 				};
 
 				port@1 {
 					reg = <1>;
+
+					wifi2_wsi_rx: endpoint {
+						remote-endpoint = <&wifi3_wsi_tx>;
+					};
 				};
 			};
 		};
@@ -287,10 +326,18 @@
 
 				port@0 {
 					reg = <0>;
+
+					wifi3_wsi_tx: endpoint {
+						remote-endpoint = <&wifi2_wsi_rx>;
+					};
 				};
 
 				port@1 {
 					reg = <1>;
+
+					wifi3_wsi_rx: endpoint {
+						remote-endpoint = <&wifi1_wsi_tx>;
+					};
 				};
 			};
 		};
@@ -314,11 +361,11 @@
 };
 
 &qusb_phy_1 {
-	status = "disabled";
+	status = "okay";
 };
 
 &usb2 {
-	status = "disabled";
+	status = "okay";
 };
 
 &qusb_phy_0 {
@@ -334,6 +381,21 @@
 };
 
 &tlmm {
+	qup_i2c0_default: qup-i2c0-default-state {
+		qup_i2c0_scl {
+			pins = "gpio10";
+			function = "qup_se1_l1";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+		qup_i2c0_sda {
+			pins = "gpio11";
+			function = "qup_se1_l0";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+	};
+
 	pcie0_default_state: pcie0-default-state {
 		perst-n-pins {
 			pins = "gpio25";

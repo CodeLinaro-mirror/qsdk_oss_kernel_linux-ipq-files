@@ -472,12 +472,15 @@
 			reg = <0x4a9000 0x1000>,
 			      <0x4a8000 0x1000>;
 			nvmem-cells = <&tsens_mode>, <&tsens_base0>, <&tsens_base1>,
-				      <&s5>, <&s6>, <&s7>, <&s8>, <&s9>, <&s10>, <&s11>;
+				      <&s5>, <&s6>, <&s7>, <&s8>, <&s9>, <&s10>, <&s11>,
+				      <&s12>, <&s13>, <&s14>, <&s15>;
 			nvmem-cell-names = "mode", "base0", "base1", "s5", "s6",
-					   "s7", "s8", "s9", "s10", "s11";
+					   "s7", "s8", "s9", "s10", "s11",
+					   "s12", "s13", "s14", "s15";
 			interrupts = <GIC_SPI 105 IRQ_TYPE_EDGE_RISING>;
 			interrupt-names = "combined";
 			#thermal-sensor-cells = <1>;
+			status = "okay";
 		};
 
 		efuse@a4000 {
@@ -827,7 +830,7 @@
 			clock-names = "xo", "gpll0";
 			#clock-cells = <1>;
 			#interconnect-cells = <1>;
-			status = "disabled";
+			status = "okay";
 		};
 
 		tlmm: pinctrl@1000000 {
@@ -892,6 +895,15 @@
 					function = "qspi_data";
 					drive-strength = <8>;
 					bias-pull-up;
+				};
+			};
+
+			pps_state: pps-state {
+				pps-pins {
+					pins = "gpio50";
+					function = "tsn";
+					drive-strength = <8>;
+					bias-pull-down;
 				};
 			};
 		};
@@ -959,19 +971,19 @@
 				status = "disabled";
 			};
 
-			i2c2: i2c@1a84000 {
+			i2c0: i2c@1a84000 {
 				compatible = "qcom,geni-i2c";
 				reg = <0x1a84000 0x4000>;
-				clocks = <&gcc GCC_QUPV3_WRAP_SE3_CLK>;
+				clocks = <&gcc GCC_QUPV3_WRAP_SE1_CLK>;
 				clock-names = "se";
 				clock-frequency = <400000>;
 				interrupts = <GIC_SPI 340 IRQ_TYPE_LEVEL_HIGH>;
-				assigned-clocks = <&gcc GCC_QUPV3_WRAP_SE3_CLK>;
+				assigned-clocks = <&gcc GCC_QUPV3_WRAP_SE1_CLK>;
 				assigned-clock-rates = <32000000>;
 				status = "disabled";
 			};
 
-			i2c0: i2c@1a88000 {
+			i2c1: i2c@1a88000 {
 				compatible = "qcom,geni-i2c";
 				reg = <0x1a88000 0x4000>;
 				clocks = <&gcc GCC_QUPV3_WRAP_SE2_CLK>;
@@ -979,11 +991,11 @@
 				clock-frequency = <400000>;
 				interrupts = <GIC_SPI 341 IRQ_TYPE_LEVEL_HIGH>;
 				assigned-clocks = <&gcc GCC_QUPV3_WRAP_SE2_CLK>;
-				assigned-clock-rates = <64000000>;
+				assigned-clock-rates = <32000000>;
 				status = "disabled";
 			};
 
-			i2c1: i2c@1a8c000 {
+			i2c2: i2c@1a8c000 {
 				compatible = "qcom,geni-i2c";
 				reg = <0x1a8c000 0x4000>;
 				clocks = <&gcc GCC_QUPV3_WRAP_SE3_CLK>;
@@ -991,7 +1003,19 @@
 				clock-frequency = <400000>;
 				interrupts = <GIC_SPI 342 IRQ_TYPE_LEVEL_HIGH>;
 				assigned-clocks = <&gcc GCC_QUPV3_WRAP_SE3_CLK>;
-				assigned-clock-rates = <64000000>;
+				assigned-clock-rates = <32000000>;
+				status = "disabled";
+			};
+
+			i2c3: i2c@1a90000 {
+				compatible = "qcom,geni-i2c";
+				reg = <0x1a90000 0x4000>;
+				clocks = <&gcc GCC_QUPV3_WRAP_SE4_CLK>;
+				clock-names = "se";
+				clock-frequency = <400000>;
+				interrupts = <GIC_SPI 343 IRQ_TYPE_LEVEL_HIGH>;
+				assigned-clocks = <&gcc GCC_QUPV3_WRAP_SE4_CLK>;
+				assigned-clock-rates = <32000000>;
 				status = "disabled";
 			};
 
@@ -1004,14 +1028,14 @@
 				status = "disabled";
 			};
 
-			i2c3: i2c@1a9c000 {
+			i2c4: i2c@1a9c000 {
 				compatible = "qcom,geni-i2c";
 				reg = <0x1a9c000 0x4000>;
-				clocks = <&gcc GCC_QUPV3_WRAP_SE3_CLK>;
+				clocks = <&gcc GCC_QUPV3_WRAP_SE7_CLK>;
 				clock-names = "se";
 				clock-frequency = <400000>;
 				interrupts = <GIC_SPI 381 IRQ_TYPE_LEVEL_HIGH>;
-				assigned-clocks = <&gcc GCC_QUPV3_WRAP_SE3_CLK>;
+				assigned-clocks = <&gcc GCC_QUPV3_WRAP_SE7_CLK>;
 				assigned-clock-rates = <32000000>;
 				status = "disabled";
 			};
@@ -1570,7 +1594,7 @@
 			assigned-clocks = <&gcc GCC_USB1_MASTER_CLK>,
 					  <&gcc GCC_USB1_MOCK_UTMI_CLK>;
 			assigned-clock-rates = <200000000>,
-					       <24000000>;
+					       <60000000>;
 
 			resets = <&gcc GCC_USB1_BCR>;
 			qcom,select-utmi-as-pipe-clk;
@@ -1581,7 +1605,7 @@
 				reg = <0x1e00000 0xe000>;
 				clocks = <&gcc GCC_USB1_MOCK_UTMI_CLK>;
 				clock-names = "ref";
-				interrupts = <GIC_SPI 386 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 383 IRQ_TYPE_LEVEL_HIGH>;
 				phys = <&qusb_phy_1>;
 				phy-names = "usb2-phy";
 				tx-fifo-resize;
@@ -1657,9 +1681,8 @@
 
 			assigned-clocks = <&gcc GCC_USB0_MASTER_CLK>,
 					  <&gcc GCC_USB0_MOCK_UTMI_CLK>;
-			/* To Do - Need to re-check with VI team about utmi clock rate (24MHz/60MHz) */
 			assigned-clock-rates = <200000000>,
-					       <24000000>;
+					       <60000000>;
 
 			resets = <&gcc GCC_USB_BCR>;
 			status = "disabled";
@@ -2550,6 +2573,8 @@
 					 <&gcc GCC_UNIPHY0_PMA_BCR>,
 					 <&gcc GCC_UNIPHY1_PMA_BCR>,
 					 <&gcc GCC_UNIPHY2_PMA_BCR>,
+					 <&gcc GCC_UNIPHY1_XLGPCS_ARES>,
+					 <&gcc GCC_UNIPHY2_XLGPCS_ARES>,
 					 <&nsscc NSS_CC_UNIPHY_PORT1_RX_CLK_ARES>,
 					 <&nsscc NSS_CC_UNIPHY_PORT1_TX_CLK_ARES>,
 					 <&nsscc NSS_CC_UNIPHY_PORT2_RX_CLK_ARES>,
@@ -2596,6 +2621,8 @@
 					      "uniphy0_pma_rst",
 					      "uniphy1_pma_rst",
 					      "uniphy2_pma_rst",
+					      "uniphy1_xlgpcs_rst",
+					      "uniphy2_xlgpcs_rst",
 					      "uniphy_port1_rx_rst",
 					      "uniphy_port1_tx_rst",
 					      "uniphy_port2_rx_rst",
@@ -2632,11 +2659,11 @@
 						port_id = <0>;
 						ucast_queue = <128 255>;
 						mcast_queue = <256 263>;
-						l0sp = <26 41>;
+						l0sp = <26 44>;
 						l0cdrr = <128 255>;
 						l0edrr = <128 255>;
-						l1cdrr = <26 41>;
-						l1edrr = <26 41>;
+						l1cdrr = <26 44>;
+						l1edrr = <26 44>;
 					};
 
 					port@1 {
@@ -2730,11 +2757,11 @@
 					reserved {
 						ucast_queue = <0 0>;
 						mcast_queue = <0 0>;
-						l0sp = <42 63>;
+						l0sp = <45 63>;
 						l0cdrr = <0 0>;
 						l0edrr = <0 0>;
-						l1cdrr = <42 63>;
-						l1edrr = <42 63>;
+						l1cdrr = <45 63>;
+						l1edrr = <45 63>;
 					};
 				};
 
@@ -2756,15 +2783,17 @@
 								/* SSID groups with 4 priorities on L1 */
 								sp = <38>;
 								sp_loop_pri = <4>;
+								sp_max_pri = <4>;
 								/* cpri cdrr epri edrr */
-								cfg = <0 38 0 38>;
+								cfg = <0 26 0 26>;
 							};
 
 							group@2 {
 								sp = <42>;
 								sp_loop_pri = <3>;
+								sp_max_pri = <1>;
 								/* cpri cdrr epri edrr */
-								cfg = <0 42 0 42>;
+								cfg = <0 26 0 26>;
 							};
 						};
 

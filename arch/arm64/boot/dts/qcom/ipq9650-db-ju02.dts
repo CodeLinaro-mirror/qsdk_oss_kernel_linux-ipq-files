@@ -41,14 +41,20 @@
 				};
 			};
 
-			i2c0: i2c@1a88000 {
+			i2c0: i2c@1a84000 {
 				pinctrl-0 = <&qup_i2c0_default>;
 				pinctrl-names = "default";
 				status = "disabled";
 			};
 
-			i2c1: i2c@1a8c000 {
+			i2c1: i2c@1a88000 {
 				pinctrl-0 = <&qup_i2c1_default>;
+				pinctrl-names = "default";
+				status = "disabled";
+			};
+
+			i2c2: i2c@1a8c000 {
+				pinctrl-0 = <&qup_i2c2_default>;
 				pinctrl-names = "default";
 				status = "okay";
 
@@ -92,6 +98,12 @@
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
 			qcom,ppe-offload-disabled = <0>;
+			pinctrl-0 = <&pps_state>;
+			pinctrl-names = "default";
+			interrupts = <GIC_SPI 362 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "pps_in";
+			clocks = <&nsscc NSS_CC_XGMAC0_PTP_REF_CLK>;
+			clock-names = "ptp";
 		};
 
 		dp2 {
@@ -102,6 +114,8 @@
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
 			qcom,ppe-offload-disabled = <0>;
+			clocks = <&nsscc NSS_CC_XGMAC1_PTP_REF_CLK>;
+			clock-names = "ptp";
 		};
 
 		dp3 {
@@ -112,6 +126,8 @@
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
 			qcom,ppe-offload-disabled = <0>;
+			clocks = <&nsscc NSS_CC_XGMAC2_PTP_REF_CLK>;
+			clock-names = "ptp";
 		};
 
 		dp4 {
@@ -122,6 +138,8 @@
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
 			qcom,ppe-offload-disabled = <0>;
+			clocks = <&nsscc NSS_CC_XGMAC3_PTP_REF_CLK>;
+			clock-names = "ptp";
 		};
 
 		dp5 {
@@ -132,6 +150,8 @@
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
 			qcom,ppe-offload-disabled = <0>;
+			clocks = <&nsscc NSS_CC_XGMAC4_PTP_REF_CLK>;
+			clock-names = "ptp";
 		};
 
 		dp6 {
@@ -142,6 +162,8 @@
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
 			qcom,ppe-offload-disabled = <0>;
+			clocks = <&nsscc NSS_CC_XGMAC5_PTP_REF_CLK>;
+			clock-names = "ptp";
 		};
 	};
 };
@@ -256,11 +278,11 @@
 };
 
 &qusb_phy_1 {
-	status = "disabled";
+	status = "okay";
 };
 
 &usb2 {
-	status = "disabled";
+	status = "okay";
 };
 
 &qusb_phy_0 {
@@ -278,12 +300,27 @@
 &tlmm {
 	qup_i2c0_default: qup-i2c0-default-state {
 		qup_i2c0_scl {
+			pins = "gpio10";
+			function = "qup_se1_l1";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+		qup_i2c0_sda {
+			pins = "gpio11";
+			function = "qup_se1_l0";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+	};
+
+	qup_i2c1_default: qup-i2c1-default-state {
+		qup_i2c1_scl {
 			pins = "gpio33";
 			function = "qup_se2_l1";
 			drive-strength = <8>;
 			bias-pull-up;
 		};
-		qup_i2c0_sda {
+		qup_i2c1_sda {
 			pins = "gpio34";
 			function = "qup_se2_l0";
 			drive-strength = <8>;

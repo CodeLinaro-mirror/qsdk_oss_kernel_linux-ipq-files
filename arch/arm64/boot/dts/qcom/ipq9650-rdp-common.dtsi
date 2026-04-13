@@ -49,7 +49,7 @@
 		compatible = "gpio-keys";
 		pinctrl-0 = <&gpio_keys_default>;
 		pinctrl-names = "default";
-		status = "disabled";
+		status = "okay";
 
 		button-wps {
 			label = "wps";
@@ -309,14 +309,14 @@
 		bias-pull-down;
 	};
 
-	qup_i2c1_default: qup-i2c1-default-state {
-		qup_i2c1_scl {
+	qup_i2c2_default: qup-i2c2-default-state {
+		qup_i2c2_scl {
 			pins = "gpio16";
 			function = "qup_se3_l1";
 			drive-strength = <8>;
 			bias-pull-up;
 		};
-		qup_i2c1_sda {
+		qup_i2c2_sda {
 			pins = "gpio17";
 			function = "qup_se3_l0";
 			drive-strength = <8>;

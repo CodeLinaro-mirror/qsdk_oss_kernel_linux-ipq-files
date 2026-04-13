@@ -2064,6 +2064,7 @@
 			#address-cells = <3>;
 			#size-cells = <2>;
 			axi-halt-val = <0x1e>; /* increase halt window size to 1GB */
+			system-noc-val = <0x3FF>;
 
 			ranges = <0x81000000 0 0x10200000 0x10200000 0 0x00100000>,   /* downstream I/O */
 				 <0x82000000 0 0x10300000 0x10300000 0 0x07d00000>; /* non-prefetchable memory */
@@ -2150,6 +2151,7 @@
 			#size-cells = <2>;
 			slv-addr-space-sz = <0x8000000>;
 			axi-halt-val = <0x1e>; /* increase halt window size to 1GB */
+			system-noc-val = <0x1>;
 			cal-status-offset = <0x2400000>;
 
 			phys = <&pcie1_phy_x2>;
@@ -2234,6 +2236,7 @@
 			#address-cells = <3>;
 			#size-cells = <2>;
 			axi-halt-val = <0x1e>; /* increase halt window size to 1GB */
+			system-noc-val = <0x3FF>;
 			cal-status-offset = <0x2400000>;
 
 			phys = <&pcie0_phy>;
