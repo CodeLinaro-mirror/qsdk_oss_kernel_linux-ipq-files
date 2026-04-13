@@ -33,10 +33,12 @@
 #include <linux/interconnect.h>
 #include <linux/firmware/qcom/qcom_scm.h>
 #include <linux/soc/qcom/mdt_loader.h>
+#if IS_ENABLED(CONFIG_QCOM_TMELCOM)
 #include <linux/tmelcom_ipc.h>
 #endif
+#endif
 
-#include "prime_dev.h"
+#include <uapi/linux/prime.h>
 
 #define IPQ9650_GCC_BASE 0x01800000
 #define IPQ9676_GCC_SIZE 0x40000
@@ -44,7 +46,6 @@
 /* GCC register offsets (base: ipq9650_GCC_BASE) */
 #define GCC_SNOC_PRIMESS_AXIM_CBCR		0x2E0E0
 #define GCC_CNOC_PRIMESS_AHBS_CBCR		0x310BC
-
 
 struct iuss_dev {
 	struct device * dev;
@@ -157,6 +158,7 @@ struct prime_data {
 	const char *firmware_name;
 	int pas_id;
 	const char *ssr_name;
+	const char *sysmon_name;
 	bool auto_boot;
 	const char *qmp_name;
 	bool config_mmu;
@@ -410,17 +412,19 @@ static u32 prime_get_clk(enum prime_clk_level clk_rate)
 	}
 }
 
-/* Bandwidth table - available for both BUILDROOT and non-BUILDROOT */
+/* Bandwidth table */
 static struct prime_bw_table_val {
-	u32 mem_bw;
-	u32 cfg_bw;
+    u32 mem_bw; // prime-ddr (KB/s)
+    u32 cfg_bw; // cpu-prime (KB/s)
 } prime_bw_table[PRIME_CLK_LEVEL_TURBO + 1] = {
-	[PRIME_CLK_LEVEL_OFF]      = { 0,       0 }, /* Bandwidth values in KB/s */
-	[PRIME_CLK_LEVEL_LSVS]     = { 922,     1000 },
-	[PRIME_CLK_LEVEL_SVS]      = { 1844,    1000 },
-	[PRIME_CLK_LEVEL_SVS_L1]   = { 3688,    1000 },
-	[PRIME_CLK_LEVEL_NOM]      = { 7376,    102400 },
-	[PRIME_CLK_LEVEL_TURBO]    = { 14752,   102400 },
+    [PRIME_CLK_LEVEL_OFF]    = {      0,      0 },
+
+    /* Linear scaling, 320 MB/S @ TURBO */
+    [PRIME_CLK_LEVEL_LSVS]   = { 105421,  16452 },
+    [PRIME_CLK_LEVEL_SVS]    = { 187085,  29262 },
+    [PRIME_CLK_LEVEL_SVS_L1] = { 210842,  32904 },
+    [PRIME_CLK_LEVEL_NOM]    = { 283443,  44261 },
+    [PRIME_CLK_LEVEL_TURBO]  = { 327680,  51200 },
 };
 
 /* Forward declaration for prime_set_clk_bw (defined in non-BUILDROOT section) */
@@ -643,31 +647,6 @@ static int prime_set_clk_bw(struct qcom_prime* prime, enum prime_clk_level clk_l
 
 	dev_dbg(dev, "Set clk_level=%d, clk_rate=%lu, ddr_bw=%u, cpu_bw=%u\n", clk_level, clk_rate, ddr_bw, cpu_bw);
 
-	#if 0
-	{
-		dev_dbg(dev, "Delay for 0.25ms before reading GCC registers\n");
-		usleep_range(250, 250);
-
-		void __iomem *gcc_base = ioremap(0x110000, 0x100);
-		if (gcc_base) {
-			dev_dbg(dev, "GCC_PRIME_BCR (0x110000): 0x%08x\n", readl_relaxed(gcc_base + 0x0));
-			dev_dbg(dev, "GCC_PRIME_AHB_M_CBCR (0x110004): 0x%08x\n", readl_relaxed(gcc_base + 0x4));
-			dev_dbg(dev, "GCC_PRIME_AHB_S_CBCR (0x110008): 0x%08x\n", readl_relaxed(gcc_base + 0x8));
-			dev_dbg(dev, "GCC_PRIME_AXI_CBCR (0x11000C): 0x%08x\n", readl_relaxed(gcc_base + 0xc));
-			dev_dbg(dev, "GCC_PRIME_XO_CBCR (0x110010): 0x%08x\n", readl_relaxed(gcc_base + 0x10));
-			dev_dbg(dev, "GCC_PRIME_CORE_CBCR (0x110014): 0x%08x\n", readl_relaxed(gcc_base + 0x14));
-			dev_dbg(dev, "GCC_PRIME_AT_CBCR (0x110018): 0x%08x\n", readl_relaxed(gcc_base + 0x18));
-			dev_dbg(dev, "GCC_PRIME_CORE_CMD_RCGR (0x11001C): 0x%08x\n", readl_relaxed(gcc_base + 0x1c));
-			dev_dbg(dev, "GCC_PRIME_CORE_CFG_RCGR (0x110020): 0x%08x\n", readl_relaxed(gcc_base + 0x20));
-			dev_dbg(dev, "GCC_PRIME_CORE_DCD_CDIV_DCDR (0x110034): 0x%08x\n", readl_relaxed(gcc_base + 0x34));
-			dev_dbg(dev, "GCC_SYS_NOC_PRIME_AXI_CBCR (0x110038): 0x%08x\n", readl_relaxed(gcc_base + 0x38));
-			dev_dbg(dev, "GCC_SYS_NOC_PRIME_AHB_CBCR (0x11003C): 0x%08x\n", readl_relaxed(gcc_base + 0x3c));
-			dev_dbg(dev, "GCC_SNOC_CNOC_PRIME_AHB_CBCR (0x110040): 0x%08x\n", readl_relaxed(gcc_base + 0x40));
-
-			iounmap(gcc_base);
-		}
-	}
-	#endif
 	return 0;
 }
 
@@ -719,7 +698,6 @@ static int prime_start_clock(struct qcom_prime* prime, enum prime_clk_level clk_
 {
 	struct device *dev = prime->dev;
 	int ret;
-	void __iomem *gcc_base;
 	u32 val;
 
 	struct prime_bw_table_val mem_cfg_bw = prime_bw_table[clk_level];
@@ -730,29 +708,32 @@ static int prime_start_clock(struct qcom_prime* prime, enum prime_clk_level clk_
 		goto r_clk;
 	}
 
-	/* These clocks are supposed to be configured by ARCG, temporarily
-	 * configure them here till ARCG enables these.
-	 */
-	gcc_base = ioremap(IPQ9650_GCC_BASE, IPQ9676_GCC_SIZE);
-	if (IS_ERR_OR_NULL(gcc_base)) {
-		dev_err(dev, "Failed to ioremap gcc region\n");
-		return PTR_ERR(gcc_base);
+	if (prime->tmelcom_support) {
+		void __iomem *gcc_base;
+
+		/* These clocks are supposed to be configured by ARCG, temporarily
+		 * configure them here till ARCG enables these.
+		 */
+		gcc_base = ioremap(IPQ9650_GCC_BASE, IPQ9676_GCC_SIZE);
+		if (IS_ERR_OR_NULL(gcc_base)) {
+			dev_err(dev, "Failed to ioremap gcc region\n");
+			return PTR_ERR(gcc_base);
+		}
+
+		/* Configure GCC_SNOC_PRIMESS_AXIM_CBCR */
+		val = readl(gcc_base + GCC_SNOC_PRIMESS_AXIM_CBCR);
+		val |= 0x1;
+		writel(val, gcc_base + GCC_SNOC_PRIMESS_AXIM_CBCR);
+		mdelay(1);
+
+		/* Configure GCC_CNOC_PRIMESS_AHBS_CBCR */
+		val = readl(gcc_base + GCC_CNOC_PRIMESS_AHBS_CBCR);
+		val |= 0x1;
+		writel(val, gcc_base + GCC_CNOC_PRIMESS_AHBS_CBCR);
+		mdelay(1);
+
+		iounmap(gcc_base);
 	}
-
-	/* Configure GCC_SNOC_PRIMESS_AXIM_CBCR */
-	val = readl(gcc_base + GCC_SNOC_PRIMESS_AXIM_CBCR);
-	val |= 0x1;
-	writel(val, gcc_base + GCC_SNOC_PRIMESS_AXIM_CBCR);
-	mdelay(1);
-
-	/* Configure GCC_CNOC_PRIMESS_AHBS_CBCR */
-	val = readl(gcc_base + GCC_CNOC_PRIMESS_AHBS_CBCR);
-	val |= 0x1;
-	writel(val, gcc_base + GCC_CNOC_PRIMESS_AHBS_CBCR);
-	mdelay(1);
-
-	iounmap(gcc_base);
-
 	dev_dbg(dev, "Enable Voter\n");
 	//TODO:  Any delay needed between clk calls and starting the subsystem?
 	// Enable bit 1 in the voter
@@ -806,6 +787,20 @@ static int prime_cleanup_clock_power(struct qcom_prime* prime)
 
 	return 0;
 }
+#endif /* BUILDROOT */
+
+#ifndef BUILDROOT
+#if !IS_ENABLED(CONFIG_QCOM_TMELCOM)
+static int tmelcom_secboot_teardown(u32 sw_id, u32 secondary_sw_id)
+{
+	return 0;
+}
+
+static int tmelcom_secboot_sec_auth_v2(u32 sw_id, void *metadata, size_t size)
+{
+	return 0;
+}
+#endif
 #endif /* BUILDROOT */
 
 #ifndef BUILDROOT
@@ -959,6 +954,10 @@ static int prime_start(struct rproc *rproc)
 	unmask_irqs(prime, 0xff);
 
 	ret = qcom_scm_pas_auth_and_reset(rproc);
+	if (ret) {
+		dev_err(prime->dev, "Auth and reset failed for remoteproc %s: %d\n", rproc->name, ret);
+		return ret;
+	}
 #else
 	if((ret = prime_start_clock(prime, PRIME_CLK_LEVEL_LSVS)) < 0) {
 		dev_dbg(prime->dev, "Error setting clocks");
@@ -976,7 +975,6 @@ static int prime_start(struct rproc *rproc)
 		dev_dbg(prime->dev, "Starting firmware via standard PIL/PAS (qcom_scm_pas_auth_and_reset)\n");
 		ret = qcom_scm_pas_auth_and_reset(prime->pas_id);
 	}
-#endif
 	if (ret) {
 		dev_err(prime->dev, "Auth and reset failed for remoteproc %s: %d\n", rproc->name, ret);
 		if (prime->tmelcom_support)
@@ -984,6 +982,7 @@ static int prime_start(struct rproc *rproc)
 
 		return ret;
 	}
+#endif
 
 	// This isn't a guaranteed sync point as there will potentially be 3 IRQs from PRIME... Treated more as a proof of life since auth_and_reset will be blocking until booted.
 	if (!wait_for_completion_timeout(&prime->start_done, msecs_to_jiffies(10000))) {
@@ -1053,6 +1052,203 @@ static const struct vm_operations_struct prime_swif_vm_ops = {
 	.close = prime_swif_vma_close,
 };
 
+#if IS_ENABLED(CONFIG_QCOM_SECURE_BUFFER)
+/* PRIME VMID - not in upstream kernel headers */
+#define QCOM_SCM_VMID_PRIME (93)
+
+/**
+ * prime_mem_mmu_add_prime() - Add PRIME VMID to memory region
+ * @prime: PRIME device
+ * @phys_addr: Physical address of region
+ * @size: Size of region
+ *
+ * Assigns memory region to both HLOS and PRIME with RW permissions.
+ * Returns 0 on success, negative error code on failure.
+ */
+static int prime_mem_mmu_add_prime(struct qcom_prime *prime,
+                                     phys_addr_t phys_addr, size_t size)
+{
+	struct qcom_scm_mem_map_info *mem_region;
+	struct qcom_scm_current_perm_info *dest_perms;
+	u32 *src_vmids;
+	void *buf;
+	size_t buf_size;
+	int ret;
+
+	buf_size = sizeof(*mem_region) + sizeof(u32) + 2 * sizeof(*dest_perms);
+	buf = kmalloc(buf_size, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	mem_region = (struct qcom_scm_mem_map_info *)buf;
+	src_vmids = (u32 *)(mem_region + 1);
+	dest_perms = (struct qcom_scm_current_perm_info *)(src_vmids + 1);
+
+	qcom_scm_populate_mem_map_info(mem_region, phys_addr, size);
+	src_vmids[0] = QCOM_SCM_VMID_HLOS;
+	qcom_scm_populate_vmperm_info(&dest_perms[0], QCOM_SCM_VMID_HLOS, QCOM_SCM_PERM_RW);
+	qcom_scm_populate_vmperm_info(&dest_perms[1], QCOM_SCM_VMID_PRIME, QCOM_SCM_PERM_RW);
+
+	ret = qcom_scm_assign_mem_regions(mem_region, sizeof(*mem_region),
+	                                  src_vmids, sizeof(u32),
+	                                  dest_perms, 2 * sizeof(*dest_perms));
+	kfree(buf);
+
+	if (ret)
+		dev_err(prime->dev, "Failed to assign memory to PRIME: %d\n", ret);
+
+	return ret;
+}
+
+/**
+ * prime_mem_mmu_remove_prime() - Remove PRIME VMID from memory region
+ * @prime: PRIME device
+ * @phys_addr: Physical address of region
+ * @size: Size of region
+ *
+ * Returns memory region to HLOS-only with full permissions.
+ * Returns 0 on success, negative error code on failure.
+ */
+static int prime_mem_mmu_remove_prime(struct qcom_prime *prime,
+                                         phys_addr_t phys_addr, size_t size)
+{
+	struct qcom_scm_mem_map_info *mem_region;
+	struct qcom_scm_current_perm_info *dest_perms;
+	u32 *src_vmids;
+	void *buf;
+	size_t buf_size;
+	int ret;
+
+	buf_size = sizeof(*mem_region) + 2 * sizeof(u32) + sizeof(*dest_perms);
+	buf = kmalloc(buf_size, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	mem_region = (struct qcom_scm_mem_map_info *)buf;
+	src_vmids = (u32 *)(mem_region + 1);
+	dest_perms = (struct qcom_scm_current_perm_info *)(src_vmids + 2);
+
+	qcom_scm_populate_mem_map_info(mem_region, phys_addr, size);
+	src_vmids[0] = QCOM_SCM_VMID_HLOS;
+	src_vmids[1] = QCOM_SCM_VMID_PRIME;
+	qcom_scm_populate_vmperm_info(dest_perms, QCOM_SCM_VMID_HLOS,
+	                              QCOM_SCM_PERM_READ | QCOM_SCM_PERM_WRITE | QCOM_SCM_PERM_EXEC);
+
+	ret = qcom_scm_assign_mem_regions(mem_region, sizeof(*mem_region),
+	                                  src_vmids, 2 * sizeof(u32),
+	                                  dest_perms, sizeof(*dest_perms));
+	kfree(buf);
+
+	if (ret)
+		dev_err(prime->dev, "Failed to unassign memory from PRIME: %d\n", ret);
+
+	return ret;
+}
+#else
+static inline int prime_mem_mmu_add_prime(struct qcom_prime *prime,
+					  phys_addr_t phys_addr, size_t size)
+{
+	return 0;
+}
+
+static inline int prime_mem_mmu_remove_prime(struct qcom_prime *prime,
+					     phys_addr_t phys_addr, size_t size)
+{
+	return 0;
+}
+#endif
+
+/**
+ * prime_model_mem_prepare() - Prepare MODEL memory sub-region for PRIME access
+ * @prime: PRIME device
+ * @offset: Offset within MODEL memory region
+ * @size: Size of sub-region
+ * @direction: DMA direction for cache operations
+ * @ret_dma_addr: Output DMA address for release
+ *
+ * Performs cache flush and adds PRIME VMID to the specified sub-region.
+ * Returns 0 on success, negative error code on failure.
+ */
+static int prime_model_mem_prepare(struct qcom_prime *prime,
+                                   u64 offset, size_t size,
+                                   enum dma_data_direction direction,
+                                   dma_addr_t *ret_dma_addr)
+{
+	int ret;
+	phys_addr_t phys_addr;
+
+	if (offset + size > prime->mem_model_size) {
+		dev_err(prime->dev, "Sub-region exceeds MODEL memory bounds\n");
+		return -EINVAL;
+	}
+
+	phys_addr = prime->mem_model_base + offset;
+
+	if (!PAGE_ALIGNED(phys_addr) || !PAGE_ALIGNED(size)) {
+		dev_err(prime->dev, "Sub-region must be page-aligned\n");
+		return -EINVAL;
+	}
+
+	/* Return the physical address as the DMA address.
+	 * The carveout is mapped write-combining (pgprot_writecombine);
+	 */
+	*ret_dma_addr = phys_addr;
+
+	/* Drain write-combine buffers so PRIME hardware sees all CPU writes */
+	if (direction == DMA_TO_DEVICE || direction == DMA_BIDIRECTIONAL) {
+		wmb();
+	}
+
+	if (prime->config_mmu) {
+		ret = prime_mem_mmu_add_prime(prime, phys_addr, size);
+		if (ret)
+			return ret;
+	}
+
+	dev_dbg(prime->dev, "MODEL sub-region prepared: offset=0x%llx, phys=0x%llx, dma=0x%llx, size=0x%zx, dir=%d\n",
+	         offset, (unsigned long long)phys_addr, (unsigned long long)*ret_dma_addr, size, direction);
+
+	return 0;
+}
+
+/**
+ * prime_model_mem_release() - Release MODEL memory sub-region from PRIME access
+ * @prime: PRIME device
+ * @offset: Offset within MODEL memory region
+ * @size: Size of sub-region
+ * @direction: DMA direction (must match prepare)
+ * @dma_addr: DMA address from prepare operation
+ *
+ * Unmaps DMA and removes PRIME VMID from the specified sub-region.
+ * Returns 0 on success, negative error code on failure.
+ */
+static int prime_model_mem_release(struct qcom_prime *prime,
+                                   u64 offset, size_t size,
+                                   enum dma_data_direction direction,
+                                   dma_addr_t dma_addr)
+{
+	phys_addr_t phys_addr;
+
+	phys_addr = prime->mem_model_base + offset;
+
+	/* Read barrier to ensure CPU sees data written by PRIME hardware */
+	if (direction == DMA_FROM_DEVICE || direction == DMA_BIDIRECTIONAL) {
+		rmb();
+	}
+
+	if (prime->config_mmu) {
+		int ret = prime_mem_mmu_remove_prime(prime, phys_addr, size);
+		if (ret) {
+			dev_err(prime->dev, "Failed to unassign memory (continuing): %d\n", ret);
+		}
+	}
+
+	dev_dbg(prime->dev, "MODEL sub-region released: offset=0x%llx, phys=0x%llx, dma=0x%llx, size=0x%zx, dir=%d\n",
+	         offset, (unsigned long long)phys_addr, (unsigned long long)dma_addr, size, direction);
+
+	return 0;
+}
+
 static int prime_mem_open(struct inode *inode, struct file *file)
 {
 	struct qcom_prime *prime;
@@ -1091,7 +1287,10 @@ static int prime_mem_mmap(struct file *file, struct vm_area_struct *vma)
 			return -EINVAL;
 		}
 
-		ret = io_remap_pfn_range(vma, vma->vm_start, pfn, size, vma->vm_page_prot);
+		/* Map as write-combining memory (DDR-backed reserved region)
+		 */
+		vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
+		ret = remap_pfn_range(vma, vma->vm_start, pfn, size, vma->vm_page_prot);
 		break;
 	case 1: /* IUSS Interface exposed to kernel*/
 		/* Check if PRIME has been started */
@@ -1119,6 +1318,7 @@ static int prime_mem_mmap(struct file *file, struct vm_area_struct *vma)
 			return -EINVAL;
 		}
 
+		vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
 		ret = io_remap_pfn_range(vma, vma->vm_start, pfn, size, vma->vm_page_prot);
 
 		/* Set up VMA operations for lifecycle tracking */
@@ -1149,6 +1349,7 @@ static int prime_mem_mmap(struct file *file, struct vm_area_struct *vma)
 static long prime_mem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	struct qcom_prime *prime = file->private_data;
+	int ret;
 
 	switch (cmd) {
 	case PRIME_MEM_GET_REGION: {
@@ -1234,7 +1435,12 @@ static long prime_mem_ioctl(struct file *file, unsigned int cmd, unsigned long a
 		}
 		struct task_struct *ref_task = get_current();
 		if(prime->sig_task[irq] != ref_task) {
-			dev_dbg(prime->dev, "SIG_DEREGISTER from non-owning process\n");
+			dev_warn(prime->dev,
+				"SIG_DEREGISTER from non-owning process: signo=%d irq=%d "
+				"registered_pid=%d current_pid=%d\n",
+				sig_reg.signo, irq,
+				prime->sig_task[irq] ? prime->sig_task[irq]->pid : -1,
+				ref_task->pid);
 			return -EINVAL;
 		}
 		if(prime->signo[irq] != sig_reg.signo){
@@ -1248,20 +1454,93 @@ static long prime_mem_ioctl(struct file *file, unsigned int cmd, unsigned long a
 		return 0;
 	}
 	case PRIME_MEM_PIL: {
-		struct prime_mem_region mem_data;
-		if (copy_from_user(&mem_data, (void __user *)arg, sizeof(struct prime_mem_region)) != 0) {
+		struct prime_mem_pil_map pil_data;
+
+		if (copy_from_user(&pil_data, (void __user *)arg, sizeof(struct prime_mem_pil_map)) != 0) {
 			return -EINVAL;
 		}
 
-		switch (mem_data.region) {
-		case PRIME_MEM_REGION_MODEL:
-		case PRIME_MEM_REGION_TENSOR:
+		if (pil_data.region != PRIME_MEM_REGION_MODEL) {
+			dev_err(prime->dev, "PRIME_MEM_PIL only supports MODEL region\n");
+			return -EINVAL;
+		}
 
-		case PRIME_MEM_REGION_SWIF:
+		/* Validate direction */
+		BUILD_BUG_ON((int)PRIME_DMA_BIDIRECTIONAL != (int)DMA_BIDIRECTIONAL);
+		BUILD_BUG_ON((int)PRIME_DMA_TO_DEVICE != (int)DMA_TO_DEVICE);
+		BUILD_BUG_ON((int)PRIME_DMA_FROM_DEVICE != (int)DMA_FROM_DEVICE);
+
+		if (pil_data.direction > PRIME_DMA_FROM_DEVICE) {
+			dev_err(prime->dev, "Invalid DMA direction: %d\n", pil_data.direction);
+			return -EINVAL;
+		}
+
+		switch (pil_data.action) {
+		case PRIME_MEM_PIL_PREPARE:
+			{
+				dma_addr_t dma_addr;
+
+				ret = prime_model_mem_prepare(prime, pil_data.offset,
+				                              pil_data.size,
+				                              (enum dma_data_direction)pil_data.direction,
+				                              &dma_addr);
+				if (ret == 0) {
+					pil_data.device_dma_base_addr = dma_addr;
+					if (copy_to_user((void __user *)arg, &pil_data,
+					                sizeof(struct prime_mem_pil_map)) != 0) {
+						if (prime->config_mmu) {
+							prime_mem_mmu_remove_prime(prime, (phys_addr_t)dma_addr, pil_data.size);
+						}
+						return -EFAULT;
+					}
+				}
+			}
+			break;
+
+		case PRIME_MEM_PIL_RELEASE:
+			ret = prime_model_mem_release(prime, pil_data.offset,
+			                              pil_data.size,
+			                              (enum dma_data_direction)pil_data.direction,
+			                              pil_data.device_dma_base_addr);
+			break;
+
+		case PRIME_MEM_PIL_SYNC:
+			{
+				phys_addr_t phys_addr;
+
+				/* Validate direction for sync operation */
+				if (pil_data.direction != PRIME_DMA_TO_DEVICE &&
+				    pil_data.direction != PRIME_DMA_FROM_DEVICE) {
+					dev_err(prime->dev, "SYNC requires TO_DEVICE or FROM_DEVICE direction\n");
+					return -EINVAL;
+				}
+
+				phys_addr = prime->mem_model_base + pil_data.offset;
+
+				if (pil_data.direction == PRIME_DMA_TO_DEVICE) {
+					/* Flush write-combine buffers: CPU -> Device */
+					wmb();
+					dev_dbg(prime->dev,
+					         "WMB sync: phys=0x%llx, size=0x%zx (CPU->Device)\n",
+					         (unsigned long long)phys_addr,
+					         pil_data.size);
+				} else {
+					/* Read barrier: Device -> CPU */
+					rmb();
+					dev_dbg(prime->dev,
+					         "RMB sync: phys=0x%llx, size=0x%zx (Device->CPU)\n",
+					         (unsigned long long)phys_addr,
+					         pil_data.size);
+				}
+				ret = 0;
+			}
+			break;
+
 		default:
 			return -EINVAL;
 		}
-		return -EINVAL;
+
+		return ret;
 	}
 	case PRIME_MEM_DMA: {
 		struct prime_mem_dma_map mem_data;
@@ -1307,57 +1586,12 @@ static long prime_mem_ioctl(struct file *file, unsigned int cmd, unsigned long a
 						dev_dbg(prime->dev, "Mapped DMA SG[%d]: 0x%08llx (%d bytes)\n", sg_idx,
 							(uint64_t)sg_dma_address(sg), sg_dma_len(sg));
 						mem_data.device_dma_base_addr = (uint64_t)sg_dma_address(sg);
-#if IS_ENABLED(CONFIG_QCOM_SECURE_BUFFER)
 						if(prime->config_mmu)
 						{
-							#define QCOM_SCM_VMID_PRIME (93)
-							struct qcom_scm_mem_map_info *mem_region;
-							struct qcom_scm_current_perm_info *dest_perms;
-							u32 *src_vmids;
-							void *buf;
-							size_t buf_size;
-							int ret;
-
-							/* Allocate single buffer for all structures */
-							buf_size = sizeof(*mem_region) + sizeof(u32) + 2 * sizeof(*dest_perms);
-							buf = kmalloc(buf_size, GFP_KERNEL);
-							if (!buf) {
-								ret = -ENOMEM;
-								dev_err(prime->dev, "Failed to allocate SCM buffers\n");
-								dma_buf_unmap_attachment(mem_data.dma_attachment, mem_data.sg_table,
-									(enum dma_data_direction)mem_data.direction);
-								dma_buf_detach(mem_data.dma_buf, mem_data.dma_attachment);
-								dma_buf_put(mem_data.dma_buf);
-								return ret;
-							}
-
-							/* Set up pointers within the buffer */
-							mem_region = (struct qcom_scm_mem_map_info *)buf;
-							src_vmids = (u32 *)(mem_region + 1);
-							dest_perms = (struct qcom_scm_current_perm_info *)(src_vmids + 1);
-
-							/* Populate memory region */
-							qcom_scm_populate_mem_map_info(mem_region,
-								(uint64_t)sg_dma_address(sg), sg_dma_len(sg));
-
-							/* Populate source VMIDs */
-							src_vmids[0] = QCOM_SCM_VMID_HLOS;
-
-							/* Populate destination permissions */
-							qcom_scm_populate_vmperm_info(&dest_perms[0],
-								QCOM_SCM_VMID_HLOS, QCOM_SCM_PERM_READ);
-							qcom_scm_populate_vmperm_info(&dest_perms[1],
-								QCOM_SCM_VMID_PRIME, QCOM_SCM_PERM_RW);
-
-							dev_dbg(prime->dev, "qcom_scm_assign_mem_regions map");
-							ret = qcom_scm_assign_mem_regions(mem_region, sizeof(*mem_region),
-													src_vmids, sizeof(u32),
-													dest_perms, 2 * sizeof(*dest_perms));
-
-							kfree(buf);
-
+							ret = prime_mem_mmu_add_prime(prime,
+							                                (phys_addr_t)sg_dma_address(sg),
+							                                sg_dma_len(sg));
 							if (ret) {
-								dev_err(prime->dev, "SCM Assign mem failed: %d\n", ret);
 								dma_buf_unmap_attachment(mem_data.dma_attachment, mem_data.sg_table,
 									(enum dma_data_direction)mem_data.direction);
 								dma_buf_detach(mem_data.dma_buf, mem_data.dma_attachment);
@@ -1365,66 +1599,24 @@ static long prime_mem_ioctl(struct file *file, unsigned int cmd, unsigned long a
 								return ret;
 							}
 						}
-#endif
 					}
 				}
 				break;
 			case PRIME_MEM_DMA_FREE:
 				{
-#if IS_ENABLED(CONFIG_QCOM_SECURE_BUFFER)
 					if(prime->config_mmu)
 					{
 						int sg_idx;
-						int ret;
 						struct scatterlist *sg;
 						for_each_sgtable_dma_sg (mem_data.sg_table, sg, sg_idx) {
 							dev_dbg(prime->dev, "Unmapping DMA SG[%d]: 0x%08llx (%d bytes)\n", sg_idx,
 								(uint64_t)sg_dma_address(sg), sg_dma_len(sg));
-							struct qcom_scm_mem_map_info *mem_region;
-							struct qcom_scm_current_perm_info *dest_perms;
-							u32 *src_vmids;
-							void *buf;
-							size_t buf_size;
 
-							/* Allocate single buffer for all structures */
-							buf_size = sizeof(*mem_region) + 2 * sizeof(u32) + sizeof(*dest_perms);
-							buf = kmalloc(buf_size, GFP_KERNEL);
-							if (!buf) {
-								ret = -ENOMEM;
-								dev_err(prime->dev, "Failed to allocate SCM buffers for unmap\n");
-								continue;
-							}
-
-							/* Set up pointers within the buffer */
-							mem_region = (struct qcom_scm_mem_map_info *)buf;
-							src_vmids = (u32 *)(mem_region + 1);
-							dest_perms = (struct qcom_scm_current_perm_info *)(src_vmids + 2);
-
-							/* Populate memory region */
-							qcom_scm_populate_mem_map_info(mem_region,
-								(uint64_t)sg_dma_address(sg), sg_dma_len(sg));
-
-							/* Populate source VMIDs */
-							src_vmids[0] = QCOM_SCM_VMID_HLOS;
-							src_vmids[1] = QCOM_SCM_VMID_PRIME;
-
-							/* Populate destination permissions - return to HLOS only */
-							qcom_scm_populate_vmperm_info(dest_perms,
-								QCOM_SCM_VMID_HLOS, (QCOM_SCM_PERM_READ | QCOM_SCM_PERM_WRITE | QCOM_SCM_PERM_EXEC));
-
-							dev_dbg(prime->dev, "qcom_scm_assign_mem_regions unmap");
-							ret = qcom_scm_assign_mem_regions(mem_region, sizeof(*mem_region),
-													src_vmids, 2 * sizeof(u32),
-													dest_perms, sizeof(*dest_perms));
-
-							kfree(buf);
-
-							if (ret) {
-								dev_err(prime->dev, "SCM Assign mem unmap failed: %d\n", ret);
-							}
+							ret = prime_mem_mmu_remove_prime(prime,
+							                                    (phys_addr_t)sg_dma_address(sg),
+							                                    sg_dma_len(sg));
 						}
 					}
-#endif
 					dma_buf_unmap_attachment(mem_data.dma_attachment, mem_data.sg_table,
 								(enum dma_data_direction)mem_data.direction);
 					dma_buf_detach(mem_data.dma_buf, mem_data.dma_attachment);
@@ -1834,14 +2026,14 @@ static int qcom_prime_probe(struct platform_device *pdev)
 	/* Try DT or default name first */
 	if (request_firmware(&fw, fw_name, dev) == 0) {
 		release_firmware(fw);
-		dev_info(dev, "Found firmware: %s\n", fw_name);
+		dev_dbg(dev, "Found firmware: %s\n", fw_name);
 	}
 	else {
 		for (i = 0; i < ARRAY_SIZE(prime_fw_names); i++) {
 			if (request_firmware(&fw, prime_fw_names[i], dev) == 0) {
 				release_firmware(fw);
 				fw_name = prime_fw_names[i];
-				dev_info(dev, "Found firmware via search: %s\n", fw_name);
+				dev_dbg(dev, "Found firmware via search: %s\n", fw_name);
 				break;
 			}
 		}
@@ -1849,7 +2041,7 @@ static int qcom_prime_probe(struct platform_device *pdev)
 
 skip_fw_search:
 	/* create an RPROC device */
-	rproc = rproc_alloc(&pdev->dev, pdev->name, &prime_rproc_ops, fw_name, sizeof(*prime));
+	rproc = rproc_alloc(&pdev->dev, desc->sysmon_name, &prime_rproc_ops, fw_name, sizeof(*prime));
 
 	if (!rproc) {
 		dev_dbg(dev, "Unable to allocate a remote processor");
@@ -1999,9 +2191,10 @@ static void qcom_prime_remove(struct platform_device *pdev)
 
 
 static const struct prime_data prime_resource_init = {
-	.firmware_name = "qcom_prime.elf",
+	.firmware_name = "qcom_prime_a.elf",
 	.pas_id = 81,
 	.ssr_name = "prime",
+	.sysmon_name = "primess",
 	.auto_boot = false,
 	.qmp_name = "prime",
 	.config_mmu = true,
@@ -2011,6 +2204,7 @@ static const struct prime_data prime_resource_init_ipq = {
 	.firmware_name = "qcom_prime_ipq.elf",
 	.pas_id = 0xc3,
 	.ssr_name = "prime",
+	.sysmon_name = "primess",
 	.auto_boot = false,
 	.qmp_name = "prime",
 	.config_mmu = false,
@@ -2021,6 +2215,7 @@ static const struct prime_data prime_resource_generic = {
 	.firmware_name = "qcom_prime.elf",
 	.pas_id = 81,
 	.ssr_name = "prime",
+	.sysmon_name = "primess",
 	.auto_boot = false,
 	.qmp_name = "prime",
 	.config_mmu = false,
@@ -2031,7 +2226,7 @@ static const struct prime_data prime_resource_generic = {
  */
 static const struct of_device_id prime_of_match[] = {
 	{ .compatible = "qcom,generic-primess-pas", .data = &prime_resource_generic },
-	{ .compatible = "qcom,sdxecho-primess-pas", .data = &prime_resource_init },
+	{ .compatible = "qcom,echo-primess-pas", .data = &prime_resource_init },
 	{ .compatible = "qcom,ipq9650-primess-pas", .data = &prime_resource_init_ipq },
 	{},
 };
