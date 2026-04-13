@@ -2615,11 +2615,19 @@ static int load_dpr_image_for_client(struct tmelcom_qmi_client *client)
 		goto free_path;
 	}
 
-	ret = request_firmware(&fw, firmware_path, &client->pdev->dev);
+	ret = request_firmware_direct(&fw, firmware_path, &client->pdev->dev);
 	if (ret == 0) {
-		dev_dbg(&client->pdev->dev,
-			"Loaded serial-specific DPR: %s\n", firmware_path);
+		dev_info(&client->pdev->dev,
+			 "Found serial-specific DPR: %s\n", firmware_path);
 		goto load_image;
+	} else if (ret == -ENOENT) {
+		dev_dbg(&client->pdev->dev,
+			"Serial-specific DPR not found: %s (trying common fallback)\n",
+			firmware_path);
+	} else {
+		dev_err(&client->pdev->dev,
+			"Failed to load serial-specific DPR: %s (error %d)\n",
+			firmware_path, ret);
 	}
 
 	/* Try 2: Load common file (DPR_COMMON.elf) as fallback */
@@ -2632,16 +2640,26 @@ static int load_dpr_image_for_client(struct tmelcom_qmi_client *client)
 		goto free_path;
 	}
 
-	ret = request_firmware(&fw, firmware_path, &client->pdev->dev);
-	if (ret) {
-		dev_warn(&client->pdev->dev,
-			 "No DPR image found (tried serial-specific and common): %d\n",
-			 ret);
+	ret = request_firmware_direct(&fw, firmware_path, &client->pdev->dev);
+	if (ret == 0) {
+		dev_info(&client->pdev->dev,
+			 "Found common DPR: %s\n", firmware_path);
+	} else if (ret == -ENOENT) {
+		dev_dbg(&client->pdev->dev,
+			"Common DPR not found: %s (no DPR image available)\n",
+			firmware_path);
+	} else {
+		dev_err(&client->pdev->dev,
+			"Failed to load common DPR: %s (error %d)\n",
+			firmware_path, ret);
 		goto free_path;
 	}
 
-	dev_dbg(&client->pdev->dev,
-		"Loaded common DPR: %s\n", firmware_path);
+	if (ret == -ENOENT) {
+		dev_warn(&client->pdev->dev,
+			 "DPR not found: no DPR image available\n");
+		goto free_path;
+	}
 
 load_image:
 	image_data = vzalloc(fw->size);
