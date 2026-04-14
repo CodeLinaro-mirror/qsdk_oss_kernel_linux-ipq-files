@@ -459,8 +459,6 @@ extern struct mutex tmelcom_qmi_clients_lock;
 /* Conversion helpers */
 static inline int qrtr_instance_to_domain_num(u32 instance_id)
 {
-	if (instance_id < QRTR_INSTANCE_BASE)
-		return -EINVAL;
 	/* The instance_id encodes the PCIe domain in the upper nibble.
 	 * The lower nibble is always 0x1 (as per hardware spec).
 	 * Shift right by 4 bits to obtain the domain number.
