@@ -83,6 +83,7 @@
 			reg = <0x0>;
 			enable-method = "psci";
 			next-level-cache = <&L2_0>;
+			cpu-idle-states = <&little_cpu_sleep_0>;
 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
@@ -95,6 +96,7 @@
 			enable-method = "psci";
 			reg = <0x1>;
 			next-level-cache = <&L2_0>;
+			cpu-idle-states = <&little_cpu_sleep_0>;
 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
@@ -107,6 +109,7 @@
 			enable-method = "psci";
 			reg = <0x2>;
 			next-level-cache = <&L2_0>;
+			cpu-idle-states = <&little_cpu_sleep_0>;
 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
@@ -119,6 +122,7 @@
 			enable-method = "psci";
 			reg = <0x3>;
 			next-level-cache = <&L2_0>;
+			cpu-idle-states = <&little_cpu_sleep_0>;
 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
@@ -128,6 +132,22 @@
 		L2_0: l2-cache {
 			compatible = "cache";
 			cache-level = <0x2>;
+		};
+
+		idle-states {
+			entry-method = "psci";
+
+			little_cpu_sleep_0: cpu-sleep-c3 { /* C3 */
+				compatible = "arm,idle-state";
+				idle-state-name = "little-power-down";
+				arm,psci-suspend-param = <0x40000003>;
+				entry-latency-us = <181>;
+				exit-latency-us = <149>;
+				min-residency-us = <703>;
+
+				local-timer-stop;
+				status = "disabled";
+			};
 		};
 	};
 
