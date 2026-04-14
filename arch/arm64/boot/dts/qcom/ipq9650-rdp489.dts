@@ -222,6 +222,11 @@
 };
 
 &mdio {
+	/*
+	 * Update pinctrl-0 to remove mdio_slv_state, as the MDIO slave GPIOs
+	 * is used for NSP rails on RDP489.
+	 */
+	pinctrl-0 = <&mdio_mst_state>;
 	phy-reset-gpio = <&tlmm 18 GPIO_ACTIVE_LOW>, /* Reset for UNIPHY0 QCE1204. */
 			 <&tlmm 25 GPIO_ACTIVE_LOW>, /* Reset for UNIPHY1 QCA81XXs. */
 			 <&tlmm 26 GPIO_ACTIVE_LOW>; /* Reset for UNIPHY2 QCA81XXs. */
