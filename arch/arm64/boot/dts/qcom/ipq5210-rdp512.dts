@@ -10,6 +10,9 @@
 
 #include "ipq5210-rdp-common.dtsi"
 #include "ipq5210-default-memory.dtsi"
+#include <dt-bindings/clock/qcom,qce2204-nsscc.h>
+#include <dt-bindings/clock/qcom,qce2204-pcs.h>
+#include <dt-bindings/reset/qcom,qce2204-nsscc.h>
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ5210 RDP512";
@@ -17,6 +20,487 @@
 
 	aliases {
 		serial0 = &uart1;
+		ethernet0 = "/soc/dp1";
+		ethernet1 = "/soc/dp2";
+		ethernet2 = "/soc/dp3";
+	};
+
+	clocks {
+		qce2204_xo: qce2204-xo {
+			compatible = "fixed-clock";
+			clock-frequency = <50000000>;
+			#clock-cells = <0>;
+		};
+
+		qce2204_uniphy1_rx_312p5m: qce2204-uniphy1-rx-312p5m {
+			compatible = "fixed-clock";
+			clock-frequency = <312500000>;
+			#clock-cells = <0>;
+		};
+
+		qce2204_uniphy1_tx_312p5m: qce2204-uniphy1-tx-312p5m {
+			compatible = "fixed-clock";
+			clock-frequency = <312500000>;
+			#clock-cells = <0>;
+		};
+
+		qce2204_uniphy1_ppe_250m: qce2204-uniphy1-ppe-250m {
+			compatible = "fixed-clock";
+			clock-frequency = <250000000>;
+			#clock-cells = <0>;
+		};
+	};
+
+	soc@0 {
+		mdio: mdio@90000 {
+			status = "okay";
+			pinctrl-0 = <&mdio_pins &mdio_slv_pins>;
+			/* gpio24 for Huntington reset, GPIO 8 for Laguna reset */
+			phy-reset-gpio = <
+				&tlmm 24 GPIO_ACTIVE_LOW
+				&tlmm 8 GPIO_ACTIVE_LOW
+			>;
+			ethernet-phy-package@0 {
+				compatible = "qcom,qce1204-package";
+				reg = <0x0>;
+				qcom,package-mode = "internal";
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				phy0: ethernet-phy@0 {
+					compatible = "ethernet-phy-ieee802.3-c45";
+					reg = <0x0>;
+					clocks = <&qce2204_cc QCE2204_NSSCC_MAC1_GEPHY0_TX_CLK>,
+						 <&qce2204_cc QCE2204_NSSCC_MAC1_GEPHY0_RX_CLK>,
+						 <&qce2204_cc QCE2204_NSSCC_GEPHY0_SYS_CLK>;
+					clock-names = "tx_clk",
+						      "rx_clk",
+						      "sys_clk";
+					resets = <&qce2204_cc QCE2204_NSSCC_MAC1_GEPHY0_TX_ARES>,
+						 <&qce2204_cc QCE2204_NSSCC_MAC1_GEPHY0_RX_ARES>,
+						 <&qce2204_cc QCE2204_NSSCC_GEPHY0_SYS_ARES>;
+					reset-names = "tx_reset",
+						      "rx_reset",
+						      "sys_reset";
+				};
+				phy1: ethernet-phy@1 {
+					compatible = "ethernet-phy-ieee802.3-c45";
+					reg = <0x1>;
+					clocks = <&qce2204_cc QCE2204_NSSCC_MAC2_GEPHY1_TX_CLK>,
+						 <&qce2204_cc QCE2204_NSSCC_MAC2_GEPHY1_RX_CLK>,
+						 <&qce2204_cc QCE2204_NSSCC_GEPHY1_SYS_CLK>;
+					clock-names = "tx_clk",
+						      "rx_clk",
+						      "sys_clk";
+					resets = <&qce2204_cc QCE2204_NSSCC_MAC2_GEPHY1_TX_ARES>,
+						 <&qce2204_cc QCE2204_NSSCC_MAC2_GEPHY1_RX_ARES>,
+						 <&qce2204_cc QCE2204_NSSCC_GEPHY1_SYS_ARES>;
+					reset-names = "tx_reset",
+						      "rx_reset",
+						      "sys_reset";
+				};
+				phy2: ethernet-phy@2 {
+					compatible = "ethernet-phy-ieee802.3-c45";
+					reg = <0x2>;
+					clocks = <&qce2204_cc QCE2204_NSSCC_MAC3_GEPHY2_TX_CLK>,
+						 <&qce2204_cc QCE2204_NSSCC_MAC3_GEPHY2_RX_CLK>,
+						 <&qce2204_cc QCE2204_NSSCC_GEPHY2_SYS_CLK>;
+					clock-names = "tx_clk",
+						      "rx_clk",
+						      "sys_clk";
+					resets = <&qce2204_cc QCE2204_NSSCC_MAC3_GEPHY2_TX_ARES>,
+						 <&qce2204_cc QCE2204_NSSCC_MAC3_GEPHY2_RX_ARES>,
+						 <&qce2204_cc QCE2204_NSSCC_GEPHY2_SYS_ARES>;
+					reset-names = "tx_reset",
+						      "rx_reset",
+						      "sys_reset";
+				};
+				phy3: ethernet-phy@3 {
+					compatible = "ethernet-phy-ieee802.3-c45";
+					reg = <0x3>;
+					clocks = <&qce2204_cc QCE2204_NSSCC_MAC4_GEPHY3_TX_CLK>,
+						 <&qce2204_cc QCE2204_NSSCC_MAC4_GEPHY3_RX_CLK>,
+						 <&qce2204_cc QCE2204_NSSCC_GEPHY3_SYS_CLK>;
+					clock-names = "tx_clk",
+						      "rx_clk",
+						      "sys_clk";
+					resets = <&qce2204_cc QCE2204_NSSCC_MAC4_GEPHY3_TX_ARES>,
+						 <&qce2204_cc QCE2204_NSSCC_MAC4_GEPHY3_RX_ARES>,
+						 <&qce2204_cc QCE2204_NSSCC_GEPHY3_SYS_ARES>;
+					reset-names = "tx_reset",
+						      "rx_reset",
+						      "sys_reset";
+				};
+			};
+
+			qce2204_pcs0: ethernet-phy@4 {
+				compatible = "qcom,qce2204-pcs";
+				reg = <4>;
+				clocks = <&qce2204_cc QCE2204_NSSCC_SRDS0_SYS_CLK>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC5_RX_SRDS0_CLK>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC5_TX_SRDS0_CLK>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC5_RX_SRDS0_CH0_XGMII_CLK>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC5_TX_SRDS0_CH0_XGMII_CLK>;
+				clock-names = "sys",
+					      "rx",
+					      "tx",
+					      "xgmii_rx",
+					      "xgmii_tx";
+				resets = <&qce2204_cc QCE2204_NSSCC_SRDS0_SYS_ARES>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC5_RX_SRDS0_ARES>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC5_TX_SRDS0_ARES>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC5_RX_SRDS0_CH0_XGMII_ARES>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC5_TX_SRDS0_CH0_XGMII_ARES>,
+					 <&qce2204_cc QCE2204_NSSCC_SRDS0_XPCS_ARES>;
+				reset-names = "sys",
+					      "rx",
+					      "tx",
+					      "xgmii_rx",
+					      "xgmii_tx",
+					      "xpcs";
+				initial_mode = "usxgmii";
+				#clock-cells = <1>;
+				assigned-clocks = <&qce2204_cc QCE2204_NSSCC_SRDS0_SYS_CLK>;
+				assigned-clock-rates = <25000000>;
+			};
+
+			qce2204_pcs1: ethernet-phy@5 {
+				compatible = "qcom,qce2204-pcs";
+				reg = <5>;
+				clocks = <&qce2204_cc QCE2204_NSSCC_SRDS1_SYS_CLK>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC1_SRDS1_CH0_RX_CLK>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC1_SRDS1_CH0_TX_CLK>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC0_1_SRDS1_CH0_XGMII_RX_CLK>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC0_1_SRDS1_CH0_XGMII_TX_CLK>;
+				clock-names = "sys",
+					      "rx",
+					      "tx",
+					      "xgmii_rx",
+					      "xgmii_tx";
+				resets = <&qce2204_cc QCE2204_NSSCC_SRDS1_SYS_ARES>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC1_SRDS1_CH0_RX_ARES>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC1_SRDS1_CH0_TX_ARES>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC0_1_SRDS1_CH0_XGMII_RX_ARES>,
+					 <&qce2204_cc QCE2204_NSSCC_MAC0_1_SRDS1_CH0_XGMII_TX_ARES>,
+					 <&qce2204_cc QCE2204_NSSCC_SRDS1_XPCS_ARES>;
+				reset-names = "sys",
+					      "rx",
+					      "tx",
+					      "xgmii_rx",
+					      "xgmii_tx",
+					      "xpcs";
+				initial_mode = "10gbase-r";
+				#clock-cells = <1>;
+				assigned-clocks = <&qce2204_cc QCE2204_NSSCC_SRDS1_SYS_CLK>;
+				assigned-clock-rates = <25000000>;
+			};
+
+			/* Clock controller */
+			qce2204_cc: clock-controller@6 {
+				compatible = "qcom,qce2204-nsscc";
+				reg = <6>;
+				#clock-cells = <1>;
+				#reset-cells = <1>;
+				clocks = <&qce2204_xo>,
+					 <&qce2204_pcs0 QCE2204_PCS_RX_CLK>,
+					 <&qce2204_pcs0 QCE2204_PCS_TX_CLK>,
+					 <&qce2204_pcs1 QCE2204_PCS_RX_CLK>,
+					 <&qce2204_pcs1 QCE2204_PCS_TX_CLK>,
+					 <&qce2204_uniphy1_ppe_250m>,
+					 <0>,
+					 <0>,
+					 <0>,
+					 <&qce2204_uniphy1_tx_312p5m>;
+				clock-names = "xo",
+					      "uniphy0_rx",
+					      "uniphy0_tx",
+					      "uniphy1_rx",
+					      "uniphy1_tx",
+					      "uniphy1_ppe_250m",
+					      "uniphy0_rx_312p5m",
+					      "uniphy0_tx_312p5m",
+					      "uniphy1_rx_312p5m",
+					      "uniphy1_tx_312p5m";
+				assigned-clocks = <&qce2204_cc QCE2204_NSSCC_SRDS0_RX_MUX_SEL>,
+					      <&qce2204_cc QCE2204_NSSCC_SRDS0_TX_MUX_SEL>,
+					      <&qce2204_cc QCE2204_NSSCC_SRDS0_XGMII_RX_MUX_SEL>,
+					      <&qce2204_cc QCE2204_NSSCC_SRDS0_XGMII_TX_MUX_SEL>;
+				assigned-clock-parents = <&qce2204_cc QCE2204_NSSCC_MAC5_RX_DIV_CLK_SRC>,
+					      <&qce2204_cc QCE2204_NSSCC_MAC5_TX_DIV_CLK_SRC>,
+					      <&qce2204_cc QCE2204_NSSCC_MAC5_RX_DIV_CLK_SRC>,
+					      <&qce2204_cc QCE2204_NSSCC_MAC5_TX_DIV_CLK_SRC>;
+			};
+
+			switch0@7 {
+				compatible = "qcom,qce2204";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0x7>;
+				status = "okay";
+
+				clocks = <&qce2204_cc QCE2204_NSSCC_AHB_CLK>,
+					 <&qce2204_cc QCE2204_NSSCC_SWITCH_CORE_CLK>,
+					 <&qce2204_cc QCE2204_NSSCC_SWITCH_IPE_CLK>,
+					 <&qce2204_cc QCE2204_NSSCC_SWITCH_BTQ_CLK>,
+					 <&qce2204_cc QCE2204_NSSCC_SWITCH_CFG_CLK>,
+					 <&qce2204_cc QCE2204_NSSCC_APB_BRIDGE_CLK>;
+				clock-names = "ahb",
+					      "core",
+					      "ipe",
+					      "btq",
+					      "cfg",
+					      "apb";
+				resets = <&qce2204_cc QCE2204_NSSCC_SWITCH_CORE_BCR>;
+				reset-names = "core";
+
+				ports {
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					port@0 {
+						reg = <0>;
+						label = "cpu";
+						ethernet = <&xgmac0>;
+						dsa-tag-protocol = "qca_8021q";
+						phy-mode = "10gbase-r";
+						pcsphy-handle = <&qce2204_pcs1>;
+						clocks = <&qce2204_cc QCE2204_NSSCC_MAC0_TX_CLK>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC0_RX_CLK>;
+						clock-names = "tx",
+							      "rx";
+						resets = <&qce2204_cc QCE2204_NSSCC_MAC0_TX_ARES>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC0_RX_ARES>;
+						reset-names = "tx",
+							      "rx";
+						fixed-link {
+							speed = <10000>;
+							full-duplex;
+							pause;
+						};
+					};
+
+					port@1 {
+						reg = <1>;
+						label = "lan1";
+						phy-handle = <&phy0>;
+						phy-mode = "internal";
+						clocks = <&qce2204_cc QCE2204_NSSCC_MAC1_TX_CLK>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC1_RX_CLK>;
+						clock-names = "tx",
+							      "rx";
+						resets = <&qce2204_cc QCE2204_NSSCC_MAC1_TX_ARES>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC1_RX_ARES>;
+						reset-names = "tx",
+							      "rx";
+					};
+
+					port@2 {
+						reg = <2>;
+						label = "lan2";
+						phy-handle = <&phy1>;
+						phy-mode = "internal";
+						clocks = <&qce2204_cc QCE2204_NSSCC_MAC2_TX_CLK>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC2_RX_CLK>;
+						clock-names = "tx",
+							      "rx";
+						resets = <&qce2204_cc QCE2204_NSSCC_MAC2_TX_ARES>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC2_RX_ARES>;
+						reset-names = "tx",
+							      "rx";
+					};
+
+					port@3 {
+						reg = <3>;
+						label = "lan3";
+						phy-handle = <&phy2>;
+						phy-mode = "internal";
+						clocks = <&qce2204_cc QCE2204_NSSCC_MAC3_TX_CLK>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC3_RX_CLK>;
+						clock-names = "tx",
+							      "rx";
+						resets = <&qce2204_cc QCE2204_NSSCC_MAC3_TX_ARES>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC3_RX_ARES>;
+						reset-names = "tx",
+							      "rx";
+					};
+
+					port@4 {
+						reg = <4>;
+						label = "lan4";
+						phy-handle = <&phy3>;
+						phy-mode = "internal";
+						clocks = <&qce2204_cc QCE2204_NSSCC_MAC4_TX_CLK>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC4_RX_CLK>;
+						clock-names = "tx",
+							      "rx";
+						resets = <&qce2204_cc QCE2204_NSSCC_MAC4_TX_ARES>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC4_RX_ARES>;
+						reset-names = "tx",
+							      "rx";
+					};
+
+					port@5 {
+						reg = <5>;
+						label = "lan5";
+						phy-handle = <&phy5>;
+						pcsphy-handle = <&qce2204_pcs0>;
+						phy-mode = "usxgmii";
+						clocks = <&qce2204_cc QCE2204_NSSCC_MAC5_TX_CLK>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC5_RX_CLK>;
+						clock-names = "tx",
+							      "rx";
+						resets = <&qce2204_cc QCE2204_NSSCC_MAC5_TX_ARES>,
+							 <&qce2204_cc QCE2204_NSSCC_MAC5_RX_ARES>;
+						reset-names = "tx",
+							      "rx";
+					};
+				};
+			};
+
+			phy4: ethernet-phy@8 {
+				reg = <8>;
+				compatible = "ethernet-phy-ieee802.3-c45";
+			};
+
+			/* Laguna pluggable module on QCE2204 port5 */
+			phy5: ethernet-phy@12 {
+				reg = <12>;
+				compatible = "ethernet-phy-ieee802.3-c45";
+			};
+		};
+
+		ess-instance {
+			num_devices = <0x2>;
+
+			ess_switch: ess-switch@3a000000 {
+				switch_lan_bmp = <0x22>; /* lan port bitmap */
+				switch_wan_bmp = <0x40>; /* wan port bitmap */
+				switch_mac_mode = <0xe>; /* 10gbase-r for connection with qce2204 */
+				switch_mac_mode1 = <0xd>; /* USXGMII for Laguna PHY */
+				switch_mac_mode2 = <0xff>;
+
+				qcom,port_phyinfo {
+					port@0 {
+						port_id = <1>;
+						forced-speed = <10000>;
+						forced-duplex = <1>;
+						switch_external {
+							switch_handle = <&switch1>;
+							switch_cpu_port = <0>;
+						};
+						fixed-link {
+							speed = <10000>;
+							full-duplex;
+							pause;
+						};
+					};
+					port@4 {
+						port_id = <5>;
+						phy_address = <8>;
+						phy-handle = <&phy4>;
+						phy-mode = "usxgmii";
+						ethernet-phy-ieee802.3-c45;
+					};
+					port@5 {
+						port_id = <6>;
+						forced-speed = <10000>;
+						forced-duplex = <1>;
+						fixed-link {
+							speed = <10000>;
+							full-duplex;
+							pause;
+						};
+					};
+				};
+			};
+
+			switch1: ess-switch1@1 {
+				compatible = "qcom,ess-switch-qce22xx";
+				reg = <0x7>;
+				device_id = <1>;
+				switch_access_mode = "mdio";
+				mdio-bus = <&mdio>;
+				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
+				switch_lan_bmp = <0x3e>; /* lan port bitmap */
+				switch_wan_bmp = <0x0>;  /* wan port bitmap */
+				switch_mac_mode = <0xe>; /* 10gbase-r for connection with IPQ5210 */
+				switch_mac_mode1 = <0xd>; /* USXGMII for Laguna pluggable module */
+
+				qcom,port_phyinfo {
+					port@0 {
+						port_id = <0>;
+						forced-speed = <10000>;
+						forced-duplex = <1>;
+					};
+					port@1 {
+						port_id = <1>;
+						phy_address = <0>;
+						ethernet-phy-ieee802.3-c45;
+					};
+					port@2 {
+						port_id = <2>;
+						phy_address = <1>;
+						ethernet-phy-ieee802.3-c45;
+					};
+					port@3 {
+						port_id = <3>;
+						phy_address = <2>;
+						ethernet-phy-ieee802.3-c45;
+					};
+					port@4 {
+						port_id = <4>;
+						phy_address = <3>;
+						ethernet-phy-ieee802.3-c45;
+					};
+					port@5 {
+						port_id = <5>;
+						phy_address = <12>;
+						ethernet-phy-ieee802.3-c45;
+					};
+				};
+			};
+		};
+
+		xgmac0: dp1 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <1>;
+			reg = <0x3a500000 0x4000>;
+			qcom,mactype = <1>;
+			local-mac-address = [000000000000];
+			qcom,mht-dev = <1>;
+			qcom,is_switch_connected = <1>;
+			qcom,ppe-offload-disabled = <1>;
+		};
+
+		dp2 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <5>;
+			reg = <0x3a504000 0x4000>;
+			qcom,mactype = <1>;
+			local-mac-address = [000000000000];
+			qcom,ppe-offload-disabled = <0>;
+			pinctrl-0 = <&pps_state>;
+			pinctrl-names = "default";
+			interrupts = <GIC_SPI 359 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "pps_in";
+			clocks = <&nsscc NSS_CC_XGMAC1_PTP_REF_CLK>;
+			clock-names = "ptp";
+		};
+
+		dp3 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <6>;
+			reg = <0x3a508000 0x4000>;
+			qcom,mactype = <1>;
+			local-mac-address = [000000000000];
+			qcom,ppe-offload-disabled = <0>;
+			qcom,gem_port = <1>;
+			clocks = <&nsscc NSS_CC_XGMAC2_PTP_REF_CLK>;
+			clock-names = "ptp";
+		};
 	};
 };
 
@@ -27,6 +511,22 @@
 		drive-strength = <6>;
 		bias-pull-down;
 		output-low;
+	};
+
+	mdio_slv_pins: mdio-slv-state {
+		mux_0 {
+			pins = "gpio31";
+			function = "mdc_slv0";
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+
+		mux_1 {
+			pins = "gpio33";
+			function = "mdio_slv0";
+			drive-strength = <6>;
+			bias-pull-up;
+		};
 	};
 };
 
