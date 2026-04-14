@@ -19,6 +19,10 @@
 	model = "Qualcomm Technologies, Inc. IPQ5424 RDP492";
 	compatible = "qcom,ipq5424-rdp492", "qcom,ipq5424";
 
+	chosen {
+		bootargs-append = " tz_log.paniconaccessviolation=0";
+	};
+
 	reserved-memory {
 		#address-cells = <2>;
 		#size-cells = <2>;
