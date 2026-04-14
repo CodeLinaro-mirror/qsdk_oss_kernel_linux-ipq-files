@@ -58,43 +58,49 @@
 
 #define SW_TYPE_SEC_DATA			0x2B
 
-#ifdef CONFIG_QCOM_TMELCOM
-enum sw_types {
-	SW_TYPE_DEFAULT		=	0xFF,
-	SW_TYPE_TZ		=	0x7,
-	SW_TYPE_APPSBL		=	0x9,
-	SW_TYPE_HLOS		=	0x71,
-	SW_TYPE_DEVCFG		=	0x5,
-	SW_TYPE_TME		=	0x73,
-	SW_TYPE_XBL_SC		=	0x36,
-	SW_TYPE_XBL_CFG		=	0x25,
-	SW_TYPE_ATF		=	0x1E,
-	SW_TYPR_ROOTFS		=	0x67,
-	SW_TYPE_Q6_ROOTPD	=	0xD,
-	SW_TYPE_USERPD_WDT	=	0x12,
-	SW_TYPE_USERPD_OEM	=	0x63,
-	SW_TYPE_IU_FW		=	0x2C,
-
-};
-
-u32 sw_id_list[] = {SW_TYPE_TME, SW_TYPE_XBL_SC, SW_TYPE_XBL_CFG,
-		    SW_TYPE_DEVCFG, SW_TYPE_TZ, SW_TYPE_ATF, SW_TYPE_APPSBL,
-		    SW_TYPE_HLOS, SW_TYPR_ROOTFS, SW_TYPE_Q6_ROOTPD,
-		    SW_TYPE_USERPD_WDT, SW_TYPE_USERPD_OEM, SW_TYPE_IU_FW};
-#else
 enum sw_types {
 	SW_TYPE_DEFAULT		=	0xFF,
 	SW_TYPE_SBL		=	0x0,
 	SW_TYPE_TZ		=	0x7,
 	SW_TYPE_APPSBL		=	0x9,
 	SW_TYPE_HLOS		=	0x17,
+	SW_TYPE_HLOS_TMEL	=	0x71,
 	SW_TYPE_RPM		=	0xA,
 	SW_TYPE_DEVCFG		=	0x5,
 	SW_TYPE_APDP		=	0x200,
+	SW_TYPE_TME		=	0x73,
+	SW_TYPE_XBL_SC		=	0x36,
+	SW_TYPE_XBL_CFG		=	0x25,
+	SW_TYPE_ATF		=	0x1E,
+	SW_TYPE_ROOTFS		=	0x67,
+	SW_TYPE_Q6_ROOTPD	=	0xD,
+	SW_TYPE_USERPD_WDT	=	0x12,
+	SW_TYPE_USERPD_OEM	=	0x63,
+	SW_TYPE_IU_FW		=	0x2C,
+	SW_TYPE_UBOOT_SPL	=	0x0,
+	SW_TYPE_QCLIB_DDR	=	0x41,
+	SW_TYPE_CDSP		=	0x17,
+	SW_TYPE_PRIME_FW	=	0xC3,
+	SW_TYPE_PRIME_MODEL	=	0xC4,
+	SW_TYPE_QCCONFIG	=	0x25,
+	SW_TYPE_OPTEE		=	0xCC,
+	SW_TYPE_Q6_CDSP_DTB	=	0x52,
 };
 
+/* Marina (IPQ5424) SWIDs */
+static u32 sw_id_list_ipq5424[] = {SW_TYPE_TME, SW_TYPE_XBL_SC, SW_TYPE_XBL_CFG,
+			SW_TYPE_DEVCFG, SW_TYPE_TZ, SW_TYPE_ATF, SW_TYPE_APPSBL,
+			SW_TYPE_HLOS_TMEL, SW_TYPE_ROOTFS, SW_TYPE_Q6_ROOTPD,
+			SW_TYPE_USERPD_WDT, SW_TYPE_USERPD_OEM, SW_TYPE_IU_FW};
+
+/* Juhu (IPQ9650) SWIDs */
+static u32 sw_id_list_ipq9650[] = {SW_TYPE_APPSBL, SW_TYPE_HLOS_TMEL, SW_TYPE_TME,
+			SW_TYPE_ATF, SW_TYPE_ROOTFS, SW_TYPE_UBOOT_SPL,
+			SW_TYPE_QCLIB_DDR, SW_TYPE_CDSP, SW_TYPE_PRIME_FW,
+			SW_TYPE_PRIME_MODEL, SW_TYPE_QCCONFIG, SW_TYPE_OPTEE, SW_TYPE_Q6_CDSP_DTB};
+
+/* For non-TMELCOM targets*/
 u32 sw_id_list[] = {};
-#endif
 
 static int gl_version_enable;
 static int version_commit_enable;
@@ -112,14 +118,24 @@ enum qti_sec_img_auth_args {
 struct qfprom_node_cfg {
 	bool is_rlbk_support;
 	u32 secure_boot_fuse_addr;
+	u32 *sw_id_list;
+	size_t sw_id_list_size;
+	struct device_attribute *qfprom_attrs;
+	int qfprom_attrs_count;
 };
 
-static const struct qfprom_node_cfg *global_qfprom_cfg;
-
-static int qcom_qfprom_show_authenticate_tmel(const struct qfprom_node_cfg *cfg)
+static int qcom_qfprom_show_authenticate_tmel(struct device *dev)
 {
 	int ret;
 	struct tmel_fuse_payload *fuse = NULL;
+	const struct qfprom_node_cfg *cfg;
+
+	if (!dev) {
+		pr_err("Invalid device\n");
+		return -EINVAL;
+	}
+
+	cfg = dev_get_drvdata(dev);
 
 	if (!cfg) {
 		pr_err("Invalid configuration\n");
@@ -159,7 +175,7 @@ qfprom_show_authenticate(struct device *dev,
 	if (qcom_qfprom_show_auth_available())
 		ret = qcom_qfprom_show_authenticate();
 	else
-		ret = qcom_qfprom_show_authenticate_tmel(global_qfprom_cfg);
+		ret = qcom_qfprom_show_authenticate_tmel(dev);
 
 	if (ret < 0)
 		return ret;
@@ -197,13 +213,36 @@ int write_version(struct device *dev, uint32_t type, uint32_t version)
 	if (qcom_qfrom_fuse_row_write_available()) {
 		ret = qcom_qfprom_write_version(type, version, qfprom_ret_ptr);
 	} else {
-		id_list = kzalloc(sizeof(sw_id_list), GFP_KERNEL);
-		if (!id_list)
-		    return -ENOMEM;
+		const struct qfprom_node_cfg *cfg;
 
-		memcpy(id_list, sw_id_list, sizeof(sw_id_list));
-		ret = tmelcomm_secboot_update_arb_version_list(id_list,
-							       sizeof(sw_id_list));
+		cfg = dev_get_drvdata(dev);
+		if (!cfg) {
+			pr_err("Invalid configuration\n");
+			ret = -EINVAL;
+			dma_unmap_single(dev, qfprom_ret_ptr,
+					 sizeof(*qfprom_api_status), DMA_FROM_DEVICE);
+			goto err_write;
+		}
+
+		/* Get sw_id_list from struct */
+		if (!cfg->sw_id_list || cfg->sw_id_list_size == 0) {
+			pr_err("sw_id_list not configured for this platform\n");
+			ret = -ENODEV;
+			dma_unmap_single(dev, qfprom_ret_ptr,
+					 sizeof(*qfprom_api_status), DMA_FROM_DEVICE);
+			goto err_write;
+		}
+
+		id_list = kzalloc(cfg->sw_id_list_size, GFP_KERNEL);
+		if (!id_list) {
+			dma_unmap_single(dev, qfprom_ret_ptr,
+					 sizeof(*qfprom_api_status), DMA_FROM_DEVICE);
+			ret = -ENOMEM;
+			goto err_write;
+		}
+		memcpy(id_list, cfg->sw_id_list, cfg->sw_id_list_size);
+		ret = tmelcomm_secboot_update_arb_version_list(id_list, cfg->sw_id_list_size);
+		kfree(id_list);
 	}
 
 	dma_unmap_single(dev, qfprom_ret_ptr,
@@ -329,7 +368,6 @@ err_generic:
 	return ret;
 }
 
-#ifndef CONFIG_QCOM_TMELCOM
 static ssize_t
 show_sbl_version(struct device *dev,
 		 struct device_attribute *attr,
@@ -409,7 +447,7 @@ store_apdp_version(struct device *dev,
 {
 	return generic_version(dev, buf, SW_TYPE_APDP, 2, count);
 }
-#else
+
 static ssize_t
 show_tmel_version(struct device *dev,
 		  struct device_attribute *attr,
@@ -475,6 +513,78 @@ show_iu_fw_version(struct device *dev,
 }
 
 static ssize_t
+show_rootfs_version(struct device *dev,
+		    struct device_attribute *attr,
+		    char *buf)
+{
+	return generic_version(dev, buf, SW_TYPE_ROOTFS, 1, 0);
+}
+
+static ssize_t
+show_optee_version(struct device *dev,
+		   struct device_attribute *attr,
+		   char *buf)
+{
+	return generic_version(dev, buf, SW_TYPE_OPTEE, 1, 0);
+}
+
+static ssize_t
+show_uboot_spl_version(struct device *dev,
+		       struct device_attribute *attr,
+		       char *buf)
+{
+	return generic_version(dev, buf, SW_TYPE_UBOOT_SPL, 1, 0);
+}
+
+static ssize_t
+show_qclib_ddr_version(struct device *dev,
+		       struct device_attribute *attr,
+		       char *buf)
+{
+	return generic_version(dev, buf, SW_TYPE_QCLIB_DDR, 1, 0);
+}
+
+static ssize_t
+show_qcconfig_version(struct device *dev,
+		      struct device_attribute *attr,
+		      char *buf)
+{
+	return generic_version(dev, buf, SW_TYPE_QCCONFIG, 1, 0);
+}
+
+static ssize_t
+show_cdsp_version(struct device *dev,
+		  struct device_attribute *attr,
+		  char *buf)
+{
+	return generic_version(dev, buf, SW_TYPE_CDSP, 1, 0);
+}
+
+static ssize_t
+show_q6_cdsp_dtb_version(struct device *dev,
+			 struct device_attribute *attr,
+			 char *buf)
+{
+	return generic_version(dev, buf, SW_TYPE_Q6_CDSP_DTB, 1, 0);
+}
+
+static ssize_t
+show_prime_fw_version(struct device *dev,
+		      struct device_attribute *attr,
+		      char *buf)
+{
+	return generic_version(dev, buf, SW_TYPE_PRIME_FW, 1, 0);
+}
+
+static ssize_t
+show_prime_model_version(struct device *dev,
+			 struct device_attribute *attr,
+			 char *buf)
+{
+	return generic_version(dev, buf, SW_TYPE_PRIME_MODEL, 1, 0);
+}
+
+static ssize_t
 store_read_commit_version(struct device *dev, struct device_attribute *attr,
 			  const char *buf, size_t count)
 {
@@ -494,7 +604,6 @@ store_read_commit_version(struct device *dev, struct device_attribute *attr,
 			 type, version);
 	return count;
 }
-#endif
 
 static ssize_t
 show_devcfg_version(struct device *dev,
@@ -526,6 +635,14 @@ show_hlos_version(struct device *dev,
 		  char *buf)
 {
 	return generic_version(dev, buf, SW_TYPE_HLOS, 1, 0);
+}
+
+static ssize_t
+show_hlos_version_tmel(struct device *dev,
+		       struct device_attribute *attr,
+		       char *buf)
+{
+	return generic_version(dev, buf, SW_TYPE_HLOS_TMEL, 1, 0);
 }
 
 static ssize_t
@@ -1704,41 +1821,17 @@ out:
 static struct device_attribute sec_dat_attr =
 	__ATTR(sec_dat, 0200, NULL, store_sec_dat);
 
-static const struct qfprom_node_cfg ipq9574_qfprom_node_cfg = {
-	.is_rlbk_support	=	true,
-	.secure_boot_fuse_addr	=	0,
-};
-
-static const struct qfprom_node_cfg ipq5210_qfprom_node_cfg = {
-	.is_rlbk_support	=	false,
-	.secure_boot_fuse_addr	=	SECURE_BOOT_FUSE_ADDR_IPQ5210,
-};
-
-static const struct qfprom_node_cfg ipq5332_qfprom_node_cfg = {
-	.is_rlbk_support	=	true,
-	.secure_boot_fuse_addr	=	0,
-};
-
-static const struct qfprom_node_cfg ipq5424_qfprom_node_cfg = {
-	.is_rlbk_support	=	false,
-	.secure_boot_fuse_addr	=	SECURE_BOOT_FUSE_ADDR_IPQ5424,
-};
-
-static const struct qfprom_node_cfg ipq9650_qfprom_node_cfg = {
-	.is_rlbk_support	=	false,
-	.secure_boot_fuse_addr	=	SECURE_BOOT_FUSE_ADDR_IPQ9650,
-};
-
 /*
  * Do not change the order of attributes.
  * New types should be added at the end
  */
-#ifdef CONFIG_QCOM_TMELCOM
-static struct device_attribute qfprom_attrs[] = {
+
+/* Marina (IPQ5424) specific sysfs attributes (TMELCOM) */
+static struct device_attribute qfprom_attrs_ipq5424[] = {
 	__ATTR(authenticate, 0444, qfprom_show_authenticate, NULL),
 	__ATTR(tz_version, 0444, show_tz_version, NULL),
 	__ATTR(appsbl_version, 0444, show_appsbl_version, NULL),
-	__ATTR(hlos_version, 0444, show_hlos_version, NULL),
+	__ATTR(hlos_version, 0444, show_hlos_version_tmel, NULL),
 	__ATTR(devcfg_version, 0444, show_devcfg_version, NULL),
 	__ATTR(tmel_version, 0444, show_tmel_version, NULL),
 	__ATTR(xbl_sc_version, 0444, show_xbl_sc_version, NULL),
@@ -1750,8 +1843,30 @@ static struct device_attribute qfprom_attrs[] = {
 	__ATTR(iu_fw_version, 0444, show_iu_fw_version, NULL),
 	__ATTR(read_version, 0200, NULL, store_read_commit_version),
 	__ATTR(version_commit, 0200, NULL, store_version_commit),
+	__ATTR(rootfs_version, 0444, show_rootfs_version, NULL),
 };
-#else
+
+/* Juhu (IPQ9650) specific sysfs attributes (TMELCOM) */
+static struct device_attribute qfprom_attrs_ipq9650[] = {
+	__ATTR(appsbl_version, 0444, show_appsbl_version, NULL),
+	__ATTR(hlos_version, 0444, show_hlos_version_tmel, NULL),
+	__ATTR(tmel_version, 0444, show_tmel_version, NULL),
+	__ATTR(atf_version, 0444, show_atf_version, NULL),
+	__ATTR(rootfs_version, 0444, show_rootfs_version, NULL),
+	__ATTR(uboot_spl_version, 0444, show_uboot_spl_version, NULL),
+	__ATTR(qclib_ddr_version, 0444, show_qclib_ddr_version, NULL),
+	__ATTR(qcconfig_version, 0444, show_qcconfig_version, NULL),
+	__ATTR(cdsp_version, 0444, show_cdsp_version, NULL),
+	__ATTR(q6_cdsp_dtb_version, 0444, show_q6_cdsp_dtb_version, NULL),
+	__ATTR(prime_fw_version, 0444, show_prime_fw_version, NULL),
+	__ATTR(prime_model_version, 0444, show_prime_model_version, NULL),
+	__ATTR(optee_version, 0444, show_optee_version, NULL),
+	__ATTR(authenticate, 0444, qfprom_show_authenticate, NULL),
+	__ATTR(read_version, 0200, NULL, store_read_commit_version),
+	__ATTR(version_commit, 0200, NULL, store_version_commit),
+};
+
+/* sysfs attributes (non-TMELCOM) */
 static struct device_attribute qfprom_attrs[] = {
 	__ATTR(authenticate, 0444, qfprom_show_authenticate,
 					NULL),
@@ -1773,7 +1888,51 @@ static struct device_attribute qfprom_attrs[] = {
 					store_version_commit),
 
 };
-#endif
+
+static const struct qfprom_node_cfg ipq9574_qfprom_node_cfg = {
+	.is_rlbk_support	=	true,
+	.secure_boot_fuse_addr	=	0,
+	.sw_id_list		=	sw_id_list,
+	.sw_id_list_size	=	ARRAY_SIZE(sw_id_list),
+	.qfprom_attrs		=	qfprom_attrs,
+	.qfprom_attrs_count	=	ARRAY_SIZE(qfprom_attrs),
+};
+
+static const struct qfprom_node_cfg ipq5210_qfprom_node_cfg = {
+	.is_rlbk_support	=	false,
+	.secure_boot_fuse_addr	=	SECURE_BOOT_FUSE_ADDR_IPQ5210,
+	.sw_id_list		=	sw_id_list,
+	.sw_id_list_size	=	sizeof(sw_id_list),
+	.qfprom_attrs		=	qfprom_attrs,
+	.qfprom_attrs_count	=	ARRAY_SIZE(qfprom_attrs),
+};
+
+static const struct qfprom_node_cfg ipq5332_qfprom_node_cfg = {
+	.is_rlbk_support	=	true,
+	.secure_boot_fuse_addr	=	0,
+	.sw_id_list		=	sw_id_list,
+	.sw_id_list_size	=	ARRAY_SIZE(sw_id_list),
+	.qfprom_attrs		=	qfprom_attrs,
+	.qfprom_attrs_count	=	ARRAY_SIZE(qfprom_attrs),
+};
+
+static const struct qfprom_node_cfg ipq5424_qfprom_node_cfg = {
+	.is_rlbk_support	=	false,
+	.secure_boot_fuse_addr	=	SECURE_BOOT_FUSE_ADDR_IPQ5424,
+	.sw_id_list		=	sw_id_list_ipq5424,
+	.sw_id_list_size	=	sizeof(sw_id_list_ipq5424),
+	.qfprom_attrs		=	qfprom_attrs_ipq5424,
+	.qfprom_attrs_count	=	ARRAY_SIZE(qfprom_attrs_ipq5424),
+};
+
+static const struct qfprom_node_cfg ipq9650_qfprom_node_cfg = {
+	.is_rlbk_support	=	false,
+	.secure_boot_fuse_addr	=	SECURE_BOOT_FUSE_ADDR_IPQ9650,
+	.sw_id_list		=	sw_id_list_ipq9650,
+	.sw_id_list_size	=	sizeof(sw_id_list_ipq9650),
+	.qfprom_attrs		=	qfprom_attrs_ipq9650,
+	.qfprom_attrs_count	=	ARRAY_SIZE(qfprom_attrs_ipq9650),
+};
 
 static struct bus_type qfprom_subsys = {
 	.name = "qfprom",
@@ -1792,10 +1951,10 @@ static int __init qfprom_create_files(int size, int16_t sw_bitmap,
 	int err;
 	int sw_bit;
 	/* authenticate sysfs entry is mandatory */
-	err = device_create_file(&device_qfprom, &qfprom_attrs[0]);
+	err = device_create_file(&device_qfprom, &cfg->qfprom_attrs[0]);
 	if (err) {
 		pr_err("%s: device_create_file(%s)=%d\n",
-			__func__, qfprom_attrs[0].attr.name, err);
+			__func__, cfg->qfprom_attrs[0].attr.name, err);
 		return err;
 	}
 
@@ -1803,8 +1962,8 @@ static int __init qfprom_create_files(int size, int16_t sw_bitmap,
 		return 0;
 
 	for (i = 1; i < size; i++) {
-		if(strncmp(qfprom_attrs[i].attr.name, "version_commit",
-			   strlen(qfprom_attrs[i].attr.name))) {
+		if (strncmp(cfg->qfprom_attrs[i].attr.name, "version_commit",
+			   strlen(cfg->qfprom_attrs[i].attr.name))) {
 			/*
 			* Following is the BitMap adapted:
 			* SBL:0 TZ:1 APPSBL:2 HLOS:3 RPM:4. New types should
@@ -1816,17 +1975,17 @@ static int __init qfprom_create_files(int size, int16_t sw_bitmap,
 				if (!(sw_bitmap & (1 << sw_bit)))
 					break;
 			}
-			err = device_create_file(&device_qfprom, &qfprom_attrs[i]);
+			err = device_create_file(&device_qfprom, &cfg->qfprom_attrs[i]);
 			if (err) {
 				pr_err("%s: device_create_file(%s)=%d\n",
-					__func__, qfprom_attrs[i].attr.name, err);
+					__func__, cfg->qfprom_attrs[i].attr.name, err);
 				return err;
 			}
 		} else if (version_commit_enable) {
-			err = device_create_file(&device_qfprom, &qfprom_attrs[i]);
+			err = device_create_file(&device_qfprom, &cfg->qfprom_attrs[i]);
 			if (err) {
 				pr_err("%s: device_create_file(%s)=%d\n",
-					__func__, qfprom_attrs[i].attr.name, err);
+					__func__, cfg->qfprom_attrs[i].attr.name, err);
 				return err;
 			}
 		}
@@ -1900,8 +2059,6 @@ static int qfprom_probe(struct platform_device *pdev)
 		return err;
 	}
 
-	global_qfprom_cfg = cfg;
-
 	err = device_register(&device_qfprom);
 	if (err) {
 		pr_err("Could not register device %s, err=%d\n",
@@ -1910,6 +2067,8 @@ static int qfprom_probe(struct platform_device *pdev)
 		return err;
 	}
 
+	dev_set_drvdata(&device_qfprom, (void *)cfg);
+
 	/*
 	 * Registering sec_auth under "/sys/sec_authenticate"
 	   only if board is secured
@@ -1917,7 +2076,7 @@ static int qfprom_probe(struct platform_device *pdev)
 	if (qcom_qfprom_show_auth_available())
 		ret = qcom_qfprom_show_authenticate();
 	else
-		ret = qcom_qfprom_show_authenticate_tmel(global_qfprom_cfg);
+		ret = qcom_qfprom_show_authenticate_tmel(&device_qfprom);
 
 	if (ret < 0)
 		return ret;
@@ -1992,7 +2151,7 @@ static int qfprom_probe(struct platform_device *pdev)
 
 	/* Error values are printed in qfprom_create_files API. Skipping the
 	   return value check to proceed with creating the next sysfs entry */
-	err = qfprom_create_files(ARRAY_SIZE(qfprom_attrs), sw_bitmap, cfg);
+	err = qfprom_create_files(cfg->qfprom_attrs_count, sw_bitmap, cfg);
 	if (err) {
 		pr_err("%s: device_create_file with error %d\n",
 			__func__, err);
