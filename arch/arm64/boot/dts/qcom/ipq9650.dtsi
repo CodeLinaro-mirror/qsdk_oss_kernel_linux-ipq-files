@@ -2991,7 +2991,7 @@
 							group@0 {
 								ucast_queue = <40>;
 								ucast_loop_pri = <32>;
-								ucast_max_pri = <8>;
+								ucast_max_pri = <16>;
 								mcast_queue = <292>;
 								mcast_loop_pri = <4>;
 								cfg = <10 0 40 0 40>;
