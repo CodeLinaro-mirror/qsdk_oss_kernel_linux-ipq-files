@@ -47,13 +47,13 @@
 	 * |       320 KB not-reserved, used by linux        |
 	 * +--------+--------------+-------------------------+
 	 * | WLAN   |              |                         |
-	 * |   Q6   |  0x4A900000  |          20MB           |
+	 * |   Q6   |  0x4A900000  |          10MB           |
 	 * +--------+--------------+-------------------------+
-	 * |  QDSS  |  0x4BD00000  |           1MB           |
+	 * | Q6DATA |  0x4B300000  |          10MB           |
 	 * +--------+--------------+-------------------------+
-	 * |  WKK0  |  0x4BE00000  |          12MB           |
+	 * |  WKK0  |  0x4BD00000  |          12MB           |
 	 * +--------+--------------+-------------------------+
-	 * |       17 MB not-reserved, used by linux         |
+	 * |       18 MB not-reserved, used by linux         |
 	 * +--------+--------------+-------------------------+
 	 * |  MLO   |  0x4DB00000  |           5MB           |
 	 * +--------+--------------+-------------------------+
@@ -85,28 +85,15 @@
 
 		q6_region: wcnss@4a900000 {
 			no-map;
-			reg = <0x0 0x4A900000 0x0 0x1400000>;
+			reg = <0x0 0x4A900000 0x0 0xa00000>;
 		};
-
-		m3_dump: m3_dump@0x4be00000 {
+		q6_ipq5332_data: q6_ipq5332_data@4b300000 {
 			no-map;
-			reg = <0x0 0x4be00000 0x0 0x100000>;
-			status = "disabled";
+			reg = <0x0 0x4b300000 0x0 0xa00000>;
 		};
-
-		q6_etr_region: q6_etr_dump@1 {
+		qcn9224_pcie0: qcn9224_pcie0@4bd00000 {
 			no-map;
-			reg = <0x0 0x4bd00000 0x0 0x100000>;
-		};
-
-		q6_caldb_region:q6_caldb_region@1 {
-			no-map;
-			status = "disabled";
-		};
-
-		qcn9224_pcie0: qcn9224_pcie0@4be00000 {
-			no-map;
-			reg = <0x0 0x4be00000 0x0 0xc00000>;
+			reg = <0x0 0x4bd00000 0x0 0xc00000>;
 		};
 
 		mlo_global_mem0: mlo_global_mem_0@0x4db00000 {
@@ -532,8 +519,10 @@
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 			memory-region = <&qcn9224_pcie0>, <&mhi_region0>, <&mlo_global_mem0>;
 			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
+#if !defined(__IPQ_MEM_PROFILE_256_MB__)
 			qcom,early_cal_enabled = "supported";
 			qcom,caldata_offset = <0x26800>;
+#endif
 #ifdef __IPQ_MEM_PROFILE_512_MB__
 			qcom,caldb_offset = <0x1400000>;
 #else
@@ -550,15 +539,19 @@
 
 				port@0 {
 					reg = <0>;
-
+#if !defined(__IPQ_MEM_PROFILE_256_MB__) && !defined(__IPQ_MEM_PROFILE_512_MB__)
 					wifi1_wsi_tx: endpoint {
 						remote-endpoint = <&wifi2_wsi_rx>;
 					};
+#else
+					wifi1_wsi_tx: endpoint {
+						remote-endpoint = <&wifi0_wsi_rx>;
+					};
+#endif
 				};
 
 				port@1 {
 					reg = <1>;
-
 					wifi1_wsi_rx: endpoint {
 						remote-endpoint = <&wifi0_wsi_tx>;
 					};
@@ -634,19 +627,12 @@
 	led-gpio = <&tlmm 36 GPIO_ACTIVE_HIGH>;
 	qcom,rproc = <&q6v5_wcss>;
 	dump-region =
-#if !defined(__IPQ_MEM_PROFILE_256_MB__)
-			<&q6_ipq5332_data>,
-#endif
-			<&mlo_global_mem0>;
+		<&q6_ipq5332_data>,
+		<&mlo_global_mem0>;
 	qcom,multipd_arch;
 	qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
-#if defined(__IPQ_MEM_PROFILE_256_MB__)
-	memory-region = <&q6_region>, <&q6_region>, <&mlo_global_mem0>;
-	memory-region-names = "q6-region", "q6-region-1", "mlo-global-mem";
-#else
 	memory-region = <&q6_region>, <&q6_ipq5332_data>, <&mlo_global_mem0>;
 	memory-region-names = "q6-region", "host-ddr-mem", "mlo-global-mem";
-#endif
 	qcom,wsi-controller;
 	qcom,board_id = <0x12>;
 	qcom,bdf-addr = <0x4B500000 0x4B500000 0x4B240000 0x0 0x0 0x0>;
@@ -661,7 +647,6 @@
 
 		port@0 {
 			reg = <0>;
-
 			wifi0_wsi_tx: endpoint {
 				remote-endpoint = <&wifi1_wsi_rx>;
 			};
@@ -669,10 +654,15 @@
 
 		port@1 {
 			reg = <1>;
-
+#if !defined(__IPQ_MEM_PROFILE_256_MB__) && !defined(__IPQ_MEM_PROFILE_512_MB__)
 			wifi0_wsi_rx: endpoint {
 				remote-endpoint = <&wifi2_wsi_tx>;
 			};
+#else
+			wifi0_wsi_rx: endpoint {
+				remote-endpoint = <&wifi1_wsi_tx>;
+			};
+#endif
 		};
 	};
 #endif
