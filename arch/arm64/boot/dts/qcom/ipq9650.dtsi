@@ -492,6 +492,32 @@
 			status = "okay";
 		};
 
+		cdsp_power: cdsp-power@4AE000 {
+			compatible = "qcom,cdsp-power";
+			reg = <0x004AE000 0x1000>,
+			      <0x26018018 0x4>;
+			reg-names = "mpm", "rscc";
+
+			interrupts-extended = <&intc GIC_SPI 65 IRQ_TYPE_EDGE_RISING>,
+					      <&ipcc IPCC_MPROC_NSP IPCC_MPROC_SIGNAL_PING
+					      IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "lpm", "dcvs";
+
+			mboxes = <&ipcc IPCC_MPROC_NSP IPCC_MPROC_SIGNAL_PING>;
+
+			qcom,smem-item = <503>;
+
+			regulators {
+				cdsp_vdd_cx: cdsp-vdd-cx {
+					regulator-name = "cdsp-vdd-cx";
+				};
+
+				cdsp_vdd_mx: cdsp-vdd-mx {
+					regulator-name = "cdsp-vdd-mx";
+				};
+			};
+		};
+
 		efuse@a4000 {
 			compatible = "qcom,qfprom";
 			reg = <0xA4000 0x739>;
