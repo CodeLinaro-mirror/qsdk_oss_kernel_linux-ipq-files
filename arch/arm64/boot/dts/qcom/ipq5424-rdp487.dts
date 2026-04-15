@@ -61,7 +61,12 @@
 
 		q6_region: wcnss@8a900000 {
 			no-map;
-			reg = <0x0 0x8a900000 0x0 0x1500000>;
+			reg = <0x0 0x8a900000 0x0 0xa00000>;
+		};
+
+		q6_ipq5424_data: q6_ipq5424_data@8b300000 {
+			no-map;
+			reg = <0x0 0x8b300000 0x0 0xb00000>;
 		};
 
 		mlo_global_mem0: mlo_global_mem_0@0 {
@@ -352,6 +357,7 @@
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 			memory-region = <&qcn9224_pcie2>, <&mhi_region2>, <&mlo_global_mem0>;
 			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
+#if !defined(__IPQ_MEM_PROFILE_256_MB__)
 			qcom,early_cal_enabled = "supported";
 			qcom,caldata_offset = <0x12000>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
@@ -360,6 +366,7 @@
 			qcom,caldb_offset = <0x1C00000>;
 #endif
 			qcom,caldb_size = <0x800000>;
+#endif
 			qcom,board_id = <0x33>;
 			qcom,wsi = <&wsi>;
 			qcom,wsi_index = <1>;
@@ -593,13 +600,8 @@
 
 &wifi0 {
 	qcom,rproc = <&q6v5_wcss>;
-#if !defined(__IPQ_MEM_PROFILE_256_MB__)
 	memory-region = <&q6_region>, <&q6_ipq5424_data>, <&mlo_global_mem0>;
 	memory-region-names = "q6-region", "host-ddr-mem", "mlo-global-mem";
-#else
-	memory-region = <&q6_region>, <&q6_region>, <&mlo_global_mem0>;
-	memory-region-names = "q6-region", "q6-region-1", "mlo-global-mem";
-#endif
 	qcom,wsi = <&wsi>;
 	qcom,wsi_index = <0>;
 	qcom,board_id = <0x12>;
