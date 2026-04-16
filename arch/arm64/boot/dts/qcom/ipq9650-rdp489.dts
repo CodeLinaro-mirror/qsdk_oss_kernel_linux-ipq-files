@@ -162,7 +162,7 @@
 			compatible = "regulator-gpio";
 			regulator-name = "vdd-cdsp-cx";
 			regulator-type = "voltage";
-			regulator-min-microvolt = <750000>;
+			regulator-min-microvolt = <735000>;
 			regulator-max-microvolt = <815000>;
 			enable-gpio = <&tlmm 20 GPIO_ACTIVE_HIGH>;
 			enable-active-high;
@@ -171,7 +171,7 @@
 			gpios-states = <0x3>;
 			states = <600000 0x0>,
 				 <660000 0x1>,
-				 <750000 0x2>,
+				 <735000 0x2>,
 				 <815000 0x3>;
 			pinctrl-0 = <&cdsp_default_state>;
 			pinctrl-names = "default";
