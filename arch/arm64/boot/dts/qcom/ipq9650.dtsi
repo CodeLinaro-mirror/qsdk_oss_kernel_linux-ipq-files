@@ -104,6 +104,7 @@
 			reg = <0x0>;
 			enable-method = "psci";
 			next-level-cache = <&L2_0>;
+			cpu-idle-states = <&little_cpu_sleep_0>;
 			clocks = <&apss_clk APSS_SILVER_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu0_opp_table>;
@@ -128,6 +129,7 @@
 			reg = <0x100>;
 			enable-method = "psci";
 			next-level-cache = <&L2_100>;
+			cpu-idle-states = <&little_cpu_sleep_0>;
 			clocks = <&apss_clk APSS_SILVER_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu0_opp_table>;
@@ -147,6 +149,7 @@
 			reg = <0x200>;
 			enable-method = "psci";
 			next-level-cache = <&L2_200>;
+			cpu-idle-states = <&little_cpu_sleep_0>;
 			clocks = <&apss_clk APSS_SILVER_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu0_opp_table>;
@@ -166,6 +169,7 @@
 			reg = <0x300>;
 			enable-method = "psci";
 			next-level-cache = <&L2_300>;
+			cpu-idle-states = <&little_cpu_sleep_0>;
 			clocks = <&apss_clk APSS_SILVER_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu0_opp_table>;
@@ -185,6 +189,7 @@
 			reg = <0x400>;
 			enable-method = "psci";
 			next-level-cache = <&L2_400>;
+			cpu-idle-states = <&big_cpu_sleep_0>;
 			clocks = <&apss_clk APSS_GOLD_CORE_CLK>;
 			clock-names = "cpu";
 			operating-points-v2 = <&cpu4_opp_table>;
@@ -220,6 +225,33 @@
 					cpu = <&CPU4>;
 				};
 			};
+		};
+
+		idle-states {
+			entry-method = "psci";
+
+			little_cpu_sleep_0: silver-c3 { /* C3 */
+				compatible = "arm,idle-state";
+				idle-state-name = "little-power-down";
+				arm,psci-suspend-param = <0x40000003>;
+				entry-latency-us = <549>;
+				exit-latency-us = <901>;
+				min-residency-us = <1774>;
+				local-timer-stop;
+				status = "disabled";
+			};
+
+			big_cpu_sleep_0: gold-c3 { /* C3 */
+				compatible = "arm,idle-state";
+				idle-state-name = "big-power-down";
+				arm,psci-suspend-param = <0x40000003>;
+				entry-latency-us = <523>;
+				exit-latency-us = <1244>;
+				min-residency-us = <2207>;
+				local-timer-stop;
+				status = "disabled";
+			};
+
 		};
 	};
 
