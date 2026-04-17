@@ -87,13 +87,20 @@ enum sw_types {
 	SW_TYPE_Q6_CDSP_DTB	=	0x52,
 };
 
-/* Marina (IPQ5424) SWIDs */
+/*
+ * In IPQ5210, TME-L uses the same sw_type 0x41 for both qclib_ddr and qcconfig.
+ * Hence, only one entry in the sw_id_list for both the components.
+ * This also means that both the components should always have the same version.
+ */
+static u32 sw_id_list_ipq5210[] = {SW_TYPE_APPSBL, SW_TYPE_HLOS, SW_TYPE_TME,
+			 SW_TYPE_ATF, SW_TYPE_ROOTFS, SW_TYPE_UBOOT_SPL,
+			 SW_TYPE_QCLIB_DDR, SW_TYPE_OPTEE};
+
 static u32 sw_id_list_ipq5424[] = {SW_TYPE_TME, SW_TYPE_XBL_SC, SW_TYPE_XBL_CFG,
 			SW_TYPE_DEVCFG, SW_TYPE_TZ, SW_TYPE_ATF, SW_TYPE_APPSBL,
 			SW_TYPE_HLOS_TMEL, SW_TYPE_ROOTFS, SW_TYPE_Q6_ROOTPD,
 			SW_TYPE_USERPD_WDT, SW_TYPE_USERPD_OEM, SW_TYPE_IU_FW};
 
-/* Juhu (IPQ9650) SWIDs */
 static u32 sw_id_list_ipq9650[] = {SW_TYPE_APPSBL, SW_TYPE_HLOS_TMEL, SW_TYPE_TME,
 			SW_TYPE_ATF, SW_TYPE_ROOTFS, SW_TYPE_UBOOT_SPL,
 			SW_TYPE_QCLIB_DDR, SW_TYPE_CDSP, SW_TYPE_PRIME_FW,
@@ -1821,12 +1828,28 @@ out:
 static struct device_attribute sec_dat_attr =
 	__ATTR(sec_dat, 0200, NULL, store_sec_dat);
 
-/*
- * Do not change the order of attributes.
- * New types should be added at the end
- */
 
-/* Marina (IPQ5424) specific sysfs attributes (TMELCOM) */
+/* sysfs attributes (TMELCOM) */
+static struct device_attribute qfprom_attrs_ipq5210[] = {
+	__ATTR(appsbl_version, 0444, show_appsbl_version, NULL),
+	__ATTR(hlos_version, 0444, show_hlos_version_tmel, NULL),
+	__ATTR(tmel_version, 0444, show_tmel_version, NULL),
+	__ATTR(atf_version, 0444, show_atf_version, NULL),
+	__ATTR(rootfs_version, 0444, show_rootfs_version, NULL),
+	__ATTR(uboot_spl_version, 0444, show_uboot_spl_version, NULL),
+	/*
+	 * For IPQ5210, qclib_ddr and qcconfig use the same sw_type 0x41.
+	 * So, qclib_ddr_version and qccconfig_version both use the same show
+	 * function show_qclib_ddr_version.
+	 */
+	__ATTR(qclib_ddr_version, 0444, show_qclib_ddr_version, NULL),
+	__ATTR(qcconfig_version, 0444, show_qclib_ddr_version, NULL),
+	__ATTR(optee_version, 0444, show_optee_version, NULL),
+	__ATTR(authenticate, 0444, qfprom_show_authenticate, NULL),
+	__ATTR(read_version, 0200, NULL, store_read_commit_version),
+	__ATTR(version_commit, 0200, NULL, store_version_commit),
+};
+
 static struct device_attribute qfprom_attrs_ipq5424[] = {
 	__ATTR(authenticate, 0444, qfprom_show_authenticate, NULL),
 	__ATTR(tz_version, 0444, show_tz_version, NULL),
@@ -1846,7 +1869,6 @@ static struct device_attribute qfprom_attrs_ipq5424[] = {
 	__ATTR(rootfs_version, 0444, show_rootfs_version, NULL),
 };
 
-/* Juhu (IPQ9650) specific sysfs attributes (TMELCOM) */
 static struct device_attribute qfprom_attrs_ipq9650[] = {
 	__ATTR(appsbl_version, 0444, show_appsbl_version, NULL),
 	__ATTR(hlos_version, 0444, show_hlos_version_tmel, NULL),
@@ -1889,22 +1911,13 @@ static struct device_attribute qfprom_attrs[] = {
 
 };
 
-static const struct qfprom_node_cfg ipq9574_qfprom_node_cfg = {
-	.is_rlbk_support	=	true,
-	.secure_boot_fuse_addr	=	0,
-	.sw_id_list		=	sw_id_list,
-	.sw_id_list_size	=	ARRAY_SIZE(sw_id_list),
-	.qfprom_attrs		=	qfprom_attrs,
-	.qfprom_attrs_count	=	ARRAY_SIZE(qfprom_attrs),
-};
-
 static const struct qfprom_node_cfg ipq5210_qfprom_node_cfg = {
 	.is_rlbk_support	=	false,
 	.secure_boot_fuse_addr	=	SECURE_BOOT_FUSE_ADDR_IPQ5210,
-	.sw_id_list		=	sw_id_list,
-	.sw_id_list_size	=	sizeof(sw_id_list),
-	.qfprom_attrs		=	qfprom_attrs,
-	.qfprom_attrs_count	=	ARRAY_SIZE(qfprom_attrs),
+	.sw_id_list		=	sw_id_list_ipq5210,
+	.sw_id_list_size	=	sizeof(sw_id_list_ipq5210),
+	.qfprom_attrs		=	qfprom_attrs_ipq5210,
+	.qfprom_attrs_count	=	ARRAY_SIZE(qfprom_attrs_ipq5210),
 };
 
 static const struct qfprom_node_cfg ipq5332_qfprom_node_cfg = {
@@ -1923,6 +1936,15 @@ static const struct qfprom_node_cfg ipq5424_qfprom_node_cfg = {
 	.sw_id_list_size	=	sizeof(sw_id_list_ipq5424),
 	.qfprom_attrs		=	qfprom_attrs_ipq5424,
 	.qfprom_attrs_count	=	ARRAY_SIZE(qfprom_attrs_ipq5424),
+};
+
+static const struct qfprom_node_cfg ipq9574_qfprom_node_cfg = {
+	.is_rlbk_support	=	true,
+	.secure_boot_fuse_addr	=	0,
+	.sw_id_list		=	sw_id_list,
+	.sw_id_list_size	=	ARRAY_SIZE(sw_id_list),
+	.qfprom_attrs		=	qfprom_attrs,
+	.qfprom_attrs_count	=	ARRAY_SIZE(qfprom_attrs),
 };
 
 static const struct qfprom_node_cfg ipq9650_qfprom_node_cfg = {
@@ -2162,9 +2184,6 @@ static int qfprom_probe(struct platform_device *pdev)
 static const struct of_device_id qcom_qfprom_dt_match[] = {
 	{ .compatible = "qcom,qfprom-sec",},
 	{
-		.compatible = "qcom,qfprom-ipq9574-sec",
-		.data = (void *)&ipq9574_qfprom_node_cfg,
-	}, {
 		.compatible = "qcom,qfprom-ipq5210-sec",
 		.data = (void *)&ipq5210_qfprom_node_cfg,
 	}, {
@@ -2173,6 +2192,9 @@ static const struct of_device_id qcom_qfprom_dt_match[] = {
 	}, {
 		.compatible = "qcom,qfprom-ipq5424-sec",
 		.data = (void *)&ipq5424_qfprom_node_cfg,
+	}, {
+		.compatible = "qcom,qfprom-ipq9574-sec",
+		.data = (void *)&ipq9574_qfprom_node_cfg,
 	}, {
 		.compatible = "qcom,qfprom-ipq9650-sec",
 		.data = (void *)&ipq9650_qfprom_node_cfg,
