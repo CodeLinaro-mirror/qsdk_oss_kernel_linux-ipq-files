@@ -194,6 +194,7 @@
 #define BYTE_SCALING_DEF		(512)
 #define MC_PROFTAG_DEF			(2)
 #define BEAT_SCALING			(64)
+#define BEAT_SCALING_BEAC		(32)
 #define LB_CNT_SHIFT			(28)
 #define LB_CNT_MASK			GENMASK(LB_CNT_SHIFT + 3, LB_CNT_SHIFT)
 #define NUM_MC_SHIFT			(10)

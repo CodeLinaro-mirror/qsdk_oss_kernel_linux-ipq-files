@@ -1873,7 +1873,11 @@ static void beac_event_enable(struct llcc_perfmon_private *llcc_priv, bool enabl
 	prof_cfg_filter = llcc_priv->port_filter_sel[FILTER_0] & (1 << EVENT_PORT_BEAC);
 	prof_cfg1_filter1 = llcc_priv->port_filter_sel[FILTER_1] & (1 << EVENT_PORT_BEAC);
 
+#ifdef CONFIG_PINCTRL_IPQ9650
+	val = val_cfg0 = val_cfg1 = (BEAT_SCALING_BEAC << BEAT_SCALING_SHIFT);
+#else
 	val = val_cfg0 = val_cfg1 = (BEAT_SCALING << BEAT_SCALING_SHIFT);
+#endif
 	mask_val = PROF_CFG_BEAT_SCALING_MASK;
 
 	if (prof_cfg_filter || prof_cfg1_filter1) {
@@ -1897,13 +1901,22 @@ static void beac_event_enable(struct llcc_perfmon_private *llcc_priv, bool enabl
 	val |= (BYTE_SCALING << BYTE_SCALING_SHIFT) | PROF_EN;
 	mask_val0 = mask_val1 = mask_val;
 	mask_val |= PROF_CFG_BYTE_SCALING_MASK | PROF_CFG_EN_MASK | BEAC_MC_PROFTAG_MASK;
+
+#ifdef CONFIG_PINCTRL_IPQ9650
+	if (!enable) {
+		val = (BYTE_SCALING_DEF << BYTE_SCALING_SHIFT) |
+			(BEAT_SCALING_BEAC << BEAT_SCALING_SHIFT) |
+			(MC_PROFTAG_DEF << MC_PROFTAG_SHIFT);
+		val_cfg0 = val_cfg1 = BEAT_SCALING_BEAC << BEAT_SCALING_SHIFT;
+	}
+#else
 	if (!enable) {
 		val = (BYTE_SCALING_DEF << BYTE_SCALING_SHIFT) |
 			(BEAT_SCALING << BEAT_SCALING_SHIFT) |
 			(MC_PROFTAG_DEF << MC_PROFTAG_SHIFT);
 		val_cfg0 = val_cfg1 = BEAT_SCALING << BEAT_SCALING_SHIFT;
 	}
-
+#endif
 	for (mc_cnt = 0; mc_cnt < llcc_priv->num_mc; mc_cnt++) {
 		offset = BEAC0_PROF_CFG0(llcc_priv->version) + mc_cnt * BEAC_INST_OFF;
 		llcc_bcast_modify(llcc_priv, offset, val_cfg0, mask_val0);
