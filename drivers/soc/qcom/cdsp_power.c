@@ -460,7 +460,7 @@ static void cdsp_dcvs_work_fn(struct work_struct *work)
 			reg = drv->vdd_cx;
 		} else if (resource_id == CDSP_RESOURCE_ID_MX) {
 			if (!drv->vdd_mx) {
-				dev_err(drv->dev, "KVP[%d]: MX rail not available on this board\n", i);
+				dev_dbg(drv->dev, "KVP[%d]: MX rail not available on this board\n", i);
 				ret = -EINVAL;
 				goto send_response;
 			}
