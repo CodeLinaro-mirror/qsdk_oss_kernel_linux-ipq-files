@@ -208,10 +208,17 @@
 		#size-cells = <2>;
 		ranges;
 
+#if defined(__IPQ_MEM_PROFILE_256_MB__)
+		bootloader@87800000 {
+			reg = <0x0 0x87800000 0x0 0x300000>;
+			no-map;
+		};
+#else
 		bootloader@87800000 {
 			reg = <0x0 0x87800000 0x0 0x400000>;
 			no-map;
 		};
+#endif
 
 		smem@87c00000 {
 			compatible = "qcom,smem";
