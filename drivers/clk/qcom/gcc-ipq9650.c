@@ -3339,7 +3339,7 @@ static struct clk_branch gcc_usb_cmn_hclk = {
 				&gcc_pcnoc_bfdcd_clk_src.clkr.hw,
 			},
 			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT,
+			.flags = CLK_SET_RATE_PARENT | CLK_IS_CRITICAL,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -3357,6 +3357,7 @@ static struct clk_branch gcc_usb_cmn_ldo_clk = {
 				&gcc_refgen_core_clk_src.clkr.hw,
 			},
 			.num_parents = 1,
+			.flags = CLK_IS_CRITICAL,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -3796,6 +3797,13 @@ static int gcc_ipq9650_probe(struct platform_device *pdev)
 	regmap = qcom_cc_map(pdev, &ipq9650_desc);
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
+
+	/* Configure QDSS_STM_CFG_RCGR to 200MHz */
+	regmap_write(regmap, 0x2d010, 0x107);
+	regmap_update_bits(regmap, 0x2d00c, BIT(0), BIT(0));
+	/* Configure QDSS_TRACECLKIN_CFG_RCGR to 300MHz */
+	regmap_write(regmap, 0x2d018, 0x107);
+	regmap_update_bits(regmap, 0x2d014, BIT(0), BIT(0));
 
 	ret = qcom_cc_really_probe(&pdev->dev, &ipq9650_desc, regmap);
 	if (ret) {
