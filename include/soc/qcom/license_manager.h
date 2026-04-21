@@ -89,6 +89,8 @@ struct lm_svc_ctx {
 	struct qmi_handle *lm_svc_hdl;
 	struct list_head clients_feature_list;
 	struct list_head soc_hw_feature_list;
+	struct list_head devices_list;     /* List of registered devices */
+	int device_count;                  /* Count of registered devices */
 	bool license_feature;
 	bool license_buf_valid;
 	void *license_buf;
@@ -97,6 +99,7 @@ struct lm_svc_ctx {
 	size_t license_buf_len;
 	bool soc_bounded;
 	bool tmel_bounded;
+	bool ep_tmel_bounded;              /* TMEL on Q6 Trestles (QMI over PCIe) */
 };
 
 enum sec_feature_status_type {
@@ -209,6 +212,13 @@ struct lm_license_check_cbor {
 	u32 buf_len;
 	u32 used_len;
 	u8 device_id;
+};
+
+struct device_info {
+	int domain_num;      /* PCIe domain number (-1 for SoC) */
+	int attach_num;      /* Sequential attach number (1, 2, 3... for PCIe devices, -1 for SoC) */
+	bool is_soc;         /* Flag to identify if this is SoC */
+	struct list_head node;
 };
 
 #define GET_FID_INFO 		_IOWR('L', 1, struct client_target_info)

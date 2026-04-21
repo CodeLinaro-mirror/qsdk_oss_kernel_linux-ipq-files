@@ -282,6 +282,15 @@ int tmelcom_qmi_get_service_info(int domain_num, u32 *service_id,
 				 u32 *service_version, u32 *qrtr_node,
 				 u32 *qrtr_port);
 
+
+/**
+ * tmelcom_qmi_is_client_ready() - Check if QMI client is ready
+ * @attach_num: Attach number of the client to check
+ *
+ * Return: true if client is connected and ready, false otherwise
+ */
+bool tmelcom_qmi_is_client_ready(int attach_num);
+
 /**
  * tmelcom_qmi_register_notifier() - Register for QMI client notifications
  * @nb: Notifier block to register

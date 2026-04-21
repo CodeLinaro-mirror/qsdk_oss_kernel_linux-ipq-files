@@ -15,7 +15,52 @@
  */
 
 #include <linux/firmware/qcom/qcom_scm.h>
+#include <linux/tmelcom_qmi.h>
+#include <soc/qcom/license_manager.h>
 #include "qwes.h"
+
+/**
+ * qwes_validate_device_id() - Validate device_id is within valid range
+ * @device_id: Device ID to validate
+ *
+ * device_id 1 = SoC (always valid)
+ * device_id 2+ = PCIe devices (valid if QMI client exists)
+ *
+ * Return: 0 if valid, -EINVAL if invalid
+ */
+static int qwes_validate_device_id(u8 device_id)
+{
+	int qmi_client_count;
+
+	if (device_id < 1) {
+		pr_err("Invalid device_id: %d (must be >= 1)\n", device_id);
+		return -EINVAL;
+	}
+
+	/* device_id 1 is always valid (SoC) */
+	if (device_id == 1)
+		return 0;
+
+	/* For PCIe devices (device_id > 1), check if QMI client exists */
+	qmi_client_count = tmelcom_qmi_get_client_count();
+
+	/* Maximum valid device_id = 1 (SoC) + qmi_client_count (PCIe devices) */
+	if (device_id > (1 + qmi_client_count)) {
+		pr_err("Invalid device_id: %d (exceeds max %d: 1 SoC + %d PCIe)\n",
+		       device_id, 1 + qmi_client_count, qmi_client_count);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/* Helper to get PCIe attach_num for device_id > 1 */
+static int qwes_get_pcie_attach_num(u8 device_id)
+{
+	if (device_id <= 1)
+		return -EINVAL;
+	return device_id - 1;
+}
 
 dev_t dev;
 static struct class *dev_class;
@@ -73,34 +118,53 @@ static long qwes_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				pr_err("Data Write : Err!\n");
 				return ret;
 			}
+
+			/* Validate device_id from userspace */
+			ret = qwes_validate_device_id(key.device_id);
+			if (ret)
+				return ret;
+
 			key_buf = kzalloc(QWES_M3_KEY_BUFF_MAX_SIZE, GFP_KERNEL);
-			if (!key_buf) {
-				pr_err("Memory allocation failed for key buffer\n");
+			if (!key_buf)
 				return -ENOMEM;
-			}
+
 			key_len = kzalloc(sizeof(u32), GFP_KERNEL);
 			if (!key_len) {
-				pr_err("Memory allocation failed for key length\n");
 				ret = -ENOMEM;
 				goto key_buf_alloc_err;
 			}
-			ret = tmelcom_init_attestation(key_buf,
-					QWES_M3_KEY_BUFF_MAX_SIZE, key_len);
-			if (ret == -EOPNOTSUPP) {
-				ret = qcom_scm_get_device_attestation_ephimeral_key(
-					key_buf, QWES_M3_KEY_BUFF_MAX_SIZE, key_len);
+
+			/* Route based on device_id */
+			if (key.device_id == 1) {
+				/* SoC device, use IPC */
+				ret = tmelcom_init_attestation(key_buf,
+								QWES_M3_KEY_BUFF_MAX_SIZE,
+								key_len);
+				if (ret == -EOPNOTSUPP)
+					ret = qcom_scm_get_device_attestation_ephimeral_key(
+							key_buf, QWES_M3_KEY_BUFF_MAX_SIZE,
+							key_len);
+			} else if (key.device_id > 1) {
+				/* PCIe device: attach_num = device_id - 1 */
+				int pcie_attach_num = qwes_get_pcie_attach_num(key.device_id);
+
+				if (pcie_attach_num < 0) {
+					pr_err("Invalid device_id: %d\n", key.device_id);
+					ret = -EINVAL;
+					goto key_len_alloc_err;
+				}
+				ret = tmelcom_qmi_init_attestation(pcie_attach_num, key_buf,
+								    QWES_M3_KEY_BUFF_MAX_SIZE,
+								    key_len);
 			}
-			if (ret) {
-				pr_err("qwes init attestation scm failed : %d\n", ret);
-				goto key_len_alloc_err;
-			}
+
 			key.len  = *key_len;
 
 			ret = copy_to_user(key.buf, key_buf, key.len);
 			if (ret) {
-                                pr_err("Error : Key buf data read failed\n");
+				pr_err("Error : Key buf data read failed\n");
 				goto key_len_alloc_err;
-                        }
+			}
 			ret = copy_to_user(argp, &key, sizeof(struct get_key));
 			if (ret) {
 				pr_err("Error : Structure get_key data read failed\n");
@@ -117,11 +181,18 @@ static long qwes_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				pr_err("Error : attest_resp structure data write failed\n");
 				return ret;
 			}
+
+			/* Validate device_id from userspace */
+			ret = qwes_validate_device_id(ar.device_id);
+			if (ret)
+				return ret;
+
 			if (ar.req_buf_len > QWES_RESP_BUFF_MAX_SIZE ||
-					ar.claim_buf_len > QWES_RESP_BUFF_MAX_SIZE) {
+			    ar.claim_buf_len > QWES_RESP_BUFF_MAX_SIZE) {
 				pr_err("Error : Requested attestation buffer is invalid\n");
 				return -EINVAL;
 			}
+
 			req_buf = kzalloc(ar.req_buf_len, GFP_KERNEL);
 			if (!req_buf) {
 				pr_err("Memory allocation failed for req buffer\n");
@@ -147,11 +218,13 @@ static long qwes_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				ret = -EINVAL;
 				goto resp_buf_alloc_err;
 			}
+
 			ret = copy_from_user(req_buf, ar.req_buf, ar.req_buf_len);
 			if (ret) {
 				pr_err("Error : attest req buf data write failed !\n");
 				goto resp_buf_alloc_err;
 			}
+
 			if(ar.claim_buf != NULL && ar.claim_buf_len > 0) {
 				claim_buf = kzalloc(ar.claim_buf_len, GFP_KERNEL);
 				if (!claim_buf) {
@@ -165,24 +238,50 @@ static long qwes_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 					goto claim_buf_alloc_err;
 				}
 			}
-			ret = tmelcom_qwes_getattestation_report(req_buf,
-				ar.req_buf_len, claim_buf, ar.claim_buf_len,
-				resp_buf, QWES_RESP_BUFF_MAX_SIZE, resp_size);
-			if (ret == -EOPNOTSUPP) {
-				ret = qcom_scm_get_device_attestation_response(req_buf,
-					ar.req_buf_len, claim_buf, ar.claim_buf_len,
-					resp_buf, QWES_RESP_BUFF_MAX_SIZE, resp_size);
+
+			/* Route based on device_id */
+			if (ar.device_id == 1) {
+				/* SoC device, use IPC */
+				ret = tmelcom_qwes_getattestation_report(req_buf,
+									  ar.req_buf_len,
+									  claim_buf,
+									  ar.claim_buf_len,
+									  resp_buf,
+									  QWES_RESP_BUFF_MAX_SIZE,
+									  resp_size);
+				if (ret == -EOPNOTSUPP)
+					ret = qcom_scm_get_device_attestation_response(
+							req_buf, ar.req_buf_len, claim_buf,
+							ar.claim_buf_len, resp_buf,
+							QWES_RESP_BUFF_MAX_SIZE, resp_size);
+			} else if (ar.device_id > 1) {
+				/* PCIe device: attach_num = device_id - 1 */
+				int pcie_attach_num = qwes_get_pcie_attach_num(ar.device_id);
+
+				if (pcie_attach_num < 0) {
+					pr_err("Invalid device_id: %d\n", ar.device_id);
+					ret = -EINVAL;
+					goto claim_buf_alloc_err;
+				}
+				ret = tmelcom_qmi_dev_attestation(pcie_attach_num, req_buf,
+								   ar.req_buf_len, claim_buf,
+								   ar.claim_buf_len, resp_buf,
+								   QWES_RESP_BUFF_MAX_SIZE,
+								   resp_size);
 			}
+
 			if (ret) {
-				pr_err("qwes attestation response scm failed : %d\n", ret);
+				pr_err("qwes attestation response failed : %d\n", ret);
 				goto claim_buf_alloc_err;
 			}
+
 			ar.resp_buf_len = *resp_size;
 			ret = copy_to_user(ar.resp_buf, resp_buf, ar.resp_buf_len);
 			if (ret) {
 				pr_err("Error : resp buf data read failed\n");
 				goto claim_buf_alloc_err;
 			}
+
 			ret = copy_to_user(argp, &ar, sizeof(ar));
 			if (ret) {
 				pr_err("Error : Structure attest_resp data read failed\n");
@@ -200,17 +299,23 @@ static long qwes_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			break;
 
 		case PROV_RESP:
-			ret =  copy_from_user(&pr ,argp, sizeof(struct prov_resp));
+			ret =  copy_from_user(&pr, argp, sizeof(struct prov_resp));
 			if (ret) {
 				pr_err("Error : prov_resp structure data write failed\n");
 				return -EINVAL;
 			}
+
+			/* Validate device_id from userspace */
+			ret = qwes_validate_device_id(pr.device_id);
+			if (ret)
+				return ret;
 
 			req_buf = kzalloc(pr.req_buf_len, GFP_KERNEL);
 			if (!req_buf) {
 				pr_err("Memory allocation failed for prov req buffer\n");
 				return -EINVAL;
 			}
+
 			resp_size = kzalloc(sizeof(u32), GFP_KERNEL);
 			if (!resp_size) {
 				pr_err("Memory allocation failed for prov resp length\n");
@@ -224,35 +329,57 @@ static long qwes_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				ret = -ENOMEM;
 				goto prov_resp_size_alloc_err;
 			}
+
 			if (pr.provreq_buf == NULL || pr.req_buf_len <= 0) {
 				pr_err("Error : prov req buf is Null !\n");
 				ret = -EINVAL;
 				goto prov_resp_buf_alloc_err;
 			}
+
 			ret = copy_from_user(req_buf, pr.provreq_buf, pr.req_buf_len);
 			if (ret) {
 				pr_err("Error : prov req buf data write failed !\n");
 				goto prov_resp_buf_alloc_err;
 			}
-			ret = tmelcom_qwes_device_provision(req_buf,
-					pr.req_buf_len, resp_buf,
-					QWES_RESP_BUFF_MAX_SIZE, resp_size);
 
-			if (ret == -EOPNOTSUPP) {
-				ret = qcom_scm_get_device_provision_response(req_buf,
-					pr.req_buf_len, resp_buf,
-					QWES_RESP_BUFF_MAX_SIZE, resp_size);
+			/* Route based on device_id */
+			if (pr.device_id == 1) {
+				/* SoC device, use IPC */
+				ret = tmelcom_qwes_device_provision(req_buf, pr.req_buf_len,
+								     resp_buf,
+								     QWES_RESP_BUFF_MAX_SIZE,
+								     resp_size);
+				if (ret == -EOPNOTSUPP)
+					ret = qcom_scm_get_device_provision_response(
+							req_buf, pr.req_buf_len, resp_buf,
+							QWES_RESP_BUFF_MAX_SIZE, resp_size);
+			} else if (pr.device_id > 1) {
+				/* PCIe device: attach_num = device_id - 1 */
+				int pcie_attach_num = qwes_get_pcie_attach_num(pr.device_id);
+
+				if (pcie_attach_num < 0) {
+					pr_err("Invalid device_id: %d\n", pr.device_id);
+					ret = -EINVAL;
+					goto prov_resp_buf_alloc_err;
+				}
+				ret = tmelcom_qmi_dev_provision(pcie_attach_num, req_buf,
+								 pr.req_buf_len, resp_buf,
+								 QWES_RESP_BUFF_MAX_SIZE,
+								 resp_size);
 			}
+
 			if (ret) {
-				pr_err("qwes provision response scm failed : %d\n", ret);
+				pr_err("qwes provision response failed : %d\n", ret);
 				goto prov_resp_buf_alloc_err;
 			}
+
 			pr.resp_buf_len = *resp_size;
 			ret = copy_to_user(pr.provresp_buf, resp_buf, *resp_size);
 			if (ret) {
 				pr_err("Error : prov resp buf data read failed\n");
 				goto prov_resp_buf_alloc_err;
 			}
+
 			ret = copy_to_user(argp, &pr, sizeof(pr));
 			if (ret) {
 				pr_err("Error : Structure prov_resp data read failed\n");
@@ -261,9 +388,9 @@ static long qwes_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		prov_resp_buf_alloc_err:
 			kfree(resp_buf);
 		prov_resp_size_alloc_err:
-                        kfree(resp_size);
-                prov_req_buf_alloc_err:
-                        kfree(req_buf);
+			kfree(resp_size);
+		prov_req_buf_alloc_err:
+			kfree(req_buf);
 			break;
 		default:
 			pr_info("Warning : Invalid Command..!\n");

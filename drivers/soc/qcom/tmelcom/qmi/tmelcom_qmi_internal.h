@@ -448,7 +448,7 @@ struct tmelcom_qmi_client {
 };
 
 /* Internal functions */
-struct tmelcom_qmi_client *tmelcom_qmi_get_client(int domain_num);
+struct tmelcom_qmi_client *tmelcom_qmi_get_client(int attach_num);
 
 /* Shared variables across compilation units */
 extern unsigned int qmi_timeout_ms;
