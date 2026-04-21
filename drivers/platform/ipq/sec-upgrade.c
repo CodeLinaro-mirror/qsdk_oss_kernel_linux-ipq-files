@@ -1389,7 +1389,7 @@ struct kobject *sec_kobj;
 		  0x8b, 0x11, 0x95, 0x14, 0x96, 0x65, 0xdc, 0x88)
 
 /* Command ID sent to the fuseipq TA */
-#define FUSEIPQ_CMD_BLOW_FUSE	0x01U
+#define FUSEIPQ_CMD_BLOW_FUSE	0x00U
 
 /*
  * TmeRegion_t - physical address range descriptor
