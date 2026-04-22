@@ -5,6 +5,7 @@
  */
 
 #include <linux/clk-provider.h>
+#include <linux/cpumask.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
@@ -430,7 +431,7 @@ static int apss_ipq9650_probe(struct platform_device *pdev)
 	struct regmap *regmap;
 	struct clk_gfm *gfm;
 	void __iomem *base;
-	int ret, i;
+	int ret, i, cpu_id = -1;
 
 	base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(base))
@@ -446,11 +447,16 @@ static int apss_ipq9650_probe(struct platform_device *pdev)
 	clk_zonda_pll_configure(&l3_pll, regmap, &l3_pll_config);
 
 	/*
-	 * Detect Cortex-A78 Gold core presence from the device tree.
+	 * Detect Cortex-A78 Gold core presence from the device tree
+	 * and check if it will be brought online (handles nosmp)
 	 */
 	a78_node = of_find_compatible_node(NULL, "cpu", "arm,cortex-a78");
 	if (a78_node) {
+		cpu_id = of_cpu_node_to_id(a78_node);
 		of_node_put(a78_node);
+	}
+
+	if (cpu_id >= 0 && cpu_present(cpu_id)) {
 		clk_zonda_pll_configure(&gold_apss_pll, regmap, &gold_apss_pll_config);
 	} else {
 		desc = &apss_silver_only_desc;
