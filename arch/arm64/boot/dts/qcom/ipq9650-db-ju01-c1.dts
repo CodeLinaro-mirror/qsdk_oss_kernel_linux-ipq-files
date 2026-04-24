@@ -176,37 +176,38 @@
 };
 
 &mdio {
-	phy-reset-gpio = <&tlmm 18 GPIO_ACTIVE_LOW>; /* Reset for QCE1204. */
+	phy-reset-gpio = <&tlmm 18 GPIO_ACTIVE_LOW>, /* Reset for QCE1204. */
+			 <&tlmm 14 GPIO_ACTIVE_LOW>; /* Reset for two QCA81XXs. */
+	phy4: ethernet-phy@8 {
+		compatible = "ethernet-phy-ieee802.3-c45";
+		reg = <8>;
+	};
+
+	phy5: ethernet-phy@c {
+		compatible = "ethernet-phy-ieee802.3-c45";
+		reg = <12>;
+	};
 };
 
 &ess_switch {
-	pinctrl-0 = <&sfp_pins>;
-	pinctrl-names = "default";
-
-	switch_mac_mode1 = <0x18>; /* mac mode for uniphy instance1 */
-	switch_mac_mode2 = <0x18>; /* mac mode for uniphy instance2 */
+	switch_mac_mode1 = <0xd>; /* mac mode for uniphy instance1 */
+	switch_mac_mode2 = <0xd>; /* mac mode for uniphy instance2 */
 
 	qcom,port_phyinfo {
 		port@4 {
 			port_id = <5>;
-			forced-speed = <25000>;
-			forced-duplex = <1>;
-			fixed-link {
-				speed = <25000>;
-				full-duplex;
-				pause;
-			};
+			phy_address = <8>;
+			phy-handle = <&phy4>;
+			phy-mode = "usxgmii";
+			ethernet-phy-ieee802.3-c45;
 		};
 
 		port@5 {
 			port_id = <6>;
-			forced-speed = <25000>;
-			forced-duplex = <1>;
-			fixed-link {
-				speed = <25000>;
-				full-duplex;
-				pause;
-			};
+			phy_address = <12>;
+			phy-handle = <&phy5>;
+			phy-mode = "usxgmii";
+			ethernet-phy-ieee802.3-c45;
 		};
 	};
 };
@@ -419,45 +420,6 @@
 			bias-pull-up;
 		};
 	};
-
-	sfp_pins: sfp-state {
-		sfp1_rx {
-			pins = "gpio46";
-			function = "rx_los10";
-			bias-disable;
-		};
-
-		sfp1_tx {
-			pins = "gpio15";
-			function = "gpio";
-			drive-strength = <8>;
-			bias-pull-down;
-			output-low;
-		};
-
-		sfp2_rx {
-			pins = "gpio45";
-			function = "rx_los20";
-			bias-disable;
-		};
-
-		sfp2_tx {
-			pins = "gpio14";
-			function = "gpio";
-			drive-strength = <8>;
-			bias-pull-down;
-			output-low;
-		};
-	};
-};
-
-&ess_uniphy {
-	assigned-clocks = <&cmn_pll IPQ9650_PCS0_CLK>,
-			  <&cmn_pll IPQ9650_PCS1_CLK>,
-			  <&cmn_pll IPQ9650_PCS2_CLK>;
-	assigned-clock-rates = <31250000>,
-			       <46875000>,
-			       <46875000>;
 };
 
 &CPU0 {
