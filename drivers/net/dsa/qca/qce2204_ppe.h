@@ -21,6 +21,9 @@ struct qce2204_priv;
 /* PPE queue scheduler priority number */
 #define QCE2204_PPE_QUEUE_SCH_PRI_NUM			8
 
+/* BM TDM offset */
+#define QCE2204_PPE_BM_TDM_OFFSET			142
+
 /* PPE CPU code num */
 #define QCE2204_PPE_CPU_CODE_NUM			256
 
@@ -642,6 +645,9 @@ struct qce2204_ppe_stp_state_cfg {
 int qce2204_ppe_stp_state_set(struct qce2204_priv *priv,
 			       u32 port_id,
 			       struct qce2204_ppe_stp_state_cfg *cfg);
+
+/* TDM depth initialization (called during reset sequence) */
+int qce2204_ppe_tdm_depth_init(struct qce2204_priv *priv);
 
 /* Port VSI Configuration */
 struct qce2204_ppe_port_vsi_cfg {

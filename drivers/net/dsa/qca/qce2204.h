@@ -63,6 +63,8 @@
 
 /* Reset names */
 #define QCE2204_RESET_CORE				"core"
+#define QCE2204_RESET_CORE_CLK				"core_clk_reset"
+#define QCE2204_RESET_CFG_CLK				"cfg_clk_reset"
 #define QCE2204_PORT_RESET_TX				"tx"
 #define QCE2204_PORT_RESET_RX				"rx"
 
@@ -194,7 +196,9 @@ struct qce2204_ppe_port {
  * @btq_clk: Switch BTQ clock
  * @cfg_clk: Switch CFG clock
  * @apb_clk: APB bridge clock
- * @core_reset: Switch core reset controller
+ * @core_reset: Switch core BCR reset controller (GCC_SWITCH_CORE_BCR)
+ * @core_clk_reset: Switch core clock reset (GCC_SWITCH_CORE_ARES)
+ * @cfg_clk_reset: Switch cfg clock reset (GCC_SWITCH_CFG_ARES)
  * @port_clks: Per-port clock resources
  * @port_resets: Per-port reset resources
  * @ppe_port: Per-port PPE configuration and statistics
@@ -217,7 +221,9 @@ struct qce2204_priv {
 
 	/* Reset resources */
 	struct gpio_desc *reset_gpio;
-	struct reset_control *core_reset;
+	struct reset_control *core_reset;		/* GCC_SWITCH_CORE_BCR */
+	struct reset_control *core_clk_reset;		/* GCC_SWITCH_CORE_ARES */
+	struct reset_control *cfg_clk_reset;		/* GCC_SWITCH_CFG_ARES */
 
 	/* AHB clock */
 	struct clk *ahb_clk;
