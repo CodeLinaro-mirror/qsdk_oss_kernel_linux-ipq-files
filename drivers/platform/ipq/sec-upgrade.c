@@ -92,7 +92,7 @@ enum sw_types {
  * Hence, only one entry in the sw_id_list for both the components.
  * This also means that both the components should always have the same version.
  */
-static u32 sw_id_list_ipq5210[] = {SW_TYPE_APPSBL, SW_TYPE_HLOS, SW_TYPE_TME,
+static u32 sw_id_list_ipq5210[] = {SW_TYPE_APPSBL, SW_TYPE_HLOS_TMEL, SW_TYPE_TME,
 			 SW_TYPE_ATF, SW_TYPE_ROOTFS, SW_TYPE_UBOOT_SPL,
 			 SW_TYPE_QCLIB_DDR, SW_TYPE_OPTEE};
 
