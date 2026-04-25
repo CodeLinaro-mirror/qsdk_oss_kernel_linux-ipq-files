@@ -2124,6 +2124,7 @@
 			num-lanes = <2>;
 			#address-cells = <3>;
 			#size-cells = <2>;
+			axi-halt-val = <0x1e>; /* increase halt window size to 1GB */
 
 			ranges = <0x81000000 0 0x30200000 0x30200000 0 0x00100000>,   /* downstream I/O */
 				 <0x82000000 0 0x30300000 0x30300000 0 0x0fd00000>; /* non-prefetchable memory */
@@ -2208,6 +2209,7 @@
 			#address-cells = <3>;
 			#size-cells = <2>;
 			qcom,aspm-supported;
+			axi-halt-val = <0x1e>; /* increase halt window size to 1GB */
 
 			ranges = <0x81000000 0 0x40200000 0x40200000 0 0x00100000>,   /* downstream I/O */
 				 <0x82000000 0 0x40300000 0x40300000 0 0x0fd00000>; /* non-prefetchable memory */
@@ -2291,6 +2293,7 @@
 			num-lanes = <2>;
 			#address-cells = <3>;
 			#size-cells = <2>;
+			axi-halt-val = <0x1e>; /* increase halt window size to 1GB */
 
 			ranges = <0x81000000 0 0x50200000 0x50200000 0 0x00100000>,   /* downstream I/O */
 				 <0x82000000 0 0x50300000 0x50300000 0 0x0fd00000>; /* non-prefetchable memory */
@@ -2374,6 +2377,7 @@
 			num-lanes = <1>;
 			#address-cells = <3>;
 			#size-cells = <2>;
+			axi-halt-val = <0x1e>; /* increase halt window size to 1GB */
 
 			ranges = <0x81000000 0 0x60200000 0x60200000 0 0x00100000>,   /* downstream I/O */
 				 <0x82000000 0 0x60300000 0x60300000 0 0x0fd00000>; /* non-prefetchable memory */
@@ -2457,6 +2461,7 @@
 			num-lanes = <1>;
 			#address-cells = <3>;
 			#size-cells = <2>;
+			axi-halt-val = <0x1e>; /* increase halt window size to 1GB */
 
 			ranges = <0x81000000 0 0x70200000 0x70200000 0 0x00100000>,   /* downstream I/O */
 				 <0x82000000 0 0x70300000 0x70300000 0 0x0fd00000>; /* non-prefetchable memory */
