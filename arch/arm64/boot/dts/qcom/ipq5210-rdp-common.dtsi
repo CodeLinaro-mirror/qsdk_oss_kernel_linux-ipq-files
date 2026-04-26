@@ -144,7 +144,7 @@
 		pins = "gpio25";
 		function = "gpio";
 		drive-strength = <6>;
-		bias-pull-down;
+		bias-pull-up;
 	};
 
 	pwm_default_state: pwm-default-state {
