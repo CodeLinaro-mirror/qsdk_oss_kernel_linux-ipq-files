@@ -683,6 +683,130 @@ struct elf_info {
 			(ehdr).e_ident[EI_MAG2] == ELFMAG2 && \
 			(ehdr).e_ident[EI_MAG3] == ELFMAG3)
 
+#define UIE_ENC_PARAM_INFO_HDR_MAGIC_NUMBER  0x514d5349
+#define MI_PBT_FLAG_SEGMENT_TYPE_MASK        0x07000000
+#define MI_PBT_HASH_SEGMENT                  0x02000000
+
+/**
+ * struct qcom_mbn_v6_hdr
+ *
+ * This header format is used in secure boot images.
+ * It contains metadata about signatures, certificates, and code sections.
+ */
+struct qcom_mbn_v6_hdr {
+	u32 res1;			/* Reserved (was image_id) */
+	u32 version;			/* Reserved (was header_vsn_num) */
+	u32 qc_signature_size;		/* QC signature size in bytes */
+	u32 qc_cert_chain_size;		/* QC certificate chain size */
+	u32 image_size;			/* Total image size */
+	u32 code_size;			/* Code/hash table size */
+	u32 res5;			/* Reserved (was signature_ptr) */
+	u32 oem_signature_size;		/* OEM signature size */
+	u32 res6;			/* Reserved (was cert_chain_ptr) */
+	u32 oem_cert_chain_size;	/* OEM certificate chain size */
+	u32 qc_metadata_size;		/* QC metadata size */
+	u32 oem_metadata_size;		/* OEM metadata size */
+};
+
+/**
+ * struct qcom_uie_hdr
+ *
+ * UIE header contains encryption parameters.
+ * Present in hash segment after MBN header and metadata sections.
+ */
+struct qcom_uie_hdr {
+	u32 magic;			/* UIE magic: 0x514d5349 */
+	u8  reserved[12];		/* Reserved bytes */
+};
+
+/**
+ * has_uie_encryption() - Check if ELF image has UIE encryption
+ * @elf_data: Pointer to ELF image data
+ * @elf_size: Size of ELF image
+ *
+ * Checks the hash segment of an ELF image for UIE encryption magic number.
+ *
+ * Return: true if UIE encryption detected, false otherwise
+ */
+static bool has_uie_encryption(void *elf_data, size_t elf_size)
+{
+	Elf32_Ehdr *ehdr;
+	Elf32_Phdr *phdr;
+	struct qcom_mbn_v6_hdr *mbn;
+	struct qcom_uie_hdr *uie;
+	void *hash_seg = NULL;
+	size_t hash_size = 0;
+	u32 uie_offset;
+	int i;
+
+	if (!elf_data || !IS_ELF(*((Elf32_Ehdr *)elf_data)))
+		return false;
+
+	ehdr = (Elf32_Ehdr *)elf_data;
+	phdr = (Elf32_Phdr *)((u8 *)elf_data + ehdr->e_phoff);
+
+	/* Find hash segment (identified by p_flags) */
+	for (i = 0; i < ehdr->e_phnum; i++) {
+		if ((phdr[i].p_flags & MI_PBT_FLAG_SEGMENT_TYPE_MASK) ==
+		   MI_PBT_HASH_SEGMENT) {
+			if (phdr[i].p_offset + phdr[i].p_filesz <= elf_size) {
+				hash_seg = (u8 *)elf_data + phdr[i].p_offset;
+				hash_size = phdr[i].p_filesz;
+				break;
+			}
+		}
+	}
+
+	if (!hash_seg || hash_size < sizeof(*mbn))
+		return false;
+
+	mbn = (struct qcom_mbn_v6_hdr *)hash_seg;
+
+	/* Calculate UIE header offset */
+	uie_offset = sizeof(*mbn) +
+		     mbn->code_size +
+		     mbn->qc_signature_size +
+		     mbn->qc_cert_chain_size +
+		     mbn->oem_signature_size +
+		     mbn->oem_cert_chain_size +
+		     mbn->qc_metadata_size +
+		     mbn->oem_metadata_size;
+
+	if (uie_offset + sizeof(*uie) > hash_size)
+		return false;
+
+	uie = (struct qcom_uie_hdr *)((u8 *)hash_seg + uie_offset);
+
+	return (uie->magic == UIE_ENC_PARAM_INFO_HDR_MAGIC_NUMBER);
+}
+
+/**
+ * remove_loos_flags() - Remove LOOS compression flags from ELF program headers
+ * @elf_data: Pointer to ELF image data
+ *
+ * Removes LOOS (PT_LOOS + PT_LZMA) flags from compressed segments.
+ * Required for UIE encrypted compressed images before TZ authentication.
+ */
+static void remove_loos_flags(void *elf_data)
+{
+	Elf32_Ehdr *ehdr;
+	Elf32_Phdr *phdr;
+	int i;
+
+	if (!elf_data || !IS_ELF(*((Elf32_Ehdr *)elf_data)))
+		return;
+
+	ehdr = (Elf32_Ehdr *)elf_data;
+	phdr = (Elf32_Phdr *)((u8 *)elf_data + ehdr->e_phoff);
+
+	for (i = 0; i < ehdr->e_phnum; i++) {
+		if (phdr[i].p_type == PT_COMPRESS_FLAG) {
+			phdr[i].p_type = PT_LOAD;
+			pr_debug("LOOS flag removed successfully\n");
+		}
+	}
+}
+
 bool is_compressed(void *header, struct elf_info *info)
 {
 	Elf32_Ehdr *elf_hdr = (Elf32_Ehdr*) header;
@@ -1172,7 +1296,16 @@ store_sec_auth(struct device *dev,
 		if (elf_has_nand_preamble_magic(data))
 			remove_nand_preamble_n_magic_bytes(&data, &size);
 
-		if(is_compressed(data, &info)) {
+		/*
+		 * Check for UIE encrypted compressed images.
+		 * If both encryption and compression are detected,
+		 * remove LOOS flags and skip decompression as TZ
+		 * will decrypt, decompress and authenticate the image.
+		 */
+		if (has_uie_encryption(data, size) && is_compressed(data, &info)) {
+			pr_info("UIE encrypted compressed image detected!\n");
+			remove_loos_flags(data);
+		} else if (is_compressed(data, &info)) {
 			out_data = vzalloc(info.memsize);
 			if(!out_data) {
 				pr_err("%s: Memory allocation failed for %#x bytes\n",
