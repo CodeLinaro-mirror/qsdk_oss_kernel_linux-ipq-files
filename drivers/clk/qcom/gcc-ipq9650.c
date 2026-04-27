@@ -116,6 +116,7 @@ static const struct clk_div_table post_div_table_gpll2_out_main[] = {
 
 static struct clk_alpha_pll_postdiv gpll2_out_main = {
 	.offset = 0x21000,
+	.post_div_shift = 8,
 	.post_div_table = post_div_table_gpll2_out_main,
 	.num_post_div = ARRAY_SIZE(post_div_table_gpll2_out_main),
 	.width = 2,
