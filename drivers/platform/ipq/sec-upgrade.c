@@ -1392,18 +1392,206 @@ struct kobject *sec_kobj;
 #define FUSEIPQ_CMD_BLOW_FUSE	0x00U
 
 /*
- * TmeRegion_t - physical address range descriptor
+ * optee_elf_segment - OP-TEE specific ELF segment descriptor
  * @start_addr: inclusive start physical address
  * @end_addr:   exclusive end physical address (= start + size)
  */
-struct tme_region {
-	u32 start_addr;
-	u32 end_addr;
+struct optee_elf_segment {
+	u64 start_addr;
+	u64 end_addr;
 };
 
 static int fuseipq_tee_match(struct tee_ioctl_version_data *ver, const void *data)
 {
 	return ver->impl_id == TEE_IMPL_ID_OPTEE;
+}
+
+/*
+ * optee_parse_elf32_load_segments - Parse 32-bit ELF PT_LOAD segments
+ * @elf_data:     Pointer to ELF data in memory
+ * @base_pa:      Physical base address for segment address calculation
+ * @segments_out: Output pointer to allocated segment array
+ * @md_size_out:  Output metadata size (offset + filesz of segment before first PT_LOAD)
+ *
+ * Returns: Number of valid loadable segments on success, negative errno on failure
+ */
+static int optee_parse_elf32_load_segments(const void *elf_data, phys_addr_t base_pa,
+					   struct optee_elf_segment **segments_out,
+					   u32 *md_size_out)
+{
+	const Elf32_Ehdr *ehdr = (const Elf32_Ehdr *)elf_data;
+	const Elf32_Phdr *phdr;
+	struct optee_elf_segment *segments;
+	u8 lds_cnt = 0;
+	u64 ld_start_addr;
+	int i;
+
+	if (!IS_ELF(*ehdr) || ehdr->e_phnum < 3) {
+		pr_err("elf_parse: invalid elf header\n");
+		return -EINVAL;
+	}
+
+	/* Allocate segment array (max e_phnum - 2, excluding first two non-loadable) */
+	segments = kcalloc(ehdr->e_phnum - 2, sizeof(*segments), GFP_KERNEL);
+	if (!segments)
+		return -ENOMEM;
+
+	phdr = (const Elf32_Phdr *)(uintptr_t)(elf_data + ehdr->e_phoff);
+
+	for (i = 0; i < ehdr->e_phnum; i++, phdr++) {
+		if (phdr->p_type == PT_LOAD) {
+			/* Calculate metadata size from segment before first PT_LOAD */
+			if (!lds_cnt && *md_size_out == 0) {
+				--phdr;
+				*md_size_out = phdr->p_offset + phdr->p_filesz;
+				++phdr;
+			}
+
+			/* Skip empty segments */
+			if (!phdr->p_filesz && !phdr->p_memsz)
+				continue;
+
+			/* Handle segments with memsz but no filesz (BSS-like) */
+			if (!phdr->p_filesz && phdr->p_memsz) {
+				segments[lds_cnt].start_addr = 0;
+				segments[lds_cnt].end_addr = 0;
+				lds_cnt++;
+				continue;
+			}
+
+			/* Calculate physical addresses for valid loadable segments */
+			ld_start_addr = phdr->p_offset + base_pa;
+			segments[lds_cnt].start_addr = ld_start_addr;
+			segments[lds_cnt].end_addr = ld_start_addr + phdr->p_filesz;
+			lds_cnt++;
+
+			pr_debug("optee_elf32: seg[%d] start=0x%llx end=0x%llx\n",
+				 lds_cnt - 1,
+				 (unsigned long long)segments[lds_cnt - 1].start_addr,
+				 (unsigned long long)segments[lds_cnt - 1].end_addr);
+		}
+	}
+
+	*segments_out = segments;
+	return lds_cnt;
+}
+
+/*
+ * optee_parse_elf64_load_segments - Parse 64-bit ELF PT_LOAD segments
+ * @elf_data:     Pointer to ELF data in memory
+ * @base_pa:      Physical base address for segment address calculation
+ * @segments_out: Output pointer to allocated segment array
+ * @md_size_out:  Output metadata size (offset + filesz of segment before first PT_LOAD)
+ *
+ * Returns: Number of valid loadable segments on success, negative errno on failure
+ */
+static int optee_parse_elf64_load_segments(const void *elf_data, phys_addr_t base_pa,
+					   struct optee_elf_segment **segments_out,
+					   u32 *md_size_out)
+{
+	const Elf64_Ehdr *ehdr = (const Elf64_Ehdr *)elf_data;
+	const Elf64_Phdr *phdr;
+	struct optee_elf_segment *segments;
+	u8 lds_cnt = 0;
+	u64 ld_start_addr;
+	int i;
+
+	if (!IS_ELF(*ehdr) || ehdr->e_phnum < 3) {
+		pr_err("elf_parse: invalid elf header\n");
+		return -EINVAL;
+	}
+
+	/* Allocate segment array (max e_phnum - 2, excluding first two non-loadable) */
+	segments = kcalloc(ehdr->e_phnum - 2, sizeof(*segments), GFP_KERNEL);
+	if (!segments)
+		return -ENOMEM;
+
+	phdr = (const Elf64_Phdr *)(uintptr_t)(elf_data + ehdr->e_phoff);
+
+	for (i = 0; i < ehdr->e_phnum; i++, phdr++) {
+		if (phdr->p_type == PT_LOAD) {
+			/* Calculate metadata size from segment before first PT_LOAD */
+			if (!lds_cnt && *md_size_out == 0) {
+				--phdr;
+				*md_size_out = phdr->p_offset + phdr->p_filesz;
+				++phdr;
+			}
+
+			/* Skip empty segments */
+			if (!phdr->p_filesz && !phdr->p_memsz)
+				continue;
+
+			/* Handle segments with memsz but no filesz (BSS-like) */
+			if (!phdr->p_filesz && phdr->p_memsz) {
+				segments[lds_cnt].start_addr = 0;
+				segments[lds_cnt].end_addr = 0;
+				lds_cnt++;
+				continue;
+			}
+
+			/* Calculate physical addresses for valid loadable segments */
+			ld_start_addr = phdr->p_offset + base_pa;
+			segments[lds_cnt].start_addr = ld_start_addr;
+			segments[lds_cnt].end_addr = ld_start_addr + phdr->p_filesz;
+			lds_cnt++;
+
+			pr_debug("optee_elf64: seg[%d] start=0x%llx end=0x%llx\n",
+				 lds_cnt - 1,
+				 (unsigned long long)segments[lds_cnt - 1].start_addr,
+				 (unsigned long long)segments[lds_cnt - 1].end_addr);
+		}
+	}
+
+	*segments_out = segments;
+	return lds_cnt;
+}
+
+/*
+ * optee_parse_elf_load_segments - Parse ELF PT_LOAD segments (32 or 64-bit)
+ * @elf_data:     Pointer to ELF data in memory
+ * @elf_size:     Size of ELF data
+ * @base_pa:      Physical base address for segment address calculation
+ * @segments_out: Output pointer to allocated segment array (caller must free)
+ * @md_size_out:  Output metadata size
+ *
+ * This function detects the ELF class (32 or 64-bit) and calls the appropriate
+ * parser. The caller is responsible for freeing the allocated segments array.
+ *
+ * Returns: Number of valid loadable segments on success, negative errno on failure
+ */
+static int optee_parse_elf_load_segments(const void *elf_data, size_t elf_size,
+					 phys_addr_t base_pa,
+					 struct optee_elf_segment **segments_out,
+					 u32 *md_size_out)
+{
+	const Elf32_Ehdr *ehdr = (const Elf32_Ehdr *)elf_data;
+
+	if (!elf_data || !segments_out || !md_size_out) {
+		pr_err("elf_parse: one or more invalid arguments\n");
+		return -EINVAL;
+	}
+
+	if (elf_size < sizeof(Elf32_Ehdr)) {
+		pr_err("elf_parse: invalid elf_size, %zu\n", elf_size);
+		return -EINVAL;
+	}
+
+	*segments_out = NULL;
+	*md_size_out = 0;
+
+	if (!IS_ELF(*ehdr)) {
+		pr_err("elf_parse: invalid elf header\n");
+		return -EINVAL;
+	}
+
+	if (ehdr->e_ident[EI_CLASS] == ELFCLASS64)
+		return optee_parse_elf64_load_segments(elf_data, base_pa,
+						       segments_out, md_size_out);
+	else if (ehdr->e_ident[EI_CLASS] == ELFCLASS32)
+		return optee_parse_elf32_load_segments(elf_data, base_pa,
+						       segments_out, md_size_out);
+	else
+		return -EINVAL;
 }
 
 /*
@@ -1427,7 +1615,8 @@ static int fuseipq_blow_fuse_optee(const void *elf, size_t elf_size,
 	void *va_elf, *va_regions;
 	phys_addr_t pa_elf;
 	const uuid_t ta_uuid = FUSEIPQ_TA_UUID;
-	struct tme_region *regions_k = NULL;
+	struct optee_elf_segment *segments = NULL;
+	struct optee_elf_segment *regions_k = NULL;
 	int ld_seg_cnt, region_cnt, ret;
 	size_t regions_sz;
 	u32 md_size = 0;
@@ -1476,42 +1665,36 @@ static int fuseipq_blow_fuse_optee(const void *elf, size_t elf_size,
 	}
 
 	/*
-	 * Use parse_n_extract_ld_segment() to extract PT_LOAD segment info.
-	 * It populates the global ld_seg_buff with {start_addr, end_addr} pairs
-	 * where addresses are computed as (unsigned int)pa_elf + phdr->p_offset.
+	 * Use optee_parse_elf_load_segments() to extract PT_LOAD segment info.
+	 * where addresses are computed as pa_elf + phdr->p_offset.
 	 */
-	ld_seg_cnt = parse_n_extract_ld_segment((void *)elf, &md_size,
-						(unsigned int)pa_elf);
+	ld_seg_cnt = optee_parse_elf_load_segments(elf, elf_size, pa_elf,
+						   &segments, &md_size);
 	if (ld_seg_cnt < 0) {
-		pr_err("fuseipq: parse_n_extract_ld_segment failed: %d\n",
+		pr_err("fuseipq: optee_parse_elf_load_segments failed: %d\n",
 		       ld_seg_cnt);
 		ret = ld_seg_cnt;
 		goto out_shm_elf;
 	}
 
 	/*
-	 * Build TmeRegion_t array:
+	 * Build regions array:
 	 *   regions[0]    = sec_dat location (full ELF physical range)
-	 *   regions[1..N] = PT_LOAD segments from ld_seg_buff
+	 *   regions[1..N] = PT_LOAD from the parsed segments
 	 */
 	region_cnt = ld_seg_cnt;
 	regions_k = kcalloc(region_cnt, sizeof(*regions_k), GFP_KERNEL);
 	if (!regions_k) {
 		ret = -ENOMEM;
-		kfree(ld_seg_buff);
-		ld_seg_buff = NULL;
-		goto out_shm_elf;
+		goto out_segments;
 	}
 
 	for (int i = 0; i < ld_seg_cnt; i++) {
-		regions_k[i].start_addr = ld_seg_buff[i].start_addr;
-		regions_k[i].end_addr   = ld_seg_buff[i].end_addr;
+		regions_k[i].start_addr = segments[i].start_addr;
+		regions_k[i].end_addr   = segments[i].end_addr;
 	}
 
-	kfree(ld_seg_buff);
-	ld_seg_buff = NULL;
-
-	regions_sz = (size_t)region_cnt * sizeof(struct tme_region);
+	regions_sz = (size_t)region_cnt * sizeof(struct optee_elf_segment);
 
 	/* SHM #2: Region list (size must be multiple of 8 for OP-TEE mode detection) */
 	shm_regions = tee_shm_alloc_kernel_buf(ctx, regions_sz);
@@ -1570,6 +1753,8 @@ out_shm_regions:
 		tee_shm_free(shm_regions);
 out_regions_k:
 	kfree(regions_k);
+out_segments:
+	kfree(segments);
 out_shm_elf:
 	if (shm_elf)
 		tee_shm_free(shm_elf);
