@@ -118,6 +118,88 @@ struct minidump_metadata_list metadata_list;
 struct minidump_metadata minidump_meta_info;
 struct minidump2mem_metadata dump2mem_info;
 
+/* Crash type statistics - dynamic list for tracking combinations */
+struct crashtype_stat_entry {
+	enum minidump_crash_type crashtype;
+	int count;
+	struct list_head list;
+};
+
+static LIST_HEAD(crashtype_stats_list);
+static DEFINE_SPINLOCK(crashtype_stats_lock);
+
+/**
+ * crashtype_stat_lookup - Find or create statistics entry
+ * @crashtype: The crash type to look up
+ *
+ * Caller must hold crashtype_stats_lock.
+ *
+ * Return: Pointer to entry, or NULL on allocation failure
+ */
+static struct crashtype_stat_entry *
+crashtype_stat_lookup(enum minidump_crash_type crashtype)
+{
+	struct crashtype_stat_entry *entry;
+
+	/* Search for existing entry */
+	list_for_each_entry(entry, &crashtype_stats_list, list) {
+		if (entry->crashtype == crashtype)
+			return entry;
+	}
+
+	/* Create new entry if not found */
+	entry = kmalloc(sizeof(*entry), GFP_ATOMIC);
+	if (entry) {
+		entry->crashtype = crashtype;
+		entry->count = 0;
+		list_add_tail(&entry->list, &crashtype_stats_list);
+	}
+
+	return entry;
+}
+
+/*
+ * Update crash type statistics
+ */
+static void minidump_update_crashtype_stats(enum minidump_crash_type crashtype,
+					    bool is_add)
+{
+	struct crashtype_stat_entry *entry;
+	unsigned long flags;
+	int value = is_add ? 1 : -1;
+
+	spin_lock_irqsave(&crashtype_stats_lock, flags);
+	entry = crashtype_stat_lookup(crashtype);
+	if (entry)
+		entry->count += value;
+	spin_unlock_irqrestore(&crashtype_stats_lock, flags);
+}
+
+/*
+ * Format crash type statistics for error messages
+ * Shows all crashtype combinations that have been used
+ */
+static void minidump_format_crashtype_stats(char *buf, size_t buf_size)
+{
+	struct crashtype_stat_entry *entry;
+	int offset = 0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&crashtype_stats_lock, flags);
+
+	list_for_each_entry(entry, &crashtype_stats_list, list) {
+		offset += snprintf(buf + offset, buf_size - offset,
+				   "%s0x%x: %d",
+				   offset > 0 ? ", " : "",
+				   entry->crashtype,
+				   entry->count);
+		if (offset >= buf_size)
+			break;
+	}
+
+	spin_unlock_irqrestore(&crashtype_stats_lock, flags);
+}
+
 static const struct file_operations minidump2mem_ops;
 static const struct file_operations mini_dump_ops;
 static struct class *dump_class;
@@ -855,6 +937,10 @@ int minidump_remove_segments(const uint64_t virt_addr)
 				       MMU_FILE_ENTRY_LEN);
 
 			minidump.hdr.num_seg--;
+
+			/* Decrement crash type statistics when removing a TLV */
+			minidump_update_crashtype_stats(cur_node->crashtype, false);
+
 			break;
 		}
 	}
@@ -1025,6 +1111,14 @@ int minidump_traverse_metadata_list(const char *name, const unsigned long
 			sizeof(struct minidump_tlv_info) >=
 			tlv_msg.msg_buffer + tlv_msg.len) ||
 			(minidump_meta_info.mod_log_len + METADATA_FILE_ENTRY_LEN >= METADATA_FILE_SZ)) {
+		pr_err("Minidump: Buffer/Metadata file full for segment '%s' (addr=0x%lx, size=0x%lx, "
+		       "type=%d, crashtype=0x%x). Total TLV count: %d. "
+		       "TLV buffer: used=%ld, total=%u. MOD metadata: used=%ld, total=%d. "
+		       "Crashtype 0x%x consuming TLVs.\n",
+		       name ? name : "unnamed", virt_addr, size, type, crashtype,
+		       minidump.hdr.num_seg,
+		       (long)(tlv_msg.cur_msg_buffer_pos - tlv_msg.msg_buffer), tlv_msg.len,
+		       minidump_meta_info.mod_log_len, METADATA_FILE_SZ, crashtype);
 		return -ENOMEM;
 	}
 
@@ -1032,6 +1126,14 @@ int minidump_traverse_metadata_list(const char *name, const unsigned long
 			sizeof(struct minidump_tlv_info) >=
 			tlv_msg.msg_buffer + tlv_msg.len) ||
 			(minidump_meta_info.mmu_log_len + MMU_FILE_ENTRY_LEN >= MMU_FILE_SZ)) {
+		pr_err("Minidump: Buffer/MMU metadata file full for segment '%s' (addr=0x%lx, size=0x%lx, "
+		       "type=%d, crashtype=0x%x). Total TLV count: %d. "
+		       "TLV buffer: used=%ld, total=%u. MMU metadata: used=%ld, total=%d. "
+		       "Crashtype 0x%x consuming TLVs.\n",
+		       name ? name : "unnamed", virt_addr, size, type, crashtype,
+		       minidump.hdr.num_seg,
+		       (long)(tlv_msg.cur_msg_buffer_pos - tlv_msg.msg_buffer), tlv_msg.len,
+		       minidump_meta_info.mmu_log_len, MMU_FILE_SZ, crashtype);
 		return -ENOMEM;
 	}
 
@@ -1039,6 +1141,11 @@ int minidump_traverse_metadata_list(const char *name, const unsigned long
 				 kmalloc(sizeof(struct minidump_metadata_list), GFP_ATOMIC);
 
 	if (!cur_node) {
+		pr_err("Minidump: kmalloc failed for metadata list node for segment '%s' "
+		       "(addr=0x%lx, size=0x%lx, type=%d, crashtype=0x%x). "
+		       "Total TLV count: %d. Crashtype 0x%x consuming TLVs.\n",
+		       name ? name : "unnamed", virt_addr, size, type, crashtype,
+		       minidump.hdr.num_seg, crashtype);
 		return -ENOMEM;
 	}
 
@@ -1064,6 +1171,10 @@ int minidump_traverse_metadata_list(const char *name, const unsigned long
 	cur_node->tlv_offset = tlv_msg.cur_msg_buffer_pos;
 	cur_node->mmuinfo_offset = minidump_meta_info.cur_mmuinfo_offset;
 	minidump.hdr.num_seg++;
+
+	/* Update crash type statistics when adding a new TLV (APPEND case) */
+	minidump_update_crashtype_stats(crashtype, true);
+
 	spin_lock_irqsave(&tlv_msg.spinlock, flags);
 	list_add_tail(&(cur_node->list), &(metadata_list.list));
 	spin_unlock_irqrestore(&tlv_msg.spinlock, flags);
@@ -1237,13 +1348,19 @@ int minidump_fill_segments_internal(const u64 start_addr, u64 size,
 	if (replace == -EINVAL)
 		return 0;
 
-	if (replace == -ENOMEM)
+	if (replace == -ENOMEM) {
+		pr_err("Minidump: Metadata list full for segment '%s' (crashtype=0x%x)\n",
+		       name ? name : "unnamed", crashtype);
 		return replace;
+	}
 
 	ret = minidump_fill_tlv_crashdump_buffer((const uint64_t)phys_addr, size, type, replace,
 						 tlv_offset, crashtype);
-	if (ret)
+	if (ret) {
+		pr_err("Minidump: TLV crashdump buffer full for segment '%s' (crashtype=0x%x)\n",
+		       name ? name : "unnamed", crashtype);
 		return ret;
+	}
 
 	minidump_store_mmu_info(start_addr, (const unsigned long)phys_addr);
 
@@ -1278,7 +1395,15 @@ int minidump_add_segments(const u64 start_addr, u64 size, enum minidump_tlv_type
 	int ret = 0;
 
 	ret = minidump_fill_segments_internal(start_addr, size, type, name, crashtype);
-	if (!ret) {
+	if (ret) {
+		char crashtype_stats[128];
+		minidump_format_crashtype_stats(crashtype_stats, sizeof(crashtype_stats));
+		pr_err("Minidump: minidump_fill_segments_internal failed for segment '%s' "
+		       "(addr=0x%llx, size=0x%llx, type=%d, crashtype=0x%x) with error %d. "
+		       "Total TLV count: %d. Per-crashtype TLV counts: %s\n",
+		       name ? name : "unnamed", start_addr, size, type, crashtype, ret,
+		       minidump.hdr.num_seg, crashtype_stats);
+	} else {
 		if (module_name) {
 			/* traverse through the metadata module list and add entry if new module */
 			/*   passed and ignore if already module exists */
@@ -1506,6 +1631,10 @@ static int ctx_save_fill_log_dump_tlv(void)
 	}
 	if (ret_val)
 		return ret_val;
+#ifdef CONFIG_QCA_MINIDUMP
+	else
+		minidump_update_crashtype_stats(MINIDUMP_CRASH_TYPE_DEFAULT, true);
+#endif
 
 #ifdef CONFIG_QCA_MINIDUMP
 	minidump_get_dmesg_read_info(&dmesg_tail_lpos.start, &dmesg_tail_lpos.size);
