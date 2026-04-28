@@ -2479,6 +2479,24 @@ static struct clk_branch gcc_pcie_cmn_ldo_clk = {
 	},
 };
 
+static struct clk_branch gcc_refgen_cmn_uphy_core_clk = {
+	.halt_reg = 0x2300c,
+	.halt_check = BRANCH_HALT,
+	.clkr = {
+		.enable_reg = 0x2300c,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data) {
+			.name = "gcc_refgen_cmn_uphy_core_clk",
+			.parent_hws = (const struct clk_hw*[]) {
+				&gcc_refgen_core_clk_src.clkr.hw,
+			},
+			.num_parents = 1,
+			.flags = CLK_IS_CRITICAL,
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
 static struct clk_branch gcc_primess_ahbm_clk = {
 	.halt_reg = 0x26038,
 	.halt_check = BRANCH_HALT_VOTED,
@@ -2927,6 +2945,24 @@ static struct clk_branch gcc_refgen_pcie_hclk = {
 		.enable_mask = BIT(0),
 		.hw.init = &(const struct clk_init_data) {
 			.name = "gcc_refgen_pcie_hclk",
+			.parent_hws = (const struct clk_hw*[]) {
+				&gcc_pcnoc_bfdcd_clk_src.clkr.hw,
+			},
+			.num_parents = 1,
+			.flags = CLK_SET_RATE_PARENT | CLK_IS_CRITICAL,
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_refgen_cmn_uphy_hclk = {
+	.halt_reg = 0x23010,
+	.halt_check = BRANCH_HALT_VOTED,
+	.clkr = {
+		.enable_reg = 0x23010,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data) {
+			.name = "gcc_refgen_cmn_uphy_hclk",
 			.parent_hws = (const struct clk_hw*[]) {
 				&gcc_pcnoc_bfdcd_clk_src.clkr.hw,
 			},
@@ -3539,6 +3575,8 @@ static struct clk_regmap *gcc_ipq9650_clocks[] = {
 	[GPLL2] = &gpll2.clkr,
 	[GPLL2_OUT_MAIN] = &gpll2_out_main.clkr,
 	[GPLL4] = &gpll4.clkr,
+	[GCC_REFGEN_CMN_UPHY_HCLK] = &gcc_refgen_cmn_uphy_hclk.clkr,
+	[GCC_REFGEN_CMN_UPHY_CORE_CLK] = &gcc_refgen_cmn_uphy_core_clk.clkr,
 };
 
 static const struct qcom_reset_map gcc_ipq9650_resets[] = {
