@@ -18,6 +18,7 @@
 / {
 	aliases {
 		serial0 = &uart1;
+		serial1 = &uart0;
 	};
 
 	chosen {
@@ -62,6 +63,11 @@
 	soc@0 {
 		qupv3: geniqup@1ac0000 {
 			status = "okay";
+
+			uart0: serial@1a84000 {
+				pinctrl-0 = <&qup_uart0_default>;
+				pinctrl-names = "default";
+			};
 
 			uart1: serial@1a98000 {
 				pinctrl-0 = <&qup_uart1_default>;

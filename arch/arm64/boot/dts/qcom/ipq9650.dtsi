@@ -949,6 +949,36 @@
 				};
 			};
 
+			qup_uart0_default: qup-uart0-default-state {
+				qup_uart0_tx: tx-pins {
+					pins = "gpio13";
+					function = "qup_se1_l2";
+					drive-strength = <8>;
+					bias-pull-down;
+				};
+
+				qup_uart0_rx: rx-pins {
+					pins = "gpio12";
+					function = "qup_se1_l3";
+					drive-strength = <8>;
+					bias-pull-down;
+				};
+
+				qup_uart0_rfr: rfr-pins {
+					pins = "gpio10";
+					function = "qup_se1_l1";
+					drive-strength = <8>;
+					bias-pull-down;
+				};
+
+				qup_uart0_cts: cts-pins {
+					pins = "gpio11";
+					function = "qup_se1_l0";
+					drive-strength = <8>;
+					bias-pull-down;
+				};
+			};
+
 			qspi_default_state: qspi-default-state {
 				qspi_clk {
 					pins = "gpio5";
@@ -1051,7 +1081,7 @@
 			};
 
 			uart0: serial@1a84000 {
-				compatible = "qcom,geni-debug-uart";
+				compatible = "qcom,geni-uart";
 				reg = <0x01a84000 0x4000>;
 				clocks = <&gcc GCC_QUPV3_WRAP_SE1_CLK>;
 				clock-names = "se";
