@@ -189,4 +189,6 @@
 #define GPLL2_OUT_MAIN						179
 #define GPLL4							180
 #define GPLL6							181
+#define GCC_REFGEN_CMN_UPHY_HCLK				182
+#define GCC_REFGEN_CMN_UPHY_CORE_CLK				183
 #endif
