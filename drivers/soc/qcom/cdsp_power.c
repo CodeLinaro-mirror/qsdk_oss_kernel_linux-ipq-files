@@ -246,6 +246,7 @@ struct cdsp_power_driver {
 	/* MPM for LPM */
 	struct regmap *mpm_regmap;
 	int lpm_irq;
+	struct workqueue_struct *lpm_wq;
 	struct work_struct lpm_work;
 
 	/* RSCC for power mode detection */
@@ -591,6 +592,8 @@ static void cdsp_execute_isolation_sequence(struct cdsp_power_driver *drv)
 			if (ret)
 				dev_err(drv->dev, "Failed to disable %s rail: %d\n",
 					i == 0 ? "CX" : "MX", ret);
+			else
+				usleep_range(8000, 10000);
 		}
 	}
 
@@ -634,7 +637,8 @@ static void cdsp_execute_restoration_sequence(struct cdsp_power_driver *drv)
 			ret = regulator_enable(regulators[i]);
 			if (ret)
 				dev_err(drv->dev, "Failed to enable %s: %d\n", rail_names[i], ret);
-			usleep_range(1000, 2000);
+			else
+				usleep_range(8000, 10000);
 		}
 
 		/* Step 3: Clear power-up reset */
@@ -764,7 +768,7 @@ static irqreturn_t cdsp_lpm_irq_handler(int irq, void *data)
 		return IRQ_NONE;
 
 	/* Schedule work to process LPM request */
-	schedule_work(&drv->lpm_work);
+	queue_work(drv->lpm_wq, &drv->lpm_work);
 
 	return IRQ_HANDLED;
 }
@@ -1006,6 +1010,14 @@ static int cdsp_power_probe(struct platform_device *pdev)
 	INIT_WORK(&drv->dcvs_work, cdsp_dcvs_work_fn);
 	INIT_WORK(&drv->lpm_work, cdsp_lpm_work_fn);
 
+	drv->lpm_wq = alloc_ordered_workqueue("cdsp_lpm_wq", 0);
+	if (!drv->lpm_wq) {
+		mbox_free_channel(drv->dcvs_mbox_chan);
+		return dev_err_probe(&pdev->dev,
+				     -ENOMEM,
+				     "failed to allocate cdsp lpm workqueue\n");
+	}
+
 	platform_set_drvdata(pdev, drv);
 
 	dev_dbg(&pdev->dev, "CDSP power driver initialized\n");
@@ -1020,6 +1032,9 @@ static int cdsp_power_remove(struct platform_device *pdev)
 	/* Cancel any pending work */
 	cancel_work_sync(&drv->dcvs_work);
 	cancel_work_sync(&drv->lpm_work);
+
+	if (drv->lpm_wq)
+		destroy_workqueue(drv->lpm_wq);
 
 	mbox_free_channel(drv->dcvs_mbox_chan);
 	return 0;
