@@ -331,7 +331,7 @@
 					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 			memory-region = <&qcn9224_pcie1>, <&mhi_region1>;
-			qcom,early_cal_enabled = "disabled";
+			qcom,early_cal_enabled = "supported";
 			qcom,caldata_offset = <0x58800>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
 			qcom,caldb_offset = <0x1400000>;
@@ -364,7 +364,7 @@
 					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 			memory-region = <&qcn9224_pcie2>, <&mhi_region2>;
-			qcom,early_cal_enabled = "disabled";
+			qcom,early_cal_enabled = "supported";
 			qcom,caldata_offset = <0x8A800>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
 			qcom,caldb_offset = <0x1400000>;
@@ -397,7 +397,7 @@
 					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
 					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 			memory-region = <&qcn9224_pcie3>, <&mhi_region3>;
-			qcom,early_cal_enabled = "disabled";
+			qcom,early_cal_enabled = "supported";
 			qcom,caldata_offset = <0xBC800>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
 			qcom,caldb_offset = <0x1400000>;
