@@ -18,6 +18,7 @@
 #define MAX_COMPONENT		30
 #define MAX_ARG_SIZE		MAX_COMPONENT * 2
 #define MAX_LOG_SIZE		4096
+#define DUMP_FUSE_MAX_ADDR	32
 #define QTI_CLASS_KEY_ID			0x8
 #define OEM_PRODUCT_SEED_KEY_ID			0xC
 #define TMEL_ECDH_IP_KEY_MAX_SIZE		0x60
@@ -104,51 +105,62 @@ out:
 	return count;
 }
 
-static void dump_fuse_v1(unsigned int addr)
+static void dump_fuse_v1(unsigned int *addrs, int num_addrs)
 {
 	struct fuse_payload_ipq9574 *fuse __free(kfree);
-	int ret;
+	int ret, i;
 
-	fuse = kzalloc(sizeof(struct fuse_payload_ipq9574), GFP_KERNEL);
+	fuse = kzalloc(sizeof(struct fuse_payload_ipq9574) * num_addrs,
+		       GFP_KERNEL);
 	if (!fuse)
 		return;
 
-	fuse->fuse_addr = addr;
+	for (i = 0; i < num_addrs; i++)
+		fuse[i].fuse_addr = addrs[i];
+
 	ret = qcom_scm_get_ipq_fuse_list(fuse,
-					 sizeof(struct fuse_payload_ipq9574));
+					 sizeof(struct fuse_payload_ipq9574) *
+					 num_addrs);
 	if (ret) {
 		pr_err("Fuse list SCM call failed, ret = %d\n", ret);
 		return;
 	}
 
-	pr_info("TMEL_FUSE_ADDR: 0x%08X\tVALUE: 0x%08X\n", fuse->fuse_addr,
-		fuse->val);
+	for (i = 0; i < num_addrs; i++)
+		pr_info("TMEL_FUSE_ADDR: 0x%08X\tVALUE: 0x%08X\n",
+			fuse[i].fuse_addr, fuse[i].val);
 }
 
-static void dump_fuse_v2(unsigned int addr, const struct tmellog_data *data)
+static void dump_fuse_v2(unsigned int *addrs, int num_addrs,
+			 const struct tmellog_data *data)
 {
 	struct fuse_payload *fuse __free(kfree);
-	int ret;
+	int ret, i;
 
-	fuse = kzalloc(sizeof(struct fuse_payload), GFP_KERNEL);
+	fuse = kzalloc(sizeof(struct fuse_payload) * num_addrs, GFP_KERNEL);
 	if (!fuse)
 		return;
 
-	fuse->fuse_addr = addr;
+	for (i = 0; i < num_addrs; i++)
+		fuse[i].fuse_addr = addrs[i];
+
 	if (data->tmelcom_support) {
 		ret = tmelcom_fuse_list_read((struct tmel_fuse_payload *)fuse,
-					    sizeof(struct fuse_payload));
+					    sizeof(struct fuse_payload) *
+					    num_addrs);
 	} else {
 		ret = qcom_scm_get_ipq_fuse_list(fuse,
-						 sizeof(struct fuse_payload));
+						 sizeof(struct fuse_payload) *
+						 num_addrs);
 	}
 	if (ret) {
 		pr_err("Fuse list SCM call failed, ret = %d\n", ret);
 		return;
 	}
 
-	pr_info("TMEL_FUSE_ADDR: 0x%08X\tVALUE: 0x%08X%08X\n",
-		fuse->fuse_addr, fuse->msb_val, fuse->lsb_val);
+	for (i = 0; i < num_addrs; i++)
+		pr_info("TMEL_FUSE_ADDR: 0x%08X\tVALUE: 0x%08X%08X\n",
+			fuse[i].fuse_addr, fuse[i].msb_val, fuse[i].lsb_val);
 }
 
 static ssize_t dump_fuse_store(struct device *dev,
@@ -156,18 +168,43 @@ static ssize_t dump_fuse_store(struct device *dev,
 			       const char *buf, size_t count)
 {
 	const struct tmellog_data *data = dev_get_drvdata(dev);
-	unsigned int addr;
-
-	if (kstrtouint(buf, 0, &addr))
-		return -EINVAL;
+	unsigned int addrs[DUMP_FUSE_MAX_ADDR];
+	char *buf_copy, *token, *cur;
+	int num_addrs = 0;
+	int ret = 0;
 
 	if (!data)
 		return -EINVAL;
 
+	/* Duplicate the input buffer so strsep can modify it */
+	buf_copy = kstrndup(buf, count, GFP_KERNEL);
+	if (!buf_copy)
+		return -ENOMEM;
+
+	cur = buf_copy;
+	while ((token = strsep(&cur, " \t\n")) != NULL) {
+		if (!*token)
+			continue;
+		if (num_addrs >= DUMP_FUSE_MAX_ADDR) {
+			pr_err("dump_fuse: too many addresses, max supported is %d\n",
+			       DUMP_FUSE_MAX_ADDR);
+			kfree(buf_copy);
+			return -EINVAL;
+		}
+		ret = kstrtouint(token, 0, &addrs[num_addrs]);
+		if (ret)
+			break;
+		num_addrs++;
+	}
+	kfree(buf_copy);
+
+	if (!num_addrs || ret)
+		return ret ? ret : -EINVAL;
+
 	if (data->version == 0x1)
-		dump_fuse_v1(addr);
+		dump_fuse_v1(addrs, num_addrs);
 	else if (data->version == 0x2)
-		dump_fuse_v2(addr, data);
+		dump_fuse_v2(addrs, num_addrs, data);
 
 	return count;
 }
