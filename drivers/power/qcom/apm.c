@@ -237,6 +237,8 @@ free_events:
 
 /* 9650 register offset definition */
 #define IPQ9650_APM_DLY_CNTR	0x8
+#define IPQ9650_APSS_MAS_DLY0_0 0x1c
+#define IPQ9650_APSS_MAS_DLY1_0 0x20
 
 /* Register field shift definitions */
 #define APM_CTL_SEL_SWITCH_DLY_SHIFT	0
@@ -381,6 +383,16 @@ static int msm8953_apm_ctrl_init(struct platform_device *pdev,
 		mb();
 	}
 
+	if (ctrl->msm_id == IPQ9650_ID) {
+		/* configure DLY0 */
+		writel_relaxed(0xf0f0f, ctrl->reg_base + IPQ9650_APSS_MAS_DLY0_0);
+
+		/* configure DLY1 */
+		writel_relaxed(0xf0f0f, ctrl->reg_base + IPQ9650_APSS_MAS_DLY1_0);
+
+		/* ensure DLY writes complete before return */
+		mb();
+	}
 	return rc;
 }
 
@@ -687,9 +699,11 @@ static int msm8953_apm_switch_to_mx(struct msm_apm_ctrl_dev *ctrl_dev)
 		apm_offset = IPQ9650_APCC_APM_MODE;
 	}
 
+	regval = readl(ctrl_dev->reg_base + apm_offset);
+	regval &= ~MSM8953_APM_APCC_MODE_VAL;
+
 	/* Switch arrays to MX supply and wait for its completion */
-	writel_relaxed(MSM8953_APM_MX_MODE_VAL, ctrl_dev->reg_base +
-		       apm_offset);
+	writel_relaxed(regval, ctrl_dev->reg_base + apm_offset);
 
 	/* Ensure write above completes before delaying */
 	mb();
@@ -742,9 +756,11 @@ static int msm8953_apm_switch_to_apcc(struct msm_apm_ctrl_dev *ctrl_dev)
 		apm_offset = IPQ9650_APCC_APM_MODE;
 	}
 
+	regval = readl(ctrl_dev->reg_base + apm_offset);
+	regval |= MSM8953_APM_APCC_MODE_VAL;
+
 	/* Switch arrays to APCC supply and wait for its completion */
-	writel_relaxed(MSM8953_APM_APCC_MODE_VAL, ctrl_dev->reg_base +
-		       apm_offset);
+	writel_relaxed(regval, ctrl_dev->reg_base + apm_offset);
 
 	/* Ensure write above completes before delaying */
 	mb();
