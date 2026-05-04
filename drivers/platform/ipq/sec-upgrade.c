@@ -85,6 +85,7 @@ enum sw_types {
 	SW_TYPE_QCCONFIG	=	0x25,
 	SW_TYPE_OPTEE		=	0xCC,
 	SW_TYPE_Q6_CDSP_DTB	=	0x52,
+	SW_TYPE_PRIME_MODEL_OEM	=	0xC5,
 };
 
 /*
@@ -104,7 +105,8 @@ static u32 sw_id_list_ipq5424[] = {SW_TYPE_TME, SW_TYPE_XBL_SC, SW_TYPE_XBL_CFG,
 static u32 sw_id_list_ipq9650[] = {SW_TYPE_APPSBL, SW_TYPE_HLOS_TMEL, SW_TYPE_TME,
 			SW_TYPE_ATF, SW_TYPE_ROOTFS, SW_TYPE_UBOOT_SPL,
 			SW_TYPE_QCLIB_DDR, SW_TYPE_CDSP, SW_TYPE_PRIME_FW,
-			SW_TYPE_PRIME_MODEL, SW_TYPE_QCCONFIG, SW_TYPE_OPTEE, SW_TYPE_Q6_CDSP_DTB};
+			SW_TYPE_PRIME_MODEL, SW_TYPE_QCCONFIG, SW_TYPE_OPTEE, SW_TYPE_Q6_CDSP_DTB,
+			SW_TYPE_PRIME_MODEL_OEM};
 
 /* For non-TMELCOM targets*/
 u32 sw_id_list[] = {};
@@ -573,6 +575,14 @@ show_q6_cdsp_dtb_version(struct device *dev,
 			 char *buf)
 {
 	return generic_version(dev, buf, SW_TYPE_Q6_CDSP_DTB, 1, 0);
+}
+
+static ssize_t
+show_prime_model_oem_version(struct device *dev,
+			     struct device_attribute *attr,
+			     char *buf)
+{
+	return generic_version(dev, buf, SW_TYPE_PRIME_MODEL_OEM, 1, 0);
 }
 
 static ssize_t
@@ -1883,6 +1893,7 @@ static struct device_attribute qfprom_attrs_ipq9650[] = {
 	__ATTR(prime_fw_version, 0444, show_prime_fw_version, NULL),
 	__ATTR(prime_model_version, 0444, show_prime_model_version, NULL),
 	__ATTR(optee_version, 0444, show_optee_version, NULL),
+	__ATTR(prime_model_oem_version, 0444, show_prime_model_oem_version, NULL),
 	__ATTR(authenticate, 0444, qfprom_show_authenticate, NULL),
 	__ATTR(read_version, 0200, NULL, store_read_commit_version),
 	__ATTR(version_commit, 0200, NULL, store_version_commit),
