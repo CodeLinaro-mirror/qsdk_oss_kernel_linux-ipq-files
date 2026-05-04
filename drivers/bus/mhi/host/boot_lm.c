@@ -69,10 +69,8 @@ static int mhi_select_window(struct mhi_controller *mhi_cntrl, u32 addr)
 
 void mhi_free_nonce_buffer(struct mhi_controller *mhi_cntrl)
 {
-	struct device *dev = &mhi_cntrl->mhi_dev->dev;
-
 	if (mhi_cntrl->nonce_buf != NULL) {
-		dma_free_coherent(dev, NONCE_SIZE, mhi_cntrl->nonce_buf,
+		dma_free_coherent(mhi_cntrl->cntrl_dev, NONCE_SIZE, mhi_cntrl->nonce_buf,
 				mhi_cntrl->nonce_dma_addr);
 		mhi_cntrl->nonce_buf = NULL;
 	}
