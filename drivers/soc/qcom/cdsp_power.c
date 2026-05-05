@@ -282,27 +282,6 @@ static int cdsp_virt_reg_enable(struct regulator_dev *rdev)
 }
 
 /**
- * cdsp_virt_reg_disable() - Disable a virtual NSP regulator
- * @rdev: Regulator device
- *
- * Passes the disable request through to the underlying PMIC consumer handle
- * (vdd_cx or vdd_mx). Returns 0 immediately if the MX rail is absent on
- * this board.
- *
- * Return: 0 on success, negative error code on failure
- */
-static int cdsp_virt_reg_disable(struct regulator_dev *rdev)
-{
-	struct cdsp_power_driver *drv = rdev_get_drvdata(rdev);
-	int id = rdev_get_id(rdev);
-	struct regulator *reg = (id == CDSP_VIRT_NSP_CX) ? drv->vdd_cx : drv->vdd_mx;
-
-	if (!reg)
-		return 0;
-	return regulator_disable(reg);
-}
-
-/**
  * cdsp_virt_reg_is_enabled() - Check if a virtual NSP regulator is enabled
  * @rdev: Regulator device
  *
@@ -321,6 +300,32 @@ static int cdsp_virt_reg_is_enabled(struct regulator_dev *rdev)
 	if (!reg)
 		return 1;
 	return regulator_is_enabled(reg);
+}
+
+/**
+ * cdsp_virt_reg_disable() - Disable a virtual NSP regulator
+ * @rdev: Regulator device
+ *
+ * Passes the disable request through to the underlying PMIC consumer handle
+ * (vdd_cx or vdd_mx). Returns 0 immediately if the MX rail is absent on
+ * this board.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+static int cdsp_virt_reg_disable(struct regulator_dev *rdev)
+{
+	struct cdsp_power_driver *drv = rdev_get_drvdata(rdev);
+	int id = rdev_get_id(rdev);
+	struct regulator *reg = (id == CDSP_VIRT_NSP_CX) ? drv->vdd_cx : drv->vdd_mx;
+
+	if (!reg)
+		return 0;
+
+	/* Disable the regulator if it's enabled */
+	if (cdsp_virt_reg_is_enabled(rdev))
+		return regulator_disable(reg);
+
+	return 0;
 }
 
 static const struct regulator_ops cdsp_virt_reg_ops = {
