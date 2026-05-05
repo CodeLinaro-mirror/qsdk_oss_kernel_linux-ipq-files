@@ -68,6 +68,7 @@
 				switch_mac_mode = <0xd>; /* USXGMII for Laguna PHY */
 				switch_mac_mode1 = <0xff>; /* unused */
 				switch_mac_mode2 = <0xff>;
+				tm_tick_mode = <1>; /* 3 X 10G TM mode */
 
 				qcom,port_phyinfo {
 					port@0 {
