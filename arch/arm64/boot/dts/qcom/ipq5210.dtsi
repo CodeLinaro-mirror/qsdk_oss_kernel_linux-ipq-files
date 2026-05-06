@@ -2293,6 +2293,9 @@
 	psci {
 		compatible = "arm,psci-1.0";
 		method = "smc";
+		reset-types {
+			mode-edl = <0 0x1>;
+		};
 	};
 
 	qti,tfa-optee-log {
