@@ -2305,6 +2305,10 @@
 		optee-diag-info =<&optee_diag_buf>;
 	};
 
+	qseecom: qseecom {
+		compatible = "ipq5210-qseecom";
+	};
+
 	ctx-save {
 		compatible = "qti,ctxt-save-ipq5210";
 		memory-region = <&minidump_mem>;

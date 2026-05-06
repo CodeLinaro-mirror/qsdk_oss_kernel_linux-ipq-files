@@ -48,12 +48,36 @@ const struct qseecom_props qseecom_props_ipq5424 = {
 	.tzapp_log_ver = TZAPP_LOG_VER2,
 };
 
+const struct qseecom_props qseecom_props_ipq9650 = {
+	.function = (AES_SEC_KEY),
+	.libraries_inbuilt = false,
+	.logging_support_enabled = false,
+	.aes_v2 = true,
+	.ipc_support = true,
+	.tzapp_log_ver = 0,
+};
+
+const struct qseecom_props qseecom_props_ipq5210 = {
+	.function = (AES_SEC_KEY),
+	.libraries_inbuilt = false,
+	.logging_support_enabled = false,
+	.aes_v2 = true,
+	.ipc_support = true,
+	.tzapp_log_ver = 0,
+};
+
 static const struct of_device_id qseecom_of_table[] = {
 	{	.compatible = "ipq9574-qseecom",
 		.data = (void *) &qseecom_props_ipq9574,
 	},
 	{	.compatible = "ipq5424-qseecom",
 		.data = (void *) &qseecom_props_ipq5424,
+	},
+	{	.compatible = "ipq9650-qseecom",
+		.data = (void *) &qseecom_props_ipq9650,
+	},
+	{	.compatible = "ipq5210-qseecom",
+		.data = (void *) &qseecom_props_ipq5210,
 	},
 	{}
 };

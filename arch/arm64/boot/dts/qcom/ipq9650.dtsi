@@ -415,6 +415,10 @@
 		optee-diag-info =<&optee_diag_buf>;
 	};
 
+	qseecom: qseecom {
+		compatible = "ipq9650-qseecom";
+	};
+
 	reserved-memory {
 		#address-cells = <2>;
 		#size-cells = <2>;
