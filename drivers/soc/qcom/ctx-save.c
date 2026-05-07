@@ -1583,6 +1583,79 @@ int minidump_store_module_info(const char *name ,const unsigned long va,
 	kfree(mod_name);
 	return 0;
 }
+
+/*
+ * ctx_save_setup_uio_regions - Setup UIO reserved memory regions for minidump
+ * @pdev: Platform device pointer
+ *
+ * This function fetches three UIO reserved memory regions from device tree
+ * and adds them to minidump segments for crash dump collection.
+ *
+ * Return: 0 on success (errors are logged but don't stop execution)
+ */
+static int ctx_save_setup_uio_regions(void)
+{
+	struct device_node *np;
+	void __iomem *base_addr;
+	struct reserved_mem *rmem;
+	u64 size;
+	int ret;
+	int i;
+
+	const struct {
+		const char *compatible;
+		const char *name;
+	} uio_regions[] = {
+		{"qcom,debug-uio-firmware", "UIO_FIRMWARE"},
+		{"qcom,debug-uio-host", "UIO_HOST"},
+		{"qcom,debug-uio-nss", "UIO_NSS"}
+	};
+
+	for (i = 0; i < ARRAY_SIZE(uio_regions); i++) {
+		np = of_find_compatible_node(NULL, NULL, uio_regions[i].compatible);
+		if (!np) {
+			pr_err("%s : %s dt node does not exist\n",
+				__func__, uio_regions[i].name);
+			continue;
+		}
+
+		rmem = of_reserved_mem_lookup(np);
+		if (!rmem) {
+			pr_err("%s : failed to get %s reserved memory\n",
+				__func__, uio_regions[i].name);
+			of_node_put(np);
+			continue;
+		}
+
+		size = rmem->size;
+
+		pr_err("%s : %s base=0x%llx size=0x%llx\n",
+			__func__, uio_regions[i].name,
+			(u64)rmem->base, (u64)size);
+
+		base_addr = ioremap(rmem->base, size);
+		if (!base_addr) {
+			pr_err("%s : %s ioremap failed\n",
+				__func__, uio_regions[i].name);
+			of_node_put(np);
+			continue;
+		}
+
+		ret = minidump_fill_segments_internal((uint64_t)(uintptr_t)base_addr,
+						      size,
+						      QCA_WDT_LOG_DUMP_TYPE_MOD,
+						      uio_regions[i].name,
+						      MINIDUMP_CRASH_TYPE_DEFAULT);
+		if (ret) {
+			pr_err("Failed to add %s to minidump: %d\n",
+				uio_regions[i].name, ret);
+		}
+
+		of_node_put(np);
+	}
+
+	return 0;
+}
 #endif /* CONFIG_QCA_MINIDUMP */
 
 /*
@@ -1726,6 +1799,14 @@ static int ctx_save_fill_log_dump_tlv(void)
 		pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
 		return ret_val;
 	}
+
+	/* Setup UIO reserved memory regions for minidump */
+	ret_val = ctx_save_setup_uio_regions();
+	if (ret_val) {
+		pr_err("Minidump: failed to setup UIO regions: %d\n", ret_val);
+		return ret_val;
+	}
+
 #endif /* CONFIG_QCA_MINIDUMP */
 	if (tlv_msg.cur_msg_buffer_pos >=
 		tlv_msg.msg_buffer + tlv_msg.len)
@@ -1908,6 +1989,7 @@ static int ctx_save_panic_handler(struct notifier_block *nb,
 static struct notifier_block panic_nb = {
 	.notifier_call = ctx_save_panic_handler,
 };
+
 
 /*
  * ctx_save_setup_tmel_log_buf - Allocate and setup TMEL buffer
