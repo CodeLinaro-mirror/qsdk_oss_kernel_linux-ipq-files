@@ -404,8 +404,12 @@
 					      "btq",
 					      "cfg",
 					      "apb";
-				resets = <&qce2204_cc QCE2204_NSSCC_SWITCH_CORE_BCR>;
-				reset-names = "core";
+				resets = <&qce2204_cc QCE2204_NSSCC_SWITCH_CORE_BCR>,
+					<&qce2204_cc QCE2204_NSSCC_SWITCH_CORE_ARES>,
+					<&qce2204_cc QCE2204_NSSCC_SWITCH_CFG_ARES>;
+				reset-names = "core",
+						"core_clk_reset",
+						"cfg_clk_reset";
 
 				ports {
 					#address-cells = <1>;
@@ -537,6 +541,7 @@
 				switch_mac_mode = <0xd>; /* mac mode for uniphy instance0*/
 				switch_mac_mode1 = <0xe>; /* mac mode for uniphy instance1*/
 				switch_mac_mode2 = <0xff>; /* mac mode for uniphy instance2*/
+				tm_tick_mode = <1>; /* marina 3X10G mode */
 
 				qcom,port_phyinfo {
 					port@0 {

@@ -10,6 +10,7 @@
 #include <linux/delay.h>
 
 #include "qce2204.h"
+#include "qce2204_ppe.h"
 
 /* Switch-level clock management */
 int qce2204_get_clocks(struct qce2204_priv *priv)
@@ -216,7 +217,23 @@ int qce2204_get_resets(struct qce2204_priv *priv)
 		return ret;
 	}
 
-	dev_info(dev, "Core reset acquired\n");
+	priv->core_clk_reset = devm_reset_control_get(dev, QCE2204_RESET_CORE_CLK);
+	if (IS_ERR(priv->core_clk_reset)) {
+		ret = PTR_ERR(priv->core_clk_reset);
+		if (ret != -EPROBE_DEFER)
+			dev_err(dev, "Failed to get core clock reset: %d\n", ret);
+		return ret;
+	}
+
+	priv->cfg_clk_reset = devm_reset_control_get(dev, QCE2204_RESET_CFG_CLK);
+	if (IS_ERR(priv->cfg_clk_reset)) {
+		ret = PTR_ERR(priv->cfg_clk_reset);
+		if (ret != -EPROBE_DEFER)
+			dev_err(dev, "Failed to get cfg clock reset: %d\n", ret);
+		return ret;
+	}
+
+	dev_info(dev, "Switch resets acquired\n");
 	return 0;
 }
 
@@ -260,9 +277,10 @@ int qce2204_reset_switch(struct qce2204_priv *priv)
 		dev_info(dev, "GPIO reset completed\n");
 	}
 
+	/* Step 1: Assert and deassert core BCR reset (GCC_SWITCH_CORE_BCR) */
 	ret = reset_control_assert(priv->core_reset);
 	if (ret) {
-		dev_err(dev, "Failed to assert core reset: %d\n", ret);
+		dev_err(dev, "Failed to assert core BCR reset: %d\n", ret);
 		return ret;
 	}
 
@@ -270,13 +288,54 @@ int qce2204_reset_switch(struct qce2204_priv *priv)
 
 	ret = reset_control_deassert(priv->core_reset);
 	if (ret) {
-		dev_err(dev, "Failed to deassert core reset: %d\n", ret);
+		dev_err(dev, "Failed to deassert core BCR reset: %d\n", ret);
 		return ret;
 	}
 
+	/* Step 2: Assert core clock reset */
+	ret = reset_control_assert(priv->core_clk_reset);
+	if (ret) {
+		dev_err(dev, "Failed to assert core clock reset: %d\n", ret);
+		return ret;
+	}
+	usleep_range(5000, 10000);
+
+	/* Step 3: Assert cfg clock reset */
+	ret = reset_control_assert(priv->cfg_clk_reset);
+	if (ret) {
+		dev_err(dev, "Failed to assert cfg clock reset: %d\n", ret);
+		goto err_deassert_core_clk;
+	}
+	usleep_range(5000, 10000);
+
+	/* Step 4: Release cfg clock reset - CSR now accessible */
+	ret = reset_control_deassert(priv->cfg_clk_reset);
+	if (ret) {
+		dev_err(dev, "Failed to deassert cfg clock reset: %d\n", ret);
+		goto err_deassert_core_clk;
+	}
+	usleep_range(5000, 10000);
+
+	/* Step 5-7: Configure TDM depth via PPE registers */
+	ret = qce2204_ppe_tdm_depth_init(priv);
+	if (ret) {
+		dev_err(dev, "Failed to init TDM depth: %d\n", ret);
+		goto err_deassert_core_clk;
+	}
+
+	/* Step 8: Release core clock reset */
+	ret = reset_control_deassert(priv->core_clk_reset);
+	if (ret) {
+		dev_err(dev, "Failed to deassert core clock reset: %d\n", ret);
+		return ret;
+	}
 	usleep_range(10000, 20000);
 	dev_info(dev, "Switch reset completed\n");
 	return 0;
+
+err_deassert_core_clk:
+	reset_control_deassert(priv->core_clk_reset);
+	return ret;
 }
 
 int qce2204_reset_port(struct qce2204_priv *priv, int port)

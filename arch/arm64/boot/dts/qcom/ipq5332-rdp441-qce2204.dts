@@ -347,8 +347,12 @@
 					      "btq",
 					      "cfg",
 					      "apb";
-				resets = <&qce2204_cc QCE2204_NSSCC_SWITCH_CORE_BCR>;
-				reset-names = "core";
+				resets = <&qce2204_cc QCE2204_NSSCC_SWITCH_CORE_BCR>,
+					<&qce2204_cc QCE2204_NSSCC_SWITCH_CORE_ARES>,
+					<&qce2204_cc QCE2204_NSSCC_SWITCH_CFG_ARES>;
+				reset-names = "core",
+						"core_clk_reset",
+						"cfg_clk_reset";
 
 				ports {
 					#address-cells = <1>;

@@ -664,6 +664,14 @@ static int qce2204_mdio_probe(struct mdio_device *mdiodev)
 		return ret;
 	}
 
+	/* Initialize regmap before reset so TDM depth config can use regmap_write */
+	priv->regmap = devm_regmap_init(dev, &qce2204_regmap_bus, priv, &qce2204_regmap_config);
+	if (IS_ERR(priv->regmap)) {
+		ret = PTR_ERR(priv->regmap);
+		dev_err(dev, "Failed to init regmap: %d\n", ret);
+		return ret;
+	}
+
 	ret = qce2204_init_switch_clocks_resets(priv);
 	if (ret) {
 		dev_err(dev, "Failed to init switch clocks/resets: %d\n", ret);
@@ -674,13 +682,6 @@ static int qce2204_mdio_probe(struct mdio_device *mdiodev)
 	ret = qce2204_init_port_clocks_resets(priv);
 	if (ret) {
 		dev_err(dev, "Failed to init port clocks/resets: %d\n", ret);
-		goto err_disable_clocks;
-	}
-
-	priv->regmap = devm_regmap_init(dev, &qce2204_regmap_bus, priv, &qce2204_regmap_config);
-	if (IS_ERR(priv->regmap)) {
-		ret = PTR_ERR(priv->regmap);
-		dev_err(dev, "Failed to init regmap: %d\n", ret);
 		goto err_disable_clocks;
 	}
 
