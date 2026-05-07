@@ -377,6 +377,11 @@
 		compatible = "qcom,tmel-log-ipq9650";
 	};
 
+	qcom,ipq-debug {
+		compatible = "qcom,ipq-debug-ipq9650";
+		qcom,tcsr-reset-reasons = <&tcsr 0x2f00c>;
+	};
+
 	memory@80000000 {
 		device_type = "memory";
 		/* We expect the bootloader to fill in the size */
@@ -1630,6 +1635,21 @@
 			 */
 			optee_diag_buf: optee-diag-buf@730 {
 				reg = <0x730 8>;
+			};
+
+			tz-reason-buf@7a4 {
+				compatible = "qcom,ipq9650-imem-tz-reason";
+				reg = <0x7a4 4>;
+			};
+
+			tme-reason-buf@7a8 {
+				compatible = "qcom,ipq9650-imem-tme-reason";
+				reg = <0x7a8 4>;
+			};
+
+			kernel-reason-buf@7ac {
+				compatible = "qcom,ipq9650-imem-kernel-reason";
+				reg = <0x7ac 4>;
 			};
 
 		};
