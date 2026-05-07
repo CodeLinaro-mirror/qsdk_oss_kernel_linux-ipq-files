@@ -306,6 +306,16 @@
 		ranges = <0 0 0 0xffffffff>;
 		dma-ranges;
 
+		eud@78000 {
+			compatible = "qcom,sc7280-eud","qcom,eud";
+			reg = <0x00078000 0x2000>,
+			      <0x0007a000 0x1000>;
+			interrupts = <GIC_SPI 166 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&gcc GCC_USB0_PHY_CFG_AHB_CLK>;
+			clock-names = "eud_ahb2phy_clk";
+			status = "disabled";
+		};
+
 		efuse@a4000 {
 			compatible = "qcom,qfprom";
 			reg = <0xA4000 0x741>;
