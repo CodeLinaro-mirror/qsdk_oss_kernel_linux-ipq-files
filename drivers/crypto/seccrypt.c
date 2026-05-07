@@ -13,8 +13,9 @@
 #include <linux/mod_devicetable.h>
 #include <crypto/scatterwalk.h>
 #include <linux/err.h>
-#include <linux/firmware/qcom/qcom_scm.h>
 #include <linux/dma-mapping.h>
+#include <linux/seccrypt_ops.h>
+#include <linux/qcom_seccrypt_tee.h>
 
 #define SEC_MAX_KEY_SIZE	64
 /* Cipher algorithm */
@@ -31,21 +32,6 @@
 #define MODE_CBC	1
 #define MODE_ECB	0
 #define MODE_CTR	2
-
-struct sec_config_key_sec {
-	uint32_t keylen;
-}__attribute__((packed));
-
-struct secure_nand_aes_cmd {
-	u64 direction;
-	u64 mode;
-	u64 *iv_buf;
-	u64 iv_size;
-	u64 *req_buf;
-	u64 reqlen;
-	u64 *rsp_buf;
-	u64 rsplen;
-};
 
 struct sec_cipher_ctx {
 	u8 enc_key[SEC_MAX_KEY_SIZE];
@@ -123,7 +109,7 @@ static int seccrypt_setkey_sec(unsigned int keylen)
 	struct sec_config_key_sec key;
 
 	key.keylen = keylen;
-	return qti_set_qcekey_sec(&key, sizeof(struct sec_config_key_sec));
+	return qcom_seccrypt_set_key(&key, sizeof(struct sec_config_key_sec));
 }
 
 static inline struct skcipher_alg *__crypto_skcipher_alg(
@@ -245,16 +231,21 @@ static int seccrypt_tz(struct skcipher_request *req,
 		cptr->mode = MODE_ECB;
 	else if (IS_CTR(flag))
 		cptr->mode = MODE_CTR;
-	cptr->iv_buf = (u64 *)phy_iv;
+	cptr->iv_buf_virt = iv_buf;        /* Virtual address */
+	cptr->iv_buf = (u64 *)phy_iv;      /* Physical address */
+
+	cptr->req_buf_virt = src;          /* Virtual address */
+	cptr->req_buf = (u64 *)phy_src;    /* Physical address */
+
+	cptr->rsp_buf_virt = dst;          /* Virtual address */
+	cptr->rsp_buf = (u64 *)phy_dst;    /* Physical address */
 	cptr->iv_size = AES_BLOCK_SIZE;
-	cptr->req_buf = (u64 *)phy_src;
 	cptr->reqlen = reqlen;
-	cptr->rsp_buf = (u64 *)phy_dst;
 	cptr->rsplen = reqlen;
 
-	err = qti_sec_crypt(cptr, sizeof(struct secure_nand_aes_cmd));
+	err = qcom_seccrypt_crypt(cptr, sizeof(struct secure_nand_aes_cmd));
 	if (err) {
-		dev_err(dev, "enc|dec smc call failed :%d\n", err);
+		dev_err(dev, "enc|dec backend call failed :%d\n", err);
 	}
 
 	if (phy_src)
@@ -517,7 +508,7 @@ static ssize_t tz_fallback_store(struct kobject *kobj,
 	if (use_fixed_key == 1) {
 		sec->fallback_tz = true;
 	} else {
-		if (qti_seccrypt_clearkey() < 0)
+		if (qcom_seccrypt_clear_key() < 0)
 			pr_err("error in clearing key.\n");
 		sec->fallback_tz = false;
 	}
