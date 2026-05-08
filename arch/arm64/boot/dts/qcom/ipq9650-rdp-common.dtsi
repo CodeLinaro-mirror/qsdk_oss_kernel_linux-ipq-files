@@ -299,6 +299,11 @@
 	};
 };
 
+&pwm {
+	pinctrl-0 = <&pwm_default_state>;
+	pinctrl-names = "default";
+};
+
 &sleep_clk {
 	clock-frequency = <32000>;
 };
@@ -313,6 +318,12 @@
 		function = "gpio";
 		drive-strength = <8>;
 		bias-pull-up;
+	};
+
+	pwm_default_state: pwm-default-state {
+		pins = "gpio11";
+		function = "pwm_out01";
+		drive-strength = <8>;
 	};
 
 	qup_i2c2_default: qup-i2c2-default-state {
