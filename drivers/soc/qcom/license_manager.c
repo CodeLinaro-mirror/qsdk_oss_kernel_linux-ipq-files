@@ -918,17 +918,18 @@ static int lm_install_licenses_to_tmel(struct lm_install_info *install_info,
 
 		ret = lm_install_license(svc, token, &install_resp, device_id,
 					 operation, attach_num);
-		if (ret < 0 && ret != -ENOENT)
-			goto err_licenseinfo;
-		else {
-			/* Copy the license response of a file to the license info */
-			memcpy((void *)&install_info->lm_resp[install_info->num_of_resp],
-			       (void *)&install_resp, sizeof(struct lm_install_resp));
-			install_info->num_of_resp += 1;
+		if (ret < 0 && ret != -ENOENT) {
+			/* Log error but continue processing other licenses */
+			dev_err(dev, "Failed to install license %s: %d,  installing remaining licenses\n",
+				token, ret);
 		}
+		/* Copying response to track individual license status */
+		memcpy((void *)&install_info->lm_resp[install_info->num_of_resp],
+		       (void *)&install_resp, sizeof(struct lm_install_resp));
+		install_info->num_of_resp += 1;
 	}
 
-	/* If last License failed, return 0 to process other licenses */
+	/* Return success - individual license failures are tracked in install_resp */
 	ret = 0;
 
 err_licenseinfo:
