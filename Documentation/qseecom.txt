@@ -15,105 +15,105 @@ Note: All the requests to Tzapp will be routed via TZ.
 Summary of all the supported operations via qseecom for various targets is
 listed in the below table.
 
-________________________________________________________________
-|          |                      |         |         |         |
-| Platform |      Operations      | IPQ95xx | IPQ53xx | IPQ54xx |
-|__________|______________________|_________|_________|_________|
-|          |                      |         |         |         |
-|          |     TLS hardening    |         |         |         |
-|          |                      |         |         |         |
-|          |----------------------|         |         |         |
-|          |                      |         |         |         |
-|          |      RSA keyblob     |    Y    |    Y    |    Y    |
-|          |Generate/Import/Update|         |         |         |
-|          |                      |         |         |         |
-|          |         RSA          |    Y    |    Y    |    Y    |
-|          |    (Sign/Verify)     |         |         |         |
-|          |                      |         |         |         |
-|          |     AESv1 keyblob    |    Y    |    Y    |    N    |
-|          |  (Genetrate/Import)  |         |         |         |
-|          |                      |         |         |         |
-|          |   AESv1 Seal/Unseal  |    Y    |    Y    |    N    |
-|          |       (AES CCM)      |         |         |         |
-|    TZ    |    (Using keyblob)   |         |         |         |
-|          |                      |         |         |         |
-|          | AESv2 encrypt/decrypt|    Y    |    Y    |    Y    |
-|          |   (AES256 ECB/CBC)   |         |         |         |
-|          |  (Using key handle   |         |         |         |
-|          |  derived from TME-L) |         |         |         |
-|          |                      |         |         |         |
-|          |----------------------|         |         |         |
-|          |                      |         |         |         |
-|          | TME-L based services |         |         |         |
-|          |                      |         |         |         |
-|          |----------------------|         |         |         |
-|          |                      |         |         |         |
-|          |       Derive key     |    Y    |    Y    |    Y    |
-|          | (CRBK/OEM Prod seed) |         |         |         |
-|          |                      |         |         |         |
-|          |       Clear key      |    Y    |    Y    |    Y    |
-|          |                      |         |         |         |
-|__________|______________________|_________|_________|_________|
-|          |                      |         |         |         |
-|          |     Key Management   |         |         |         |
-|          |                      |         |         |         |
-|          |----------------------|         |         |         |
-|          |                      |         |         |         |
-|          |      Generate key    |    N    |    N    |    Y    |
-|          |                      |         |         |         |
-|          |      Import key      |    N    |    N    |    Y    |
-|          |                      |         |         |         |
-|          | Derive key - NIST KDF|    N    |    N    |    Y    |
-|          | (CRBK/OEM Prod seed) |         |         |         |
-|          |                      |         |         |         |
-|          |       Clear key      |    N    |    N    |    Y    |
-|          |                      |         |         |         |
-|          |      Wrap/Unwrap     |    N    |    N    |    Y    |
-|          |    (via Import key)  |         |         |         |
-|          |                      |         |         |         |
-|  TME-L   |----------------------|         |         |         |
-|          |                      |         |         |         |
-|          | Host Crypto Services |         |         |         |
-|          |                      |         |         |         |
-|          |----------------------|         |         |         |
-|          |                      |         |         |         |
-|          | AES encrypt/decrypt  |    N    |    N    |    Y    |
-|          | (AES256 ECB/CBC/GCM) |         |         |         |
-|          |                      |         |         |         |
-|          |  ECDSA sign/verify   |    N    |    N    |    Y    |
-|          | (Curve P-256/P-384)  |         |         |         |
-|          |                      |         |         |         |
-|          |  ECDH Shared secret  |    N    |    N    |    Y    |
-|          | (Curve P-256/P-384)  |         |         |         |
-|          |                      |         |         |         |
-|          |  SHA256/HMAC-SHA256  |    N    |    N    |    Y    |
-|__________|______________________|_________|_________|_________|
-|          |                      |         |         |         |
-|          | Basic Multiplication |    Y    |    Y    |    Y    |
-|          |                      |         |         |         |
-|          |    Sample Crypto     |    Y    |    Y    |    Y    |
-|          |                      |         |         |         |
-|          |     RSA(enc/dec)     |    Y    |    Y    |    Y    |
-|          |                      |         |         |         |
-|          |        AESv2         |    Y    |    Y    |    Y    |
-|  TZAPP   |                      |         |         |         |
-|          |      Fuse read       |    Y    |    Y    |    Y    |
-|          |                      |         |         |         |
-|          |     Fuse write       |    Y    |    Y    |    Y    |
-|          |                      |         |         |         |
-|          |     Logbitmask       |    Y    |    Y    |    Y    |
-|          |                      |         |         |         |
-|          |        Misc          |    Y    |    Y    |    Y    |
-|__________|______________________|_________|_________|_________|
-|          |                      |         |         |         |
-|          |   ECDSA Import Key   |    Y    |    Y    |    Y    |
-|  Crypto  |                      |         |         |         |
-|  APP     |     ECDSA Sign       |    Y    |    Y    |    Y    |
-|          |                      |         |         |         |
-|          |    ECDSA Verify      |    Y    |    Y    |    Y    |
-|__________|______________________|_________|_________|_________|
+____________________________________________________________________________________
+|          |                      |         |         |         |         |         |
+| Platform |      Operations      | IPQ95xx | IPQ53xx | IPQ54xx | IPQ96xx | IPQ52xx |
+|__________|______________________|_________|_________|_________|_________|_________|
+|          |                      |         |         |         |         |         |
+|          |     TLS hardening    |         |         |         |         |         |
+|          |                      |         |         |         |         |         |
+|          |----------------------|         |         |         |         |         |
+|          |                      |         |         |         |         |         |
+|          |      RSA keyblob     |    Y    |    Y    |    Y    |    N    |    N    |
+|          |Generate/Import/Update|         |         |         |         |         |
+|          |                      |         |         |         |         |         |
+|          |         RSA          |    Y    |    Y    |    Y    |    N    |    N    |
+|          |    (Sign/Verify)     |         |         |         |         |         |
+|          |                      |         |         |         |         |         |
+|          |     AESv1 keyblob    |    Y    |    Y    |    N    |    N    |    N    |
+|          |  (Genetrate/Import)  |         |         |         |         |         |
+|          |                      |         |         |         |         |         |
+|          |   AESv1 Seal/Unseal  |    Y    |    Y    |    N    |    N    |    N    |
+|          |       (AES CCM)      |         |         |         |         |         |
+|    TZ    |    (Using keyblob)   |         |         |         |         |         |
+|          |                      |         |         |         |         |         |
+|          | AESv2 encrypt/decrypt|    Y    |    Y    |    Y    |    N    |    N    |
+|          |   (AES256 ECB/CBC)   |         |         |         |         |         |
+|          |  (Using key handle   |         |         |         |         |         |
+|          |  derived from TME-L) |         |         |         |         |         |
+|          |                      |         |         |         |         |         |
+|          |----------------------|         |         |         |         |         |
+|          |                      |         |         |         |         |         |
+|          | TME-L based services |         |         |         |         |         |
+|          |                      |         |         |         |         |         |
+|          |----------------------|         |         |         |         |         |
+|          |                      |         |         |         |         |         |
+|          |       Derive key     |    Y    |    Y    |    Y    |    Y    |    Y    |
+|          | (CRBK/OEM Prod seed) |         |         |         |         |         |
+|          |                      |         |         |         |         |         |
+|          |       Clear key      |    Y    |    Y    |    Y    |    Y    |    Y    |
+|          |                      |         |         |         |         |         |
+|__________|______________________|_________|_________|_________|_________|_________|
+|          |                      |         |         |         |         |         |
+|          |     Key Management   |         |         |         |         |         |
+|          |                      |         |         |         |         |         |
+|          |----------------------|         |         |         |         |         |
+|          |                      |         |         |         |         |         |
+|          |      Generate key    |    N    |    N    |    Y    |    Y    |    Y    |
+|          |                      |         |         |         |         |         |
+|          |      Import key      |    N    |    N    |    Y    |    Y    |    Y    |
+|          |                      |         |         |         |         |         |
+|          | Derive key - NIST KDF|    N    |    N    |    Y    |    Y    |    Y    |
+|          | (CRBK/OEM Prod seed) |         |         |         |         |         |
+|          |                      |         |         |         |         |         |
+|          |       Clear key      |    N    |    N    |    Y    |    Y    |    Y    |
+|          |                      |         |         |         |         |         |
+|          |      Wrap/Unwrap     |    N    |    N    |    Y    |    Y    |    Y    |
+|          |    (via Import key)  |         |         |         |         |         |
+|          |                      |         |         |         |         |         |
+|  TME-L   |----------------------|         |         |         |         |         |
+|          |                      |         |         |         |         |         |
+|          | Host Crypto Services |         |         |         |         |         |
+|          |                      |         |         |         |         |         |
+|          |----------------------|         |         |         |         |         |
+|          |                      |         |         |         |         |         |
+|          | AES encrypt/decrypt  |    N    |    N    |    Y    |    Y    |    Y    |
+|          | (AES256 ECB/CBC/GCM) |         |         |         |         |         |
+|          |                      |         |         |         |         |         |
+|          |  ECDSA sign/verify   |    N    |    N    |    Y    |    Y    |    Y    |
+|          | (Curve P-256/P-384)  |         |         |         |         |         |
+|          |                      |         |         |         |         |         |
+|          |  ECDH Shared secret  |    N    |    N    |    Y    |    Y    |    Y    |
+|          | (Curve P-256/P-384)  |         |         |         |         |         |
+|          |                      |         |         |         |         |         |
+|          |  SHA256/HMAC-SHA256  |    N    |    N    |    Y    |    Y    |    Y    |
+|__________|______________________|_________|_________|_________|_________|_________|
+|          |                      |         |         |         |         |         |
+|          | Basic Multiplication |    Y    |    Y    |    Y    |    N    |    N    |
+|          |                      |         |         |         |         |         |
+|          |    Sample Crypto     |    Y    |    Y    |    Y    |    N    |    N    |
+|          |                      |         |         |         |         |         |
+|          |     RSA(enc/dec)     |    Y    |    Y    |    Y    |    N    |    N    |
+|          |                      |         |         |         |         |         |
+|          |        AESv2         |    Y    |    Y    |    Y    |    N    |    N    |
+|  TZAPP   |                      |         |         |         |         |         |
+|          |      Fuse read       |    Y    |    Y    |    Y    |    N    |    N    |
+|          |                      |         |         |         |         |         |
+|          |     Fuse write       |    Y    |    Y    |    Y    |    N    |    N    |
+|          |                      |         |         |         |         |         |
+|          |     Logbitmask       |    Y    |    Y    |    Y    |    N    |    N    |
+|          |                      |         |         |         |         |         |
+|          |        Misc          |    Y    |    Y    |    Y    |    N    |    N    |
+|__________|______________________|_________|_________|_________|_________|_________|
+|          |                      |         |         |         |         |         |
+|          |   ECDSA Import Key   |    Y    |    Y    |    Y    |    N    |    N    |
+|  Crypto  |                      |         |         |         |         |         |
+|  APP     |     ECDSA Sign       |    Y    |    Y    |    Y    |    N    |    N    |
+|          |                      |         |         |         |         |         |
+|          |    ECDSA Verify      |    Y    |    Y    |    Y    |    N    |    N    |
+|__________|______________________|_________|_________|_________|_________|_________|
 
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------
 
 TZ operations
 
@@ -327,7 +327,7 @@ direcly to TME-L instead of routing via TZ.
 ------------------------------------------------------
 |Steps for performing AES crypto operation from TME-L|
 ------------------------------------------------------
-Supported targets: IPQ54xx
+Supported targets: IPQ54xx, IPQ96xx, IPQ52xx
 
 AES 256 API's supported in TME-L based platform can be used as below:
 (qseecom_props function = AES_SEC_KEY ipc_support = true)
