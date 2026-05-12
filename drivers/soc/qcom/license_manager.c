@@ -2029,7 +2029,7 @@ static int license_manager_probe(struct platform_device *pdev)
 		ret = populate_soc_hw_features(svc);
 		if (ret == -EPROBE_DEFER)
 			goto free_lm_svc;
-		else if (ret)
+		else if (ret != -ENOENT)
 			dev_err(dev, "Failed to populate SoC HW features"
 				"from smem with err = %d\n", ret);
 	}
