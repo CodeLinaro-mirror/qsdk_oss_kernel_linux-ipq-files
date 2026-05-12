@@ -297,6 +297,11 @@
 
 	sysregister {
 		compatible = "qcom,sysregister";
+		reg-names = "bootcount", "force_inactive";
+		reg-access-type = "syscon", "syscon";
+		reg-phandle = <&imem>, <&imem>;
+		reg-offset = <0xC8>, <0xCC>;
+		reg-bit-position = <0xffffffff>, <0xffffffff>;
 	};
 
 	soc@0 {
