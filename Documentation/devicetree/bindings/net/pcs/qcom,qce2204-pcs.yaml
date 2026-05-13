@@ -58,6 +58,10 @@ properties:
   '#clock-cells':
     const: 1
 
+  qcom,overspeed:
+    type: boolean
+    description: Enable 12.5G overspeed for XPCS
+
 required:
   - compatible
   - reg
