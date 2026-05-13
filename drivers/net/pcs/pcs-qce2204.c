@@ -31,10 +31,11 @@
 #define PCS_ANA_SW_RESET                        BIT(6)
 
 #define MODE_CONTROL				0x11b
-#define MODE_CONTROL_SEL_MASK			GENMASK(12, 8)
-#define MODE_CONTROL_XPCS			0x10
-#define MODE_CONTROL_SGMII_PLUS			0x8
-#define MODE_CONTROL_SGMII			0x4
+#define MODE_CONTROL_SEL_MASK			GENMASK(12, 7)
+#define MODE_CONTROL_XPCS			0x20
+#define MODE_CONTROL_XPCS_OVERSPEED		0x21
+#define MODE_CONTROL_SGMII_PLUS			0x10
+#define MODE_CONTROL_SGMII			0x8
 #define MODE_CONTROL_SGMII_SEL_MASK		GENMASK(6, 4)
 #define MODE_CONTROL_SGMII_PHY			1
 #define MODE_CONTROL_SGMII_MAC			2
@@ -143,6 +144,7 @@ struct qce2204_pcs {
 	struct reset_control *xpcs_rstc;
 	struct qce2204_raw_clk raw_clk[QCE2204_PCS_TX_CLK + 1];
 	phy_interface_t curr_mode;
+	bool overspeed;  /* true for 12.5G overspeed */
 };
 
 #define phylink_pcs_to_qce2204(pl_pcs) \
@@ -332,8 +334,13 @@ static int qce2204_set_msldo(struct qce2204_pcs *qce2204, phy_interface_t ifmode
 		break;
 	case PHY_INTERFACE_MODE_10GBASER:
 	case PHY_INTERFACE_MODE_USXGMII:
-		mldo = 0xCD;
-		sldo = 0x7F6D;
+		if (qce2204->overspeed) {
+			mldo = 0xD1;
+			sldo = 0x7FFF;
+		} else {
+			mldo = 0xCD;
+			sldo = 0x7F6D;
+		}
 		break;
 	default:
 		return -EOPNOTSUPP;
@@ -375,7 +382,9 @@ static int qce2204_pcs_set_mode(struct qce2204_pcs *qce2204, phy_interface_t ifm
 		break;
 	case PHY_INTERFACE_MODE_10GBASER:
 		op3_mask = BIT(1);
-		hw_ifmode = MODE_CONTROL_XPCS;
+		/* Use XPCS overspeed if overspeed is enabled */
+		hw_ifmode = qce2204->overspeed ?
+				    MODE_CONTROL_XPCS_OVERSPEED : MODE_CONTROL_XPCS;
 		break;
 	case PHY_INTERFACE_MODE_USXGMII:
 		op3_mask = GENMASK(4, 1);
@@ -502,25 +511,24 @@ static int qce2204_pcs_config_10g_mode(struct qce2204_pcs *qce2204,
 	}
 
 	/* Wait calibration */
-	ret = read_poll_timeout(mdiodev_c45_read, val,
-				(val & CALIBRATION_DONE),
-				1000, 100000, true, qce2204->mdiodev,
-				MDIO_MMD_PMAPMD, CALIBRATION4);
+	ret = qce2204_do_calibration(qce2204->mdiodev);
 	if (ret) {
 		dev_err(&qce2204->mdiodev->dev, "Calibration timeout!\n");
 		return ret;
 	}
 
-	/* Open SSC clock */
-	ret = mdiodev_c45_modify(qce2204->mdiodev, MDIO_MMD_PMAPMD, UPHY_TXPI,
-				 UPHY_SSC_PU, UPHY_SSC_PU);
-	if (ret)
-		return ret;
+	if (!qce2204->overspeed) {
+		/* Open SSC clock */
+		ret = mdiodev_c45_modify(qce2204->mdiodev, MDIO_MMD_PMAPMD, UPHY_TXPI,
+					 UPHY_SSC_PU, UPHY_SSC_PU);
+		if (ret)
+			return ret;
 
-	ret = mdiodev_c45_modify(qce2204->mdiodev, MDIO_MMD_PMAPMD, CDR_CONTROL,
-				 SSC_FIXED_OFFSET, SSC_FIXED_OFFSET);
-	if (ret)
-		return ret;
+		ret = mdiodev_c45_modify(qce2204->mdiodev, MDIO_MMD_PMAPMD, CDR_CONTROL,
+					 SSC_FIXED_OFFSET, SSC_FIXED_OFFSET);
+		if (ret)
+			return ret;
+	}
 
 	/* XPCS deassert */
 	ret = reset_control_deassert(qce2204->xpcs_rstc);
@@ -978,6 +986,11 @@ static int qce2204_pcs_probe(struct mdio_device *mdio_dev)
 
 	/* Initialize curr_mode to NA */
 	qce2204->curr_mode = PHY_INTERFACE_MODE_NA;
+
+	/* Check if overspeed (12.5G) is enabled via device tree */
+	qce2204->overspeed = device_property_read_bool(dev, "qcom,overspeed");
+	if (qce2204->overspeed)
+		dev_dbg(dev, "12.5G overspeed enabled\n");
 
 	for (i = 0; i < PCS_FUNC_MAX; i++) {
 		clk = devm_clk_get(dev, pcs_func_name[i]);
