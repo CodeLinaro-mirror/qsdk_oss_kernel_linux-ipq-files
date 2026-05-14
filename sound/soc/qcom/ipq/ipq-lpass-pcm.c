@@ -730,6 +730,7 @@ static const struct of_device_id qca_raw_match_table[] = {
 	{ .compatible = "qca,ipq9574-lpass-pcm", .data = &ipq9574_lpass_pcm_cfg },
 	{ .compatible = "qca,ipq5332-lpass-pcm", .data = &ipq9574_lpass_pcm_cfg },
 	{ .compatible = "qca,ipq5424-lpass-pcm", .data = &ipq9574_lpass_pcm_cfg },
+	{ .compatible = "qca,ipq5210-lpass-pcm", .data = &ipq9574_lpass_pcm_cfg },
 	{},
 };
 
