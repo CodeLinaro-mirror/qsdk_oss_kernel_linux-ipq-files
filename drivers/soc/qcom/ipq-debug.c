@@ -26,6 +26,8 @@
 #include <linux/of_device.h>
 #include <linux/notifier.h>
 #include <linux/panic_notifier.h>
+#include <linux/mfd/syscon.h>
+#include <linux/regmap.h>
 #include <linux/remoteproc/qcom_rproc.h>
 #include <linux/remoteproc.h>
 #include <soc/qcom/ipq-debug.h>
@@ -54,6 +56,13 @@ static int debug_panic_handler(struct notifier_block *nb, unsigned long action,
 	int tmp;
 
 	reason = container_of(nb, struct restart_reason, panic_blk);
+
+	/* For targets support TCSR_RESET_REASON */
+	if (reason->tcsr_hlos_addr) {
+		regmap_write(reason->tcsr_regmap, reason->tcsr_hlos_addr,
+			     val);
+		return NOTIFY_DONE;
+	}
 
 	/* If the reason is IPQ5424_INTERNAL_Q6_CRASH, then the rproc recovery
 	 * is not enabled, so treat it as INTERNAL_Q6_CRASH, not as HLOS_PANIC.
@@ -215,6 +224,8 @@ static const struct of_device_id ipq_debug_match_table[] = {
 	},
 	{ .compatible = "qcom,ipq-debug-ipq5424",
 	},
+	{ .compatible = "qcom,ipq-debug-ipq9650",
+	},
 	{}
 };
 MODULE_DEVICE_TABLE(of, ipq_debug_match_table);
@@ -239,6 +250,33 @@ void __iomem *ipq_debug_parse_address(struct device *dev,
 	}
 
 	return addr;
+}
+
+static void restart_reason_logging_ipq9650(struct device *dev)
+{
+	void __iomem *base;
+	u32 tz_reason = 0, tme_reason = 0, kernel_reason = 0;
+
+	base = ipq_debug_parse_address(dev, "qcom,ipq9650-imem-tz-reason");
+	if (!IS_ERR_OR_NULL(base)) {
+		memcpy_fromio(&tz_reason, base, 4);
+		iounmap(base);
+	}
+
+	base = ipq_debug_parse_address(dev, "qcom,ipq9650-imem-tme-reason");
+	if (!IS_ERR_OR_NULL(base)) {
+		memcpy_fromio(&tme_reason, base, 4);
+		iounmap(base);
+	}
+
+	base = ipq_debug_parse_address(dev, "qcom,ipq9650-imem-kernel-reason");
+	if (!IS_ERR_OR_NULL(base)) {
+		memcpy_fromio(&kernel_reason, base, 4);
+		iounmap(base);
+	}
+
+	pr_info("reset_reasons: TZ=0x%X TME=0x%X Kernel=0x%X\n",
+		tz_reason, tme_reason, kernel_reason);
 }
 
 static bool is_rproc_device_available(void)
@@ -317,6 +355,49 @@ static int ipq_debug_probe(struct platform_device *pdev)
 
 	dev_set_drvdata(&pdev->dev, reason);
 
+	/*
+	 * IPQ9650 uses TCSR for restart reason via syscon regmap.
+	 * All other targets read the previous reset reason from IMEM.
+	 */
+	if (of_device_is_compatible(np, "qcom,ipq-debug-ipq9650")) {
+		struct regmap *regmap;
+		u32 base_offset;
+
+		regmap = syscon_regmap_lookup_by_phandle_args(pdev->dev.of_node,
+					"qcom,tcsr-reset-reasons", 1, &base_offset);
+		if (IS_ERR(regmap)) {
+			dev_err(&pdev->dev,
+				"failed to get TCSR regmap for reset reasons, ret is %ld\n",
+				PTR_ERR(regmap));
+			of_node_put(np);
+			return PTR_ERR(regmap);
+		}
+
+		reason->tcsr_regmap = regmap;
+		reason->tcsr_hlos_addr = base_offset;
+
+		/* Print reset reasons from IMEM on boot */
+		restart_reason_logging_ipq9650(&pdev->dev);
+
+		reason->panic_blk.notifier_call = debug_panic_handler;
+		ret = atomic_notifier_chain_register(&panic_notifier_list,
+						     &reason->panic_blk);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"failed to register the panic notifier, ret is %d\n",
+				ret);
+			of_node_put(np);
+			return ret;
+		}
+
+		of_node_put(np);
+		return 0;
+	}
+
+	/*
+	 * For all IMEM-based targets (qcom,ipq-debug and qcom,ipq-debug-ipq5424):
+	 * read the previous consolidated reset reason from IMEM on boot.
+	 */
 	imem_base = ipq_debug_parse_address(&pdev->dev,
 				"qcom,msm-imem-restart-reason-buf-addr");
 	if (IS_ERR_OR_NULL(imem_base))
@@ -412,6 +493,9 @@ static ssize_t reset_reason_show(struct device *dev,
 
 	if (!reason)
 		return -EINVAL;
+
+	if (reason->tcsr_hlos_addr)
+		return -EOPNOTSUPP;
 
 	return sysfs_emit(buf, "%u\n", reason->reset_reason);
 }

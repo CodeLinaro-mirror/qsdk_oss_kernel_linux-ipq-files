@@ -43,6 +43,8 @@ struct restart_reason {
 	void *cookie;
 	void *atomic_cookie;
 	unsigned int reset_reason;
+	struct regmap *tcsr_regmap;
+	u32 tcsr_hlos_addr;
 };
 
 #endif /* __IPQ_DEBUG_H__ */
