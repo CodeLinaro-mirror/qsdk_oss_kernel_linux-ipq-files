@@ -236,31 +236,12 @@ free_shm:
 	return ret;
 }
 
+/* Invalidate Key not required in hwkey flow as ICE programming fully overwrites
+ * keyslots, so explicit eviction is not required.
+ */
+
 static int qcom_ice_tee_evict_key(struct device *dev, int slot)
 {
-	struct qcom_ice_tee_private *priv = dev_get_drvdata(dev);
-	struct tee_ioctl_invoke_arg inv_arg;
-	struct tee_param param[4];
-	int ret;
-
-	memset(&inv_arg, 0, sizeof(inv_arg));
-	memset(param, 0, sizeof(param));
-
-	inv_arg.func = ICE_TA_CMD_INVALIDATE_KEY;
-	inv_arg.session = priv->session_id;
-	inv_arg.num_params = 1;
-
-	param[0].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INPUT;
-	param[0].u.value.a = slot;
-
-	ret = tee_client_invoke_func(priv->ctx, &inv_arg, param);
-	if (ret < 0 || inv_arg.ret != TEEC_SUCCESS) {
-		dev_err(dev, "Invalidate key failed: ret=%d, ta_ret=0x%x\n",
-				ret, inv_arg.ret);
-		return -EINVAL;
-	}
-
-	dev_dbg(dev, "Key invalidated successfully for slot %u via OP-TEE\n", slot);
 	return 0;
 }
 
