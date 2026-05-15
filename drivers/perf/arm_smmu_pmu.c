@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 /*
@@ -46,6 +47,7 @@
 #include <linux/of_device.h>
 #include <linux/of_iommu.h>
 #include <linux/of_platform.h>
+#include <linux/firmware/qcom/qcom_scm.h>
 #include <linux/module.h>
 #include <linux/pci.h>
 #include <asm/local64.h>
@@ -76,7 +78,8 @@
 #define SMMU_PMCG_CR                    0xE04
 #define SMMU_PMCG_CR_ENABLE                   BIT(0)
 #define SMMU_PMCG_CEID0                 0xE20
-#define SMMU_STATS_CFG                 0x84
+#define SMMU_STATS_CFG                 0x584
+#define SMMU_STATS_CB_CFG                 0x690
 
 #define SMMU_COUNTER_RELOAD             BIT(31)
 #define SMMU_DEFAULT_FILTER_STREAM_ID   GENMASK(31, 0)
@@ -101,6 +104,7 @@
 
 #define SMMU_STATS_OFFSET		0x1000
 #define SMMU_STATS_START		0x80
+#define SMMU_STATS_NS_OFFSET		0x500
 #define SMMU_STATS_MTLB_LOOKUP_CNTR		0x88
 #define SMMU_STATS_WC1_LOOKUP_CNTR		0x90
 #define SMMU_STATS_WC2_LOOKUP_CNTR		0x94
@@ -121,6 +125,10 @@
 #define SMMU_STATS_PTW_CNTR				0xD0
 #define SMMU_STATS_PTWQ_2BY4_1BY4_CNTR	0xD4
 #define SMMU_STATS_PTWQ_4BY4_3BY4_CNTR	0xD8
+#define SMMU_STATS_SYNC_INV_TBU_ACK		0xDC
+#define SMMU_STATS_2MB_BURST_DEPEND_CNTR 0xEC
+#define SMMU_STATS_S1L3_S2L3_WALK_CNTR	0xF0
+#define SMMU_STATS_S1L3_S2L3_BURST_CNTR	0xF4
 
 static int cpuhp_state_num;
 
@@ -138,6 +146,9 @@ struct smmu_pmu {
 	struct platform_device *pdev;
 	void __iomem *reg_base;
 	void __iomem *tcu_base;
+	void __iomem *tcu_base_ns;
+	phys_addr_t tcu_base_start;
+	phys_addr_t tcu_base_ns_phys;
 	u64 counter_present_mask;
 	u64 counter_mask;
 	bool reg_size_32;
@@ -282,15 +293,26 @@ static void smmu_pmu_event_update(struct perf_event *event)
 	event_id = get_event(event);
 	do {
 		prev = local64_read(&hwc->prev_count);
-		if (event_id >= SMMU_STATS_START)
-			now = readl_relaxed((void *)(smmu_pmu->tcu_base + event_id));
-		else
+		if (event_id >= SMMU_STATS_START) {
+			u32 scm_val = 0;
+			phys_addr_t reg_addr = smmu_pmu->tcu_base_ns_phys +
+					       event_id + SMMU_STATS_NS_OFFSET;
+
+			if (qcom_scm_io_readl(reg_addr, &scm_val))
+				dev_err_ratelimited(&smmu_pmu->pdev->dev,
+						    "SCM read failed for addr=0x%pa\n",
+						    &reg_addr);
+			now = scm_val;
+		} else {
 			now = smmu_pmu_counter_get_value(smmu_pmu, idx);
+		}
 	} while (local64_cmpxchg(&hwc->prev_count, prev, now) != prev);
 
 	/* handle overflow. */
 	delta = now - prev;
-	delta &= smmu_pmu->counter_mask;
+	/* TCU stats are raw 32-bit counters — do not apply PMCG counter_mask */
+	if (event_id < SMMU_STATS_START)
+		delta &= smmu_pmu->counter_mask;
 
 	local64_add(delta, &event->count);
 }
@@ -311,7 +333,11 @@ static void smmu_pmu_set_period(struct smmu_pmu *smmu_pmu,
 	event_id = get_event(event);
 	new = SMMU_COUNTER_RELOAD;
 	if (event_id >= SMMU_STATS_START) {
-		new = readl_relaxed((void *)(smmu_pmu->tcu_base + event_id));
+		u32 scm_val = 0;
+
+		qcom_scm_io_readl(smmu_pmu->tcu_base_ns_phys + event_id +
+				  SMMU_STATS_NS_OFFSET, &scm_val);
+		new = scm_val;
 		local64_set(&hwc->prev_count, new);
 		return;
 	}
@@ -396,7 +422,7 @@ static int smmu_pmu_event_init(struct perf_event *event)
 		return -EOPNOTSUPP;
 	}
 
-	/* We cannot filter accurately so we just don't allow it. */
+	/* We cannot filter accurately so we just don' allow it. */
 	if (event->attr.exclude_user || event->attr.exclude_kernel ||
 	    event->attr.exclude_hv || event->attr.exclude_idle) {
 		dev_dbg_ratelimited(&smmu_pmu->pdev->dev,
@@ -452,14 +478,34 @@ static void smmu_pmu_event_start(struct perf_event *event, int flags)
 	u32 event_id;
 	u32 filter_stream_id;
 	int counters_per_tbu = (int)(smmu_pmu->num_counters / smmu_pmu->num_countergroups);
+	int ret;
 
 	hwc->state = 0;
 
 	event_id = get_event(event);
 
 	if (event_id >= SMMU_STATS_START) {
-		writel_relaxed(1, (void *)(smmu_pmu->tcu_base + SMMU_STATS_CFG));
-		writel_relaxed(0, (void *)(smmu_pmu->tcu_base + SMMU_STATS_CFG));
+		ret = qcom_scm_io_writel(smmu_pmu->tcu_base_start + SMMU_STATS_CFG, 1);
+		if (ret) {
+			dev_err(&smmu_pmu->pdev->dev,
+				"%s: Failed to write to TCU STATS CFG! rc: %d\n",
+				__func__, ret);
+			return;
+		}
+		ret = qcom_scm_io_writel(smmu_pmu->tcu_base_start + SMMU_STATS_CFG, 0);
+		if (ret) {
+			dev_err(&smmu_pmu->pdev->dev,
+				"%s: Failed to write to TCU STATS CFG! rc: %d\n",
+				__func__, ret);
+			return;
+		}
+		ret = qcom_scm_io_writel(smmu_pmu->tcu_base_start + SMMU_STATS_CB_CFG, 0);
+		if (ret) {
+			dev_err(&smmu_pmu->pdev->dev,
+				"%s: Failed to write to TCU STATS CB CFG! rc: %d\n",
+				__func__, ret);
+			return;
+		}
 		smmu_pmu_set_period(smmu_pmu, hwc);
 		return;
 	}
@@ -485,6 +531,7 @@ static void smmu_pmu_event_stop(struct perf_event *event, int flags)
 	struct hw_perf_event *hwc = &event->hw;
 	int idx = hwc->idx;
 	int counters_per_tbu = (int)(smmu_pmu->num_counters / smmu_pmu->num_countergroups);
+	int ret;
 	u32 event_id;
 
 	if (hwc->state & PERF_HES_STOPPED)
@@ -501,8 +548,22 @@ static void smmu_pmu_event_stop(struct perf_event *event, int flags)
 	if (flags & PERF_EF_UPDATE)
 		smmu_pmu_event_update(event);
 	hwc->state |= PERF_HES_STOPPED | PERF_HES_UPTODATE;
-	if (event_id >= SMMU_STATS_START)
-		writel_relaxed(2, (void *)(smmu_pmu->tcu_base + SMMU_STATS_CFG));
+	if (event_id >= SMMU_STATS_START) {
+		ret = qcom_scm_io_writel(smmu_pmu->tcu_base_start + SMMU_STATS_CFG, 2);
+		if (ret) {
+			dev_err(&smmu_pmu->pdev->dev,
+				"%s: Failed to write to TCU STATS CFG! rc: %d\n",
+				__func__, ret);
+			return;
+		}
+		ret = qcom_scm_io_writel(smmu_pmu->tcu_base_start + SMMU_STATS_CB_CFG, 0x30000);
+		if (ret) {
+			dev_err(&smmu_pmu->pdev->dev,
+				"%s: Failed to write to TCU STATS CB CFG! rc: %d\n",
+				__func__, ret);
+			return;
+		}
+	}
 }
 
 static int smmu_pmu_event_add(struct perf_event *event, int flags)
@@ -623,6 +684,10 @@ static struct attribute *smmu_pmu_events[] = {
 	SMMU_EVENT_ATTR(smmu_stats_ptw_cntr, SMMU_STATS_PTW_CNTR),
 	SMMU_EVENT_ATTR(smmu_stats_ptwq_2by4_1by4_cntr, SMMU_STATS_PTWQ_2BY4_1BY4_CNTR),
 	SMMU_EVENT_ATTR(smmu_stats_ptwq_4by4_3by4_cntr, SMMU_STATS_PTWQ_4BY4_3BY4_CNTR),
+	SMMU_EVENT_ATTR(smmu_stats_sync_inv_tbu_ack, SMMU_STATS_SYNC_INV_TBU_ACK),
+	SMMU_EVENT_ATTR(smmu_stats_2mb_burst_depend_cntr, SMMU_STATS_2MB_BURST_DEPEND_CNTR),
+	SMMU_EVENT_ATTR(smmu_stats_s1l3_s2l3_walk_cntr, SMMU_STATS_S1L3_S2L3_WALK_CNTR),
+	SMMU_EVENT_ATTR(smmu_stats_s1l3_s2l3_burst_cntr, SMMU_STATS_S1L3_S2L3_BURST_CNTR),
 	NULL
 };
 
@@ -722,8 +787,8 @@ static int smmu_pmu_offline_cpu(unsigned int cpu, struct hlist_node *node)
 static int smmu_pmu_probe(struct platform_device *pdev)
 {
 	struct smmu_pmu *smmu_pmu;
-	struct resource *mem_resource_0;
-	void __iomem *mem_map_0;
+	struct resource *mem_resource_0, *mem_resource_1;
+	void __iomem *mem_map_0, *mem_map_1;
 	unsigned int reg_size;
 	int err;
 	int irq, i;
@@ -760,8 +825,21 @@ static int smmu_pmu_probe(struct platform_device *pdev)
 		return PTR_ERR(mem_map_0);
 	}
 
+	mem_resource_1 = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	size = resource_size(mem_resource_1);
+
+	mem_map_1 = devm_ioremap(&pdev->dev, mem_resource_1->start, size);
+	if (!mem_map_1) {
+		dev_err(&pdev->dev, "Can't map SMMU PMU TCU NS @%pa\n",
+			&mem_resource_1->start);
+		return PTR_ERR(mem_map_1);
+	}
+
 	smmu_pmu->reg_base = mem_map_0;
-	smmu_pmu->tcu_base = mem_map_0 + SMMU_STATS_OFFSET;
+	smmu_pmu->tcu_base = mem_map_0;
+	smmu_pmu->tcu_base_ns = mem_map_1;
+	smmu_pmu->tcu_base_start = (phys_addr_t)(mem_resource_0->start);
+	smmu_pmu->tcu_base_ns_phys = (phys_addr_t)(mem_resource_1->start);
 	smmu_pmu->pmu.name =
 		devm_kasprintf(&pdev->dev, GFP_KERNEL, "smmu_0_%llx",
 			       (mem_resource_0->start) >> SMMU_PA_SHIFT);
@@ -836,12 +914,13 @@ out_unregister:
 	return err;
 }
 
-static void smmu_pmu_remove(struct platform_device *pdev)
+static int smmu_pmu_remove(struct platform_device *pdev)
 {
 	struct smmu_pmu *smmu_pmu = platform_get_drvdata(pdev);
 
 	perf_pmu_unregister(&smmu_pmu->pmu);
 	cpuhp_state_remove_instance_nocalls(cpuhp_state_num, &smmu_pmu->node);
+	return 0;
 }
 
 static void smmu_pmu_shutdown(struct platform_device *pdev)
