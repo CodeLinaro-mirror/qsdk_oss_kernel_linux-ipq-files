@@ -226,5 +226,6 @@
 #define GCC_USB_CMN_LDO_BCR					216
 #define GCC_UNIPHY1_XLGPCS_ARES					217
 #define GCC_UNIPHY2_XLGPCS_ARES					218
+#define GCC_LPASS_BCR						219
 
 #endif

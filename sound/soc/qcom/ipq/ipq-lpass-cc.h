@@ -746,6 +746,50 @@
 #define HWIO_LPASS_LPAAUDIO_DIG_PLL_CLK_DIV_CLK_MAIN_DIV_BMSK                                                                0x3
 #define HWIO_LPASS_LPAAUDIO_DIG_PLL_CLK_DIV_CLK_MAIN_DIV_SHFT                                                                  0
 
+/*
+ * ----------------------------------------------------------------------------
+ * IPQ9650 — LPAAUDIO PLL register offsets differ from other platforms
+ *--------------------------------------------------------------------------
+ */
+
+/* LPAAUDIO (Audio) PLL offsets */
+#define HWIO_LPASS_LPAAUDIO_PLL_ALPHA_VAL_IPQ9650_ADDR(x)                                                             ((x) + 0x40)
+#define HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_IPQ9650_ADDR(x)                                                              ((x) + 0xC)
+#define HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_U_IPQ9650_ADDR(x)                                                            ((x) + 0x10)
+#define HWIO_LPASS_LPAAUDIO_PLL_STATUS_IPQ9650_ADDR(x)                                                                ((x) + 0x30)
+
+/* LPAAUDIO DIG (Digital) PLL offsets */
+#define HWIO_LPASS_LPAAUDIO_DIG_PLL_ALPHA_VAL_IPQ9650_ADDR(x)                                                         ((x) + 0x1040)
+#define HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_IPQ9650_ADDR(x)                                                          ((x) + 0x100C)
+#define HWIO_LPASS_LPAAUDIO_DIG_PLL_STATUS_IPQ9650_ADDR(x)                                                            ((x) + 0x1030)
+
+/* IPQ9650 USER_CTL new field shifts — PLLOUT_LV_* removed, new fields added */
+/* LPAAUDIO (Audio) PLL USER_CTL */
+#define HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_PLLOUT_MAIN_SHFT_IPQ9650                                                     0
+#define HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_PLLOUT_EVEN_SHFT_IPQ9650                                                     1
+#define HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_PLLOUT_ODD_SHFT_IPQ9650                                                      2
+#define HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_POST_DIV_RATIO_EVEN_SHFT_IPQ9650                                             8
+
+/* LPAAUDIO DIG (Digital) PLL USER_CTL —  field shifts */
+#define HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_PLLOUT_MAIN_SHFT_IPQ9650                                                 0
+#define HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_PLLOUT_EVEN_SHFT_IPQ9650                                                 1
+#define HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_PLLOUT_ODD_SHFT_IPQ9650                                                  2
+#define HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_POST_DIV_RATIO_EVEN_SHFT_IPQ9650                                         8
+
+/* IPQ9650 Trion PLL startup — OPMODE register addresses and init values */
+/* OPMODE register: write 0x1 (RUN) to start PLL instead of BYPASSNL sequence */
+#define HWIO_LPASS_LPAAUDIO_PLL_OPMODE_IPQ9650_ADDR(x)                                                                ((x) + 0x38)
+#define HWIO_LPASS_LPAAUDIO_DIG_PLL_OPMODE_IPQ9650_ADDR(x)                                                            ((x) + 0x1038)
+#define HWIO_LPASS_LPAAUDIO_PLL_OPMODE_RUN_IPQ9650                                                                    0x1
+
+/* CONFIG_CTL reset value for Trion PLL */
+#define HWIO_LPASS_LPAAUDIO_PLL_CONFIG_CTL_VAL_IPQ9650                                                                0x20485699
+#define HWIO_LPASS_LPAAUDIO_DIG_PLL_CONFIG_CTL_VAL_IPQ9650                                                            0x20485699
+
+/* USER_CTL_U reset value for Trion PLL (enables fine lock detector) */
+#define HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_U_VAL_IPQ9650                                                                0x00000805
+#define HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_U_VAL_IPQ9650                                                            0x00000805
+
 #define HWIO_LPASS_LPAAUDIO_PLL_REF_CLK_SRC_SEL_ADDR(x)                                                               ((x) + 0x2000)
 #define HWIO_LPASS_LPAAUDIO_PLL_REF_CLK_SRC_SEL_RMSK                                                                         0x3
 #define HWIO_LPASS_LPAAUDIO_PLL_REF_CLK_SRC_SEL_IN(x)            \
