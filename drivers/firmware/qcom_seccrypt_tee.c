@@ -189,7 +189,7 @@ static int qcom_seccrypt_tee_crypt(struct device *dev, void *cmd_buf, u32 cmd_si
 			ret, inv_arg.ret);
 		ret = -EINVAL;
 	} else {
-		dev_info(dev, "Crypto operation completed successfully via OP-TEE\n");
+		dev_dbg_once(dev, "Crypto operation completed successfully via OP-TEE\n");
 		ret = 0;
 	}
 
