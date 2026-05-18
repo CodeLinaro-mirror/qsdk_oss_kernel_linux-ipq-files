@@ -54,6 +54,33 @@
 
 #define SKB_RECYCLE_SPARE_MAX_SKBS		256
 
+/*
+ * Per-profile pool size defaults.
+ *
+ * DEFAULT (1G)  : max_skbs=1024, max_spare_skbs=256
+ * MEDIUM  (512M): max_skbs=512,  max_spare_skbs=128
+ * LOW     (256M): max_skbs=256,  max_spare_skbs=64
+ */
+#define SKB_RECYCLE_MAX_SKBS_MEDIUM		512
+#define SKB_RECYCLE_MAX_SKBS_LOW		256
+
+#define SKB_RECYCLE_SPARE_MAX_SKBS_MEDIUM	128
+#define SKB_RECYCLE_SPARE_MAX_SKBS_LOW		64
+
+/*
+ * Memory profile detected from kernel bootargs (mem-profile=<value>).
+ * SKB_MEM_PROFILE_HIGH : 1G  (default / no param)
+ * SKB_MEM_PROFILE_MEDIUM  : 512M (mem-profile=balanced)
+ * SKB_MEM_PROFILE_LOW     : 256M (mem-profile=optimized)
+ */
+enum skb_mem_profile {
+	SKB_MEM_PROFILE_LOW = 0,
+	SKB_MEM_PROFILE_MEDIUM,
+	SKB_MEM_PROFILE_HIGH,
+};
+
+enum skb_mem_profile skb_get_mem_profile(void);
+
 #ifdef CONFIG_SKB_RECYCLER_PREALLOC
 #define SKB_RECYCLE_MAX_PREALLOC_SKBS CONFIG_SKB_RECYCLE_MAX_PREALLOC_SKBS
 #define SKB_RECYCLE_MAX_SHARED_POOLS \
