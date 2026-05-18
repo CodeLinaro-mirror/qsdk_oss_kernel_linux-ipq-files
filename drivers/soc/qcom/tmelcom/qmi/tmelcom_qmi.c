@@ -75,8 +75,7 @@ static int domain_to_attach_num(u32 domain)
 static void register_domain_attach_num(u32 new_domain)
 {
 	struct domain_attach_node *new_node, *pos;
-	int attach_num;
-	bool inserted = false;
+	int next_attach_num = 1;
 
 	/* Check if domain already exists */
 	list_for_each_entry(pos, &domain_attach_list, list) {
@@ -94,24 +93,14 @@ static void register_domain_attach_num(u32 new_domain)
 	new_node->domain_num = new_domain;
 	INIT_LIST_HEAD(&new_node->list);
 
-	/* Find insertion point and insert in sorted order */
+	/* Calculate next attach_num based on current list size (discovery order) */
 	list_for_each_entry(pos, &domain_attach_list, list) {
-		if (pos->domain_num > new_domain) {
-			list_add_tail(&new_node->list, &pos->list);
-			inserted = true;
-			break;
-		}
+		next_attach_num++;
 	}
+	new_node->attach_num = next_attach_num;
 
-	/* If not inserted, add at end (largest domain) */
-	if (!inserted)
-		list_add_tail(&new_node->list, &domain_attach_list);
-
-	/* Reassign attach numbers based on position in sorted list */
-	attach_num = 1;
-	list_for_each_entry(pos, &domain_attach_list, list) {
-		pos->attach_num = attach_num++;
-	}
+	/* Add at end to maintain discovery order */
+	list_add_tail(&new_node->list, &domain_attach_list);
 }
 
 /* ===== QMI Element Info Arrays ===== */
