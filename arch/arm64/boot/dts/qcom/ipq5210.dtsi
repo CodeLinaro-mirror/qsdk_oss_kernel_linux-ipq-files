@@ -292,7 +292,7 @@
 		compatible = "qti,license-manager-service";
 		tmel-bounded;
 		ep-tmel-bounded;
-		status="okay";
+		status = "okay";
 	};
 
 	sysregister {
@@ -691,12 +691,14 @@
 				status = "disabled";
 			};
 
-			uart0: serial@1a90000 {
-				compatible = "qcom,geni-uart";
+			spi1: spi@1a90000 {
+				compatible = "qcom,geni-spi";
 				reg = <0x1a90000 0x4000>;
 				clocks = <&gcc GCC_QUPV3_WRAP_SE4_CLK>;
 				clock-names = "se";
 				interrupts = <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH>;
+				assigned-clocks = <&gcc GCC_QUPV3_WRAP_SE4_CLK>;
+				assigned-clock-rates = <50000000>;
 				status = "disabled";
 			};
 
@@ -1407,6 +1409,53 @@
 				snps,dis_u3_susphy_quirk;
 				dr_mode = "host";
 			};
+		};
+
+		lpass: lpass@0xA000000 {
+			compatible = "qca,lpass-ipq5210";
+			reg =  <0xa000000 0x3bffff>;
+			clocks = <&gcc GCC_LPASS_SWAY_CLK>,
+				<&gcc GCC_LPASS_CORE_AXIM_CLK>,
+				<&gcc GCC_SNOC_LPASS_CLK>,
+				<&gcc GCC_CNOC_LPASS_CFG_CLK>;
+			clock-names = "sway", "axim", "snoc_cfg", "pcnoc";
+			resets = <&gcc GCC_LPASS_BCR>;
+			reset-names = "lpass";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges;
+			status = "disabled";
+
+			pcm: pcm@0xA3C0000 {
+				compatible = "qca,ipq5210-lpass-pcm";
+				reg =  <0xa3c0000 0x23014>;
+				status = "disabled";
+
+				pcm0: pcm0@0 {
+					interrupts = <0 94 IRQ_TYPE_LEVEL_HIGH>;
+					interrupt-names = "out0";
+					capture_memory = "lpm";
+					playback_memory = "lpm";
+					voice_loopback = <0>;
+					slave = <0>;
+					status = "disabled";
+				};
+
+				pcm1: pcm1@1 {
+					interrupts = <0 95 IRQ_TYPE_LEVEL_HIGH>;
+					interrupt-names = "out1";
+					capture_memory = "lpm";
+					playback_memory = "lpm";
+					voice_loopback = <0>;
+					slave = <0>;
+					status = "disabled";
+				};
+			};
+		};
+
+		pcm_lb: pcm_lb@0 {
+			compatible = "qca,ipq5210-pcm-lb";
+			status = "disabled";
 		};
 
 		intc: interrupt-controller@b000000 {

@@ -1848,6 +1848,7 @@ static const struct of_device_id ipq_lpass_id_table[] = {
 	{ .compatible = "qca,lpass-ipq9574", .data = (void *)IPQ9574 },
 	{ .compatible = "qca,lpass-ipq5332", .data = (void *)IPQ5332 },
 	{ .compatible = "qca,lpass-ipq5424", .data = (void *)IPQ5424 },
+	{ .compatible = "qca,lpass-ipq5210", .data = (void *)IPQ5210 },
 	{},
 };
 MODULE_DEVICE_TABLE(of, ipq_lpass_id_table);
@@ -1871,8 +1872,7 @@ static int ipq_lpass_probe(struct platform_device *pdev)
 	if (ipq_hw == IPQ5424) {
 		lpass_nvmem = of_nvmem_cell_get(pdev->dev.of_node, NULL);
 		if (IS_ERR(lpass_nvmem)) {
-			if (PTR_ERR(lpass_nvmem) == -EPROBE_DEFER)
-				return -EPROBE_DEFER;
+			return PTR_ERR(lpass_nvmem);
 		} else {
 			disable_status = nvmem_cell_read(lpass_nvmem, &len);
 			nvmem_cell_put(lpass_nvmem);

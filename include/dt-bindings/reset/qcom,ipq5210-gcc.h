@@ -124,5 +124,5 @@
 #define GCC_UNIPHY1_XPCS_ARES					114
 #define GCC_UNIPHY2_XPCS_ARES					115
 #define GCC_QDSS_BCR						116
-
+#define GCC_LPASS_BCR						117
 #endif
