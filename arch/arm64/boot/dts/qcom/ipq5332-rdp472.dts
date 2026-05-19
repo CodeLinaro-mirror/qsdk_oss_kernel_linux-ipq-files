@@ -112,22 +112,7 @@
 
 		q6_qcn9160_data_1: q6_qcn9160_data_1@4e400000 {
 			no-map;
-			reg = <0x0 0x4e400000 0x0 0xe00000>;
-		};
-
-		m3_dump_qcn9160_1: m3_dump_qcn9160_1@4f200000 {
-			no-map;
-			reg = <0x0 0x4f200000 0x0 0x100000>;
-		};
-
-		q6_qcn9160_etr_1: q6_qcn9160_etr_1@4f300000 {
-			no-map;
-			reg = <0x0 0x4f300000 0x0 0x100000>;
-		};
-
-		q6_qcn9160_caldb_1: q6_qcn9160_caldb_1@4f400000 {
-			no-map;
-			reg = <0x0 0x4f400000 0x0 0x500000>;
+			reg = <0x0 0x4e400000 0x0 0x1500000>;
 		};
 
 		mlo_global_mem0: mlo_global_mem_0@4f900000 {
@@ -505,9 +490,6 @@
 							"stop",
 							"spawn";
 				memory-region = <&q6_qcn9160_data_1>,
-						<&m3_dump_qcn9160_1>,
-						<&q6_qcn9160_etr_1>,
-						<&q6_qcn9160_caldb_1>,
 						<&mlo_global_mem0>;
 				status = "ok";
 			};
@@ -737,8 +719,7 @@
 
 &wifi0 {
 	qcom,multipd_arch;
-	qcom,rproc = <&q6_wcss_pd1>;
-	qcom,rproc_rpd = <&q6v5_wcss>;
+	qcom,rproc = <&q6v5_wcss>;
 	qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
 	qcom,board_id = <0x12>;
 	qcom,bdf-addr = <0x4be00000 0x4be00000 0x4be00000 0x0 0x0 0x0>;
@@ -780,17 +761,33 @@
 
 &wifi5 {
 	qcom,multipd_arch;
+	compatible = "qcom,qcn9160-wifi";
+	firmware = "IPQ5332/q6_fw2.mdt";
+	m3_firmware = "qcn9160/m3_fw.mdt";
 	qcom,userpd-subsys-name = "q6v5_wcss_userpd2";
-	qcom,rproc = <&q6_wcss_pd2>;
+	qcom,rproc = <&q6v5_wcss>;
 	qcom,tgt-mem-mode = <0>;
 	qcom,board_id = <0x101>;
-	qcom,bdf-addr = <0x4e400000 0x4e400000 0x4e400000
-			 0x0 0x0 0x0>;
-	qcom,caldb-addr = <0x4f400000 0x4f400000 0x4f400000
-			   0x0 0x0 0x0>;
-	qcom,caldb-size = <0x500000>;
-	m3-dump-addr = <0x4f200000>;
 	qcom,pci_slot_id = <0>;
-	memory-region = <&q6_qcn9160_data_1>;
+	memory-region = <&q6_qcn9160_data_1>,
+			<&q6_mem_regions>,
+			<&mlo_global_mem0>;
+	memory-region-names = "host-ddr-mem",
+			"q6-region",
+			"mlo-global-mem";
+	interrupts-extended = <&wcss_smp2p_in 16 0>,
+			<&wcss_smp2p_in 17 0>,
+			<&wcss_smp2p_in 20 0>,
+			<&wcss_smp2p_in 19 0>;
+	interrupt-names = "fatal",
+			"ready",
+			"spawn",
+			"stop-ack";
+	qcom,smem-states = <&wcss_smp2p_out 16>,
+			<&wcss_smp2p_out 17>,
+			<&wcss_smp2p_out 18>;
+	qcom,smem-state-names = "shutdown",
+			"stop",
+			"spawn";
 	status = "ok";
 };
