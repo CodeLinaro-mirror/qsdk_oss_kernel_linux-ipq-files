@@ -1920,6 +1920,13 @@
 			status = "disabled";
 		};
 
+		smmu_pmu: smmu-pmu@15002000 {
+			compatible = "arm,smmu-pmu";
+			reg = <0x15002000 0x1000>,
+				<0x15007000 0x1000>;
+			status = "okay";
+		};
+
 		watchdog: watchdog@f410000 {
 			compatible = "qcom,apss-wdt-ipq9650", "qcom,kpss-wdt";
 			reg = <0x0f410000 0x1000>;
