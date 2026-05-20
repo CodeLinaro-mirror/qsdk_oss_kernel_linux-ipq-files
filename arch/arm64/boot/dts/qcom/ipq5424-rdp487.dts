@@ -66,7 +66,7 @@
 
 		q6_ipq5424_data: q6_ipq5424_data@8b300000 {
 			no-map;
-			reg = <0x0 0x8b300000 0x0 0xb00000>;
+			reg = <0x0 0x8b300000 0x0 0xc00000>;
 		};
 
 		mlo_global_mem0: mlo_global_mem_0@0 {
@@ -593,8 +593,10 @@
 	reg = <0x0 0x96e00000 0x0 0xc00000>;
 	status = "okay";
 #else
+#if !defined(__IPQ_MEM_PROFILE_256_MB__)
 	reg = <0x0 0x9b500000 0x0 0xc00000>;
 	status = "okay";
+#endif
 #endif
 };
 
