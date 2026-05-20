@@ -150,9 +150,7 @@ struct mhitest_platform {
 	u16 def_link_width;
 	u8 pci_link_state;
 	struct pci_saved_state *pci_dev_default_state;
-#if IS_ENABLED(CONFIG_PCIEAER)
 	struct pci_saved_state *pci_dev_saved_state;
-#endif
 	void __iomem *bar;
 	char fw_name[30];
 /*mhi  msi */

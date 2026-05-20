@@ -67,10 +67,8 @@
 
 static DEFINE_SPINLOCK(pci_reg_window_lock);
 
-#if IS_ENABLED(CONFIG_PCIEAER)
 #define RDDM_LINK_RECOVERY_RETRY		20
 #define RDDM_LINK_RECOVERY_RETRY_DELAY_MS	20
-#endif
 
 bool autostart = true;
 module_param(autostart, bool, 0);
@@ -2100,7 +2098,6 @@ void mhitest_pci_remove(struct pci_dev *pci_dev)
 	}
 }
 
-#if IS_ENABLED(CONFIG_PCIEAER)
 static const char *pcie_channel_state_to_string(pci_channel_state_t state)
 {
 	switch (state) {
@@ -2123,6 +2120,9 @@ mhitest_pci_error_detected(struct pci_dev *pdev, pci_channel_state_t state)
 {
 	struct mhitest_platform *mplat;
 	int ret;
+
+	if (!pci_aer_available())
+		return PCI_ERS_RESULT_NONE;
 
 	mplat = get_mhitest_mplat_by_pcidev(pdev);
 	if (!mplat) {
@@ -2161,6 +2161,9 @@ static void mhitest_pci_resume(struct pci_dev *pdev)
 	struct device *dev;
 	int retry = 0;
 	int ret;
+
+	if (!pci_aer_available())
+		return;
 
 	mplat = get_mhitest_mplat_by_pcidev(pdev);
 	if (!mplat) {
@@ -2210,7 +2213,6 @@ retry:
 			TO_MHI_EXEC_STR(mhi_ee));
 	}
 }
-#endif
 
 static const struct pci_device_id mhitest_pci_id_table[] = {
 	{QTI_PCI_VENDOR_ID, QCN90XX_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID},
@@ -2221,21 +2223,17 @@ static const struct pci_device_id mhitest_pci_id_table[] = {
 	{}
 };
 
-#if IS_ENABLED(CONFIG_PCIEAER)
 static const struct pci_error_handlers mhitest_pci_err_handler = {
 	.error_detected = mhitest_pci_error_detected,
 	.resume = mhitest_pci_resume,
 };
-#endif
 
 struct pci_driver mhitest_pci_driver = {
 	.name	  = "mhitest_pci",
 	.probe	  = mhitest_pci_probe,
 	.remove	  = mhitest_pci_remove,
 	.id_table = mhitest_pci_id_table,
-#if IS_ENABLED(CONFIG_PCIEAER)
 	.err_handler = &mhitest_pci_err_handler,
-#endif
 };
 
 int mhitest_pci_register(void)
