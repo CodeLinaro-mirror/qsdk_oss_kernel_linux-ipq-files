@@ -66,9 +66,16 @@
 #define TIMEOUT_SAVE_DUMP_MS 300000
 
 static DEFINE_SPINLOCK(pci_reg_window_lock);
+static DEFINE_SPINLOCK(global_soc_reset_lock);
 
 #define RDDM_LINK_RECOVERY_RETRY		20
 #define RDDM_LINK_RECOVERY_RETRY_DELAY_MS	20
+
+#define QCN9224_PCIE_EN_LEGACY_MHI			0xE000
+#define QCN9224_PCIE_LOCAL_REG_DIR_LEGACY_INTX_STS4	0x31C4
+#define QCN9224_PCIE_LOCAL_REG_LEGACY_INTX_EN_CLR_BNK4	0x31B0
+#define QCN9224_PCIE_LOCAL_REG_DIR_LEGACY_INTX_COMN	0x31CC
+#define QCN9224_PCIE_LOCAL_REG_LEGACY_INTX_EN_BNK4	0x3188
 
 bool autostart = true;
 module_param(autostart, bool, 0);
@@ -1412,9 +1419,23 @@ void mhitest_q6_bcr_reset(struct mhitest_platform *mplat)
 
 void mhitest_global_soc_reset(struct mhitest_platform *mplat)
 {
+	unsigned long flags;
 	u32 val;
 
 	pr_info("Issuing SOC Global Reset\n");
+
+	/*
+	 * Enable legacy INTx only for QCN92XX: PBL on this device asserts
+	 * INTA during re-initialization after Global SOC reset, which must be
+	 * consumed by the Global SOC reset ready INTx handler.
+	 */
+	if (mplat->device_id == QCN92XX_DEVICE_ID && pci_aer_available()) {
+		/* Enable the Legacy MHI INTERRUPT */
+		spin_lock_irqsave(&global_soc_reset_lock, flags);
+		writel_relaxed(QCN9224_PCIE_EN_LEGACY_MHI,
+			       mplat->bar + QCN9224_PCIE_LOCAL_REG_LEGACY_INTX_EN_BNK4);
+	}
+
 	val = readl_relaxed(mplat->bar + PCIE_SOC_GLOBAL_RESET_ADDRESS);
 
 	val |= PCIE_SOC_GLOBAL_RESET_V;
@@ -1435,6 +1456,11 @@ void mhitest_global_soc_reset(struct mhitest_platform *mplat)
 	val = readl_relaxed(mplat->bar + PCIE_SOC_GLOBAL_RESET_ADDRESS);
 	if (val == 0xffffffff)
 		pr_err("link down error during global reset\n");
+
+	if (mplat->device_id == QCN92XX_DEVICE_ID && pci_aer_available()) {
+		spin_unlock_irqrestore(&global_soc_reset_lock, flags);
+		pr_debug("SOC Global reset complete, endpoint ready for register access\n");
+	}
 }
 
 void mhitest_reset_mhi_state(struct mhitest_platform *mplat)
@@ -1921,6 +1947,105 @@ static struct attribute_group mhitest_group = {
 	.attrs = mhitest_attrs,
 };
 
+static irqreturn_t mhitest_global_soc_reset_ready_intx_handler(int irq, void *dev_id)
+{
+	struct mhitest_platform *mplat = dev_id;
+	unsigned long flags;
+	u32 val;
+
+	spin_lock_irqsave(&global_soc_reset_lock, flags);
+
+	/* Disable the global interrupt to prevent re-entrancy while handling */
+	writel(0x0, mplat->bar + QCN9224_PCIE_LOCAL_REG_DIR_LEGACY_INTX_COMN);
+
+	/* Read the interrupt status to identify the source */
+	val = readl(mplat->bar + QCN9224_PCIE_LOCAL_REG_DIR_LEGACY_INTX_STS4);
+	if (!(val & QCN9224_PCIE_EN_LEGACY_MHI)) {
+		pr_err("Spurious INTx: status=0x%x, expected MHI bit (0x%x)\n",
+		       val, QCN9224_PCIE_EN_LEGACY_MHI);
+		/* Re-enable global interrupt before returning */
+		writel(0x1, mplat->bar + QCN9224_PCIE_LOCAL_REG_DIR_LEGACY_INTX_COMN);
+		spin_unlock_irqrestore(&global_soc_reset_lock, flags);
+		return IRQ_NONE;
+	}
+
+	/* Clear the MHI legacy interrupt status bit */
+	writel(QCN9224_PCIE_EN_LEGACY_MHI,
+	       mplat->bar + QCN9224_PCIE_LOCAL_REG_LEGACY_INTX_EN_CLR_BNK4);
+
+	/* Read back status register to confirm the clear has taken effect */
+	val = readl(mplat->bar + QCN9224_PCIE_LOCAL_REG_DIR_LEGACY_INTX_STS4);
+	if (val != 0x0)
+		pr_err("Interrupt clear failed: status=0x%x after clear, expected 0x0\n", val);
+
+	/* Re-enable the global interrupt now that this INTx has been serviced */
+	writel(0x1, mplat->bar + QCN9224_PCIE_LOCAL_REG_DIR_LEGACY_INTX_COMN);
+
+	pr_debug("SOC reset ready INTx handled: PBL signaled endpoint readiness\n");
+
+	spin_unlock_irqrestore(&global_soc_reset_lock, flags);
+
+	return IRQ_HANDLED;
+}
+
+static int mhitest_register_global_soc_reset_ready_intx_handler(struct mhitest_platform *mplat)
+{
+	struct pci_dev *root_port;
+	int ret;
+
+	if (!(mplat->device_id == QCN92XX_DEVICE_ID && pci_aer_available()))
+		return 0;
+
+	/*
+	 * PCIe endpoints typically don't have legacy INTx configured when
+	 * MSI/MSI-X is available. The legacy INTx line is routed through the
+	 * root port.
+	 * This is the same shared IRQ used by AER/PME services.
+	 */
+	root_port = pcie_find_root_port(mplat->pci_dev);
+	if (!root_port) {
+		pr_err("Failed to find root port for legacy INTx IRQ\n");
+		return -ENODEV;
+	}
+
+	/*
+	 * Register the SOC reset ready handler on the root port's shared
+	 * legacy INTx IRQ. The endpoint PBL asserts INTA after SOC global
+	 * reset to notify the host that the SOC has reset and is ready for
+	 * MHI reset register write.
+	 */
+	ret = request_irq(root_port->irq, mhitest_global_soc_reset_ready_intx_handler,
+			  IRQF_SHARED, "mhitest_soc_reset_ready", mplat);
+	if (ret) {
+		pr_err("Failed to register Global SOC reset ready INTx handler on IRQ %d, ret=%d\n",
+		       root_port->irq, ret);
+		return ret;
+	}
+
+	pr_debug("Registered Global SOC reset ready INTx handler on root port IRQ %d\n",
+		 root_port->irq);
+
+	return 0;
+}
+
+static void mhitest_unregister_global_soc_reset_ready_intx_handler(struct mhitest_platform *mplat)
+{
+	struct pci_dev *root_port;
+
+	if (!(mplat->device_id == QCN92XX_DEVICE_ID && pci_aer_available()))
+		return;
+
+	root_port = pcie_find_root_port(mplat->pci_dev);
+	if (!root_port) {
+		pr_err("Failed to find root port for legacy INTx IRQ\n");
+		return;
+	}
+
+	free_irq(root_port->irq, mplat);
+	pr_debug("Unregistered Global SOC reset ready INTx handler from IRQ %d\n",
+		 root_port->irq);
+}
+
 int mhitest_pci_probe(struct pci_dev *pci_dev, const struct pci_device_id *id)
 {
 	struct mhitest_platform *mplat;
@@ -1970,6 +2095,10 @@ int mhitest_pci_probe(struct pci_dev *pci_dev, const struct pci_device_id *id)
 
 	mhitest_store_mplat(mplat);
 
+	ret = mhitest_register_global_soc_reset_ready_intx_handler(mplat);
+	if (ret)
+		goto remove_mplat;
+
 	if (mplat->device_id == QCN92XX_DEVICE_ID)
 		snprintf(mplat->fw_name, sizeof(mplat->fw_name),
 			 QCN9224_DEFAULT_FW_FILE_NAME);
@@ -2014,8 +2143,10 @@ int mhitest_pci_probe(struct pci_dev *pci_dev, const struct pci_device_id *id)
 pci_deinit:
 	mhitest_pci_set_mhi_state(mplat, MHI_DEINIT);
 unreg_ramdump:
+	mhitest_unregister_global_soc_reset_ready_intx_handler(mplat);
 	mhitest_pci_remove_all(mplat);
 	pci_load_and_free_saved_state(pci_dev, &mplat->pci_dev_default_state);
+remove_mplat:
 	mhitest_remove_mplat(mplat);
 	mhitest_event_work_deinit(mplat);
 free_mplat:
@@ -2093,6 +2224,13 @@ void mhitest_pci_remove(struct pci_dev *pci_dev)
 
 		mhitest_pci_remove_all(mplat);
 		mhitest_event_work_deinit(mplat);
+		/*
+		 * Unregister the Global SOC reset ready INTx handler AFTER Global SOC reset and MHI
+		 * deinit, so it can consume any INTx asserted by PBL
+		 * during re-initialization triggered by the Global SOC reset.
+		 * Only registered for QCN92XX.
+		 */
+		mhitest_unregister_global_soc_reset_ready_intx_handler(mplat);
 		pci_load_and_free_saved_state(pci_dev, &mplat->pci_dev_default_state);
 		mhitest_free_mplat(mplat);
 	}
