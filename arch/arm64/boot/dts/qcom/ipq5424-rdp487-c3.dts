@@ -61,7 +61,12 @@
 
 		q6_region: wcnss@8a900000 {
 			no-map;
-			reg = <0x0 0x8a900000 0x0 0x1500000>;
+			reg = <0x0 0x8a900000 0x0 0xa00000>;
+		};
+
+		q6_ipq5424_data: q6_ipq5424_data@8b300000 {
+			no-map;
+			reg = <0x0 0x8b300000 0x0 0xc00000>;
 		};
 
 		mlo_global_mem0: mlo_global_mem_0@0 {
@@ -621,20 +626,17 @@
 	reg = <0x0 0x96e00000 0x0 0xc00000>;
 	status = "okay";
 #else
+#if !defined(__IPQ_MEM_PROFILE_256_MB__)
 	reg = <0x0 0x9b500000 0x0 0xc00000>;
 	status = "okay";
+#endif
 #endif
 };
 
 &wifi0 {
 	qcom,rproc = <&q6v5_wcss>;
-#if !defined(__IPQ_MEM_PROFILE_256_MB__)
 	memory-region = <&q6_region>, <&q6_ipq5424_data>, <&mlo_global_mem0>;
 	memory-region-names = "q6-region", "host-ddr-mem", "mlo-global-mem";
-#else
-	memory-region = <&q6_region>, <&q6_region>, <&mlo_global_mem0>;
-	memory-region-names = "q6-region", "q6-region-1", "mlo-global-mem";
-#endif
 	qcom,wsi = <&wsi>;
 	qcom,wsi_index = <0>;
 	qcom,board_id = <0x12>;
