@@ -255,7 +255,20 @@ void __iomem *ipq_debug_parse_address(struct device *dev,
 static void restart_reason_logging_ipq9650(struct device *dev)
 {
 	void __iomem *base;
+	u32 sbl_reason = 0, gcc_rst_status = 0;
 	u32 tz_reason = 0, tme_reason = 0, kernel_reason = 0;
+
+	base = ipq_debug_parse_address(dev, "qcom,ipq9650-imem-sbl-reason");
+	if (!IS_ERR_OR_NULL(base)) {
+		memcpy_fromio(&sbl_reason, base, 4);
+		iounmap(base);
+	}
+
+	base = ipq_debug_parse_address(dev, "qcom,ipq9650-imem-gcc-rst-status");
+	if (!IS_ERR_OR_NULL(base)) {
+		memcpy_fromio(&gcc_rst_status, base, 4);
+		iounmap(base);
+	}
 
 	base = ipq_debug_parse_address(dev, "qcom,ipq9650-imem-tz-reason");
 	if (!IS_ERR_OR_NULL(base)) {
@@ -275,8 +288,8 @@ static void restart_reason_logging_ipq9650(struct device *dev)
 		iounmap(base);
 	}
 
-	pr_info("reset_reasons: TZ=0x%X TME=0x%X Kernel=0x%X\n",
-		tz_reason, tme_reason, kernel_reason);
+	pr_info("reset_reasons: SBL=0x%X GCC_RST=0x%X TZ=0x%X TME=0x%X Kernel=0x%X\n",
+		sbl_reason, gcc_rst_status, tz_reason, tme_reason, kernel_reason);
 }
 
 static bool is_rproc_device_available(void)
