@@ -52,6 +52,7 @@
 
 	chosen {
 		stdout-path = "serial0:115200n8";
+		bootargs-append = " pcie_pme=nomsi";
 	};
 
 	regulator_fixed_3p3: s3300 {

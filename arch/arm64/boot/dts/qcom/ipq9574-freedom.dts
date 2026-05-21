@@ -42,6 +42,7 @@
 
 	chosen {
 		stdout-path = "serial0:115200n8";
+		bootargs-append = " pcie_pme=nomsi";
 	};
 
 	reg_bmp_1v8: regulator-bmp-1v8 {
