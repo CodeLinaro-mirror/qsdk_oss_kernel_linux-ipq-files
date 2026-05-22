@@ -545,7 +545,7 @@
 			memory-region = <&qcn9224_pcie0>, <&mhi_region0>, <&mlo_global_mem0>;
 			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
 #if !defined(__IPQ_MEM_PROFILE_256_MB__)
-			qcom,early_cal_enabled = "disabled";
+			qcom,early_cal_enabled = "supported";
 			qcom,caldata_offset = <0x26800>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
 			qcom,caldb_offset = <0x1400000>;
@@ -614,7 +614,7 @@
 #if !defined(__IPQ_MEM_PROFILE_256_MB__) && !defined(__IPQ_MEM_PROFILE_512_MB__)
 			memory-region = <&qcn9224_pcie1>, <&mhi_region1>, <&mlo_global_mem0>;
 			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
-			qcom,early_cal_enabled = "disabled";
+			qcom,early_cal_enabled = "supported";
 			qcom,caldata_offset = <0x58800>;
 			qcom,caldb_offset = <0x1C00000>;
 #elif defined(__IPQ_MEM_PROFILE_512_MB__)

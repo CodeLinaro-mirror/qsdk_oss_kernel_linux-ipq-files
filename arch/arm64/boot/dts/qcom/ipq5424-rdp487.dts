@@ -358,7 +358,7 @@
 			memory-region = <&qcn9224_pcie2>, <&mhi_region2>, <&mlo_global_mem0>;
 			memory-region-names = "host-ddr-mem", "mhi-region", "mlo-global-mem";
 #if !defined(__IPQ_MEM_PROFILE_256_MB__)
-			qcom,early_cal_enabled = "disabled";
+			qcom,early_cal_enabled = "supported";
 			qcom,caldata_offset = <0x12000>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
 			qcom,caldb_offset = <0x1400000>;
