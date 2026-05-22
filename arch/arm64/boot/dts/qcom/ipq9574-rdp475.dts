@@ -372,9 +372,9 @@
 			qcom,early_cal_enabled = "supported";
 			qcom,caldata_offset = <0x58800>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
-			qcom,caldb_offset = <0x1400000>;
+			qcom,caldb_offset = <0xD00000>;
 #else
-			qcom,caldb_offset = <0x1C00000>;
+			qcom,caldb_offset = <0x1100000>;
 #endif
 			qcom,caldb_size = <0x800000>;
 			memory-region = <&qcn9224_pcie1>, <&mhi_region1>, <&mlo_global_mem0>;
@@ -429,9 +429,9 @@
 			qcom,early_cal_enabled = "supported";
 			qcom,caldata_offset = <0x8A800>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
-			qcom,caldb_offset = <0x1400000>;
+			qcom,caldb_offset = <0xD00000>;
 #else
-			qcom,caldb_offset = <0x1C00000>;
+			qcom,caldb_offset = <0x1100000>;
 #endif
 			qcom,caldb_size = <0x800000>;
 			memory-region = <&qcn9224_pcie2>, <&mhi_region2>, <&mlo_global_mem0>;
@@ -481,9 +481,9 @@
 			qcom,early_cal_enabled = "supported";
 			qcom,caldata_offset = <0xBC800>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
-			qcom,caldb_offset = <0x1400000>;
+			qcom,caldb_offset = <0xD00000>;
 #else
-			qcom,caldb_offset = <0x1C00000>;
+			qcom,caldb_offset = <0x1100000>;
 #endif
 			qcom,caldb_size = <0x800000>;
 			memory-region = <&qcn9224_pcie3>, <&mhi_region3>, <&mlo_global_mem0>;
