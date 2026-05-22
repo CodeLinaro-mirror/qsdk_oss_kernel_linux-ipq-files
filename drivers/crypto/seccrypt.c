@@ -40,7 +40,8 @@ struct sec_cipher_ctx {
 };
 
 struct sec_crypt_device {
-	struct secure_nand_aes_cmd *cptr;
+	struct secure_nand_aes_cmd_tee *cptr_tee;
+	struct secure_nand_aes_cmd_scm *cptr_scm;
 	struct device *dev;
 	struct kobject kobj;
 	struct kobject *kobj_parent;
@@ -181,7 +182,8 @@ static int seccrypt_tz(struct skcipher_request *req,
 			struct sec_alg_template *tmpl, int encrypt)
 {
 	struct sec_crypt_device *sec = tmpl->sec;
-	struct secure_nand_aes_cmd *cptr = sec->cptr;
+	struct secure_nand_aes_cmd_tee *cptr_tee = sec->cptr_tee;
+	struct secure_nand_aes_cmd_scm *cptr_scm = sec->cptr_scm;
 	struct device *dev;
 	struct skcipher_walk walk;
 	int err = 0, ivsize = 0, reqlen = 0, flag = 0;
@@ -204,6 +206,7 @@ static int seccrypt_tz(struct skcipher_request *req,
 		if (dma_mapping_error(dev, phy_src)) {
 			dev_err(dev, "failed to DMA MAP phy_src buffer\n");
 			return -EIO;
+			goto out_unlock;
 		}
 	}
 
@@ -212,6 +215,7 @@ static int seccrypt_tz(struct skcipher_request *req,
 		if (dma_mapping_error(dev, phy_dst)) {
 			dev_err(dev, "failed to DMA MAP phy_dst buffer\n");
 			return -EIO;
+			goto out_unmap_src;
 		}
 	}
 
@@ -220,41 +224,64 @@ static int seccrypt_tz(struct skcipher_request *req,
 		if (dma_mapping_error(dev, phy_iv)) {
 			dev_err(dev, "failed to DMA MAP phy_iv buffer\n");
 			return -EIO;
+			goto out_unmap_dst;
 		}
 	}
 
+	/* SCM backend */
+	if (cptr_scm) {
 	/* Fill the structure to pass to TZ */
-	cptr->direction = encrypt;
-	if (IS_CBC(flag))
-		cptr->mode = MODE_CBC;
-	else if (IS_ECB(flag))
-		cptr->mode = MODE_ECB;
-	else if (IS_CTR(flag))
-		cptr->mode = MODE_CTR;
-	cptr->iv_buf_virt = iv_buf;        /* Virtual address */
-	cptr->iv_buf = (u64 *)phy_iv;      /* Physical address */
-
-	cptr->req_buf_virt = src;          /* Virtual address */
-	cptr->req_buf = (u64 *)phy_src;    /* Physical address */
-
-	cptr->rsp_buf_virt = dst;          /* Virtual address */
-	cptr->rsp_buf = (u64 *)phy_dst;    /* Physical address */
-	cptr->iv_size = AES_BLOCK_SIZE;
-	cptr->reqlen = reqlen;
-	cptr->rsplen = reqlen;
-
-	err = qcom_seccrypt_crypt(cptr, sizeof(struct secure_nand_aes_cmd));
-	if (err) {
-		dev_err(dev, "enc|dec backend call failed :%d\n", err);
+		cptr_scm->direction = encrypt;
+		if (IS_CBC(flag))
+			cptr_scm->mode = MODE_CBC;
+		else if (IS_ECB(flag))
+			cptr_scm->mode = MODE_ECB;
+		else if (IS_CTR(flag))
+			cptr_scm->mode = MODE_CTR;
+		cptr_scm->iv_buf = (u64 *)phy_iv;
+		cptr_scm->req_buf = (u64 *)phy_src;
+		cptr_scm->rsp_buf = (u64 *)phy_dst;
+		cptr_scm->iv_size = AES_BLOCK_SIZE;
+		cptr_scm->reqlen = reqlen;
+		cptr_scm->rsplen = reqlen;
+		err = qcom_seccrypt_crypt(cptr_scm, sizeof(struct secure_nand_aes_cmd_scm));
+	} else if (cptr_tee) {
+	/* OP-TEE backend */
+		cptr_tee->direction = encrypt;
+		if (IS_CBC(flag))
+			cptr_tee->mode = MODE_CBC;
+		else if (IS_ECB(flag))
+			cptr_tee->mode = MODE_ECB;
+		else if (IS_CTR(flag))
+			cptr_tee->mode = MODE_CTR;
+		cptr_tee->iv_buf_virt = iv_buf;
+		cptr_tee->iv_buf = (u64 *)phy_iv;
+		cptr_tee->req_buf_virt = src;
+		cptr_tee->req_buf = (u64 *)phy_src;
+		cptr_tee->rsp_buf_virt = dst;
+		cptr_tee->rsp_buf = (u64 *)phy_dst;
+		cptr_tee->iv_size = AES_BLOCK_SIZE;
+		cptr_tee->reqlen = reqlen;
+		cptr_tee->rsplen = reqlen;
+		err = qcom_seccrypt_crypt(cptr_tee, sizeof(struct secure_nand_aes_cmd_tee));
 	}
 
-	if (phy_src)
-		dma_unmap_single(dev, phy_src, reqlen, DMA_TO_DEVICE);
-	if (phy_dst)
-		dma_unmap_single(dev, phy_dst, reqlen, DMA_FROM_DEVICE);
+	if (err)
+		dev_err(dev, "enc|dec backend call failed :%d\n", err);
+
 	if (phy_iv)
 		dma_unmap_single(dev, phy_iv, AES_BLOCK_SIZE, DMA_TO_DEVICE);
 
+out_unmap_dst:
+	if (phy_dst)
+		dma_unmap_single(dev, phy_dst, reqlen, DMA_FROM_DEVICE);
+
+out_unmap_src:
+	if (phy_src)
+		dma_unmap_single(dev, phy_src, reqlen, DMA_TO_DEVICE);
+
+
+out_unlock:
 	err = skcipher_walk_done(&walk, 0);
 
 	mutex_unlock(&seccrypt_spinlock);
@@ -565,6 +592,7 @@ static int seccrypt_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct sec_crypt_device *sec;
 	int ret, i;
+	const char *backend = qcom_seccrypt_get_backend_name();
 
 	sec = devm_kzalloc(dev, sizeof(*sec), GFP_KERNEL);
 	if (!sec) {
@@ -575,10 +603,21 @@ static int seccrypt_probe(struct platform_device *pdev)
 	sec->dev = dev;
 	platform_set_drvdata(pdev, sec);
 
-	sec->cptr = devm_kzalloc(dev, sizeof(struct secure_nand_aes_cmd), GFP_KERNEL);
-	if (!sec->cptr) {
-		pr_err("%s : Error in allocating memory\n",__func__);
-		return -ENOMEM;
+	if (!backend)
+		return dev_err_probe(dev, -EPROBE_DEFER, "Backend not registerd yet, deferring probe.\n");
+
+	/* Allocate TEE struct ONLY if TEE backend is active */
+	if (!strcmp(backend, "qcom-seccrypt-tee")) {
+		sec->cptr_tee = devm_kzalloc(dev, sizeof(struct secure_nand_aes_cmd_tee), GFP_KERNEL);
+		if (!sec->cptr_tee)
+			return dev_err_probe(dev, -ENOMEM, "Error allocating cptr_tee\n");
+	}
+
+	/* Allocate SCM struct ONLY if SCM backend is active */
+	if (!strcmp(backend, "qcom-seccrypt-scm")) {
+		sec->cptr_scm = devm_kzalloc(dev, sizeof(struct secure_nand_aes_cmd_scm), GFP_KERNEL);
+		if (!sec->cptr_scm)
+			return dev_err_probe(dev, -ENOMEM, "Error allocating cptr_scm\n");
 	}
 
 	if (device_property_read_bool(dev, "seccrypt,fallback_tz"))
