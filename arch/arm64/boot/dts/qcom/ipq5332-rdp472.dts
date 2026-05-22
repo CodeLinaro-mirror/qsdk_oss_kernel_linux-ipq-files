@@ -137,7 +137,7 @@
 
 		qcn9224_pcie1: qcn9224_pcie1@50b00000 {
 			no-map;
-			reg = <0x0 0x50B00000 0x0 0x03200000>;
+			reg = <0x0 0x50B00000 0x0 0x02400000>;
 		};
 
 		mhi_region1: dma_pool1@1 {
@@ -595,9 +595,9 @@
 			qcom,early_cal_enabled = "supported";
 			qcom,caldata_offset = <0x26800>;
 #ifdef __IPQ_MEM_PROFILE_512_MB__
-			qcom,caldb_offset = <0x1400000>;
+			qcom,caldb_offset = <0xD00000>;
 #else
-			qcom,caldb_offset = <0x1C00000>;
+			qcom,caldb_offset = <0x1100000>;
 #endif
 			qcom,caldb_size = <0x800000>;
 			qcom,board_id = <0x16>;
@@ -751,29 +751,29 @@
 };
 
 &wifi4 {
-	/* qcn9224 tgt-mem-mode=0 layout - 50MB
+	/* qcn9224 tgt-mem-mode=0 layout - 36MB
 	 * +=========+==============+=========+
 	 * |  Region | Start Offset |   Size  |
 	 * +---------+--------------+---------+
-	 * | HREMOTE |  0x50B00000  |   28MB  |
+	 * | HREMOTE |  0x50B00000  |   17MB  |
 	 * +---------+--------------+---------+
-	 * | M3 Dump |  0x52700000  |   1MB   |
+	 * |  Caldb  |  0x51C00000  |   8MB   |
 	 * +---------+--------------+---------+
-	 * |   ETR   |  0x52800000  |   1MB   |
+	 * | M3 Dump |  0x52400000  |   1MB   |
 	 * +---------+--------------+---------+
-	 * |  Caldb  |  0x52900000  |   8MB   |
+	 * |   ETR   |  0x52500000  |   1MB   |
 	 * +---------+--------------+---------+
-	 * |Pageable |  0x53100000  |  12MB   |
+	 * |Pageable |  0x52600000  |   9MB   |
 	 * +==================================+
 	 */
 	hremote_node = <&qcn9224_pcie1>;
 	base-addr = <0x50B00000>;
-	m3-dump-addr = <0x52700000>;
-	etr-addr = <0x52800000>;
-	caldb-addr = <0x52900000>;
-	pageable-addr = <0x53100000>;
-	hremote-size = <0x1C00000>;
-	pageable-size = <0xC00000>;
+	caldb-addr = <0x51C00000>;
+	m3-dump-addr = <0x52400000>;
+	etr-addr = <0x52500000>;
+	pageable-addr = <0x52600000>;
+	hremote-size = <0x1100000>;
+	pageable-size = <0x900000>;
 	board_id = <0x04>;
 	status = "ok";
 };
