@@ -1287,46 +1287,66 @@ static void ipq_lpass_setup_audio_pll(struct ipq_lpass_pll pll)
 		writel(0x0,
 			HWIO_LPASS_LPAAUDIO_PLL_REF_CLK_SRC_SEL_ADDR(
 				sg_ipq_lpass_base));
-		ipq_lpass_cc_update(HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_U_ADDR(
-			sg_ipq_lpass_base),
+		ipq_lpass_cc_update((ipq_hw == IPQ9650) ?
+			HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_U_IPQ9650_ADDR(sg_ipq_lpass_base) :
+			HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_U_ADDR(sg_ipq_lpass_base),
 			(1 << HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_U_LOCK_DET_SHFT),
 			0);
 		ipq_lpass_cc_update(HWIO_LPASS_LPAAUDIO_PLL_L_VAL_ADDR(
 					sg_ipq_lpass_base), pll.l, 0);
 
-		writel(pll.alpha, HWIO_LPASS_LPAAUDIO_PLL_ALPHA_VAL_ADDR(
-					sg_ipq_lpass_base));
+		writel(pll.alpha, (ipq_hw == IPQ9650) ?
+			HWIO_LPASS_LPAAUDIO_PLL_ALPHA_VAL_IPQ9650_ADDR(sg_ipq_lpass_base) :
+			HWIO_LPASS_LPAAUDIO_PLL_ALPHA_VAL_ADDR(sg_ipq_lpass_base));
 
-		writel(pll.alpha_u, HWIO_LPASS_LPAAUDIO_PLL_ALPHA_VAL_U_ADDR(
-					sg_ipq_lpass_base));
+		if (ipq_hw != IPQ9650)
+			writel(pll.alpha_u,
+			       HWIO_LPASS_LPAAUDIO_PLL_ALPHA_VAL_U_ADDR(sg_ipq_lpass_base));
 
-		reg_val = ((vco_sel << HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_VCO_SEL_SHFT) |
-				(pll.post_div << HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_POST_DIV_RATIO_SHFT) |
-				(alpha_en << HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_ALPHA_EN_SHFT));
-
-		ipq_lpass_cc_update(HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_ADDR(
-					sg_ipq_lpass_base), reg_val, 0);
-
-		ipq_lpass_cc_update(HWIO_LPASS_LPAAUDIO_PLL_MODE_ADDR(
-					sg_ipq_lpass_base),
-					(1 << HWIO_LPASS_LPAAUDIO_PLL_MODE_PLL_BYPASSNL_SHFT),
-					0);
-
-		for (i=0; i < pll.pll_reset_wait; i++) {
-			mdelay(1);
-			value = readl(HWIO_LPASS_LPAAUDIO_PLL_STATUS_ADDR(
-					sg_ipq_lpass_base));
+		if (ipq_hw == IPQ9650) {
+			/*IPQ9650 : VCO_SEL/ALPHA_EN removed; use POST_DIV_RATIO_EVEN + PLLOUT_MAIN */
+			reg_val = (pll.post_div << HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_POST_DIV_RATIO_EVEN_SHFT_IPQ9650) |
+				  (1 << HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_PLLOUT_MAIN_SHFT_IPQ9650);
+		} else {
+			reg_val = ((vco_sel << HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_VCO_SEL_SHFT) |
+				   (pll.post_div << HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_POST_DIV_RATIO_SHFT) |
+				   (alpha_en << HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_ALPHA_EN_SHFT));
 		}
 
-		ipq_lpass_cc_update(HWIO_LPASS_LPAAUDIO_PLL_MODE_ADDR(
-			sg_ipq_lpass_base),
-			(1 << HWIO_LPASS_LPAAUDIO_PLL_MODE_PLL_RESET_N_SHFT),
-			0);
+		ipq_lpass_cc_update((ipq_hw == IPQ9650) ?
+			HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_IPQ9650_ADDR(sg_ipq_lpass_base) :
+			HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_ADDR(sg_ipq_lpass_base),
+			reg_val, 0);
 
-		for (i=0; i < pll.pll_lock_wait; i++) {
-			mdelay(1);
-			value = readl(HWIO_LPASS_LPAAUDIO_PLL_STATUS_ADDR(
-						sg_ipq_lpass_base));
+		if (ipq_hw == IPQ9650) {
+			/* IPQ9650 Trion PLL: write CONFIG_CTL and USER_CTL_U before startup */
+			writel(HWIO_LPASS_LPAAUDIO_PLL_CONFIG_CTL_VAL_IPQ9650,
+			       HWIO_LPASS_LPAAUDIO_PLL_CONFIG_CTL_ADDR(sg_ipq_lpass_base));
+			writel(HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_U_VAL_IPQ9650,
+			       HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_U_IPQ9650_ADDR(sg_ipq_lpass_base));
+			/* Bring PLL out of reset */
+			ipq_lpass_cc_update(HWIO_LPASS_LPAAUDIO_PLL_MODE_ADDR(sg_ipq_lpass_base),
+					    (1 << HWIO_LPASS_LPAAUDIO_PLL_MODE_PLL_RESET_N_SHFT), 0);
+			/* Set OPMODE = RUN to start PLL (replaces BYPASSNL sequence) */
+			writel(HWIO_LPASS_LPAAUDIO_PLL_OPMODE_RUN_IPQ9650,
+			       HWIO_LPASS_LPAAUDIO_PLL_OPMODE_IPQ9650_ADDR(sg_ipq_lpass_base));
+			for (i = 0; i < pll.pll_lock_wait; i++) {
+				mdelay(1);
+				value = readl(HWIO_LPASS_LPAAUDIO_PLL_STATUS_IPQ9650_ADDR(sg_ipq_lpass_base));
+			}
+		} else {
+			ipq_lpass_cc_update(HWIO_LPASS_LPAAUDIO_PLL_MODE_ADDR(sg_ipq_lpass_base),
+					    (1 << HWIO_LPASS_LPAAUDIO_PLL_MODE_PLL_BYPASSNL_SHFT), 0);
+			for (i = 0; i < pll.pll_reset_wait; i++) {
+				mdelay(1);
+				value = readl(HWIO_LPASS_LPAAUDIO_PLL_STATUS_ADDR(sg_ipq_lpass_base));
+			}
+			ipq_lpass_cc_update(HWIO_LPASS_LPAAUDIO_PLL_MODE_ADDR(sg_ipq_lpass_base),
+					    (1 << HWIO_LPASS_LPAAUDIO_PLL_MODE_PLL_RESET_N_SHFT), 0);
+			for (i = 0; i < pll.pll_lock_wait; i++) {
+				mdelay(1);
+				value = readl(HWIO_LPASS_LPAAUDIO_PLL_STATUS_ADDR(sg_ipq_lpass_base));
+			}
 		}
 	}
 }
@@ -1359,49 +1379,70 @@ static void ipq_lpass_Setup_dig_pll(struct ipq_lpass_pll pll)
 			sg_ipq_lpass_base));
 
 		writel(pll.alpha,
-			HWIO_LPASS_LPAAUDIO_DIG_PLL_ALPHA_VAL_ADDR(
-			sg_ipq_lpass_base));
+			(ipq_hw == IPQ9650) ?
+			HWIO_LPASS_LPAAUDIO_DIG_PLL_ALPHA_VAL_IPQ9650_ADDR(sg_ipq_lpass_base) :
+			HWIO_LPASS_LPAAUDIO_DIG_PLL_ALPHA_VAL_ADDR(sg_ipq_lpass_base));
 
-		writel(pll.alpha_u,
-			HWIO_LPASS_LPAAUDIO_DIG_PLL_ALPHA_VAL_U_ADDR(
-			sg_ipq_lpass_base));
+		/* ALPHA_VAL_U register removed in IPQ9650 — skip write */
+		if (ipq_hw != IPQ9650)
+			writel(pll.alpha_u,
+			       HWIO_LPASS_LPAAUDIO_DIG_PLL_ALPHA_VAL_U_ADDR(sg_ipq_lpass_base));
 
-		reg_val = ((vco_sel << HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_VCO_SEL_SHFT) |
-				(pll.post_div << HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_POST_DIV_RATIO_SHFT) |
-				(alpha_en << HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_ALPHA_EN_SHFT));
+		if (ipq_hw == IPQ9650) {
+			/* IPQ9650: VCO_SEL/ALPHA_EN removed; use POST_DIV_RATIO_EVEN + PLLOUT_MAIN */
+			reg_val = (pll.post_div << HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_POST_DIV_RATIO_EVEN_SHFT_IPQ9650) |
+				  (1 << HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_PLLOUT_MAIN_SHFT_IPQ9650);
+		} else {
+			reg_val = ((vco_sel << HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_VCO_SEL_SHFT) |
+				   (pll.post_div << HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_POST_DIV_RATIO_SHFT) |
+				   (alpha_en << HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_ALPHA_EN_SHFT));
+		}
 
-		ipq_lpass_cc_update(HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_ADDR(
-					sg_ipq_lpass_base), reg_val, 0);
+		ipq_lpass_cc_update((ipq_hw == IPQ9650) ?
+			HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_IPQ9650_ADDR(sg_ipq_lpass_base) :
+			HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_ADDR(sg_ipq_lpass_base),
+			reg_val, 0);
 
 		if (pll.pll_vote_fsm_ena == 0) {
-			ipq_lpass_cc_update(HWIO_LPASS_LPAAUDIO_DIG_PLL_MODE_ADDR(
-				sg_ipq_lpass_base),
-				(1 << HWIO_LPASS_LPAAUDIO_DIG_PLL_MODE_PLL_BYPASSNL_SHFT),
-				0);
+			if (ipq_hw == IPQ9650) {
+				writel(HWIO_LPASS_LPAAUDIO_DIG_PLL_CONFIG_CTL_VAL_IPQ9650,
+				       HWIO_LPASS_LPAAUDIO_DIG_PLL_CONFIG_CTL_ADDR(sg_ipq_lpass_base));
+				writel(HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_U_VAL_IPQ9650,
+				       HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_U_ADDR(sg_ipq_lpass_base));
+				/* Bring PLL out of reset */
+				ipq_lpass_cc_update(HWIO_LPASS_LPAAUDIO_DIG_PLL_MODE_ADDR(sg_ipq_lpass_base),
+						    (1 << HWIO_LPASS_LPAAUDIO_DIG_PLL_MODE_PLL_RESET_N_SHFT), 0);
+				/* Set OPMODE = RUN to start PLL (replaces BYPASSNL sequence) */
+				writel(HWIO_LPASS_LPAAUDIO_PLL_OPMODE_RUN_IPQ9650,
+				       HWIO_LPASS_LPAAUDIO_DIG_PLL_OPMODE_IPQ9650_ADDR(sg_ipq_lpass_base));
+				for (i = 0; i < pll.pll_lock_wait; i++) {
+					mdelay(1);
+					value = readl(HWIO_LPASS_LPAAUDIO_DIG_PLL_STATUS_IPQ9650_ADDR(sg_ipq_lpass_base));
+				}
+			} else {
+				ipq_lpass_cc_update(HWIO_LPASS_LPAAUDIO_DIG_PLL_MODE_ADDR(sg_ipq_lpass_base),
+						    (1 << HWIO_LPASS_LPAAUDIO_DIG_PLL_MODE_PLL_BYPASSNL_SHFT), 0);
 
-			for (i=0; i<pll.pll_reset_wait; i++) {
-				value = readl(HWIO_LPASS_LPAAUDIO_DIG_PLL_STATUS_ADDR(sg_ipq_lpass_base));
-				mdelay(1);
-			}
+				for (i = 0; i < pll.pll_reset_wait; i++) {
+					value = readl(HWIO_LPASS_LPAAUDIO_DIG_PLL_STATUS_ADDR(sg_ipq_lpass_base));
+					mdelay(1);
+				}
 
-			ipq_lpass_cc_update(HWIO_LPASS_LPAAUDIO_DIG_PLL_MODE_ADDR(
-				sg_ipq_lpass_base),
-				(1 << HWIO_LPASS_LPAAUDIO_DIG_PLL_MODE_PLL_UPDATE_SHFT),
-				0);
+				ipq_lpass_cc_update(HWIO_LPASS_LPAAUDIO_DIG_PLL_MODE_ADDR(sg_ipq_lpass_base),
+						    (1 << HWIO_LPASS_LPAAUDIO_DIG_PLL_MODE_PLL_UPDATE_SHFT), 0);
 
-			for (i=0; i<pll.pll_reset_wait; i++) {
-				value = readl(HWIO_LPASS_LPAAUDIO_DIG_PLL_STATUS_ADDR(sg_ipq_lpass_base));
-				mdelay(1);
-			}
+				for (i = 0; i < pll.pll_reset_wait; i++) {
+					value = readl(HWIO_LPASS_LPAAUDIO_DIG_PLL_STATUS_ADDR(sg_ipq_lpass_base));
+					mdelay(1);
+				}
 
-			ipq_lpass_cc_update(HWIO_LPASS_LPAAUDIO_DIG_PLL_MODE_ADDR(
-				sg_ipq_lpass_base),
-				(1 << HWIO_LPASS_LPAAUDIO_DIG_PLL_MODE_PLL_RESET_N_SHFT),
-				0);
+				ipq_lpass_cc_update(HWIO_LPASS_LPAAUDIO_DIG_PLL_MODE_ADDR(sg_ipq_lpass_base),
+						    (1 << HWIO_LPASS_LPAAUDIO_DIG_PLL_MODE_PLL_RESET_N_SHFT), 0);
 
-			for (i=0; i<pll.pll_reset_wait; i++) {
-				value = readl(HWIO_LPASS_LPAAUDIO_DIG_PLL_STATUS_ADDR(sg_ipq_lpass_base));
-				mdelay(1);
+				for (i = 0; i < pll.pll_reset_wait; i++) {
+					value = readl(HWIO_LPASS_LPAAUDIO_DIG_PLL_STATUS_ADDR(sg_ipq_lpass_base));
+					mdelay(1);
+				}
 			}
 		}
 	}
@@ -1437,12 +1478,17 @@ static void ipq_lpass_pll_lock_wait(void)
 			sg_ipq_lpass_base),
 			(1 << HWIO_LPASS_LPAAUDIO_DIG_PLL_MODE_PLL_OUTCTRL_SHFT)
 			, 0);
-	ipq_lpass_cc_update(HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_ADDR(
-		sg_ipq_lpass_base),
-		((1 << HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_PLLOUT_LV_AUX_SHFT) |
-		(1 << HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_PLLOUT_LV_AUX2_SHFT) |
-		(1 << HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_PLLOUT_LV_MAIN_SHFT) |
-		(1 << HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_PLLOUT_LV_EARLY_SHFT)),
+	ipq_lpass_cc_update((ipq_hw == IPQ9650) ?
+		HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_IPQ9650_ADDR(sg_ipq_lpass_base) :
+		HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_ADDR(sg_ipq_lpass_base),
+		(ipq_hw == IPQ9650) ?
+			((1 << HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_PLLOUT_MAIN_SHFT_IPQ9650) |
+			 (1 << HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_PLLOUT_EVEN_SHFT_IPQ9650) |
+			 (1 << HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_PLLOUT_ODD_SHFT_IPQ9650)) :
+			((1 << HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_PLLOUT_LV_AUX_SHFT) |
+			 (1 << HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_PLLOUT_LV_AUX2_SHFT) |
+			 (1 << HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_PLLOUT_LV_MAIN_SHFT) |
+			 (1 << HWIO_LPASS_LPAAUDIO_DIG_PLL_USER_CTL_PLLOUT_LV_EARLY_SHFT)),
 		0);
 
 	lock.value = readl(HWIO_LPASS_LPAAUDIO_PLL_MODE_ADDR(sg_ipq_lpass_base)) &
@@ -1466,12 +1512,17 @@ static void ipq_lpass_pll_lock_wait(void)
 			(1 << HWIO_LPASS_LPAAUDIO_PLL_MODE_PLL_OUTCTRL_SHFT)
 			, 0);
 
-	ipq_lpass_cc_update(HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_ADDR(
-		sg_ipq_lpass_base),
-		((1 << HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_PLLOUT_LV_AUX_SHFT) |
-		(1 << HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_PLLOUT_LV_AUX2_SHFT) |
-		(1 << HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_PLLOUT_LV_MAIN_SHFT) |
-		(1 << HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_PLLOUT_LV_EARLY_SHFT)),
+	ipq_lpass_cc_update((ipq_hw == IPQ9650) ?
+		HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_IPQ9650_ADDR(sg_ipq_lpass_base) :
+		HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_ADDR(sg_ipq_lpass_base),
+		(ipq_hw == IPQ9650) ?
+			((1 << HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_PLLOUT_MAIN_SHFT_IPQ9650) |
+			 (1 << HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_PLLOUT_EVEN_SHFT_IPQ9650) |
+			 (1 << HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_PLLOUT_ODD_SHFT_IPQ9650)) :
+			((1 << HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_PLLOUT_LV_AUX_SHFT) |
+			 (1 << HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_PLLOUT_LV_AUX2_SHFT) |
+			 (1 << HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_PLLOUT_LV_MAIN_SHFT) |
+			 (1 << HWIO_LPASS_LPAAUDIO_PLL_USER_CTL_PLLOUT_LV_EARLY_SHFT)),
 		0);
 }
 
@@ -1849,6 +1900,7 @@ static const struct of_device_id ipq_lpass_id_table[] = {
 	{ .compatible = "qca,lpass-ipq5332", .data = (void *)IPQ5332 },
 	{ .compatible = "qca,lpass-ipq5424", .data = (void *)IPQ5424 },
 	{ .compatible = "qca,lpass-ipq5210", .data = (void *)IPQ5210 },
+	{ .compatible = "qca,lpass-ipq9650", .data = (void *)IPQ9650 },
 	{},
 };
 MODULE_DEVICE_TABLE(of, ipq_lpass_id_table);
@@ -1869,7 +1921,7 @@ static int ipq_lpass_probe(struct platform_device *pdev)
 		return -ENODEV;
 	ipq_hw = (enum ipq_hw_type)match->data;
 
-	if (ipq_hw == IPQ5424) {
+	if (ipq_hw == IPQ5424 || ipq_hw == IPQ9650) {
 		lpass_nvmem = of_nvmem_cell_get(pdev->dev.of_node, NULL);
 		if (IS_ERR(lpass_nvmem)) {
 			return PTR_ERR(lpass_nvmem);

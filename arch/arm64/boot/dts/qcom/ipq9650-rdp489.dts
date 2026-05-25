@@ -269,6 +269,25 @@
 	};
 };
 
+&spi1 {
+	compatible = "qcom,geni-spi";
+	pinctrl-0 = <&se5_spi_pins>;
+	pinctrl-names = "default";
+	status = "disabled";
+
+	spidev1: spi@0 {
+		compatible = "qti,spidev";
+		reg = <0>;
+		spi-max-frequency = <9600000>;
+	};
+};
+
+&pcm {
+	pinctrl-0 = <&audio_pins_pri>;
+	pinctrl-names = "primary";
+	status = "disabled";
+};
+
 &qpic_bam {
 	status = "okay";
 };
@@ -438,6 +457,36 @@
 };
 
 &tlmm {
+	audio_pins_pri: audio_pinmux_pri {
+		mux_1 {
+			pins = "gpio36";
+			function = "audio_pri_d0";
+			drive-strength = <16>;
+			bias-pull-down;
+		};
+
+		mux_2 {
+		    pins = "gpio37";
+		    function = "audio_pri_d1";
+		    drive-strength = <8>;
+		    bias-pull-down;
+		};
+
+		mux_3 {
+		    pins = "gpio38";
+		    function = "audio_pri_fsync";
+		    drive-strength = <8>;
+		    bias-pull-down;
+		};
+
+		mux_4 {
+		    pins = "gpio39";
+		    function = "audio_pri_pclk";
+		    drive-strength = <8>;
+		    bias-pull-down;
+		};
+	};
+
 	qup_i2c3_default: qup-i2c3-default-state {
 		qup_i2c3_scl {
 			pins = "gpio14";
@@ -526,6 +575,33 @@
 			drive-strength = <8>;
 			bias-pull-up;
 			output-high;
+		};
+	};
+
+	se5_spi_pins: se5-spi-pins {
+		spi_clk {
+			pins = "gpio45";
+			function = "qup_se5_l2";
+			drive-strength = <4>;
+			bias-pull-down;
+		};
+		spi_cs {
+			pins = "gpio46";
+			function = "qup_se5_l3";
+			drive-strength = <4>;
+			bias-pull-up;
+		};
+		spi_miso {
+			pins = "gpio47";
+			function = "qup_se5_l0";
+			drive-strength = <16>;
+			bias-pull-down;
+		};
+		spi_mosi {
+			pins = "gpio48";
+			function = "qup_se5_l1";
+			drive-strength = <16>;
+			bias-pull-down;
 		};
 	};
 };

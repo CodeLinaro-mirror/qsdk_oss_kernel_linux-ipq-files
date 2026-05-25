@@ -595,6 +595,7 @@ static const struct of_device_id qca_raw_lb_match_table[] = {
 	{ .compatible = "qca,ipq5332-pcm-lb", .data = (void *)IPQ5332 },
 	{ .compatible = "qca,ipq5424-pcm-lb", .data = (void *)IPQ5424 },
 	{ .compatible = "qca,ipq5210-pcm-lb", .data = (void *)IPQ5210 },
+	{ .compatible = "qca,ipq9650-pcm-lb", .data = (void *)IPQ9650 },
 	{},
 };
 
