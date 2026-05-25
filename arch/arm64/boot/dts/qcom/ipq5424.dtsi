@@ -476,6 +476,27 @@
 			interrupt-controller;
 			#interrupt-cells = <2>;
 
+			bt_pins: bt-pins {
+				pta1_0 {
+					pins = "gpio40";
+					function = "PTA0_0";
+					drive-strength = <8>;
+					bias-disable;
+				};
+				pta1_1 {
+					pins = "gpio41";
+					function = "PTA0_1";
+					drive-strength = <8>;
+					bias-disable;
+				};
+				pta1_2 {
+					pins = "gpio42";
+					function = "PTA0_2";
+					drive-strength = <8>;
+					bias-disable;
+				};
+			};
+
 			qup_uart0_default: qup-uart0-default-state {
 				qup_uart0_tx: tx-pins {
 					pins = "gpio13";
