@@ -283,9 +283,10 @@ static struct clk_gfm gold_apss_pll_gfmux = {
 		.parent_data = (const struct clk_parent_data[]){
 			{ .fw_name = "xo" },
 			{ .fw_name = "gpll0" },
+			{ .hw = &gold_apss_pll.clkr.hw },
 			{ .hw = &gold_apss_pll_postdiv.clkr.hw },
 		},
-		.num_parents = 3,
+		.num_parents = 4,
 		.ops = &clk_gfm_ops,
 		.flags = CLK_SET_RATE_PARENT,
 	},
