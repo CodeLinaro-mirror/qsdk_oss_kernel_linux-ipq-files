@@ -1655,6 +1655,11 @@
 				reg = <0x730 8>;
 			};
 
+			gcc-rst-status-buf@28 {
+				compatible = "qcom,ipq9650-imem-gcc-rst-status";
+				reg = <0x28 4>;
+			};
+
 			tz-reason-buf@7a4 {
 				compatible = "qcom,ipq9650-imem-tz-reason";
 				reg = <0x7a4 4>;
@@ -1668,6 +1673,11 @@
 			kernel-reason-buf@7ac {
 				compatible = "qcom,ipq9650-imem-kernel-reason";
 				reg = <0x7ac 4>;
+			};
+
+			sbl-reason-buf@7b0 {
+				compatible = "qcom,ipq9650-imem-sbl-reason";
+				reg = <0x7b0 4>;
 			};
 
 		};
