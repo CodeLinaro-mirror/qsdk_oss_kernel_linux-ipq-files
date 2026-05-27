@@ -2712,10 +2712,16 @@
 
 		ess_instance: ess-instance {
 			compatible = "qcom,ess-instance";
+#ifdef __CONFIG_IO_COHERENCY__
+			dma-coherent;
+#endif
 			num_devices = <0x1>;
 
 			ess_switch: ess-switch@2a000000 {
 				compatible = "qcom,ess-switch-ipq96xx";
+#ifdef __CONFIG_IO_COHERENCY__
+				dma-coherent;
+#endif
 				reg = <0x2a000000 0x1000000>;
 				switch_access_mode = "local bus";
 				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
@@ -3308,6 +3314,9 @@
 			memory-region = <&ddrq_data_region>, <&ddrq_desc_region>;
 			memory-region-names = "ddrq_data_region", "ddrq_desc_region";
 			compatible = "qcom,edma";
+#ifdef __CONFIG_IO_COHERENCY__
+			dma-coherent;
+#endif
 			reg = <0x2ad00000 0x1c5000>;
 			reg-names = "edma-reg-base";
 			resets = <&nsscc NSS_CC_PPE_EDMA_CLK_ARES>,
@@ -3395,10 +3404,16 @@
 
 		nss-ppe {
 			compatible = "qcom,nss-ppe";
+#ifdef __CONFIG_IO_COHERENCY__
+			dma-coherent;
+#endif
 		};
 
 		eip: eip197@29800000 {
 			compatible = "qcom,eip";
+#ifdef __CONFIG_IO_COHERENCY__
+			dma-coherent;
+#endif
 			reg-names = "eip_pbase";
 			reg = <0x29800000 0x7ffff>;
 			reg-offset = <0x80000>;
@@ -3422,6 +3437,9 @@
 
 			dma0 {
 				compatible = "qcom,eip-dma";
+#ifdef __CONFIG_IO_COHERENCY__
+				dma-coherent;
+#endif
 				ring-id = /bits/ 8 <0>;
 				interrupts = <GIC_SPI 234 IRQ_TYPE_EDGE_RISING>,
 					   <GIC_SPI 346 IRQ_TYPE_EDGE_RISING>;
@@ -3430,6 +3448,9 @@
 
 			dma1 {
 				compatible = "qcom,eip-dma";
+#ifdef __CONFIG_IO_COHERENCY__
+				dma-coherent;
+#endif
 				ring-id = /bits/ 8 <1>;
 				interrupts = <GIC_SPI 235 IRQ_TYPE_EDGE_RISING>,
 					   <GIC_SPI 347 IRQ_TYPE_EDGE_RISING>;
@@ -3438,6 +3459,9 @@
 
 			dma2 {
 				compatible = "qcom,eip-dma";
+#ifdef __CONFIG_IO_COHERENCY__
+				dma-coherent;
+#endif
 				ring-id = /bits/ 8 <2>;
 				interrupts = <GIC_SPI 236 IRQ_TYPE_EDGE_RISING>,
 					   <GIC_SPI 348 IRQ_TYPE_EDGE_RISING>;
@@ -3446,6 +3470,9 @@
 
 			dma3 {
 				compatible = "qcom,eip-dma";
+#ifdef __CONFIG_IO_COHERENCY__
+				dma-coherent;
+#endif
 				ring-id = /bits/ 8 <3>;
 				interrupts = <GIC_SPI 237 IRQ_TYPE_EDGE_RISING>,
 					   <GIC_SPI 349 IRQ_TYPE_EDGE_RISING>;
@@ -3454,6 +3481,9 @@
 
 			dma4 {
 				compatible = "qcom,eip-dma";
+#ifdef __CONFIG_IO_COHERENCY__
+				dma-coherent;
+#endif
 				ring-id = /bits/ 8 <4>;
 				interrupts = <GIC_SPI 238 IRQ_TYPE_EDGE_RISING>,
 					   <GIC_SPI 350 IRQ_TYPE_EDGE_RISING>;
@@ -3462,6 +3492,9 @@
 
 			dma5 {
 				compatible = "qcom,eip-dma";
+#ifdef __CONFIG_IO_COHERENCY__
+				dma-coherent;
+#endif
 				ring-id = /bits/ 8 <5>;
 				interrupts = <GIC_SPI 239 IRQ_TYPE_EDGE_RISING>,
 					   <GIC_SPI 351 IRQ_TYPE_EDGE_RISING>;
@@ -3470,6 +3503,9 @@
 
 			dma6 {
 				compatible = "qcom,eip-dma";
+#ifdef __CONFIG_IO_COHERENCY__
+				dma-coherent;
+#endif
 				ring-id = /bits/ 8 <6>;
 				interrupts = <GIC_SPI 240 IRQ_TYPE_EDGE_RISING>,
 					   <GIC_SPI 352 IRQ_TYPE_EDGE_RISING>;
@@ -3478,6 +3514,9 @@
 
 			dma7 {
 				compatible = "qcom,eip-dma";
+#ifdef __CONFIG_IO_COHERENCY__
+				dma-coherent;
+#endif
 				ring-id = /bits/ 8 <7>;
 				interrupts = <GIC_SPI 241 IRQ_TYPE_EDGE_RISING>,
 					   <GIC_SPI 353 IRQ_TYPE_EDGE_RISING>;

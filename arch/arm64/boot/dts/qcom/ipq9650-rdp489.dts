@@ -57,6 +57,9 @@
 		dp1 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
+#ifdef __CONFIG_IO_COHERENCY__
+			dma-coherent;
+#endif
 			qcom,id = <1>;
 			reg = <0x2a500000 0x4000>;
 			qcom,mactype = <1>;
@@ -73,6 +76,9 @@
 		dp2 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
+#ifdef __CONFIG_IO_COHERENCY__
+			dma-coherent;
+#endif
 			qcom,id = <2>;
 			reg = <0x2a504000 0x4000>;
 			qcom,mactype = <1>;
@@ -85,6 +91,9 @@
 		dp3 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
+#ifdef __CONFIG_IO_COHERENCY__
+			dma-coherent;
+#endif
 			qcom,id = <3>;
 			reg = <0x2a508000 0x4000>;
 			qcom,mactype = <1>;
@@ -97,6 +106,9 @@
 		dp4 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
+#ifdef __CONFIG_IO_COHERENCY__
+			dma-coherent;
+#endif
 			qcom,id = <4>;
 			reg = <0x2a50c000 0x4000>;
 			qcom,mactype = <1>;
@@ -109,6 +121,9 @@
 		dp5 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
+#ifdef __CONFIG_IO_COHERENCY__
+			dma-coherent;
+#endif
 			qcom,id = <5>;
 			reg = <0x2a510000 0x4000>;
 			qcom,mactype = <1>;
@@ -121,6 +136,9 @@
 		dp6 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
+#ifdef __CONFIG_IO_COHERENCY__
+			dma-coherent;
+#endif
 			qcom,id = <6>;
 			reg = <0x2a514000 0x4000>;
 			qcom,mactype = <1>;
