@@ -220,7 +220,9 @@
 
 &pcm {
 	pinctrl-0 = <&audio_pins_pri>;
-	pinctrl-names = "primary";
+	pinctrl-1 = <&audio_pins_sec>;
+	pinctrl-names = "primary",
+			"secondary";
 	status = "disabled";
 };
 
@@ -413,24 +415,54 @@
 		};
 
 		mux_2 {
-		    pins = "gpio37";
-		    function = "audio_pri_d1";
-		    drive-strength = <8>;
-		    bias-pull-down;
+			pins = "gpio37";
+			function = "audio_pri_d1";
+			drive-strength = <8>;
+			bias-pull-down;
 		};
 
 		mux_3 {
-		    pins = "gpio38";
-		    function = "audio_pri_fsync";
-		    drive-strength = <8>;
-		    bias-pull-down;
+			pins = "gpio38";
+			function = "audio_pri_fsync";
+			drive-strength = <8>;
+			bias-pull-down;
 		};
 
 		mux_4 {
-		    pins = "gpio39";
-		    function = "audio_pri_pclk";
-		    drive-strength = <8>;
-		    bias-pull-down;
+			pins = "gpio41";
+			function = "audio_pri_pclk";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+	};
+
+	audio_pins_sec: audio_pinmux_sec {
+		mux_1 {
+			pins = "gpio48";
+			function = "audio_sec_d0";
+			drive-strength = <16>;
+			bias-pull-down;
+		};
+
+		mux_2 {
+			pins = "gpio47";
+			function = "audio_sec_d1";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+
+		mux_3 {
+			pins = "gpio45";
+			function = "audio_sec_fsync";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+
+		mux_4 {
+			pins = "gpio46";
+			function = "audio_sec_pclk";
+			drive-strength = <8>;
+			bias-pull-down;
 		};
 	};
 
