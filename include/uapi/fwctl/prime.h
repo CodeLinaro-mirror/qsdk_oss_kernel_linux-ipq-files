@@ -10,17 +10,6 @@
 
 #include <linux/types.h>
 
-/*
- * Interface table entry format.
- * The interface table is an array of 4-byte pointers to this type, or NULL
- * if unassigned.
- */
-struct iu_intf_entry {
-	__u32 addr;	/* Address of region must be 32-bit */
-	__u32 size;	/* Size (in bytes) of region must be 32-bit */
-};
-
-
 enum prime_irq2l_enum {
 	PRIME_IRQ2L_ERROR = 0,
 	PRIME_IRQ2L_BOOT_DONE = 1,
@@ -73,18 +62,30 @@ struct prime_mem_dma_map {
 	enum prime_mem_dma_map_enum action;
 	enum prime_dma_direction direction;
 	int dma_fd;
-	/* Populated by IOCTL call */
+	/* Populated by IOCTL call on ALLOC, provided by App on FREE */
+	__u64 map_key;
 	__u64 device_dma_base_addr;
-	struct dma_buf *dma_buf;
-	struct dma_buf_attachment *dma_attachment;
-	struct sg_table *sg_table;
 };
 
-struct prime_sig_reg {
-	/* Populated by App */
-	enum prime_irq2l_enum irq;
-	int signo;
+struct prime_event_subscribe {
+	/* Populated by App: 1 subscribe this FD, 0 unsubscribe this FD */
+	__u32 enable;
+	/* Reserved, must be 0 */
+	__u32 flags;
 };
+
+struct prime_irq_event {
+	/* Populated by kernel and returned by read() on /dev/prime1 */
+	__u32 irq;
+	/* Reserved for future event metadata */
+	__u32 flags;
+	/* Monotonic sequence number assigned by kernel */
+	__u64 seqno;
+	/* Event timestamp (CLOCK_MONOTONIC) in ns */
+	__u64 timestamp_ns;
+};
+
+#define PRIME_IRQ_EVENT_FLAG_OVERFLOW	(1U << 0)
 
 enum prime_mem_pil_action {
 	PRIME_MEM_PIL_PREPARE,
@@ -99,8 +100,9 @@ struct prime_mem_pil_map {
 	enum prime_dma_direction direction;
 	__u64 offset;		/* Offset within the region */
 	__kernel_size_t size;	/* Size of sub-region */
-	/* Populated by IOCTL call (on PREPARE only) */
-	__u64 device_dma_base_addr;	/* DMA address (needed for release) */
+	/* Populated by IOCTL call on PREPARE, provided by App on RELEASE */
+	__u64 map_key;
+	__u64 device_dma_base_addr;
 };
 
 enum prime_clk_level {
@@ -121,8 +123,7 @@ struct prime_clk_bw_config {
 
 #define PRIME_MEM_MAGIC 'P'
 #define PRIME_MEM_GET_REGION _IOWR(PRIME_MEM_MAGIC, 0x1, struct prime_mem_region)
-#define PRIME_MEM_SIG_REGISTER _IOW(PRIME_MEM_MAGIC, 0x10, struct prime_sig_reg)
-#define PRIME_MEM_SIG_DEREGISTER _IOW(PRIME_MEM_MAGIC, 0x11, struct prime_sig_reg)
+#define PRIME_MEM_EVENT_SUBSCRIBE _IOW(PRIME_MEM_MAGIC, 0x10, struct prime_event_subscribe)
 #define PRIME_MEM_PIL _IOWR(PRIME_MEM_MAGIC, 0x20, struct prime_mem_pil_map)
 #define PRIME_MEM_DMA _IOWR(PRIME_MEM_MAGIC, 0x30, struct prime_mem_dma_map)
 #define PRIME_MEM_SET_CLK_BW _IOW(PRIME_MEM_MAGIC, 0x40, struct prime_clk_bw_config)
