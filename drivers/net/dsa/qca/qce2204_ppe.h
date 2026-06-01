@@ -727,4 +727,8 @@ int qce2204_teardown_8021q_tagging(struct qce2204_priv *priv, int port);
 int qce2204_port_alloc_ppe_resources(struct qce2204_priv *priv, int port);
 void qce2204_port_free_ppe_resources(struct qce2204_priv *priv, int port);
 
+/* Queue hang detection */
+void qce2204_ppe_queue_hang_work_start(struct qce2204_priv *priv);
+void qce2204_ppe_queue_hang_work_stop(struct qce2204_priv *priv);
+
 #endif /* __QCE2204_PPE_H__ */

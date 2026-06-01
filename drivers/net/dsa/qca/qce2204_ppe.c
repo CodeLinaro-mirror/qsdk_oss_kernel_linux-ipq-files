@@ -3506,3 +3506,299 @@ int qce2204_ppe_hw_init(struct qce2204_priv *priv)
 	dev_info(priv->dev, "PPE hardware initialized successfully\n");
 	return 0;
 }
+
+/* Queue hang detection and recovery
+ *
+ * A multicast queue is considered hung when all three conditions below
+ * persist for QCE2204_QUEUE_HANG_THRESHOLD consecutive 100 ms polls:
+ *   1. TX packet counter is frozen  (no dequeue progress)
+ *   2. Queue head is not empty      (data is waiting)
+ *   3. L0 scheduler flow is disabled (EN_LEVEL/CDRR/EDRR all clear)
+ * When a hang is confirmed the queue is flushed via the PPE flush engine.
+ */
+
+/* Read TX packet counter (word 0) for the given queue ID. */
+static int qce2204_ppe_queue_tx_counter_read(struct qce2204_priv *priv, int qid,
+					     u32 *tx_cnt)
+{
+	u32 addr = QCE2204_PPE_QUEUE_TX_COUNTER_TBL_ADDR +
+		   (u32)qid * QCE2204_PPE_QUEUE_TX_COUNTER_TBL_INC;
+	u32 tbl_data[QCE2204_PPE_QUEUE_TX_COUNTER_TBL_INC / 4] = {0};
+	int ret;
+
+	ret = regmap_bulk_read(priv->regmap, addr, tbl_data, ARRAY_SIZE(tbl_data));
+	if (ret)
+		return ret;
+
+	*tx_cnt = tbl_data[0];
+	return 0;
+}
+
+/* Read whether the queue's head entry reports the queue as empty. */
+static int qce2204_ppe_queue_head_is_empty(struct qce2204_priv *priv, int qid,
+					   bool *empty)
+{
+	u32 tbl_data[QCE2204_PPE_QUEUE_HEAD_MUL_TBL_INC / 4] = {0};
+	u32 addr, mask;
+	int ret;
+
+	if (qid < QCE2204_UNI_QUEUE_NUM) {
+		addr = QCE2204_PPE_QUEUE_HEAD_UNI_TBL_ADDR +
+		       (u32)qid * QCE2204_PPE_QUEUE_HEAD_UNI_TBL_INC;
+		mask = QCE2204_PPE_QUEUE_HEAD_UNI_EMPTY;
+	} else {
+		addr = QCE2204_PPE_QUEUE_HEAD_MUL_TBL_ADDR +
+		       (u32)(qid - QCE2204_UNI_QUEUE_NUM) * QCE2204_PPE_QUEUE_HEAD_MUL_TBL_INC;
+		mask = QCE2204_PPE_QUEUE_HEAD_MUL_EMPTY;
+	}
+
+	ret = regmap_bulk_read(priv->regmap, addr, tbl_data, ARRAY_SIZE(tbl_data));
+	if (ret)
+		return ret;
+
+	*empty = !!(tbl_data[0] & mask);
+	return 0;
+}
+
+/* Read whether at least one L0 enable bit is set for this queue. */
+static int qce2204_ppe_queue_l0_flow_is_enabled(struct qce2204_priv *priv,
+						int qid, bool *enabled)
+{
+	u32 addr = QCE2204_PPE_L0_FLOW_STATUS_TBL_ADDR +
+		   (u32)qid * QCE2204_PPE_L0_FLOW_STATUS_TBL_INC;
+	u32 tbl_data[QCE2204_PPE_L0_FLOW_STATUS_TBL_INC / 4] = {0};
+	int ret;
+
+	ret = regmap_bulk_read(priv->regmap, addr, tbl_data, ARRAY_SIZE(tbl_data));
+	if (ret)
+		return ret;
+
+	*enabled = !!(tbl_data[0] & QCE2204_PPE_L0_FLOW_STATUS_EN_ANY);
+	return 0;
+}
+
+/**
+ * qce2204_ppe_queue_flush() - Flush a stuck PPE queue via the flush engine
+ * @priv: QCE2204 private data
+ * @qid:  Queue ID to flush (0..QCE2204_TOTAL_QUEUE_NUM-1)
+ *
+ * Temporarily disables enqueue and dequeue for @qid, triggers the PPE
+ * hardware flush engine to drain any held packets, waits for completion,
+ * and then re-enables normal queue operation.
+ *
+ * Return: 0 on success, -%ETIMEDOUT if the flush engine does not clear
+ *         the BUSY bit within the polling limit.
+ */
+static int qce2204_ppe_queue_flush(struct qce2204_priv *priv, int qid)
+{
+	u32 enq_addr, deq_addr, flush_cfg, reg;
+	u32 map_data[QCE2204_PPE_L0_FLOW_PORT_MAP_TBL_INC / 4] = {0};
+	u32 enq_data[QCE2204_PPE_ENQ_OPR_TBL_INC / 4] = {0};
+	u32 deq_data[QCE2204_PPE_DEQ_OPR_TBL_INC / 4] = {0};
+	u32 dst_port;
+	int ret;
+
+	/* Look up destination port from L0 flow port map */
+	reg = QCE2204_PPE_L0_FLOW_PORT_MAP_TBL_ADDR +
+	      (u32)qid * QCE2204_PPE_L0_FLOW_PORT_MAP_TBL_INC;
+	ret = regmap_bulk_read(priv->regmap, reg, map_data, ARRAY_SIZE(map_data));
+	if (ret)
+		return ret;
+	dst_port = FIELD_GET(QCE2204_PPE_L0_FLOW_PORT_MAP_TBL_PORT_NUM, map_data[0]);
+
+	enq_addr = QCE2204_PPE_ENQ_OPR_TBL_ADDR +
+		   (u32)qid * QCE2204_PPE_ENQ_OPR_TBL_INC;
+	deq_addr = QCE2204_PPE_DEQ_OPR_TBL_ADDR +
+		   (u32)qid * QCE2204_PPE_DEQ_OPR_TBL_INC;
+
+	/* Disable enqueue and dequeue for this queue.
+	 * Safe without reg_mutex: only the single queue_hang_work delayed-work
+	 * ever calls this function, so there is no concurrent flush in flight.
+	 */
+	enq_data[0] = QCE2204_PPE_ENQ_OPR_TBL_ENQ_DISABLE;
+	deq_data[0] = QCE2204_PPE_DEQ_OPR_TBL_DEQ_DISABLE;
+	ret = regmap_bulk_write(priv->regmap, enq_addr, enq_data, ARRAY_SIZE(enq_data));
+	if (ret)
+		goto fail;
+	ret = regmap_bulk_write(priv->regmap, deq_addr, deq_data, ARRAY_SIZE(deq_data));
+	if (ret)
+		goto fail;
+
+	/* Program FLUSH_CFG: set QID, DST_PORT, and assert BUSY */
+	ret = regmap_read(priv->regmap, QCE2204_PPE_QUEUE_FLUSH_CFG_ADDR, &flush_cfg);
+	if (ret)
+		goto fail;
+	flush_cfg &= ~(QCE2204_PPE_QUEUE_FLUSH_CFG_BUSY |
+		       QCE2204_PPE_QUEUE_FLUSH_CFG_DST_PORT |
+		       QCE2204_PPE_QUEUE_FLUSH_CFG_QID);
+	flush_cfg |= FIELD_PREP(QCE2204_PPE_QUEUE_FLUSH_CFG_QID, qid);
+	flush_cfg |= FIELD_PREP(QCE2204_PPE_QUEUE_FLUSH_CFG_DST_PORT, dst_port);
+	flush_cfg |= QCE2204_PPE_QUEUE_FLUSH_CFG_BUSY;
+	ret = regmap_write(priv->regmap, QCE2204_PPE_QUEUE_FLUSH_CFG_ADDR, flush_cfg);
+	if (ret)
+		goto fail;
+
+	/* Poll until BUSY clears (hardware flush complete).  Runs in process
+	 * context (delayed work), so sleeping between reads is safe.
+	 */
+	ret = regmap_read_poll_timeout(priv->regmap,
+				       QCE2204_PPE_QUEUE_FLUSH_CFG_ADDR, reg,
+				       !(reg & QCE2204_PPE_QUEUE_FLUSH_CFG_BUSY),
+				       10, 1000);
+
+	if (ret) {
+		dev_err_ratelimited(priv->dev,
+				    "queue flush timeout: qid=%d dst_port=%u\n",
+				    qid, dst_port);
+		priv->queue_flush_fail_cnt++;
+	} else {
+		dev_info(priv->dev, "queue flush done: qid=%d dst_port=%u\n",
+			 qid, dst_port);
+		priv->queue_flush_ok_cnt++;
+	}
+
+fail:
+	/* Re-enable dequeue and enqueue.  Always attempt this so a queue is
+	 * never left disabled; a failure here is fatal to the queue, so report
+	 * it and propagate the error if the flush itself had succeeded.
+	 */
+	deq_data[0] = 0;
+	enq_data[0] = 0;
+	if (regmap_bulk_write(priv->regmap, deq_addr, deq_data, ARRAY_SIZE(deq_data)) ||
+	    regmap_bulk_write(priv->regmap, enq_addr, enq_data, ARRAY_SIZE(enq_data))) {
+		dev_err_ratelimited(priv->dev, "queue re-enable failed: qid=%d\n", qid);
+		if (!ret)
+			ret = -EIO;
+	}
+
+	return ret;
+}
+
+/**
+ * qce2204_ppe_queue_hang_check() - Scan multicast queues and flush hung ones
+ * @priv: QCE2204 private data
+ *
+ * For each multicast queue (QCE2204_UNI_QUEUE_NUM..QCE2204_TOTAL_QUEUE_NUM-1),
+ * increments a per-queue stuck counter when the TX counter is frozen, the
+ * queue is non-empty, and the L0 flow scheduler is disabled.  Once the
+ * counter reaches QCE2204_QUEUE_HANG_THRESHOLD the queue is flushed and
+ * the counter is reset.  Progress on any condition resets the counter.
+ */
+static void qce2204_ppe_queue_hang_check(struct qce2204_priv *priv)
+{
+	int qid, mul_idx;
+	u32 tx_cur;
+	bool empty, l0_en;
+
+	for (qid = QCE2204_UNI_QUEUE_NUM; qid < QCE2204_TOTAL_QUEUE_NUM; qid++) {
+		mul_idx = qid - QCE2204_UNI_QUEUE_NUM;
+
+		/* On any register read error, skip this queue for this poll
+		 * rather than acting on stale/zero data, which could otherwise
+		 * be misread as a hang.  State is left untouched.
+		 */
+		if (qce2204_ppe_queue_tx_counter_read(priv, qid, &tx_cur))
+			continue;
+
+		if (tx_cur != priv->queue_tx_cnt_prev[mul_idx]) {
+			/* TX counter advanced: queue is making forward progress */
+			priv->queue_tx_cnt_prev[mul_idx] = tx_cur;
+			priv->queue_stuck_cnt[mul_idx] = 0;
+			continue;
+		}
+
+		if (qce2204_ppe_queue_head_is_empty(priv, qid, &empty) ||
+		    qce2204_ppe_queue_l0_flow_is_enabled(priv, qid, &l0_en))
+			continue;
+
+		if (empty || l0_en) {
+			/* Queue drained or scheduler still active: not hung */
+			priv->queue_stuck_cnt[mul_idx] = 0;
+			continue;
+		}
+
+		if (++priv->queue_stuck_cnt[mul_idx] < QCE2204_QUEUE_HANG_THRESHOLD)
+			continue;
+
+		/* All hang conditions met for THRESHOLD consecutive polls */
+		dev_warn(priv->dev,
+			 "queue hang detected: qid=%d tx_cnt=%u, flushing\n",
+			 qid, tx_cur);
+		priv->queue_hang_cnt++;
+
+		qce2204_ppe_queue_flush(priv, qid);
+
+		/* Reset state after flush attempt.  Re-seed the TX baseline;
+		 * ignore a read error here and fall back to 0 so the next poll
+		 * simply re-evaluates from scratch.
+		 */
+		priv->queue_stuck_cnt[mul_idx] = 0;
+		if (qce2204_ppe_queue_tx_counter_read(priv, qid,
+						      &priv->queue_tx_cnt_prev[mul_idx]))
+			priv->queue_tx_cnt_prev[mul_idx] = 0;
+	}
+}
+
+/* Delayed work callback: run hang detection if polling is enabled. */
+static void qce2204_ppe_queue_hang_poll(struct work_struct *work)
+{
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct qce2204_priv *priv =
+		container_of(dwork, struct qce2204_priv, queue_hang_work);
+
+	if (!atomic_read(&priv->queue_hang_poll_enabled))
+		return;
+
+	/* Queue hang detection only applies to none-tag mode DSA.  If the tag
+	 * protocol has been changed away from none-tag at runtime, stop polling
+	 * instead of operating on queues that are no longer relevant.
+	 */
+	if (priv->tag_protocol != DSA_TAG_PROTO_NONE) {
+		dev_info(priv->dev,
+			 "tag protocol no longer none-tag, stopping queue hang polling\n");
+		atomic_set(&priv->queue_hang_poll_enabled, 0);
+		return;
+	}
+
+	qce2204_ppe_queue_hang_check(priv);
+
+	schedule_delayed_work(&priv->queue_hang_work,
+			      msecs_to_jiffies(QCE2204_QUEUE_HANG_POLL_INTERVAL_MS));
+}
+
+/**
+ * qce2204_ppe_queue_hang_work_start() - Initialise queue hang polling state
+ * @priv: QCE2204 private data
+ *
+ * Clears per-queue state and initialises the delayed work.  Polling is
+ * disabled by default and must be enabled at runtime via debugfs.
+ */
+void qce2204_ppe_queue_hang_work_start(struct qce2204_priv *priv)
+{
+	atomic_set(&priv->queue_hang_poll_enabled, 0);
+	memset(priv->queue_tx_cnt_prev, 0, sizeof(priv->queue_tx_cnt_prev));
+	memset(priv->queue_stuck_cnt, 0, sizeof(priv->queue_stuck_cnt));
+	priv->queue_hang_cnt = 0;
+	priv->queue_flush_ok_cnt = 0;
+	priv->queue_flush_fail_cnt = 0;
+
+	INIT_DELAYED_WORK(&priv->queue_hang_work, qce2204_ppe_queue_hang_poll);
+}
+
+/**
+ * qce2204_ppe_queue_hang_work_stop() - Cancel queue hang polling and reset state
+ * @priv: QCE2204 private data
+ *
+ * Cancels the pending delayed work and waits for any in-progress execution
+ * to finish, then clears all per-queue stuck counters and statistics so the
+ * next enable starts from a clean baseline.
+ */
+void qce2204_ppe_queue_hang_work_stop(struct qce2204_priv *priv)
+{
+	cancel_delayed_work_sync(&priv->queue_hang_work);
+	memset(priv->queue_tx_cnt_prev, 0, sizeof(priv->queue_tx_cnt_prev));
+	memset(priv->queue_stuck_cnt, 0, sizeof(priv->queue_stuck_cnt));
+	priv->queue_hang_cnt = 0;
+	priv->queue_flush_ok_cnt = 0;
+	priv->queue_flush_fail_cnt = 0;
+}
