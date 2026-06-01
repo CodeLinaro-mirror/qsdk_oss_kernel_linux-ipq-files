@@ -6,6 +6,7 @@
 #ifndef __QCE2204_H
 #define __QCE2204_H
 
+#include <linux/atomic.h>
 #include <linux/delay.h>
 #include <linux/regmap.h>
 #include <linux/mutex.h>
@@ -15,6 +16,7 @@
 #include <linux/clk.h>
 #include <linux/reset.h>
 #include <linux/gpio/consumer.h>
+#include <linux/workqueue.h>
 #include <net/dsa.h>
 
 #define QCE2204_ATHTAG_TYPE				0xaaaa
@@ -27,6 +29,17 @@
 
 #define PHY_ID_QCE2204					0x004dd190
 #define QCE2204_CHIP_ID					0x50
+
+/* Queue counts for PPE TM scheduler */
+#define QCE2204_UNI_QUEUE_NUM				256
+#define QCE2204_MUL_QUEUE_NUM				36
+#define QCE2204_TOTAL_QUEUE_NUM				292
+
+/* Queue hang detection: polling interval and consecutive-hit threshold */
+#define QCE2204_QUEUE_HANG_POLL_INTERVAL_MS		100
+#define QCE2204_QUEUE_HANG_THRESHOLD			8
+#define QCE2204_QUEUE_HANG_DEBUGFS_ROOT			"qce2k"
+#define QCE2204_QUEUE_HANG_DEBUGFS_NAME			"mq_hang_polling"
 
 /* Default VSI for none tag mode */
 #define QCE2204_DEFAULT_VSI				0
@@ -175,6 +188,9 @@ struct qce2204_ppe_port {
 	struct mutex gmib_stats_lock;
 };
 
+/* Forward declaration: full type not required in this header */
+struct dentry;
+
 /**
  * struct qce2204_priv - QCE2204 switch private data
  * @ds: DSA switch structure
@@ -257,6 +273,17 @@ struct qce2204_priv {
 
 	/* Cross-chip backpressure mode */
 	enum qce2204_bp_mode bp_mode;
+
+	/* Queue hang detection */
+	struct delayed_work queue_hang_work;
+	atomic_t queue_hang_poll_enabled;
+	struct dentry *root_dentry;
+	struct dentry *queue_hang_dentry;
+	u32 queue_tx_cnt_prev[QCE2204_MUL_QUEUE_NUM];
+	u32 queue_stuck_cnt[QCE2204_MUL_QUEUE_NUM];
+	u32 queue_hang_cnt;
+	u32 queue_flush_ok_cnt;
+	u32 queue_flush_fail_cnt;
 };
 
 /* Clock/Reset management functions */
