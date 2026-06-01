@@ -1419,6 +1419,9 @@
 				<&gcc GCC_SNOC_LPASS_CLK>,
 				<&gcc GCC_CNOC_LPASS_CFG_CLK>;
 			clock-names = "sway", "axim", "snoc_cfg", "pcnoc";
+			assigned-clocks = <&gcc GCC_LPASS_SWAY_CLK_SRC>,
+					  <&gcc GCC_LPASS_AXIM_CLK_SRC>;
+			assigned-clock-rates = <133333333>, <133333333>;
 			resets = <&gcc GCC_LPASS_BCR>;
 			reset-names = "lpass";
 			#address-cells = <1>;
