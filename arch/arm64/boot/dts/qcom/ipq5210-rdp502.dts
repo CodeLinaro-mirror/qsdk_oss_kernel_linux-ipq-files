@@ -13,6 +13,8 @@
 #include <dt-bindings/reset/qcom,qce2204-nsscc.h>
 #ifdef __IPQ_MEM_PROFILE_512_MB__
 #include "ipq5210-512MB-default-memory.dtsi"
+#elif defined(__IPQ_MEM_PROFILE_256_MB__)
+#include "ipq5210-256MB-default-memory.dtsi"
 #else
 #include "ipq5210-default-memory.dtsi"
 #endif
@@ -557,6 +559,9 @@
 };
 
 &mlo_global_mem0 {
+#if defined(__IPQ_MEM_PROFILE_256_MB__)
+	size = <0x0 0x400000>;
+#endif
 	status = "okay";
 };
 
