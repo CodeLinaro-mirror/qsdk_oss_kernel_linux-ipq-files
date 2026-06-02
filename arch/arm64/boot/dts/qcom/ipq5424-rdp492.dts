@@ -20,7 +20,7 @@
 	compatible = "qcom,ipq5424-rdp492", "qcom,ipq5424";
 
 	chosen {
-		bootargs-append = " tz_log.paniconaccessviolation=0";
+		bootargs-append = " tz_log.paniconaccessviolation=0 pcie_pme=nomsi pci=noaer";
 	};
 
 	reserved-memory {
