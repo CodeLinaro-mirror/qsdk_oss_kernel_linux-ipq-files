@@ -121,7 +121,7 @@
 
 	chosen {
 		stdout-path = "serial0";
-		bootargs-append = " clk_ignore_unused";
+		bootargs-append = " clk_ignore_unused pcie_pme=nomsi";
 	};
 
 	soc@0 {

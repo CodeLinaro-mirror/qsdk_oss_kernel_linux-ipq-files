@@ -59,7 +59,7 @@
 
 	chosen {
 		stdout-path = "serial0";
-		bootargs-append = " clk_ignore_unused";
+		bootargs-append = " clk_ignore_unused pcie_pme=nomsi";
 	};
 
 #if defined(__IPQ_MEM_PROFILE_256_MB__)

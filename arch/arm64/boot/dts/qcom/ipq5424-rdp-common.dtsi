@@ -24,6 +24,7 @@
 
 	chosen {
 		stdout-path = "serial0";
+		bootargs-append = " pcie_pme=nomsi";
 	};
 
 	soc@0 {
