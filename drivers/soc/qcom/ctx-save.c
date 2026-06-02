@@ -367,7 +367,7 @@ static void dump2mem_workfn(struct work_struct *work)
 			!= MINIDUMP_MAGIC1_COOKIE) ||
 			(*((uint32_t *)&dump2mem_info.rsvd_mem_ptr[4])
 			!= MINIDUMP_MAGIC2_COOKIE)) {
-		pr_debug("Minidump: dump2mem identifier not present!\n");
+		pr_info("Minidump: dump2mem magic not present!\n");
 		memunmap(dump2mem_info.rsvd_mem_ptr);
 		dump2mem_info.rsvd_mem_ptr = NULL;
 		return;
