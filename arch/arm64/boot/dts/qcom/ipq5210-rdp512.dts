@@ -9,10 +9,14 @@
 /dts-v1/;
 
 #include "ipq5210-rdp-common.dtsi"
-#include "ipq5210-default-memory.dtsi"
 #include <dt-bindings/clock/qcom,qce2204-nsscc.h>
 #include <dt-bindings/clock/qcom,qce2204-pcs.h>
 #include <dt-bindings/reset/qcom,qce2204-nsscc.h>
+#ifdef __IPQ_MEM_PROFILE_512_MB__
+#include "ipq5210-512MB-default-memory.dtsi"
+#else
+#include "ipq5210-default-memory.dtsi"
+#endif
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ5210 RDP512";
