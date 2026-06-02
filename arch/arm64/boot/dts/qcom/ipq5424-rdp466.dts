@@ -761,3 +761,7 @@
 	hw_link_id = <2 0>;
 	status = "okay";
 };
+
+&uart0 {
+	pinctrl-0 = <&qup_uart0_default &bt_pins>;
+};
