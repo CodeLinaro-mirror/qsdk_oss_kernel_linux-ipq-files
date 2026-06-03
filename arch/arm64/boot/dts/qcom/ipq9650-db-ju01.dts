@@ -49,7 +49,7 @@
 			i2c0: i2c@1a84000 {
 				pinctrl-0 = <&qup_i2c0_default>;
 				pinctrl-names = "default";
-				status = "disabled";
+				status = "okay";
 			};
 
 			i2c1: i2c@1a88000 {
@@ -97,7 +97,7 @@
 			i2c4: i2c@1a9c000 {
 				pinctrl-0 = <&qup_i2c4_default>;
 				pinctrl-names = "default";
-				status = "disabled";
+				status = "okay";
 			};
 
 		};
@@ -177,6 +177,34 @@
 			clocks = <&nsscc NSS_CC_XGMAC5_PTP_REF_CLK>;
 			clock-names = "ptp";
 		};
+
+		sfp_phy1: sfp_phy@1 {
+			status = "okay";
+			compatible = "qcom,nss-phy";
+			i2c-bus = <&i2c4>;
+		};
+
+		sfp_phy2: sfp_phy@2 {
+			status = "okay";
+			compatible = "qcom,nss-phy";
+			i2c-bus = <&i2c0>;
+		};
+
+		sfp1: sfp@1 {
+			status = "okay";
+			compatible = "sff,sfp";
+			i2c-bus = <&i2c4>;
+			los-gpios = <&tlmm 46 GPIO_ACTIVE_HIGH>;
+			tx-disable-gpios = <&tlmm 15 GPIO_ACTIVE_HIGH>;
+		};
+
+		sfp2: sfp@2 {
+			status = "okay";
+			compatible = "sff,sfp";
+			i2c-bus = <&i2c0>;
+			los-gpios = <&tlmm 45 GPIO_ACTIVE_HIGH>;
+			tx-disable-gpios = <&tlmm 14 GPIO_ACTIVE_HIGH>;
+		};
 	};
 };
 
@@ -185,33 +213,24 @@
 };
 
 &ess_switch {
-	pinctrl-0 = <&sfp_pins>;
-	pinctrl-names = "default";
-
 	switch_mac_mode1 = <0x18>; /* mac mode for uniphy instance1 */
 	switch_mac_mode2 = <0x18>; /* mac mode for uniphy instance2 */
 
 	qcom,port_phyinfo {
 		port@4 {
 			port_id = <5>;
-			forced-speed = <25000>;
-			forced-duplex = <1>;
-			fixed-link {
-				speed = <25000>;
-				full-duplex;
-				pause;
-			};
+			media-type = "sfp"; /* fiber mode */
+			i2c-bus = <&i2c4>;
+			sfp = <&sfp1>;
+			phy-mode = "25gbase-r";
 		};
 
 		port@5 {
 			port_id = <6>;
-			forced-speed = <25000>;
-			forced-duplex = <1>;
-			fixed-link {
-				speed = <25000>;
-				full-duplex;
-				pause;
-			};
+			media-type = "sfp"; /* fiber mode */
+			i2c-bus = <&i2c0>;
+			sfp = <&sfp2>;
+			phy-mode = "25gbase-r";
 		};
 	};
 };
@@ -422,36 +441,6 @@
 			function = "sdc_data";
 			drive-strength = <8>;
 			bias-pull-up;
-		};
-	};
-
-	sfp_pins: sfp-state {
-		sfp1_rx {
-			pins = "gpio46";
-			function = "rx_los10";
-			bias-disable;
-		};
-
-		sfp1_tx {
-			pins = "gpio15";
-			function = "gpio";
-			drive-strength = <8>;
-			bias-pull-down;
-			output-low;
-		};
-
-		sfp2_rx {
-			pins = "gpio45";
-			function = "rx_los20";
-			bias-disable;
-		};
-
-		sfp2_tx {
-			pins = "gpio14";
-			function = "gpio";
-			drive-strength = <8>;
-			bias-pull-down;
-			output-low;
 		};
 	};
 };
