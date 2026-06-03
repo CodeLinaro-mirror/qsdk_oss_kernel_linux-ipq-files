@@ -188,4 +188,12 @@
 			status = "okay";
 		};
 
+		qci_snoop_comp {
+			compatible = "qcom,qci-snoop-comp-driver";
+			reg = <0x431A000 0x1000>;
+			reg-names = "eventcounter-base";
+			qcom,snoop-base = <0x24>;
+			status = "okay";
+		};
+
 };
