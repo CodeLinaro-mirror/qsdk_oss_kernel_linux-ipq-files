@@ -283,10 +283,8 @@ static struct qcom_ice_ops qcom_ice_ops_scm = {
 
 static int __init qcom_ice_scm_init(void)
 {
-	if (!qcom_scm_is_available()) {
-		pr_info("qcom-ice-scm: SCM interface not available\n");
-		return -ENODEV;
-	}
+	if (!qcom_scm_is_available())
+		return -EPROBE_DEFER;
 
 	if (!qcom_scm_ice_available() || !qcom_scm_ice_hwkey_available()) {
 		pr_info("qcom-ice-scm: SCM ICE interface not available\n");
@@ -299,7 +297,7 @@ static int __init qcom_ice_scm_init(void)
 	pr_info("qcom-ice-scm: ICE SCM backend registered\n");
 	return 0;
 }
-late_initcall(qcom_ice_scm_init);
+module_init(qcom_ice_scm_init);
 
 MODULE_DESCRIPTION("Qualcomm ICE SCM Backend");
 MODULE_LICENSE("GPL");
