@@ -506,6 +506,22 @@
 			bias-pull-down;
 		};
 	};
+
+	qup_uart1_default: qup-uart1-default-state {
+		qup_uart1_tx {
+			pins = "gpio39";
+			function = "qup_se1_l2";
+			drive-strength = <6>;
+			bias-pull-down;
+		};
+
+		qup_uart1_rx {
+			pins = "gpio38";
+			function = "qup_se1_l3";
+			drive-strength = <6>;
+			bias-pull-down;
+		};
+	};
 };
 
 &spi1 {

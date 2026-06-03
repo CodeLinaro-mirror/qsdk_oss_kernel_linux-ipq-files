@@ -441,11 +441,11 @@
 		};
 	};
 
-	pcie0_default_state: pcie0-default-state {
-		pins = "gpio32";
+	pcie1_default_state: pcie1-default-state {
+		pins = "gpio29";
 		function = "gpio";
 		drive-strength = <6>;
-		bias-pull-down;
+		bias-pull-up;
 		output-low;
 	};
 
@@ -475,6 +475,22 @@
 			bias-pull-down;
 		};
 	};
+
+	qup_uart1_default: qup-uart1-default-state {
+		qup_uart1_tx {
+			pins = "gpio39";
+			function = "qup_se1_l2";
+			drive-strength = <6>;
+			bias-pull-down;
+		};
+
+		qup_uart1_rx {
+			pins = "gpio38";
+			function = "qup_se1_l3";
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+	};
 };
 
 &spi1 {
@@ -498,16 +514,20 @@
 	status = "disabled";
 };
 
-&pcie0_phy {
+&pcie1_phy {
 	status = "okay";
 };
 
-&pcie0 {
-	pinctrl-0 = <&pcie0_default_state>;
-	perst-gpio = <&tlmm 32 GPIO_ACTIVE_LOW>;
+&pcie1 {
+	pinctrl-0 = <&pcie1_default_state>;
+	perst-gpio = <&tlmm 29 GPIO_ACTIVE_LOW>;
 	status = "okay";
 
-	pcie0_rp {
+	pcie1_rp {
 		reg = <0 0 0 0 0>;
 	};
+};
+
+&spi0 {
+	status = "disabled";
 };
