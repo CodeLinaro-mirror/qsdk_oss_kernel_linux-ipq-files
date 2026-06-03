@@ -1,0 +1,526 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * IPQ9650 RDP490 board device tree source
+ *
+ * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ */
+
+/dts-v1/;
+
+#include "ipq9650-rdp-common.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. IPQ9650 RDP490";
+	compatible = "qcom,ipq9650-rdp490", "qcom,ipq9650";
+
+	aliases {
+		ethernet0 = "/soc/dp1";
+		ethernet1 = "/soc/dp2";
+		ethernet2 = "/soc/dp3";
+		ethernet3 = "/soc/dp4";
+		ethernet4 = "/soc/dp5";
+		ethernet5 = "/soc/dp6";
+	};
+
+	soc@0 {
+		qupv3: geniqup@1ac0000 {
+			status = "okay";
+
+			spi0: spi@1a80000 {
+				pinctrl-0 = <&qup_spi0_default>;
+				pinctrl-names = "default";
+				status = "okay";
+
+				flash@0 {
+					compatible = "spansion,s25fs128s1", "jedec,spi-nor";
+					#address-cells = <1>;
+					#size-cells = <1>;
+					reg = <0>;
+					spi-max-frequency = <50000000>;
+				};
+			};
+
+			i2c3: i2c@1a90000 {
+				pinctrl-0 = <&qup_i2c3_default>;
+				pinctrl-names = "default";
+				status = "okay";
+
+				pmic@68 {
+					compatible = "mps,mp8899";
+					reg = <0x68>;
+
+					regulators {
+						/* APC_CX */
+						ipq9650_s1: buck1 {
+							regulator-name = "buck1";
+							regulator-min-microvolt = <735000>;
+							regulator-max-microvolt = <960000>;
+							regulator-always-on;
+							regulator-boot-on;
+						};
+
+						/* NSP_CX */
+						ipq9650_s2: buck2 {
+							regulator-name = "buck2";
+							regulator-min-microvolt = <735000>;
+							regulator-max-microvolt = <960000>;
+						};
+
+						/* NSP_MX */
+						ipq9650_s4: buck4 {
+							regulator-name = "buck4";
+							regulator-min-microvolt = <735000>;
+							regulator-max-microvolt = <960000>;
+						};
+					};
+				};
+			};
+		};
+
+		dp1 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <1>;
+			reg = <0x2a500000 0x4000>;
+			qcom,mactype = <1>;
+			local-mac-address = [000000000000];
+			qcom,ppe-offload-disabled = <0>;
+			pinctrl-0 = <&pps_state>;
+			pinctrl-names = "default";
+			interrupts = <GIC_SPI 362 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "pps_in";
+			clocks = <&nsscc NSS_CC_XGMAC0_PTP_REF_CLK>;
+			clock-names = "ptp";
+		};
+
+		dp2 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <2>;
+			reg = <0x2a504000 0x4000>;
+			qcom,mactype = <1>;
+			local-mac-address = [000000000000];
+			qcom,ppe-offload-disabled = <0>;
+			clocks = <&nsscc NSS_CC_XGMAC1_PTP_REF_CLK>;
+			clock-names = "ptp";
+		};
+
+		dp3 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <3>;
+			reg = <0x2a508000 0x4000>;
+			qcom,mactype = <1>;
+			local-mac-address = [000000000000];
+			qcom,ppe-offload-disabled = <0>;
+			clocks = <&nsscc NSS_CC_XGMAC2_PTP_REF_CLK>;
+			clock-names = "ptp";
+		};
+
+		dp4 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <4>;
+			reg = <0x2a50c000 0x4000>;
+			qcom,mactype = <1>;
+			local-mac-address = [000000000000];
+			qcom,ppe-offload-disabled = <0>;
+			clocks = <&nsscc NSS_CC_XGMAC3_PTP_REF_CLK>;
+			clock-names = "ptp";
+		};
+
+		dp5 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <5>;
+			reg = <0x2a510000 0x4000>;
+			qcom,mactype = <1>;
+			local-mac-address = [000000000000];
+			qcom,ppe-offload-disabled = <0>;
+			clocks = <&nsscc NSS_CC_XGMAC4_PTP_REF_CLK>;
+			clock-names = "ptp";
+		};
+
+		dp6 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <6>;
+			reg = <0x2a514000 0x4000>;
+			qcom,mactype = <1>;
+			local-mac-address = [000000000000];
+			qcom,ppe-offload-disabled = <0>;
+			clocks = <&nsscc NSS_CC_XGMAC5_PTP_REF_CLK>;
+			clock-names = "ptp";
+		};
+
+		efuse@a4000 {
+			apc_turl1_fuse: apc_turl1_fuse@3fc {
+				reg = <0x3fc 0x2>;
+				bits = <3 7>;
+			};
+
+			apc_nom_fuse: apc_nom_fuse@3fd {
+				reg = <0x3fd 0x2>;
+				bits = <2 7>;
+			};
+
+			apc_svs_fuse: apc_svs_fuse@3fe {
+				reg = <0x3fe 0x1>;
+				bits = <1 7>;
+			};
+
+			nsp_cx_nom_fuse: nsp_cx_nom_fuse@403 {
+				reg = <0x403 0x2>;
+				bits = <6 7>;
+			};
+
+			nsp_cx_svs_fuse: nsp_cx_svs_fuse@406 {
+				reg = <0x406 0x2>;
+				bits = <2 7>;
+			};
+
+			nsp_mx_nom_fuse: nsp_mx_nom_fuse@40b {
+				reg = <0x40b 0x2>;
+				bits = <6 7>;
+			};
+		};
+
+		cdsp_cx_rail: cdsp-cx-gpio-regulator {
+			compatible = "regulator-gpio";
+			regulator-name = "vdd-cdsp-cx";
+			regulator-type = "voltage";
+			regulator-min-microvolt = <735000>;
+			regulator-max-microvolt = <815000>;
+			enable-gpio = <&tlmm 20 GPIO_ACTIVE_HIGH>;
+			enable-active-high;
+			gpios = <&tlmm 17 GPIO_ACTIVE_HIGH>,
+				<&tlmm 21 GPIO_ACTIVE_HIGH>;
+			gpios-states = <0x3>;
+			states = <600000 0x0>,
+				 <660000 0x1>,
+				 <735000 0x2>,
+				 <815000 0x3>;
+			pinctrl-0 = <&cdsp_default_state>;
+			pinctrl-names = "default";
+			status = "okay";
+		};
+
+		apc_rail: apc-gpio-regulator {
+			compatible = "regulator-gpio";
+			regulator-name = "vdd-apc";
+			regulator-type = "voltage";
+			regulator-boot-on;
+			regulator-always-on;
+			regulator-min-microvolt = <732000>;
+			regulator-max-microvolt = <952000>;
+			regulator-ramp-delay = <250>; /* 20ms */
+			gpios = <&tlmm 33 GPIO_ACTIVE_HIGH>,
+				<&tlmm 34 GPIO_ACTIVE_HIGH>,
+				<&tlmm 35 GPIO_ACTIVE_HIGH>;
+			gpios-states = <0x7>;
+			states = <660000 0x0>,
+				 <660000 0x1>,
+				 <732000 0x2>,
+				 <792000 0x3>,
+				 <756000 0x4>,
+				 <817000 0x5>,
+				 <890000 0x6>,
+				 <952000 0x7>;
+			status = "okay";
+		};
+
+		qcom,gpio-regulator {
+			compatible = "qcom,ipq9650-gpio-regulator";
+			reg = <0xa4000 0x739>;
+			reg-names = "fuse_base";
+			apc-supply = <&apc_rail>;
+			nvmem-cells = <&apc_nom_fuse>;
+			nvmem-cell-names = "cpr_apc_nom";
+			status = "disabled";
+
+			apc: apc {
+				regulator-min-microvolt = <732000>;
+				regulator-max-microvolt = <952000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+		};
+	};
+};
+
+&mdio {
+	/*
+	 * Update pinctrl-0 to remove mdio_slv_state, as the MDIO slave GPIOs
+	 * is used for NSP rails on RDP490.
+	 */
+	pinctrl-0 = <&mdio_mst_state>;
+	phy-reset-gpio = <&tlmm 18 GPIO_ACTIVE_LOW>, /* Reset for UNIPHY0 QCE1204. */
+			 <&tlmm 25 GPIO_ACTIVE_LOW>, /* Reset for UNIPHY1 QCA81XXs. */
+			 <&tlmm 26 GPIO_ACTIVE_LOW>; /* Reset for UNIPHY2 QCA81XXs. */
+
+	phy4: ethernet-phy@8 {
+		compatible = "ethernet-phy-ieee802.3-c45";
+		reg = <8>;
+	};
+
+	phy5: ethernet-phy@c {
+		compatible = "ethernet-phy-ieee802.3-c45";
+		reg = <12>;
+	};
+};
+
+&ess_switch {
+	switch_mac_mode1 = <0xd>; /* mac mode for uniphy instance1 */
+	switch_mac_mode2 = <0xd>; /* mac mode for uniphy instance2 */
+
+	qcom,port_phyinfo {
+		port@4 {
+			port_id = <5>;
+			phy_address = <8>;
+			phy-handle = <&phy4>;
+			phy-mode = "usxgmii";
+			ethernet-phy-ieee802.3-c45;
+		};
+
+		port@5 {
+			port_id = <6>;
+			phy_address = <12>;
+			phy-handle = <&phy5>;
+			phy-mode = "usxgmii";
+			ethernet-phy-ieee802.3-c45;
+		};
+	};
+};
+
+&qpic_bam {
+	status = "okay";
+};
+
+&qpic_nand {
+	status = "okay";
+};
+
+&pcie1_phy {
+	status = "okay";
+};
+
+&pcie1 {
+	perst-gpio = <&tlmm 28 GPIO_ACTIVE_LOW>;
+	status = "okay";
+
+	pcie1_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
+&pcie2_phy {
+	status = "disabled";
+};
+
+&pcie2 {
+	status = "disabled";
+};
+
+&pcie3_phy {
+	status = "okay";
+};
+
+&pcie3 {
+	perst-gpio = <&tlmm 41 GPIO_ACTIVE_LOW>;
+	status = "okay";
+
+	pcie3_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
+&qusb_phy_1 {
+	status = "okay";
+};
+
+&usb2 {
+	status = "okay";
+};
+
+&qusb_phy_0 {
+	status = "okay";
+};
+
+&ssphy_0 {
+	status = "okay";
+};
+
+&usb3 {
+	status = "okay";
+};
+
+&tlmm {
+	qup_i2c3_default: qup-i2c3-default-state {
+		qup_i2c3_scl {
+			pins = "gpio14";
+			function = "qup_se4_l1";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+		qup_i2c3_sda {
+			pins = "gpio15";
+			function = "qup_se4_l0";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+	};
+
+	pcie0_default_state: pcie0-default-state {
+		perst-n-pins {
+			pins = "gpio25";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-up;
+			output-low;
+		};
+	};
+
+	pcie1_default_state: pcie1-default-state {
+		perst-n-pins {
+			pins = "gpio28";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-down;
+			output-low;
+		};
+	};
+
+	pcie2_default_state: pcie2-default-state {
+		perst-n-pins {
+			pins = "gpio52";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-down;
+			output-low;
+		};
+	};
+
+	pcie3_default_state: pcie3-default-state {
+		perst-n-pins {
+			pins = "gpio41";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-up;
+			output-low;
+		};
+	};
+
+	pcie4_default_state: pcie4-default-state {
+		perst-n-pins {
+			pins = "gpio31";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-down;
+			output-low;
+		};
+	};
+
+	cdsp_default_state: cdsp-default-state {
+		vsel0-pins {
+			pins = "gpio17";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-up;
+			output-high;
+		};
+
+		vsel1-pins {
+			pins = "gpio21";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-up;
+			output-high;
+		};
+
+		ena-pins {
+			pins = "gpio20";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-up;
+			output-high;
+		};
+	};
+};
+
+&CPU0 {
+	cpu-supply = <&apc_rail>;
+};
+
+&CPU1 {
+	cpu-supply = <&apc_rail>;
+};
+
+&CPU2 {
+	cpu-supply = <&apc_rail>;
+};
+
+&CPU3 {
+	cpu-supply = <&apc_rail>;
+};
+
+&CPU4 {
+	cpu-supply = <&apc_rail>;
+};
+
+&cpu0_opp_table {
+	opp-840000000 {
+		/* <target min max> */
+		opp-microvolt = <732000 732000 952000>;
+	};
+
+	opp-1368000000 {
+		/* <target min max> */
+		opp-microvolt = <817000 732000 952000>;
+	};
+
+	opp-1800000000 {
+		/* <target min max> */
+		opp-microvolt = <952000 732000 952000>;
+	};
+
+	opp-1944000000 {
+		/* <target min max> */
+		opp-microvolt = <952000 732000 952000>;
+	};
+};
+
+&cpu4_opp_table {
+	opp-456000000 {
+		/* <target min max> */
+		opp-microvolt = <732000 732000 952000>;
+	};
+
+	opp-720000000 {
+		/* <target min max> */
+		opp-microvolt = <817000 732000 952000>;
+	};
+
+	opp-1032000000 {
+		/* <target min max> */
+		opp-microvolt = <952000 732000 952000>;
+	};
+};
+
+&cdsp_power {
+	vdd-cx-supply = <&ipq9650_s2>;
+	vdd-mx-supply = <&ipq9650_s4>;
+};
+
+&remoteproc_cdsp {
+	cx-supply = <&cdsp_vdd_cx>;
+	mx-supply = <&cdsp_vdd_mx>;
+};
