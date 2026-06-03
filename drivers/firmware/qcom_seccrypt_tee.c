@@ -111,7 +111,7 @@ free_shm:
 static int qcom_seccrypt_tee_crypt(struct device *dev, void *cmd_buf, u32 cmd_size)
 {
 	struct qcom_seccrypt_tee_private *priv = dev_get_drvdata(dev);
-	const struct secure_nand_aes_cmd *cptr = (const struct secure_nand_aes_cmd *)cmd_buf;
+	const struct secure_nand_aes_cmd_tee *cptr_tee = (const struct secure_nand_aes_cmd_tee *)cmd_buf;
 	struct tee_ioctl_invoke_arg inv_arg;
 	struct tee_param param[4];
 	struct tee_shm *iv_shm = NULL, *req_shm = NULL, *rsp_shm = NULL;
@@ -123,8 +123,8 @@ static int qcom_seccrypt_tee_crypt(struct device *dev, void *cmd_buf, u32 cmd_si
 	}
 
 	/* Register physical memory as shared memory for IV buffer */
-	if (cptr->iv_buf && cptr->iv_size > 0) {
-		iv_shm = tee_shm_register_kernel_buf(priv->ctx, cptr->iv_buf_virt, cptr->iv_size);
+	if (cptr_tee->iv_buf && cptr_tee->iv_size > 0) {
+		iv_shm = tee_shm_register_kernel_buf(priv->ctx, cptr_tee->iv_buf_virt, cptr_tee->iv_size);
 		if (IS_ERR(iv_shm)) {
 			dev_err(dev, "Failed to register IV buffer\n");
 			return PTR_ERR(iv_shm);
@@ -132,7 +132,7 @@ static int qcom_seccrypt_tee_crypt(struct device *dev, void *cmd_buf, u32 cmd_si
 	}
 
 	/* Register physical memory as shared memory for request buffer */
-	req_shm = tee_shm_register_kernel_buf(priv->ctx, cptr->req_buf_virt, cptr->reqlen);
+	req_shm = tee_shm_register_kernel_buf(priv->ctx, cptr_tee->req_buf_virt, cptr_tee->reqlen);
 	if (IS_ERR(req_shm)) {
 		dev_err(dev, "Failed to register request buffer\n");
 		ret = PTR_ERR(req_shm);
@@ -140,7 +140,7 @@ static int qcom_seccrypt_tee_crypt(struct device *dev, void *cmd_buf, u32 cmd_si
 	}
 
 	/* Register physical memory as shared memory for response buffer */
-	rsp_shm = tee_shm_register_kernel_buf(priv->ctx, cptr->rsp_buf_virt, cptr->rsplen);
+	rsp_shm = tee_shm_register_kernel_buf(priv->ctx, cptr_tee->rsp_buf_virt, cptr_tee->rsplen);
 	if (IS_ERR(rsp_shm)) {
 		dev_err(dev, "Failed to register response buffer\n");
 		ret = PTR_ERR(rsp_shm);
@@ -157,14 +157,14 @@ static int qcom_seccrypt_tee_crypt(struct device *dev, void *cmd_buf, u32 cmd_si
 
 	/* Parameter 0: Direction and Mode (as value parameters) */
 	param[0].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INPUT;
-	param[0].u.value.a = (u32)cptr->direction;
-	param[0].u.value.b = (u32)cptr->mode;
+	param[0].u.value.a = (u32)cptr_tee->direction;
+	param[0].u.value.b = (u32)cptr_tee->mode;
 
 	/* Parameter 1: IV buffer (as memref if present) */
 	if (iv_shm) {
 		param[1].attr = TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INPUT;
 		param[1].u.memref.shm = iv_shm;
-		param[1].u.memref.size = cptr->iv_size;
+		param[1].u.memref.size = cptr_tee->iv_size;
 		param[1].u.memref.shm_offs = 0;
 	} else {
 		param[1].attr = TEE_IOCTL_PARAM_ATTR_TYPE_NONE;
@@ -173,13 +173,13 @@ static int qcom_seccrypt_tee_crypt(struct device *dev, void *cmd_buf, u32 cmd_si
 	/* Parameter 2: Request buffer (source data as memref) */
 	param[2].attr = TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INPUT;
 	param[2].u.memref.shm = req_shm;
-	param[2].u.memref.size = cptr->reqlen;
+	param[2].u.memref.size = cptr_tee->reqlen;
 	param[2].u.memref.shm_offs = 0;
 
 	/* Parameter 3: Response buffer (destination data as memref) */
 	param[3].attr = TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_OUTPUT;
 	param[3].u.memref.shm = rsp_shm;
-	param[3].u.memref.size = cptr->rsplen;
+	param[3].u.memref.size = cptr_tee->rsplen;
 	param[3].u.memref.shm_offs = 0;
 
 	/* Invoke TA command */

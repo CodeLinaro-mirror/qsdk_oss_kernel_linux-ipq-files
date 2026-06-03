@@ -24,8 +24,8 @@ struct sec_config_key_sec {
 	u32 keylen;
 } __attribute__((packed));
 
-/* SecCrypt Command Structure */
-struct secure_nand_aes_cmd {
+/* SecCrypt Command Structure for TEE backend*/
+struct secure_nand_aes_cmd_tee {
 	u64 direction;
 	u64 mode;
 	void *iv_buf_virt;      /* Virtual address for IV buffer */
@@ -39,4 +39,15 @@ struct secure_nand_aes_cmd {
 	u64 rsplen;
 };
 
+/* SecCrypt Command Structure for SCM backend */
+struct secure_nand_aes_cmd_scm {
+	u64 direction;
+	u64 mode;
+	u64 *iv_buf;
+	u64 iv_size;
+	u64 *req_buf;
+	u64 reqlen;
+	u64 *rsp_buf;
+	u64 rsplen;
+};
 #endif /* __QCOM_SECCRYPT_OPTEE_H */

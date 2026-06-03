@@ -38,5 +38,6 @@ bool qcom_seccrypt_ops_available(void);
 int qcom_seccrypt_set_key(void *conf_buf, u32 conf_size);
 int qcom_seccrypt_crypt(void *cmd_buf, u32 cmd_size);
 int qcom_seccrypt_clear_key(void);
+const char *qcom_seccrypt_get_backend_name(void);
 
 #endif /* __SECCRYPT_OPS_H */

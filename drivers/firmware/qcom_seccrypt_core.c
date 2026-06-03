@@ -112,5 +112,16 @@ int qcom_seccrypt_clear_key(void)
 }
 EXPORT_SYMBOL_GPL(qcom_seccrypt_clear_key);
 
+const char *qcom_seccrypt_get_backend_name(void)
+{
+	if (!ops_ptr) {
+		pr_err("SecCrypt: No backend registered\n");
+		return NULL;
+	}
+
+	return ops_ptr->drv_name;
+}
+EXPORT_SYMBOL_GPL(qcom_seccrypt_get_backend_name);
+
 MODULE_DESCRIPTION("Qualcomm SecCrypt Core Layer");
 MODULE_LICENSE("GPL");
