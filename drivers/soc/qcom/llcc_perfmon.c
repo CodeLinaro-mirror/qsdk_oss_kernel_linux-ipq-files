@@ -25,7 +25,7 @@
 
 #define LLCC_PERFMON_NAME		"qcom_llcc_perfmon"
 #define MAX_CNTR			16
-#define MAX_NUMBER_OF_PORTS		11
+#define MAX_NUMBER_OF_PORTS		12
 #define MAX_FILTERS			16
 #define MAX_FILTERS_TYPE		2
 #define NUM_CHANNELS			16
@@ -2098,7 +2098,12 @@ static bool ewb_event_filter_config(struct llcc_perfmon_private *llcc_priv,
 
 	return true;
 }
+
+#ifdef CONFIG_PINCTRL_IPQ9650
+static struct event_port_ops ewb_port_ops __attribute__((unused)) = {
+#else
 static struct event_port_ops ewb_port_ops = {
+#endif
 	.event_config	= ewb_event_config,
 	.event_filter_config	= ewb_event_filter_config,
 };
@@ -2471,6 +2476,11 @@ static void llcc_register_event_port(struct llcc_perfmon_private *llcc_priv,
 
 	llcc_priv->port_configd = llcc_priv->port_configd + 1;
 	llcc_priv->port_ops[event_port_num] = ops;
+
+#ifdef CONFIG_PINCTRL_IPQ9650
+	if (llcc_priv->port_configd <= event_port_num)
+		llcc_priv->port_configd = event_port_num + 1;
+#endif
 }
 
 static enum hrtimer_restart llcc_perfmon_timer_handler(struct hrtimer *hrtimer)
@@ -2559,11 +2569,13 @@ static int llcc_perfmon_probe(struct platform_device *pdev)
 	llcc_register_event_port(llcc_priv, &feac_port_ops, EVENT_PORT_FEAC);
 	llcc_register_event_port(llcc_priv, &ferc_port_ops, EVENT_PORT_FERC);
 	llcc_register_event_port(llcc_priv, &fewc_port_ops, EVENT_PORT_FEWC);
+#ifndef CONFIG_PINCTRL_IPQ9650
 	/* Checking whether LLCC is on Mach 9, as BEAC is not present on Mach 9 */
 	if (llcc_priv->version < LLCC_VERSION_6)
 		llcc_register_event_port(llcc_priv, &beac_port_ops, EVENT_PORT_BEAC);
 	else
 		llcc_register_event_port(llcc_priv, &ewb_port_ops, EVENT_PORT_EWB);
+#endif
 
 	llcc_register_event_port(llcc_priv, &berc_port_ops, EVENT_PORT_BERC);
 	llcc_register_event_port(llcc_priv, &trp_port_ops, EVENT_PORT_TRP);
@@ -2571,6 +2583,10 @@ static int llcc_perfmon_probe(struct platform_device *pdev)
 	llcc_register_event_port(llcc_priv, &pmgr_port_ops, EVENT_PORT_PMGR);
 	if (llcc_priv->version >= LLCC_VERSION_5)
 		llcc_register_event_port(llcc_priv, &lcp_port_ops, EVENT_PORT_LCP);
+
+#ifdef CONFIG_PINCTRL_IPQ9650
+	llcc_register_event_port(llcc_priv, &beac_port_ops, EVENT_PORT_BEAC);
+#endif
 
 	hrtimer_init(&llcc_priv->hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	llcc_priv->hrtimer.function = llcc_perfmon_timer_handler;
