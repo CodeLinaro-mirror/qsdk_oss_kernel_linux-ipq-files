@@ -201,36 +201,62 @@ static int seccrypt_tz(struct skcipher_request *req,
 	iv_buf = walk.iv;
 	reqlen = walk.total;
 
-	if (src) {
-		phy_src = dma_map_single(dev, src, reqlen, DMA_TO_DEVICE);
-		if (dma_mapping_error(dev, phy_src)) {
-			dev_err(dev, "failed to DMA MAP phy_src buffer\n");
-			return -EIO;
-			goto out_unlock;
-		}
+	/* OP-TEE backend - does not require DMA mapping */
+	if (cptr_tee) {
+		cptr_tee->direction = encrypt;
+		if (IS_CBC(flag))
+			cptr_tee->mode = MODE_CBC;
+		else if (IS_ECB(flag))
+			cptr_tee->mode = MODE_ECB;
+		else if (IS_CTR(flag))
+			cptr_tee->mode = MODE_CTR;
+		cptr_tee->iv_buf_virt = iv_buf;
+		cptr_tee->iv_buf = (u64 *)virt_to_phys(iv_buf);
+		cptr_tee->req_buf_virt = src;
+		cptr_tee->req_buf = (u64 *)virt_to_phys(src);
+		cptr_tee->rsp_buf_virt = dst;
+		cptr_tee->rsp_buf = (u64 *)virt_to_phys(dst);
+		cptr_tee->iv_size = AES_BLOCK_SIZE;
+		cptr_tee->reqlen = reqlen;
+		cptr_tee->rsplen = reqlen;
+		err = qcom_seccrypt_crypt(cptr_tee, sizeof(struct secure_nand_aes_cmd_tee));
+
+		if (err)
+			dev_err(dev, "TEE backend call failed: %d\n", err);
+
+		goto out_unlock;
 	}
 
-	if (dst) {
-		phy_dst = dma_map_single(dev, dst, reqlen, DMA_FROM_DEVICE);
-		if (dma_mapping_error(dev, phy_dst)) {
-			dev_err(dev, "failed to DMA MAP phy_dst buffer\n");
-			return -EIO;
-			goto out_unmap_src;
-		}
-	}
-
-	if (iv_buf) {
-		phy_iv = dma_map_single(dev, iv_buf, AES_BLOCK_SIZE, DMA_TO_DEVICE);
-		if (dma_mapping_error(dev, phy_iv)) {
-			dev_err(dev, "failed to DMA MAP phy_iv buffer\n");
-			return -EIO;
-			goto out_unmap_dst;
-		}
-	}
-
-	/* SCM backend */
+	/* SCM backend - requires DMA mapping */
 	if (cptr_scm) {
-	/* Fill the structure to pass to TZ */
+		if (src) {
+			phy_src = dma_map_single(dev, src, reqlen, DMA_TO_DEVICE);
+			if (dma_mapping_error(dev, phy_src)) {
+				dev_err(dev, "failed to DMA MAP phy_src buffer\n");
+				err = -EIO;
+				goto out_unlock;
+			}
+		}
+
+		if (dst) {
+			phy_dst = dma_map_single(dev, dst, reqlen, DMA_FROM_DEVICE);
+			if (dma_mapping_error(dev, phy_dst)) {
+				dev_err(dev, "failed to DMA MAP phy_dst buffer\n");
+				err = -EIO;
+				goto out_unmap_src;
+			}
+		}
+
+		if (iv_buf) {
+			phy_iv = dma_map_single(dev, iv_buf, AES_BLOCK_SIZE, DMA_TO_DEVICE);
+			if (dma_mapping_error(dev, phy_iv)) {
+				dev_err(dev, "failed to DMA MAP phy_iv buffer\n");
+				err = -EIO;
+				goto out_unmap_dst;
+			}
+		}
+
+		/* Fill the structure to pass to TZ */
 		cptr_scm->direction = encrypt;
 		if (IS_CBC(flag))
 			cptr_scm->mode = MODE_CBC;
@@ -245,41 +271,21 @@ static int seccrypt_tz(struct skcipher_request *req,
 		cptr_scm->reqlen = reqlen;
 		cptr_scm->rsplen = reqlen;
 		err = qcom_seccrypt_crypt(cptr_scm, sizeof(struct secure_nand_aes_cmd_scm));
-	} else if (cptr_tee) {
-	/* OP-TEE backend */
-		cptr_tee->direction = encrypt;
-		if (IS_CBC(flag))
-			cptr_tee->mode = MODE_CBC;
-		else if (IS_ECB(flag))
-			cptr_tee->mode = MODE_ECB;
-		else if (IS_CTR(flag))
-			cptr_tee->mode = MODE_CTR;
-		cptr_tee->iv_buf_virt = iv_buf;
-		cptr_tee->iv_buf = (u64 *)phy_iv;
-		cptr_tee->req_buf_virt = src;
-		cptr_tee->req_buf = (u64 *)phy_src;
-		cptr_tee->rsp_buf_virt = dst;
-		cptr_tee->rsp_buf = (u64 *)phy_dst;
-		cptr_tee->iv_size = AES_BLOCK_SIZE;
-		cptr_tee->reqlen = reqlen;
-		cptr_tee->rsplen = reqlen;
-		err = qcom_seccrypt_crypt(cptr_tee, sizeof(struct secure_nand_aes_cmd_tee));
-	}
 
-	if (err)
-		dev_err(dev, "enc|dec backend call failed :%d\n", err);
+		if (err)
+			dev_err(dev, "SCM backend call failed: %d\n", err);
 
-	if (phy_iv)
-		dma_unmap_single(dev, phy_iv, AES_BLOCK_SIZE, DMA_TO_DEVICE);
+		if (phy_iv)
+			dma_unmap_single(dev, phy_iv, AES_BLOCK_SIZE, DMA_TO_DEVICE);
 
 out_unmap_dst:
-	if (phy_dst)
-		dma_unmap_single(dev, phy_dst, reqlen, DMA_FROM_DEVICE);
+		if (phy_dst)
+			dma_unmap_single(dev, phy_dst, reqlen, DMA_FROM_DEVICE);
 
 out_unmap_src:
-	if (phy_src)
-		dma_unmap_single(dev, phy_src, reqlen, DMA_TO_DEVICE);
-
+		if (phy_src)
+			dma_unmap_single(dev, phy_src, reqlen, DMA_TO_DEVICE);
+	}
 
 out_unlock:
 	err = skcipher_walk_done(&walk, 0);
