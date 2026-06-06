@@ -718,10 +718,13 @@ int do_dump_minidump(enum minidump_crash_type crashtype)
 	ret = wait_for_completion_timeout(&minidump_open_complete,
 					  msecs_to_jiffies(MINIDUMP_OPEN_TIMEOUT_MSECS));
 	if (ret == 0) {
-		/* Timeout occurred - userspace didn't open the device */
+		/* Timeout occurred - userspace didn't open the device.
+		 * The device was successfully created above, so we must
+		 * destroy it before destroying the class
+		 */
 		pr_err("Minidump: Timeout waiting for userspace to open device\n");
 		ret = -ETIMEDOUT;
-		goto device_failed;
+		goto destroy_device;
 	}
 
 	/* Phase 2: Wait for device close/release */
@@ -744,6 +747,7 @@ int do_dump_minidump(enum minidump_crash_type crashtype)
 	minidump.hdr.phy_addr = NULL;
 	minidump.hdr.type = NULL;
 
+destroy_device:
 	device_destroy(dump_class, MKDEV(dump_major, 0));
 
 device_failed:
