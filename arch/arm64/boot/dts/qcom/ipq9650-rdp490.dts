@@ -46,8 +46,14 @@
 				};
 			};
 
-			i2c3: i2c@1a90000 {
-				pinctrl-0 = <&qup_i2c3_default>;
+			i2c0: i2c@1a84000 {
+				pinctrl-0 = <&qup_i2c0_default>;
+				pinctrl-names = "default";
+				status = "disabled";
+			};
+
+			i2c2: i2c@1a8c000 {
+				pinctrl-0 = <&qup_i2c2_default>;
 				pinctrl-names = "default";
 				status = "okay";
 
@@ -158,111 +164,12 @@
 			clocks = <&nsscc NSS_CC_XGMAC5_PTP_REF_CLK>;
 			clock-names = "ptp";
 		};
-
-		efuse@a4000 {
-			apc_turl1_fuse: apc_turl1_fuse@3fc {
-				reg = <0x3fc 0x2>;
-				bits = <3 7>;
-			};
-
-			apc_nom_fuse: apc_nom_fuse@3fd {
-				reg = <0x3fd 0x2>;
-				bits = <2 7>;
-			};
-
-			apc_svs_fuse: apc_svs_fuse@3fe {
-				reg = <0x3fe 0x1>;
-				bits = <1 7>;
-			};
-
-			nsp_cx_nom_fuse: nsp_cx_nom_fuse@403 {
-				reg = <0x403 0x2>;
-				bits = <6 7>;
-			};
-
-			nsp_cx_svs_fuse: nsp_cx_svs_fuse@406 {
-				reg = <0x406 0x2>;
-				bits = <2 7>;
-			};
-
-			nsp_mx_nom_fuse: nsp_mx_nom_fuse@40b {
-				reg = <0x40b 0x2>;
-				bits = <6 7>;
-			};
-		};
-
-		cdsp_cx_rail: cdsp-cx-gpio-regulator {
-			compatible = "regulator-gpio";
-			regulator-name = "vdd-cdsp-cx";
-			regulator-type = "voltage";
-			regulator-min-microvolt = <735000>;
-			regulator-max-microvolt = <815000>;
-			enable-gpio = <&tlmm 20 GPIO_ACTIVE_HIGH>;
-			enable-active-high;
-			gpios = <&tlmm 17 GPIO_ACTIVE_HIGH>,
-				<&tlmm 21 GPIO_ACTIVE_HIGH>;
-			gpios-states = <0x3>;
-			states = <600000 0x0>,
-				 <660000 0x1>,
-				 <735000 0x2>,
-				 <815000 0x3>;
-			pinctrl-0 = <&cdsp_default_state>;
-			pinctrl-names = "default";
-			status = "okay";
-		};
-
-		apc_rail: apc-gpio-regulator {
-			compatible = "regulator-gpio";
-			regulator-name = "vdd-apc";
-			regulator-type = "voltage";
-			regulator-boot-on;
-			regulator-always-on;
-			regulator-min-microvolt = <732000>;
-			regulator-max-microvolt = <952000>;
-			regulator-ramp-delay = <250>; /* 20ms */
-			gpios = <&tlmm 33 GPIO_ACTIVE_HIGH>,
-				<&tlmm 34 GPIO_ACTIVE_HIGH>,
-				<&tlmm 35 GPIO_ACTIVE_HIGH>;
-			gpios-states = <0x7>;
-			states = <660000 0x0>,
-				 <660000 0x1>,
-				 <732000 0x2>,
-				 <792000 0x3>,
-				 <756000 0x4>,
-				 <817000 0x5>,
-				 <890000 0x6>,
-				 <952000 0x7>;
-			status = "okay";
-		};
-
-		qcom,gpio-regulator {
-			compatible = "qcom,ipq9650-gpio-regulator";
-			reg = <0xa4000 0x739>;
-			reg-names = "fuse_base";
-			apc-supply = <&apc_rail>;
-			nvmem-cells = <&apc_nom_fuse>;
-			nvmem-cell-names = "cpr_apc_nom";
-			status = "disabled";
-
-			apc: apc {
-				regulator-min-microvolt = <732000>;
-				regulator-max-microvolt = <952000>;
-				regulator-boot-on;
-				regulator-always-on;
-			};
-		};
 	};
 };
 
 &mdio {
-	/*
-	 * Update pinctrl-0 to remove mdio_slv_state, as the MDIO slave GPIOs
-	 * is used for NSP rails on RDP490.
-	 */
-	pinctrl-0 = <&mdio_mst_state>;
-	phy-reset-gpio = <&tlmm 18 GPIO_ACTIVE_LOW>, /* Reset for UNIPHY0 QCE1204. */
-			 <&tlmm 25 GPIO_ACTIVE_LOW>, /* Reset for UNIPHY1 QCA81XXs. */
-			 <&tlmm 26 GPIO_ACTIVE_LOW>; /* Reset for UNIPHY2 QCA81XXs. */
+	phy-reset-gpio = <&tlmm 18 GPIO_ACTIVE_LOW>, /* Reset for QCE1204. */
+			 <&tlmm 14 GPIO_ACTIVE_LOW>; /* Reset for two QCA81XXs. */
 
 	phy4: ethernet-phy@8 {
 		compatible = "ethernet-phy-ieee802.3-c45";
@@ -298,12 +205,44 @@
 	};
 };
 
+&spi1 {
+	compatible = "qcom,geni-spi";
+	pinctrl-0 = <&se5_spi_pins>;
+	pinctrl-names = "default";
+	status = "disabled";
+
+	spidev1: spi@0 {
+		compatible = "qti,spidev";
+		reg = <0>;
+		spi-max-frequency = <9600000>;
+	};
+};
+
+&pcm {
+	pinctrl-0 = <&audio_pins_pri>;
+	pinctrl-1 = <&audio_pins_sec>;
+	pinctrl-names = "primary",
+			"secondary";
+	status = "disabled";
+};
+
 &qpic_bam {
 	status = "okay";
 };
 
 &qpic_nand {
 	status = "okay";
+};
+
+&sdhc {
+	max-frequency = <192000000>;
+	bus-width = <4>;
+	mmc-ddr-1_8v;
+	mmc-hs200-1_8v;
+	non-removable;
+	pinctrl-0 = <&sdc_default_state>;
+	pinctrl-names = "default";
+	status = "disabled";
 };
 
 &pcie1_phy {
@@ -430,16 +369,76 @@
 };
 
 &tlmm {
-	qup_i2c3_default: qup-i2c3-default-state {
-		qup_i2c3_scl {
-			pins = "gpio14";
-			function = "qup_se4_l1";
+	audio_pins_pri: audio_pinmux_pri {
+		mux_1 {
+			pins = "gpio36";
+			function = "audio_pri_d0";
+			drive-strength = <16>;
+			bias-pull-down;
+		};
+
+		mux_2 {
+			pins = "gpio37";
+			function = "audio_pri_d1";
 			drive-strength = <8>;
 			bias-pull-down;
 		};
-		qup_i2c3_sda {
-			pins = "gpio15";
-			function = "qup_se4_l0";
+
+		mux_3 {
+			pins = "gpio38";
+			function = "audio_pri_fsync";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+
+		mux_4 {
+			pins = "gpio39";
+			function = "audio_pri_pclk";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+	};
+
+	audio_pins_sec: audio_pinmux_sec {
+		mux_1 {
+			pins = "gpio48";
+			function = "audio_sec_d0";
+			drive-strength = <16>;
+			bias-pull-down;
+		};
+
+		mux_2 {
+			pins = "gpio47";
+			function = "audio_sec_d1";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+
+		mux_3 {
+			pins = "gpio45";
+			function = "audio_sec_fsync";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+
+		mux_4 {
+			pins = "gpio46";
+			function = "audio_sec_pclk";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+	};
+
+	qup_i2c0_default: qup-i2c0-default-state {
+		qup_i2c0_scl {
+			pins = "gpio10";
+			function = "qup_se1_l1";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+		qup_i2c0_sda {
+			pins = "gpio11";
+			function = "qup_se1_l0";
 			drive-strength = <8>;
 			bias-pull-down;
 		};
@@ -450,7 +449,7 @@
 			pins = "gpio25";
 			function = "gpio";
 			drive-strength = <8>;
-			bias-pull-up;
+			bias-pull-down;
 			output-low;
 		};
 	};
@@ -480,7 +479,7 @@
 			pins = "gpio41";
 			function = "gpio";
 			drive-strength = <8>;
-			bias-pull-up;
+			bias-pull-down;
 			output-low;
 		};
 	};
@@ -495,90 +494,75 @@
 		};
 	};
 
-	cdsp_default_state: cdsp-default-state {
-		vsel0-pins {
-			pins = "gpio17";
-			function = "gpio";
+	sdc_default_state: sdc-default-state {
+		clk-pins {
+			pins = "gpio5";
+			function = "sdc_clk";
 			drive-strength = <8>;
-			bias-pull-up;
-			output-high;
+			bias-disable;
 		};
 
-		vsel1-pins {
-			pins = "gpio21";
-			function = "gpio";
+		cmd-pins {
+			pins = "gpio4";
+			function = "sdc_cmd";
 			drive-strength = <8>;
 			bias-pull-up;
-			output-high;
 		};
 
-		ena-pins {
-			pins = "gpio20";
-			function = "gpio";
+		data-pins {
+			pins = "gpio0", "gpio1", "gpio2", "gpio3";
+			function = "sdc_data";
 			drive-strength = <8>;
 			bias-pull-up;
-			output-high;
+		};
+	};
+
+	se5_spi_pins: se5-spi-pins {
+		spi_clk {
+			pins = "gpio45";
+			function = "qup_se5_l2";
+			drive-strength = <4>;
+			bias-pull-down;
+		};
+		spi_cs {
+			pins = "gpio46";
+			function = "qup_se5_l3";
+			drive-strength = <4>;
+			bias-pull-up;
+		};
+		spi_miso {
+			pins = "gpio47";
+			function = "qup_se5_l0";
+			drive-strength = <16>;
+			bias-pull-down;
+		};
+		spi_mosi {
+			pins = "gpio48";
+			function = "qup_se5_l1";
+			drive-strength = <16>;
+			bias-pull-down;
 		};
 	};
 };
 
 &CPU0 {
-	cpu-supply = <&apc_rail>;
+	cpu-supply = <&ipq9650_s1>;
 };
 
 &CPU1 {
-	cpu-supply = <&apc_rail>;
+	cpu-supply = <&ipq9650_s1>;
 };
 
 &CPU2 {
-	cpu-supply = <&apc_rail>;
+	cpu-supply = <&ipq9650_s1>;
 };
 
 &CPU3 {
-	cpu-supply = <&apc_rail>;
+	cpu-supply = <&ipq9650_s1>;
 };
 
 &CPU4 {
-	cpu-supply = <&apc_rail>;
-};
-
-&cpu0_opp_table {
-	opp-840000000 {
-		/* <target min max> */
-		opp-microvolt = <732000 732000 952000>;
-	};
-
-	opp-1368000000 {
-		/* <target min max> */
-		opp-microvolt = <817000 732000 952000>;
-	};
-
-	opp-1800000000 {
-		/* <target min max> */
-		opp-microvolt = <952000 732000 952000>;
-	};
-
-	opp-1944000000 {
-		/* <target min max> */
-		opp-microvolt = <952000 732000 952000>;
-	};
-};
-
-&cpu4_opp_table {
-	opp-456000000 {
-		/* <target min max> */
-		opp-microvolt = <732000 732000 952000>;
-	};
-
-	opp-720000000 {
-		/* <target min max> */
-		opp-microvolt = <817000 732000 952000>;
-	};
-
-	opp-1032000000 {
-		/* <target min max> */
-		opp-microvolt = <952000 732000 952000>;
-	};
+	cpu-supply = <&ipq9650_s1>;
 };
 
 &cdsp_power {
