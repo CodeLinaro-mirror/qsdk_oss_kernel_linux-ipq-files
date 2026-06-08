@@ -28,6 +28,10 @@
 		ethernet4 = "/soc/dp5";
 	};
 
+	chosen {
+		bootargs-append = " clk_ignore_unused pcie_pme=nomsi";
+	};
+
 	soc@0 {
 		mdio@90000 {
 			status = "okay";
