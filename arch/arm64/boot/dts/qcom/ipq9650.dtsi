@@ -3399,6 +3399,23 @@
 				   "rxfill_16", "rxfill_17", "rxfill_18", "rxfill_19",
 
 				   "misc_err";
+#ifdef __CONFIG_IO_COHERENCY__
+			nss_noc{
+				prop-name = "nss_noc";
+				reg-base = <0x01D00000>;
+				reg-offset = <0x0000E038 0x44410>,/* PPE Type LUT lower bits */
+					<0x0000E008 0x100>;     /* PPE Main control lower bits */
+			};
+			nss_llcc {
+				prop-name = "llcc_cache";
+				/* denotes the data to be written into respective Cache Registers */
+				cache_val = <0x8be02>, /* RxDesc 5 & RXDESC ATTR PACKET 0 Axcache for rxdesc1 Cache registers value */
+					  <0x5f>,         /* TxCmpl 5, 0xf axcache Cache registers value */
+					  <0x2000021>,    /* Cache Index rxfill, txdesc and upidx scid 1  LUT register value */
+					  <0x222ff>,      /* AxCache txdesc, rxfill Overide register value */
+					  <0x789f>;       /* Axiw awcache 0xf and awcache up idx Ctrl register value */
+			};
+#endif
 
 		};
 
