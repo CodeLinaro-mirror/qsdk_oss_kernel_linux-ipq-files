@@ -1071,6 +1071,11 @@ int minidump_traverse_metadata_list(const char *name, const unsigned long
 		cur_node->crashtype = crashtype;
 		minidump.hdr.num_seg++;
 
+		/* Update crash type statistics when re-using an
+		 * invalidated slot (REPLACE case).
+		 */
+		minidump_update_crashtype_stats(crashtype, true);
+
 		if (cur_node->modinfo_offset != 0) {
 		/* If the metadata list node has an entry in the Metadata file,
 		* invalidate that entry and update metadata file pointer with the
