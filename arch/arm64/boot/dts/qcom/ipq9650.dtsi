@@ -1105,6 +1105,27 @@
 			};
 		};
 
+		gpi_dma0: dma-controller@1a00000 {
+			compatible = "qcom,ipq9650-gpi-dma", "qcom,sm6350-gpi-dma";
+			reg = <0x01a00000 0x60000>;
+			interrupts = <GIC_SPI 327 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 328 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 329 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 330 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 331 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 332 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 333 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 334 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 335 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 336 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 337 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 338 IRQ_TYPE_LEVEL_HIGH>;
+			dma-channels = <12>;
+			dma-channel-mask = <0x7f>;
+			#dma-cells = <3>;
+			qcom,gsi-standalone-init;
+		};
+
 		qupv3: geniqup@1ac0000 {
 			compatible = "qcom,geni-se-qup";
 			reg = <0x01ac0000 0x2000>;
@@ -1135,6 +1156,9 @@
 				reg = <0x01a84000 0x4000>;
 				clocks = <&gcc GCC_QUPV3_WRAP_SE1_CLK>;
 				clock-names = "se";
+				dmas = <&gpi_dma0 0 1 2>,
+				       <&gpi_dma0 1 1 2>;
+				dma-names = "tx", "rx";
 				interrupts = <GIC_SPI 340 IRQ_TYPE_LEVEL_HIGH>;
 				status = "disabled";
 			};
