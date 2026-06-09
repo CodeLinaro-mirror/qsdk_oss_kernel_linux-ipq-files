@@ -451,6 +451,23 @@ static void qce2204_port_bridge_leave(struct dsa_switch *ds, int port,
 {
 }
 
+static int qce2204_port_pre_bridge_flags(struct dsa_switch *ds, int port,
+					 struct switchdev_brport_flags flags,
+					 struct netlink_ext_ack *extack)
+{
+	if (flags.mask & ~BR_HAIRPIN_MODE)
+		return -EINVAL;
+
+	return 0;
+}
+
+static int qce2204_port_bridge_flags(struct dsa_switch *ds, int port,
+				     struct switchdev_brport_flags flags,
+				     struct netlink_ext_ack *extack)
+{
+	return 0;
+}
+
 static void qce2204_port_stp_state_set(struct dsa_switch *ds, int port, u8 state)
 {
 	struct qce2204_priv *priv = ds->priv;
@@ -554,6 +571,8 @@ static const struct dsa_switch_ops qce2204_switch_ops = {
 	.port_fdb_dump		= qce2204_port_fdb_dump,
 	.port_bridge_join	= qce2204_port_bridge_join,
 	.port_bridge_leave	= qce2204_port_bridge_leave,
+	.port_pre_bridge_flags	= qce2204_port_pre_bridge_flags,
+	.port_bridge_flags	= qce2204_port_bridge_flags,
 	.port_stp_state_set	= qce2204_port_stp_state_set,
 	.port_fast_age		= qce2204_port_fast_age,
 	.get_strings		= qce2204_get_strings,
