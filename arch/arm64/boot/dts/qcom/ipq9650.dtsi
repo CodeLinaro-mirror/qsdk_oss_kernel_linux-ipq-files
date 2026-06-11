@@ -2459,6 +2459,27 @@
 			nvmem-cells = <&pcie3_disable>;
 
 			status = "disabled";
+			pcie3_rp {
+				reg = <0 0 0 0 0>;
+				qcom,mhi@0 {
+					reg = <0 0 0 0 0>;
+#ifdef __CONFIG_IO_COHERENCY__
+					/* Configuring IOC registers */
+					secure-reg =  <0x613008 0x130100>,
+							<0x613038 0x44410>,
+							<0x613048 0x100>,
+							<0x613050 0x8>,
+							<0x614008 0x130100>,
+							<0x614038 0x44410>,
+							<0x614048 0x100>,
+							<0x614050 0x6>,
+							<0x615008 0x130100>,
+							<0x615038 0x44410>,
+							<0x615048 0x100>,
+							<0x615050 0x7>;
+#endif
+				};
+			};
 		};
 
 		pcie2: pcie@40000000 {
@@ -2546,6 +2567,27 @@
 			nvmem-cells = <&pcie2_disable>;
 
 			status = "disabled";
+			pcie2_rp {
+				reg = <0 0 0 0 0>;
+				qcom,mhi@0 {
+					reg = <0 0 0 0 0>;
+#ifdef __CONFIG_IO_COHERENCY__
+					/* Configuring IOC registers */
+					secure-reg =  <0x613008 0x130100>,
+							<0x613038 0x44410>,
+							<0x613048 0x100>,
+							<0x613050 0x8>,
+							<0x614008 0x130100>,
+							<0x614038 0x44410>,
+							<0x614048 0x100>,
+							<0x614050 0x6>,
+							<0x615008 0x130100>,
+							<0x615038 0x44410>,
+							<0x615048 0x100>,
+							<0x615050 0x7>;
+#endif
+				};
+			};
 		};
 
 		pcie1: pcie@50000000 {
@@ -2632,6 +2674,27 @@
 			nvmem-cells = <&pcie1_disable>;
 
 			status = "disabled";
+			pcie1_rp {
+				reg = <0 0 0 0 0>;
+				qcom,mhi@0 {
+					reg = <0 0 0 0 0>;
+#ifdef __CONFIG_IO_COHERENCY__
+					/* Configuring IOC registers */
+					secure-reg =  <0x613008 0x130100>,
+							<0x613038 0x44410>,
+							<0x613048 0x100>,
+							<0x613050 0x8>,
+							<0x614008 0x130100>,
+							<0x614038 0x44410>,
+							<0x614048 0x100>,
+							<0x614050 0x6>,
+							<0x615008 0x130100>,
+							<0x615038 0x44410>,
+							<0x615048 0x100>,
+							<0x615050 0x7>;
+#endif
+				};
+			};
 		};
 
 		pcie4: pcie@60000000 {
