@@ -1276,7 +1276,8 @@ store_sec_auth(struct device *dev,
 	}
 
 	if (data != NULL) {
-		if (of_device_is_compatible(np, "qcom,qfprom-ipq9650-sec")) {
+		if (of_device_is_compatible(np, "qcom,qfprom-ipq9650-sec") ||
+			of_device_is_compatible(np, "qcom,qfprom-ipq5210-sec")) {
 			if (sw_type != QCOM_CONTAINER_IMG_SW_ID) {
 				pr_err("Invalid SWID:%lx for container image\n",
 				       sw_type);
