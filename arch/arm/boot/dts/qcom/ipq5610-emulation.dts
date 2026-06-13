@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * IPQ5610 Emulation board device tree source
+ *
+ * Copyright (c) 2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ */
+
+#include <arm64/qcom/ipq5610-emulation.dts>
+
+/ {
+	cpus {
+		/delete-node/ cpu@300;
+		/delete-node/ cpu-map;
+	};
+};
