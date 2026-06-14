@@ -46,6 +46,8 @@
 				};
 			};
 
+			/delete-node/ i2c@1a8c000;
+
 			i2c3: i2c@1a90000 {
 				pinctrl-0 = <&qup_i2c3_default>;
 				pinctrl-names = "default";
@@ -717,8 +719,10 @@
 
 &cdsp_power {
 	vdd-cx-supply = <&cdsp_cx_rail>;
+	/delete-property/ vdd-mx-supply;
 };
 
 &remoteproc_cdsp {
 	cx-supply = <&cdsp_vdd_cx>;
+	/delete-property/ mx-supply;
 };
