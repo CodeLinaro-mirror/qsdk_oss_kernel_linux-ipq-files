@@ -30,7 +30,7 @@
 	};
 
 	chosen {
-		bootargs-append = " clk_ignore_unused pcie_pme=nomsi";
+		bootargs-append = " pcie_pme=nomsi";
 	};
 
 	soc@0 {
