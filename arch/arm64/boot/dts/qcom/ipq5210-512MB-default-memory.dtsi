@@ -18,22 +18,22 @@
 	 * |         |              |                         |
 	 * +---------+--------------+-------------------------+
 	 * |         |              |                         |
-	 * | QCN9625 |    DYNAMIC   |          37MB           |
+	 * | QCN9625 |    DYNAMIC   |          40MB           |
 	 * | PCIe0   |              |                         |
 	 * |         |              |                         |
 	 * +---------+--------------+-------------------------+
 	 * |         |              |                         |
-	 * | QCN9625 |    DYNAMIC   |          37MB           |
+	 * | QCN9625 |    DYNAMIC   |          40MB           |
 	 * | PCIe1   |              |                         |
 	 * |         |              |                         |
 	 * +---------+--------------+-------------------------+
 	 * |         |              |                         |
-	 * | QCN9589 |    DYNAMIC   |          37MB           |
+	 * | QCN9589 |    DYNAMIC   |          40MB           |
 	 * | PCIe1   |              |                         |
 	 * |         |              |                         |
 	 * +---------+--------------+-------------------------+
 	 * |         |              |                         |
-	 * |  MLO    |    DYNAMIC   |          18MB           |
+	 * |  MLO    |    DYNAMIC   |          20MB           |
 	 * |         |              |                         |
 	 * +==================================================+
 	 * |                                                  |
@@ -51,38 +51,38 @@
 		#size-cells = <2>;
 		ranges;
 
-		qcn9224_pcie0: qcn9224_pcie0@0 {
+		qcn9224_pcie0: qcn9224_pcie0 {
 			no-map;
 			size = <0x0 0x02500000>;
 			alignment = <0x0 0x100000>;
 			status = "disabled";
 		};
 
-		qcn9625_pcie0: qcn9625_pcie0@0 {
-			no-map;
-			size = <0x0 0x02500000>;
-			alignment = <0x0 0x100000>;
+		qcn9625_pcie0_cma: qcn9625_pcie0_cma {
+			compatible = "shared-dma-pool";
+			reusable;
+			size = <0x0 0x02800000>;
 			status = "disabled";
 		};
 
-		qcn9625_pcie1: qcn9625_pcie1@1 {
-			no-map;
-			size = <0x0 0x02500000>;
-			alignment = <0x0 0x100000>;
+		qcn9625_pcie1_cma: qcn9625_pcie1_cma {
+			compatible = "shared-dma-pool";
+			reusable;
+			size = <0x0 0x02800000>;
 			status = "disabled";
 		};
 
-		qcn9589_pcie1: qcn9589_pcie1@1 {
-			no-map;
-			size = <0x0 0x02500000>;
-			alignment = <0x0 0x100000>;
+		qcn9589_pcie1_cma: qcn9589_pcie1_cma {
+			compatible = "shared-dma-pool";
+			reusable;
+			size = <0x0 0x02800000>;
 			status = "disabled";
 		};
 
-		mlo_global_mem0: mlo_global_mem_0@0 {
-			no-map;
-			size = <0x0 0x1200000>;
-			alignment = <0x0 0x100000>;
+		mlo_global_cma: mlo_global_cma {
+			compatible = "shared-dma-pool";
+			reusable;
+			size = <0x0 0x1400000>;
 			status = "disabled";
 		};
 	};

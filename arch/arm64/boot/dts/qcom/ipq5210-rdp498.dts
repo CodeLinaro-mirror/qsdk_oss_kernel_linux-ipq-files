@@ -364,7 +364,7 @@
 		reg = <0 0 0 0 0>;
 		qcom,mhi@0 {
 			reg = <0 0 0 0 0>;
-			memory-region = <&qcn9224_pcie0>, <&mlo_global_mem0>;
+			memory-region = <&qcn9224_pcie0>, <&mlo_global_cma>;
 			memory-region-names = "host-ddr-mem", "mlo-global-mem";
 			qcom,board_id = <0x1041>;
 			status = "okay";
@@ -388,7 +388,7 @@
 	status = "okay";
 };
 
-&mlo_global_mem0 {
+&mlo_global_cma {
 	status = "okay";
 };
 
@@ -405,7 +405,7 @@
 		reg = <0 0 0 0 0>;
 		qcom,mhi@1 {
 			reg = <0 0 0 0 0>;
-			memory-region = <&qcn9224_pcie0>, <&mlo_global_mem0>;
+			memory-region = <&qcn9224_pcie0>, <&mlo_global_cma>;
 			memory-region-names = "host-ddr-mem", "mlo-global-mem";
 			qcom,board_id = <0x1041>;
 			status = "okay";

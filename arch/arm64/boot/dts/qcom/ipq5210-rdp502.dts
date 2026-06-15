@@ -534,7 +534,7 @@
 		reg = <0 0 0 0 0>;
 		qcom,mhi@0 {
 			reg = <0 0 0 0 0>;
-			memory-region = <&qcn9625_pcie0>, <&mlo_global_mem0>;
+			memory-region = <&qcn9625_pcie0_cma>, <&mlo_global_cma>;
 			memory-region-names = "host-ddr-mem", "mlo-global-mem";
 			qcom,board_id = <0x5010>;
 			status = "okay";
@@ -554,11 +554,11 @@
 	};
 };
 
-&qcn9625_pcie0 {
+&qcn9625_pcie0_cma {
 	status = "okay";
 };
 
-&mlo_global_mem0 {
+&mlo_global_cma {
 #if defined(__IPQ_MEM_PROFILE_256_MB__)
 	size = <0x0 0x400000>;
 #endif
