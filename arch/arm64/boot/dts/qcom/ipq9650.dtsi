@@ -2817,6 +2817,8 @@
 			assigned-clock-rates = <31250000>,
 					       <31250000>,
 					       <31250000>;
+			nvmem-cells = <&uniphy0_disable>, <&uniphy1_disable>, <&uniphy2_disable>;
+			nvmem-cell-names = "uniphy0_disable", "uniphy1_disable", "uniphy2_disable";
 		};
 
 		ess_instance: ess-instance {
