@@ -114,8 +114,7 @@ enum qce2204_ppe_dest_info_type {
 
 /**
  * struct qce2204_ppe_bm_port_config - PPE BM port configuration
- * @port_id_start: First BM port ID to configure
- * @port_id_end: Last BM port ID to configure
+ * @is_cpu: Whether this configuration applies to the CPU port
  * @pre_alloc: BM port dedicated buffer number
  * @in_fly_buf: Buffer number for receiving packet after pause frame sent
  * @ceil: Ceil to generate back pressure
@@ -125,8 +124,7 @@ enum qce2204_ppe_dest_info_type {
  * @dynamic: Dynamic threshold used or not
  */
 struct qce2204_ppe_bm_port_config {
-	unsigned int port_id_start;
-	unsigned int port_id_end;
+	bool is_cpu;
 	unsigned int pre_alloc;
 	unsigned int in_fly_buf;
 	unsigned int ceil;
