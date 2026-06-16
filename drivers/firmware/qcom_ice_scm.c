@@ -112,9 +112,14 @@ EXPORT_SYMBOL_GPL(qcom_scm_ice_hwkey_available);
 
 static bool qcom_ice_scm_available(struct device *dev)
 {
-	return qcom_scm_is_available() &&
-		qcom_scm_ice_available() &&
-		qcom_scm_ice_hwkey_available();
+	/* Check if ICE or ICE HW key is available.
+	 * Return false to indicate ICE functionality is not supported.
+	 * This allows the system to boot without ICE support.
+	 */
+	if (!qcom_scm_ice_available() || !qcom_scm_ice_hwkey_available())
+		return false;
+
+	return true;
 }
 
 static int qcom_ice_scm_config_hwkey(struct device *dev,
@@ -286,15 +291,15 @@ static int __init qcom_ice_scm_init(void)
 	if (!qcom_scm_is_available())
 		return -EPROBE_DEFER;
 
-	if (!qcom_scm_ice_available() || !qcom_scm_ice_hwkey_available()) {
-		pr_info("qcom-ice-scm: SCM ICE interface not available\n");
-		return -ENODEV;
-	}
-
+	/* Register ops always, even if ICE or ICE HW key is not available */
 	qcom_ice_ops_scm.dev = NULL;
 	qcom_ice_ops_register(&qcom_ice_ops_scm);
 
-	pr_info("qcom-ice-scm: ICE SCM backend registered\n");
+	if (!qcom_scm_ice_available() || !qcom_scm_ice_hwkey_available())
+		pr_info("qcom-ice-scm: Backend registered (ICE functionality not available)\n");
+	else
+		pr_info("qcom-ice-scm: ICE SCM backend registered\n");
+
 	return 0;
 }
 module_init(qcom_ice_scm_init);
