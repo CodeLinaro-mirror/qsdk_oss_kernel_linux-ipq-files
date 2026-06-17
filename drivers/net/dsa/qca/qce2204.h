@@ -18,6 +18,7 @@
 #include <linux/gpio/consumer.h>
 #include <linux/workqueue.h>
 #include <net/dsa.h>
+#include <linux/dsa/tag_qca.h>
 
 #define QCE2204_ATHTAG_TYPE				0xaaaa
 #define QCE2204_PPE_RSTP_ACL				0	/* RSTP reserved ACL index */

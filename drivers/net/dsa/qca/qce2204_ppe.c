@@ -3045,7 +3045,8 @@ int qce2204_ppe_port_vlan_role_set(struct qce2204_priv *priv,
  * @priv: QCE2204 private data
  *
  * Configures global settings for DSA 8021Q tagging (called once):
- * 1. Set VLAN TPID to 0x8100 for ingress/egress
+ * 1. Set VLAN TPID for ingress/egress (ETH_P_DSA_8021Q in BP_QUEUE mode,
+ *    ETH_P_8021Q otherwise)
  * 2. Set CPU port as core port (QinQ role)
  *
  * Return: 0 on success, negative error code on failure
@@ -3059,10 +3060,17 @@ int qce2204_setup_8021q_global(struct qce2204_priv *priv)
 	dev_info(priv->dev, "Setting up global 8021Q configuration\n");
 
 	/* Step 1: Configure VLAN TPID for ingress */
-	tpid_cfg.ctpid = 0x8100;
-	tpid_cfg.stpid = 0x8100;
-	tpid_cfg.ctpid_ext = 0x8100;
-	tpid_cfg.stpid_ext = 0x8100;
+	if (priv->bp_mode == QCE2204_BP_QUEUE) {
+		tpid_cfg.ctpid = ETH_P_DSA_8021Q;
+		tpid_cfg.stpid = ETH_P_DSA_8021Q;
+		tpid_cfg.ctpid_ext = ETH_P_DSA_8021Q;
+		tpid_cfg.stpid_ext = ETH_P_DSA_8021Q;
+	} else {
+		tpid_cfg.ctpid = ETH_P_8021Q;
+		tpid_cfg.stpid = ETH_P_8021Q;
+		tpid_cfg.ctpid_ext = ETH_P_8021Q;
+		tpid_cfg.stpid_ext = ETH_P_8021Q;
+	}
 	tpid_cfg.ctpid_map = 0x5;
 	tpid_cfg.stpid_map = 0xa;
 
@@ -3106,7 +3114,7 @@ int qce2204_setup_8021q_global(struct qce2204_priv *priv)
  *
  * Restores global settings (called once when switching protocols):
  * 1. Restore CPU port to edge port (default role)
- * 2. Restore VLAN TPID to default values (0x88a8/0x8100)
+ * 2. Restore VLAN TPID to default values (ETH_P_8021AD/ETH_P_8021Q)
  *
  * Return: 0 on success, negative error code on failure
  */
@@ -3136,10 +3144,10 @@ int qce2204_teardown_8021q_global(struct qce2204_priv *priv)
 	}
 
 	/* Step 2: Restore VLAN TPID to default values for ingress */
-	tpid_cfg.ctpid = 0x8100;
-	tpid_cfg.stpid = 0x88a8;
-	tpid_cfg.ctpid_ext = 0x8100;
-	tpid_cfg.stpid_ext = 0x88a8;
+	tpid_cfg.ctpid = ETH_P_8021Q;
+	tpid_cfg.stpid = ETH_P_8021AD;
+	tpid_cfg.ctpid_ext = ETH_P_8021Q;
+	tpid_cfg.stpid_ext = ETH_P_8021AD;
 	tpid_cfg.ctpid_map = 0x5;
 	tpid_cfg.stpid_map = 0xa;
 
@@ -3213,15 +3221,20 @@ int qce2204_setup_8021q_tagging(struct qce2204_priv *priv, int port)
 		return ret;
 	}
 
-	/* Step 2: Configure user port RX rule: Add standalone VID for one tagged frame */
+	/* Step 2: Configure user port RX rule: Add standalone VID */
 	memset(&xlt_cfg, 0, sizeof(xlt_cfg));
 	xlt_cfg.port_id = port;
-	xlt_cfg.svid_fmt = 0x4;		/* Match one Tagged */
-	xlt_cfg.cvid_fmt = 0x1;		/* Match Untag */
+	if (priv->bp_mode == QCE2204_BP_QUEUE) {
+		xlt_cfg.svid_fmt = 0x7;		/* Match any SVLAN format */
+		xlt_cfg.cvid_fmt = 0x7;		/* Match any CVLAN format */
+	} else {
+		xlt_cfg.svid_fmt = 0x4;		/* Match one Tagged */
+		xlt_cfg.cvid_fmt = 0x1;		/* Match Untag */
+		xlt_cfg.cvid_xlt_cmd = 3;	/* Keep CVLAN from original outer VLAN */
+		xlt_cfg.cpcp_xlt_cmd = 6;	/* To add CVLAN tag, also means pcp from spcp */
+	}
 	xlt_cfg.svid_xlt_cmd = 1;	/* Add SVLAN */
 	xlt_cfg.svid_xlt = port_res->standalone_vid;
-	xlt_cfg.cvid_xlt_cmd = 3;	/* Keep CVLAN from orginal outer VLAN */
-	xlt_cfg.cpcp_xlt_cmd = 6;	/* To add CVLAN tag, also means pcp from spcp */
 	xlt_cfg.dest_valid = true;
 	xlt_cfg.dest_info = QCE2204_PPE_DEST_INFO(QCE2204_PPE_DEST_INFO_PORT_ID,
 						   priv->cpu_port);
@@ -3233,22 +3246,26 @@ int qce2204_setup_8021q_tagging(struct qce2204_priv *priv, int port)
 		return ret;
 	}
 
-	/* Step 3: Configure user port RX rule: Add standalone VID for untagged frame */
-	memset(&xlt_cfg, 0, sizeof(xlt_cfg));
-	xlt_cfg.port_id = port;
-	xlt_cfg.svid_fmt = 0x1;		/* Match Untag */
-	xlt_cfg.cvid_fmt = 0x1;		/* Match Untag */
-	xlt_cfg.svid_xlt_cmd = 1;	/* Add SVLAN */
-	xlt_cfg.svid_xlt = port_res->standalone_vid;
-	xlt_cfg.dest_valid = true;
-	xlt_cfg.dest_info = QCE2204_PPE_DEST_INFO(QCE2204_PPE_DEST_INFO_PORT_ID,
-						   priv->cpu_port);
+	if (priv->bp_mode != QCE2204_BP_QUEUE) {
+		/* Step 3: Configure user port RX rule: Add standalone VID for untagged frame */
+		memset(&xlt_cfg, 0, sizeof(xlt_cfg));
+		xlt_cfg.port_id = port;
+		xlt_cfg.svid_fmt = 0x1;		/* Match Untag */
+		xlt_cfg.cvid_fmt = 0x1;		/* Match Untag */
+		xlt_cfg.svid_xlt_cmd = 1;	/* Add SVLAN */
+		xlt_cfg.svid_xlt = port_res->standalone_vid;
+		xlt_cfg.dest_valid = true;
+		xlt_cfg.dest_info = QCE2204_PPE_DEST_INFO(QCE2204_PPE_DEST_INFO_PORT_ID,
+							  priv->cpu_port);
 
-	ret = qce2204_ppe_vlan_in_vlan_xlt_set(priv, port_res->in_vlan_xlt_idx + 1, &xlt_cfg);
-	if (ret) {
-		dev_err(priv->dev, "Failed to set user port %d RX VLAN translation2: %d\n",
-			port, ret);
-		return ret;
+		ret = qce2204_ppe_vlan_in_vlan_xlt_set(priv, port_res->in_vlan_xlt_idx + 1,
+						       &xlt_cfg);
+		if (ret) {
+			dev_err(priv->dev,
+				"Failed to set user port %d RX VLAN translation2: %d\n",
+				port, ret);
+			return ret;
+		}
 	}
 
 	/* Step 4: Configure CPU port TX rule: Remove standalone VID */
@@ -3319,11 +3336,17 @@ int qce2204_teardown_8021q_tagging(struct qce2204_priv *priv, int port)
 		return ret;
 	}
 
-	ret = qce2204_ppe_vlan_in_vlan_xlt_set(priv, port_res->in_vlan_xlt_idx + 1, &xlt_cfg);
-	if (ret) {
-		dev_err(priv->dev, "Failed to clear user port %d RX VLAN translation2: %d\n",
-			port, ret);
-		return ret;
+	/* The idx+1 rule (untagged frame) is only programmed in non-BP_QUEUE
+	 * mode by qce2204_setup_8021q_tagging(); keep teardown symmetric.
+	 */
+	if (priv->bp_mode != QCE2204_BP_QUEUE) {
+		ret = qce2204_ppe_vlan_in_vlan_xlt_set(priv, port_res->in_vlan_xlt_idx + 1,
+						       &xlt_cfg);
+		if (ret) {
+			dev_err(priv->dev, "Failed to clear user port %d RX VLAN translation2: %d\n",
+				port, ret);
+			return ret;
+		}
 	}
 
 	/* Clear CPU port TX rule */
