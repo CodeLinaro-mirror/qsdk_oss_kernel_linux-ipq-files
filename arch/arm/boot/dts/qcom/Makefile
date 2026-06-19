@@ -107,6 +107,10 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	ipq9650-rdp506.dtb \
 	ipq9650-rdp490.dtb \
 	ipq9650-rdp491.dtb \
+	ipq9650-rdp507.dtb \
+	ipq9650-rdp529.dtb \
+	ipq9650-rdp530.dtb \
+	ipq9650-rdp532.dtb \
 	ipq5332-rdp441.dtb \
 	ipq5332-rdp441-qca81xx.dtb \
 	ipq5332-rdp441-qca81xx-i2c.dtb \
