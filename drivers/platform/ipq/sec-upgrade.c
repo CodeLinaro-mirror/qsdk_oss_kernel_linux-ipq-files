@@ -1284,7 +1284,10 @@ store_sec_auth(struct device *dev,
 				ret = -EINVAL;
 				goto free_np;
 			}
-			ret = tmelcom_secboot_sec_auth_v2(sw_type, data, size);
+			if (of_device_is_compatible(np, "qcom,qfprom-ipq9650-sec"))
+				ret = tmelcom_secboot_sec_auth_v2(sw_type, data, size);
+			else
+				ret = tmelcom_secboot_sec_auth(sw_type, data, size);
 			if (ret) {
 				pr_err("Container image auth failed with error:0x%x\n", ret);
 			} else {
