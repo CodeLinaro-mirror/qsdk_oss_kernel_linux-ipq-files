@@ -770,8 +770,8 @@
 				bits = <0 1>;
 			};
 
-			turing_disable: turing_disable@234 {
-				reg = <0x234 0x1>;
+			turing_disable: turing_disable@2a4 {
+				reg = <0x2a4 0x1>;
 				bits = <0 1>;
 			};
 		};
@@ -2163,6 +2163,7 @@
 			clock-names = "core-clk";
 
 			memory-region = <&prime_mem>;
+			nvmem-cells = <&prime_disable>;
 		};
 
 		apps_iommu: iommu@15000000 {
@@ -2212,6 +2213,8 @@
 		remoteproc_cdsp: remoteproc@24000000 {
 			compatible = "qcom,ipq9650-cdsp-pas";
 			reg = <0x24000000 0x10000>;
+
+			nvmem-cells = <&turing_disable>;
 
 			/* Inputs from turing */
 			interrupts-extended = <&intc GIC_SPI 447 IRQ_TYPE_EDGE_RISING>,

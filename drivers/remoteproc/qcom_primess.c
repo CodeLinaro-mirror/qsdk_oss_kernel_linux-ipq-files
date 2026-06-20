@@ -25,6 +25,7 @@
 #include <linux/version.h>
 #include <linux/spinlock.h>
 #include <linux/ktime.h>
+#include <linux/nvmem-consumer.h>
 
 #ifndef BUILDROOT
 #include <linux/clk.h>
@@ -2334,7 +2335,29 @@ static int qcom_prime_probe(struct platform_device *pdev)
 	struct qcom_prime *prime;
 	struct rproc *rproc;
 	const char *fw_name;
+	struct nvmem_cell *prime_nvmem;
+	u8 *disable_status;
+	size_t len;
 	int ret;
+
+	/* If nvmem-cells present on PRIME node in DTSI, check QFPROM fuse
+	 * for PRIME disable status (SOFTSKU_STATUS_PRIME, bit 0).
+	 * 0 = enabled, 1 = disabled.
+	 */
+	prime_nvmem = devm_nvmem_cell_get(dev, NULL);
+	if (IS_ERR(prime_nvmem)) {
+		if (PTR_ERR(prime_nvmem) == -EPROBE_DEFER)
+			return -EPROBE_DEFER;
+	} else {
+		disable_status = nvmem_cell_read(prime_nvmem, &len);
+		devm_nvmem_cell_put(dev, prime_nvmem);
+		if (!IS_ERR(disable_status) && ((unsigned int)(*disable_status) == 1)) {
+			dev_info(dev, "PRIME disabled in qfprom efuse\n");
+			kfree(disable_status);
+			return -ENODEV;
+		}
+		kfree(disable_status);
+	}
 
 	desc = of_device_get_match_data(&pdev->dev);
 	if (!desc)
