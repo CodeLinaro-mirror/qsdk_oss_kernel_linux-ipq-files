@@ -778,6 +778,16 @@ static void cdsp_lpm_work_fn(struct work_struct *work)
 	u32 hdshk_status;
 	bool is_shutdown;
 
+	/*
+	 * Ensure any pending DCVS vote is applied before entering power
+	 * collapse. The Q6 sends its final voltage vote (IPCC PING) before
+	 * asserting the LPM shutdown request (MPM). Since dcvs_work runs on
+	 * the global system_wq and lpm_work runs on cdsp_lpm_wq there is no
+	 * ordering guarantee between them. flush_work() must be called before
+	 * taking drv->lock because dcvs_work_fn also acquires it.
+	 */
+	flush_work(&drv->dcvs_work);
+
 	mutex_lock(&drv->lock);
 
 	/* Read MPM handshake status */
