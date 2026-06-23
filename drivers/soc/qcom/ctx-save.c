@@ -7,6 +7,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
+#include <linux/reboot.h>
 #include <linux/firmware/qcom/qcom_scm.h>
 #include <linux/utsname.h>
 #include <linux/sizes.h>
@@ -2003,6 +2004,39 @@ static struct notifier_block panic_nb = {
 	.notifier_call = ctx_save_panic_handler,
 };
 
+/*
+ * ctx_save_restart_handler - Restart handler to clear DLOAD magic
+ * @nb: Notifier block
+ * @action: Restart action
+ * @data: Restart command data
+ *
+ * This handler is called during kernel_restart() (including sysrq 'b')
+ * to ensure DLOAD magic is cleared before reboot, preventing the system
+ * from entering download/crashdump mode.
+ *
+ * Priority is set to 130 (higher than PSCI's 129) to ensure this runs
+ * before the actual reboot.
+ *
+ * Return: NOTIFY_DONE
+ */
+static int ctx_save_restart_handler(struct notifier_block *nb,
+				    unsigned long action, void *data)
+{
+	/* Only clear download mode for clean (non-panic) restarts */
+	if (!tlv_msg.is_panic) {
+		qcom_scm_set_download_mode(false);
+		pr_debug("ctx-save: DLOAD magic cleared during clean restart\n");
+	} else {
+		pr_debug("ctx-save: panic in progress, preserving DLOAD magic\n");
+	}
+
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block restart_nb = {
+	.notifier_call = ctx_save_restart_handler,
+	.priority = 130,
+};
 
 /*
  * ctx_save_setup_tmel_log_buf - Allocate and setup TMEL buffer
@@ -2325,6 +2359,12 @@ static int ctx_save_probe(struct platform_device *pdev)
 	if (ret)
 		dev_err(&pdev->dev,
 			"Failed to register panic notifier\n");
+
+	/* Register restart handler to clear DLOAD magic during sysrq-triggered reboots */
+	ret = register_restart_handler(&restart_nb);
+	if (ret)
+		dev_err(&pdev->dev,
+			"Failed to register restart handler\n");
 
 #ifdef CONFIG_QCA_MINIDUMP
 	ret = register_module_notifier(&wlan_module_exit_nb);
