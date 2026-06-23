@@ -16,6 +16,17 @@ bool qcom_ice_ops_available(void)
 }
 EXPORT_SYMBOL_GPL(qcom_ice_ops_available);
 
+int qcom_ice_available(void)
+{
+	if (!ops_ptr) {
+		pr_err("No ICE backend registered\n");
+		return -ENODEV;
+	}
+
+	return ops_ptr->available(ops_ptr->dev);
+}
+EXPORT_SYMBOL_GPL(qcom_ice_available);
+
 void qcom_ice_ops_register(struct qcom_ice_ops *ops)
 {
 	if (!ops_ptr) {

@@ -37,6 +37,7 @@ struct qcom_ice_ops {
 
 void qcom_ice_ops_register(struct qcom_ice_ops *ops);
 bool qcom_ice_ops_available(void);
+int qcom_ice_available(void);
 int qcom_ice_config_hwkey(struct qcom_ice *ice, u32 cipher, u32 key_size);
 int qcom_ice_set_context(u32 type, u8 key_size,
 			 u8 algo_mode, u8 *data_ctxt, u32 data_ctxt_len,
