@@ -397,3 +397,63 @@
 		};
 	};
 };
+
+&ess_switch {
+	port_scheduler_resource {
+		/delete-node/ port@5;
+		/delete-node/ port@6;
+		/delete-node/ port@4;
+		port@4 {
+			port_id = <4>;
+			ucast_queue = <24 55>;
+			mcast_queue = <284 287>;
+			l0sp = <6 13>;
+			l0cdrr = <24 55>;
+			l0edrr = <24 55>;
+			l1cdrr = <6 13>;
+			l1edrr = <6 13>;
+		};
+	};
+
+	port_scheduler_config {
+		/delete-node/ port@5;
+		/delete-node/ port@6;
+		/delete-node/ port@4;
+		port@4 {
+			port_id = <4>;
+			l1scheduler {
+				group@0 {
+					sp = <6>;
+					sp_loop_pri = <8>;
+					sp_max_pri = <1>;
+					/* cpri cdrr epri edrr */
+					cfg = <0 6 0 6>;
+				};
+			};
+			l0scheduler {
+				group@0 {
+					ucast_queue = <24>;
+					ucast_loop_pri = <8>;
+					mcast_queue = <284>;
+					mcast_loop_pri = <4>;
+					cfg = <6 0 24 0 24>;
+				};
+				group@1 {
+					ucast_queue = <32>;
+					ucast_loop_pri = <8>;
+					cfg = <8 0 32 0 32>;
+				};
+				group@2 {
+					ucast_queue = <40>;
+					ucast_loop_pri = <8>;
+					cfg = <10 0 40 0 40>;
+				};
+				group@3 {
+					ucast_queue = <48>;
+					ucast_loop_pri = <8>;
+					cfg = <12 0 48 0 48>;
+				};
+			};
+		};
+	};
+};
