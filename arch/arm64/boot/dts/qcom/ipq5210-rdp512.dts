@@ -739,3 +739,7 @@
 &spi0 {
 	status = "disabled";
 };
+
+&pon {
+	status = "okay";
+};
