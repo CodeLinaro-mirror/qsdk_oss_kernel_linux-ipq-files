@@ -286,21 +286,11 @@ static int cdsp_virt_reg_enable(struct regulator_dev *rdev)
  * cdsp_virt_reg_is_enabled() - Check if a virtual NSP regulator is enabled
  * @rdev: Regulator device
  *
- * Queries the enable state of the underlying PMIC consumer handle (vdd_cx
- * or vdd_mx). Returns 1 if the MX rail is absent on this board, since the
- * MX hardware rail is always on in that configuration.
- *
- * Return: 1 if enabled (or absent), 0 if disabled, negative error code on failure
+ * Return: use_count of virtual NSP regulator *
  */
 static int cdsp_virt_reg_is_enabled(struct regulator_dev *rdev)
 {
-	struct cdsp_power_driver *drv = rdev_get_drvdata(rdev);
-	int id = rdev_get_id(rdev);
-	struct regulator *reg = (id == CDSP_VIRT_NSP_CX) ? drv->vdd_cx : drv->vdd_mx;
-
-	if (!reg)
-		return 1;
-	return regulator_is_enabled(reg);
+	return rdev->use_count;
 }
 
 /**
@@ -323,7 +313,7 @@ static int cdsp_virt_reg_disable(struct regulator_dev *rdev)
 		return 0;
 
 	/* Disable the regulator if it's enabled */
-	if (cdsp_virt_reg_is_enabled(rdev))
+	if (regulator_is_enabled(reg))
 		return regulator_disable(reg);
 
 	return 0;
