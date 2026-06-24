@@ -659,3 +659,7 @@
 &mlo_global_mem0 {
 	status = "okay";
 };
+
+&pon {
+	status = "okay";
+};

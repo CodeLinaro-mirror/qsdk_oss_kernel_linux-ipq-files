@@ -593,3 +593,7 @@
 	assigned-clock-parents = <&ess_uniphy 0>,
 				 <&ess_uniphy 1>;
 };
+
+&pon {
+	status = "okay";
+};
