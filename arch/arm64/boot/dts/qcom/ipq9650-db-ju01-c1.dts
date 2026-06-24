@@ -82,8 +82,8 @@
 						/* NSP_MX */
 						ipq9650_s4: buck4 {
 							regulator-name = "buck4";
-							regulator-min-microvolt = <735000>;
-							regulator-max-microvolt = <960000>;
+							regulator-min-microvolt = <750000>;
+							regulator-max-microvolt = <815000>;
 						};
 					};
 				};
