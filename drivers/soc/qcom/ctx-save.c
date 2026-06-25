@@ -481,7 +481,8 @@ static int mini_dump_open(struct inode *inode, struct file *file) {
 			}
 
 			segment->addr = cur_node->va;
-			segment->name = cur_node->name;
+			segment->name = cur_node->name ?
+					kstrdup(cur_node->name, GFP_ATOMIC) : NULL;
 			list_add_tail(&(segment->node), &(minidump.dump_segments));
 			minidump.hdr.total_size += segment->size;
 			minidump.hdr.seg_size[index] = segment->size;
@@ -519,6 +520,7 @@ static int mini_dump_release(struct inode *inode, struct file *file)
 	}
 	list_for_each_entry_safe(segment, tmp, &dfp->dump_segments, node) {
 		list_del(&segment->node);
+		kfree(segment->name);
 		kfree(segment);
 	}
 
@@ -561,6 +563,7 @@ static ssize_t mini_dump_read(struct file *file, char __user *buf,
 		copied = copied + (pending-ret);
 
 		list_del(&segment->node);
+		kfree(segment->name);
 		kfree(segment);
 	}
 
@@ -908,6 +911,7 @@ int minidump_remove_segments(const uint64_t virt_addr)
 		pr_info("\nMINIDUMP: Attempt to remove an invalid VA.");
 		return 0;
 	}
+
 	spin_lock_irqsave(&tlv_msg.spinlock, flags);
 	/* Traverse Metadata list*/
 	list_for_each(pos, &metadata_list.list) {
