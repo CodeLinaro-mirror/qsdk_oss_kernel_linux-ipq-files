@@ -1527,6 +1527,25 @@ int mhitest_unregister_ramdump(struct mhitest_platform *mplat)
 	return 0;
 }
 
+static u32 mhitest_get_rddm_size(unsigned long device_id)
+{
+	switch (device_id) {
+	case QCN90XX_DEVICE_ID:
+		return 0x400000;  /* 4 MB */
+	case QCN92XX_DEVICE_ID:
+		return 0x600000;  /* 6 MB */
+	case QCC20XX_DEVICE_ID:
+		return 0x600000;  /* 6 MB */
+	case QCN96XX_DEVICE_ID:
+		return 0x600000;  /* 6 MB */
+	case QCN95XX_DEVICE_ID:
+		return 0x680000;  /* 6.5 MB */
+	default:
+		pr_err("Unknown device_id: 0x%lx, using default 4MB\n", device_id);
+		return 0x400000;  /* Default to 4 MB */
+	}
+}
+
 static u32 mhitest_get_dump_desc_size(struct mhitest_platform *mplat)
 {
 	u32 descriptor_size = 0;
@@ -1545,8 +1564,6 @@ int mhitest_register_ramdump(struct mhitest_platform *mplat)
 	struct mhitest_ramdump_info *mhitest_rdinfo;
 	struct mhitest_dump_data *dump_data;
 	struct device *dev = &mplat->plat_dev->dev;
-	u32 ramdump_size = 0;
-	int ret;
 
 	mhitest_rdinfo = &mplat->mhitest_rdinfo;
 	dump_data = &mhitest_rdinfo->dump_data;
@@ -1559,10 +1576,8 @@ int mhitest_register_ramdump(struct mhitest_platform *mplat)
 		return -ENOMEM;
 	}
 
-	ret = of_property_read_u32(dev->of_node, "qcom,wlan-ramdump-dynamic",
-					 &ramdump_size);
-	if (ret == 0)
-		mhitest_rdinfo->ramdump_size = ramdump_size;
+	/* Get static rddm_size based on device_id */
+	mhitest_rdinfo->ramdump_size = mhitest_get_rddm_size(mplat->device_id);
 
 	mhitest_rdinfo->dump_data_vaddr = kzalloc(
 			mhitest_get_dump_desc_size(mplat), GFP_KERNEL);
@@ -1578,7 +1593,7 @@ int mhitest_register_ramdump(struct mhitest_platform *mplat)
 		sizeof(dump_data->name));
 	mhitest_rdinfo->ramdump_dev = dev;
 
-	pr_info("Ramdump registered ramdump_size:0x%x\n", ramdump_size);
+	pr_info("Ramdump registered ramdump_size:0x%lx\n", mhitest_rdinfo->ramdump_size);
 
 	return 0;
 }
