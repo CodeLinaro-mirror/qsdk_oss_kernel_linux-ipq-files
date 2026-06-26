@@ -2467,6 +2467,7 @@
 				qcom,mhi@0 {
 					reg = <0 0 0 0 0>;
 #ifdef __CONFIG_IO_COHERENCY__
+					qcom,no-tmel;
 					/* Configuring IOC registers */
 					secure-reg =  <0x613008 0x130100>,
 							<0x613038 0x44410>,
@@ -2575,6 +2576,7 @@
 				qcom,mhi@0 {
 					reg = <0 0 0 0 0>;
 #ifdef __CONFIG_IO_COHERENCY__
+					qcom,no-tmel;
 					/* Configuring IOC registers */
 					secure-reg =  <0x613008 0x130100>,
 							<0x613038 0x44410>,
@@ -2682,6 +2684,7 @@
 				qcom,mhi@0 {
 					reg = <0 0 0 0 0>;
 #ifdef __CONFIG_IO_COHERENCY__
+					qcom,no-tmel;
 					/* Configuring IOC registers */
 					secure-reg =  <0x613008 0x130100>,
 							<0x613038 0x44410>,
