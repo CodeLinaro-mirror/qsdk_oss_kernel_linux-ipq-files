@@ -2357,6 +2357,14 @@
 		nss-ppe {
 			compatible = "qcom,nss-ppe";
 		};
+
+		pon: pon {
+			compatible = "qcom,pon";
+			reg = <0x01C81000 0x20000>;
+			interrupts = <GIC_SPI 209 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "pon_int";
+			status = "disabled";
+		};
 	};
 
 	firmware {
