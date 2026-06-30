@@ -1060,6 +1060,16 @@ static int qce2204_port_gmac_hw_init(struct qce2204_priv *priv, int port)
 	if (ret)
 		return ret;
 
+	/* Enable GMAC LPI (EEE low power idle) for user ports only.
+	 * CPU port default to XGMAC, so skip LPI enable for it.
+	 */
+	if (port != priv->cpu_port) {
+		ret = regmap_set_bits(priv->regmap, reg + QCE2204_PPE_GMAC_LPI_ENABLE_ADDR,
+				      QCE2204_PPE_GMAC_LPI_EN);
+		if (ret)
+			dev_warn(priv->dev, "Port %d: Failed to enable GMAC LPI: %d\n", port, ret);
+	}
+
 	return 0;
 }
 

@@ -947,6 +947,10 @@
 							 QCE2204_PPE_GMAC_MIB_RST | \
 							 QCE2204_PPE_GMAC_MIB_EN)
 
+/* GMAC LPI enable register */
+#define QCE2204_PPE_GMAC_LPI_ENABLE_ADDR		0xf4
+#define QCE2204_PPE_GMAC_LPI_EN				BIT(0)
+
 /* XGMAC TX configuration register */
 #define QCE2204_PPE_XGMAC_TX_CONFIG_ADDR		0x0
 #define QCE2204_PPE_XGMAC_SPEED_M			GENMASK(31, 29)
