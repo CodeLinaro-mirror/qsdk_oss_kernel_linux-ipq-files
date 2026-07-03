@@ -266,10 +266,14 @@
 	mdio-state {
 		mux_0 {
 			drive-strength = <4>;
+			 /delete-property/bias-pull-down;
+			 bias-disable;
 		};
 
 		mux_1 {
 			drive-strength = <4>;
+			/delete-property/bias-pull-down;
+			bias-disable;
 		};
 	};
 
