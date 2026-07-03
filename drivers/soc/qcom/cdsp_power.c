@@ -778,6 +778,8 @@ static void cdsp_lpm_work_fn(struct work_struct *work)
 	u32 hdshk_status;
 	bool is_shutdown;
 
+	synchronize_irq(drv->dcvs_irq);
+
 	/*
 	 * Ensure any pending DCVS vote is applied before entering power
 	 * collapse. The Q6 sends its final voltage vote (IPCC PING) before
