@@ -1,0 +1,65 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * IPQ5210 256MB Memory device tree source
+ *
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ */
+
+/ {
+	/*	  256MB Profile for IPQ5210 + QCN9625 + QCN9224
+	 * +==========+==============+========================+
+	 * |         |              |                         |
+	 * |  Region | Start Offset |          Size           |
+	 * |         |              |                         |
+	 * +---------+--------------+-------------------------+
+	 * |         |              |                         |
+	 * | QCN9625 |    DYNAMIC   |          28MB           |
+	 * | PCIe0   |              |                         |
+	 * |         |              |                         |
+	 * +---------+--------------+-------------------------+
+	 * |         |              |                         |
+	 * | QCN9224 |    DYNAMIC   |          19MB           |
+	 * | PCIe0   |              |                         |
+	 * |         |              |                         |
+	 * +---------+--------------+-------------------------+
+	 * |         |              |                         |
+	 * |  MLO    |    DYNAMIC   |          6MB            |
+	 * |         |              |                         |
+	 * +==================================================+
+	 * |                                                  |
+	 * |                                                  |
+	 * |                                                  |
+	 * |             Rest of memory for Linux             |
+	 * |                                                  |
+	 * |                                                  |
+	 * |                                                  |
+	 * +==================================================+
+	 */
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		qcn9625_pcie0: qcn9625_pcie0@0 {
+			no-map;
+			size = <0x0 0x01c00000>;
+			alignment = <0x0 0x100000>;
+			status = "disabled";
+		};
+
+		qcn9224_pcie0: qcn9224_pcie0@0 {
+			no-map;
+			size = <0x0 0x1300000>;
+			alignment = <0x0 0x100000>;
+			status = "disabled";
+		};
+
+		mlo_global_mem0: mlo_global_mem_0@0 {
+			no-map;
+			size = <0x0 0x600000>;
+			alignment = <0x0 0x100000>;
+			status = "disabled";
+		};
+	};
+};
