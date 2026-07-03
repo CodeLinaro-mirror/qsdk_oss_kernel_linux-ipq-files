@@ -12,6 +12,7 @@
 #include <linux/platform_device.h>
 #include <linux/debugfs.h>
 #include <linux/workqueue.h>
+#include <linux/tmelcom_qmi.h>
 
 /* ===== QMI TME Service Definitions ===== */
 /* Copied from qmi_tme_service_v01.h */
@@ -52,6 +53,8 @@
 #define QMI_TME_FUSE_BLOW_RESP_V01 0x0009
 #define QMI_GET_CHIP_PARAMS_REQ_V01 0x0010
 #define QMI_GET_CHIP_PARAMS_RESP_V01 0x0010
+#define QMI_TME_READ_MULTI_FUSES_REQ_V01 0x0011
+#define QMI_TME_READ_MULTI_FUSES_RESP_V01 0x0011
 
 /* Max sizes */
 #define QMI_TME_MAX_KEY_SIZE_V01 128
@@ -105,6 +108,9 @@
 #define QMI_TME_FUSE_BLOW_RESP_MSG_V01_MAX_MSG_LEN 21
 #define QMI_GET_CHIP_PARAMS_REQ_MSG_V01_MAX_MSG_LEN 7
 #define QMI_GET_CHIP_PARAMS_RESP_MSG_V01_MAX_MSG_LEN 47
+#define QMI_TME_MAX_MULTI_FUSES_V01 30
+#define QMI_TME_READ_MULTI_FUSES_REQ_MSG_V01_MAX_MSG_LEN 131
+#define QMI_TME_READ_MULTI_FUSES_RESP_MSG_V01_MAX_MSG_LEN 392
 
 /* Message structures */
 struct qmi_tme_init_attestation_req_msg_v01 {
@@ -345,6 +351,23 @@ struct qmi_tme_fuse_blow_resp_msg_v01 {
 	u32 ipc_status;
 };
 
+struct qmi_tme_read_multi_fuses_req_msg_v01 {
+	u32 fuse_addresses_len;
+	u32 fuse_addresses[QMI_TME_MAX_MULTI_FUSES_V01];
+	u32 num_fuses;
+};
+
+struct qmi_tme_read_multi_fuses_resp_msg_v01 {
+	struct qmi_response_type_v01 resp;
+	u32 status;
+	u32 ipc_status;
+	u8 fuse_rows_valid;
+	u32 fuse_rows_len;
+	struct qmi_tme_fuse_row_v01_v01 fuse_rows[QMI_TME_MAX_MULTI_FUSES_V01];
+	u8 num_rows_valid;
+	u32 num_rows;
+};
+
 struct qmi_get_chip_params_req_msg_v01 {
 	u32 reserved;
 };
@@ -396,6 +419,8 @@ extern struct qmi_elem_info qmi_tme_fuse_blow_req_msg_v01_ei[];
 extern struct qmi_elem_info qmi_tme_fuse_blow_resp_msg_v01_ei[];
 extern struct qmi_elem_info qmi_get_chip_params_req_msg_v01_ei[];
 extern struct qmi_elem_info qmi_get_chip_params_resp_msg_v01_ei[];
+extern struct qmi_elem_info qmi_tme_read_multi_fuses_req_msg_v01_ei[];
+extern struct qmi_elem_info qmi_tme_read_multi_fuses_resp_msg_v01_ei[];
 
 /* ===== Driver Internal Definitions ===== */
 
