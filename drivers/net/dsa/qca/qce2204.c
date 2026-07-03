@@ -46,7 +46,7 @@ int qce2204_port_alloc_ppe_resources(struct qce2204_priv *priv, int port)
 		return -EINVAL;
 
 	/* CPU port doesn't need resource allocation */
-	if (port == QCE2204_CPU_PORT_ID) {
+	if (port == priv->cpu_port) {
 		dev_dbg(priv->dev, "CPU port doesn't need PPE resource allocation\n");
 		return 0;
 	}
@@ -233,6 +233,11 @@ static int qce2204_setup(struct dsa_switch *ds)
 
 	dev_info(priv->dev, "Setting up QCE2204 switch\n");
 
+	dsa_switch_for_each_cpu_port(dp, ds) {
+		priv->cpu_port = dp->index;
+		dev_info(priv->dev, "CPU port: %d\n", dp->index);
+	}
+
 	ret = qce2204_ppe_hw_init(priv);
 	if (ret) {
 		dev_err(priv->dev, "PPE init failed: %d\n", ret);
@@ -257,11 +262,6 @@ static int qce2204_setup(struct dsa_switch *ds)
 				dp->index, ret);
 			return ret;
 		}
-	}
-
-	dsa_switch_for_each_cpu_port(dp, ds) {
-		priv->cpu_port = dp->index;
-		dev_info(priv->dev, "CPU port: %d\n", dp->index);
 	}
 
 	dev_info(priv->dev, "Setup completed.\n");
@@ -508,7 +508,7 @@ static int qce2204_port_change_mtu(struct dsa_switch *ds, int port, int new_mtu)
 		return 0;
 
 	/* Align with PPE port's MTU, dsa_slave_change_mtu/ppe_drv_port_mtu_mru_set */
-	cpu_dp = dsa_to_port(ds, QCE2204_CPU_PORT_ID);
+	cpu_dp = dsa_to_port(ds, priv->cpu_port);
 	mtu_val = new_mtu + ETH_HLEN +
 				cpu_dp->tag_ops->needed_headroom +
 				cpu_dp->tag_ops->needed_tailroom;

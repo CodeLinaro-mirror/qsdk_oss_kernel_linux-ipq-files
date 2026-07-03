@@ -16,29 +16,27 @@
 /* 3550 for HTT general group0 */
 static const int qce2204_ppe_bm_group_config = 3550;
 
-/* BM port configurations for QCE2204 (15 BM ports) */
+/* BM port configurations for QCE2204 */
 static const struct qce2204_ppe_bm_port_config qce2204_ppe_bm_port_config[] = {
 	{
-		/* BM port 0: EDMA port 0 (CPU) */
-		.port_id_start	= 0,
-		.port_id_end	= 0,
-		.pre_alloc	= 0,
-		.in_fly_buf	= 200,
-		.ceil		= 1200,
-		.weight		= 7,
-		.resume_offset	= 8,
-		.resume_ceil	= 0,
-		.dynamic	= true,
-	},
-	{
-		/* BM ports 1-5: EDMA ports 1-5 */
-		.port_id_start	= 1,
-		.port_id_end	= 5,
+		/* User ports */
+		.is_cpu		= false,
 		.pre_alloc	= 0,
 		.in_fly_buf	= 228,
 		.ceil		= 650,
 		.weight		= 7,
 		.resume_offset	= 36,
+		.resume_ceil	= 0,
+		.dynamic	= true,
+	},
+	{
+		/* CPU port */
+		.is_cpu		= true,
+		.pre_alloc	= 0,
+		.in_fly_buf	= 200,
+		.ceil		= 1200,
+		.weight		= 7,
+		.resume_offset	= 8,
 		.resume_ceil	= 0,
 		.dynamic	= true,
 	},
@@ -1168,8 +1166,10 @@ static int qce2204_ppe_config_bm_threshold(struct qce2204_priv *priv, int bm_por
 /* Configure buffer management */
 static int qce2204_ppe_config_bm(struct qce2204_priv *priv)
 {
-	const struct qce2204_ppe_bm_port_config *port_cfg;
-	unsigned int i, bm_port_id, port_cfg_cnt;
+	const struct qce2204_ppe_bm_port_config *port_cfg, *cpu_cfg = NULL, *user_cfg = NULL;
+	unsigned int i, port_cfg_cnt;
+	struct dsa_switch *ds = priv->ds;
+	struct dsa_port *dp;
 	u32 reg, val;
 	int ret;
 
@@ -1183,17 +1183,33 @@ static int qce2204_ppe_config_bm(struct qce2204_priv *priv)
 	if (ret)
 		goto bm_config_fail;
 
-	/* Configure buffer thresholds for BM ports */
+	/* Resolve per-port-type configurations */
 	port_cfg = qce2204_ppe_bm_port_config;
 	port_cfg_cnt = ARRAY_SIZE(qce2204_ppe_bm_port_config);
 	for (i = 0; i < port_cfg_cnt; i++) {
-		for (bm_port_id = port_cfg[i].port_id_start;
-		     bm_port_id <= port_cfg[i].port_id_end; bm_port_id++) {
-			ret = qce2204_ppe_config_bm_threshold(priv, bm_port_id,
-							      port_cfg[i]);
-			if (ret)
-				goto bm_config_fail;
-		}
+		if (port_cfg[i].is_cpu)
+			cpu_cfg = &port_cfg[i];
+		else
+			user_cfg = &port_cfg[i];
+	}
+
+	/* Configure buffer thresholds for CPU and user ports */
+	dsa_switch_for_each_port(dp, ds) {
+		const struct qce2204_ppe_bm_port_config *cfg;
+
+		if (dsa_port_is_cpu(dp))
+			cfg = cpu_cfg;
+		else if (dsa_port_is_user(dp))
+			cfg = user_cfg;
+		else
+			continue;
+
+		if (!cfg)
+			continue;
+
+		ret = qce2204_ppe_config_bm_threshold(priv, dp->index, *cfg);
+		if (ret)
+			goto bm_config_fail;
 	}
 
 	return 0;
@@ -1469,14 +1485,14 @@ static int qce2204_ppe_queue_dest_init(struct qce2204_priv *priv)
 
 		pri_max = res_end - res_start;
 
-		if (port_id == 0) {
+		if (port_id == priv->cpu_port) {
 			/* Initialize the queue base for all CPU codes */
 			memset(&queue_dst, 0, sizeof(queue_dst));
 			queue_dst.cpu_code_en = true;
 			for (index = 0; index < QCE2204_PPE_CPU_CODE_NUM; index++) {
 				queue_dst.cpu_code = index;
 				ret = qce2204_ppe_queue_ucast_base_set(priv, queue_dst,
-									   q_base, 0);
+									   q_base, port_id);
 				if (ret)
 					return ret;
 			}
@@ -1487,7 +1503,7 @@ static int qce2204_ppe_queue_dest_init(struct qce2204_priv *priv)
 			queue_dst.cpu_code = 101;
 			ret = qce2204_ppe_queue_ucast_base_set(priv, queue_dst,
 							       q_base + pri_max,
-							       0);
+							       port_id);
 			if (ret)
 				return ret;
 		}
@@ -1547,7 +1563,7 @@ static int qce2204_ppe_port_config_init(struct qce2204_priv *priv)
 	}
 
 	/* CPU port 0 MTU and MRU set to max framesize, ethernet ports MTU/MRC set by mtu ops */
-	reg = QCE2204_PPE_MRU_MTU_CTRL_TBL_ADDR + QCE2204_PPE_MRU_MTU_CTRL_TBL_INC * QCE2204_CPU_PORT_ID;
+	reg = QCE2204_PPE_MRU_MTU_CTRL_TBL_ADDR + QCE2204_PPE_MRU_MTU_CTRL_TBL_INC * priv->cpu_port;
 	ret = regmap_bulk_read(priv->regmap, reg,
 				   mru_mtu_val, ARRAY_SIZE(mru_mtu_val));
 	if (ret)
@@ -1563,7 +1579,7 @@ static int qce2204_ppe_port_config_init(struct qce2204_priv *priv)
 	if (ret)
 		return ret;
 
-	reg = QCE2204_PPE_MC_MTU_CTRL_TBL_ADDR + QCE2204_PPE_MC_MTU_CTRL_TBL_INC * QCE2204_CPU_PORT_ID;
+	reg = QCE2204_PPE_MC_MTU_CTRL_TBL_ADDR + QCE2204_PPE_MC_MTU_CTRL_TBL_INC * priv->cpu_port;
 	val = FIELD_PREP(QCE2204_PPE_MC_MTU_CTRL_TBL_MTU_CMD, QCE2204_PPE_ACTION_REDIRECT_TO_CPU);
 	return regmap_update_bits(priv->regmap, reg,
 				 QCE2204_PPE_MC_MTU_CTRL_TBL_MTU_CMD,
@@ -1633,7 +1649,7 @@ static int qce2204_ppe_bridge_init(struct qce2204_priv *priv)
 			return ret;
 
 		/* Enable invalid VSI forwarding for physical ports to CPU */
-		if (i == 0)
+		if (i == priv->cpu_port)
 			continue;
 
 		reg = QCE2204_PPE_L2_VP_PORT_TBL_ADDR + QCE2204_PPE_L2_VP_PORT_TBL_INC * i;
@@ -1643,7 +1659,7 @@ static int qce2204_ppe_bridge_init(struct qce2204_priv *priv)
 			return ret;
 
 		QCE2204_PPE_L2_PORT_SET_INVALID_VSI_FWD_EN(port_cfg, true);
-		QCE2204_PPE_L2_PORT_SET_DST_INFO(port_cfg, 0);
+		QCE2204_PPE_L2_PORT_SET_DST_INFO(port_cfg, priv->cpu_port);
 
 		ret = regmap_bulk_write(priv->regmap, reg,
 					port_cfg, ARRAY_SIZE(port_cfg));
@@ -1659,10 +1675,10 @@ static int qce2204_ppe_bridge_init(struct qce2204_priv *priv)
 		if (ret)
 			return ret;
 
-		QCE2204_PPE_VSI_SET_MEMBER_PORT_BITMAP(vsi_cfg, BIT(0));
-		QCE2204_PPE_VSI_SET_UUC_BITMAP(vsi_cfg, BIT(0));
-		QCE2204_PPE_VSI_SET_UMC_BITMAP(vsi_cfg, BIT(0));
-		QCE2204_PPE_VSI_SET_BC_BITMAP_LO(vsi_cfg, BIT(0));
+		QCE2204_PPE_VSI_SET_MEMBER_PORT_BITMAP(vsi_cfg, BIT(priv->cpu_port));
+		QCE2204_PPE_VSI_SET_UUC_BITMAP(vsi_cfg, BIT(priv->cpu_port));
+		QCE2204_PPE_VSI_SET_UMC_BITMAP(vsi_cfg, BIT(priv->cpu_port));
+		QCE2204_PPE_VSI_SET_BC_BITMAP_LO(vsi_cfg, BIT(priv->cpu_port));
 		QCE2204_PPE_VSI_SET_NEW_ADDR_LRN_EN(vsi_cfg, true);
 		QCE2204_PPE_VSI_SET_NEW_ADDR_FWD_CMD(vsi_cfg, QCE2204_PPE_ACTION_FORWARD);
 		QCE2204_PPE_VSI_SET_STATION_MOVE_LRN_EN(vsi_cfg, true);
@@ -1844,7 +1860,7 @@ int qce2204_teardown_none_tag_vsi(struct qce2204_priv *priv)
 
 	/* Step 1: Clear VSI configuration for all ports */
 	port_vsi_cfg.vsi_valid = false;
-	port_vsi_cfg.vsi = 0;
+	port_vsi_cfg.vsi = QCE2204_DEFAULT_VSI;
 
 	dsa_switch_for_each_available_port(dp, ds) {
 		ret = qce2204_ppe_port_vsi_set(priv, dp->index, &port_vsi_cfg);
@@ -1916,7 +1932,7 @@ int qce2204_setup_none_tag_rstp(struct qce2204_priv *priv)
 	}
 
 	/* Step 2: Map RSTP virtual port to CPU physical port */
-	post_cfg.pport = QCE2204_CPU_PORT_ID;
+	post_cfg.pport = priv->cpu_port;
 	ret = qce2204_ppe_l2_vp_port_post_set(priv, QCE2204_PPE_RSTP_VP, &post_cfg);
 	if (ret) {
 		dev_err(priv->dev, "Failed to set RSTP VP port post: %d\n", ret);
@@ -1943,7 +1959,7 @@ int qce2204_setup_none_tag_rstp(struct qce2204_priv *priv)
 	rx_cfg.athtag_type = QCE2204_RSTP_ATHTAG_TYPE;
 	rx_cfg.athtag_en = true;
 	rx_cfg.version = 0;
-	ret = qce2204_ppe_port_athtag_rx_set(priv, QCE2204_CPU_PORT_ID, &rx_cfg);
+	ret = qce2204_ppe_port_athtag_rx_set(priv, priv->cpu_port, &rx_cfg);
 	if (ret) {
 		dev_err(priv->dev, "Failed to set RX RSTP athtag type: %d\n", ret);
 		return ret;
@@ -2010,7 +2026,7 @@ int qce2204_teardown_none_tag_rstp(struct qce2204_priv *priv)
 	rx_cfg.athtag_type = QCE2204_ATHTAG_TYPE;
 	rx_cfg.athtag_en = true;
 	rx_cfg.version = 0;
-	ret = qce2204_ppe_port_athtag_rx_set(priv, QCE2204_CPU_PORT_ID, &rx_cfg);
+	ret = qce2204_ppe_port_athtag_rx_set(priv, priv->cpu_port, &rx_cfg);
 	if (ret) {
 		dev_err(priv->dev, "Failed to restore RX RSTP athtag type: %d\n", ret);
 		return ret;
@@ -2384,7 +2400,7 @@ int qce2204_setup_cpu_port_athtag(struct qce2204_priv *priv)
 	tx_cfg.dest_info = 0;
 	tx_cfg.from_cpu = false;
 
-	ret = qce2204_ppe_eg_vp_athtag_set(priv, QCE2204_CPU_PORT_ID, &tx_cfg);
+	ret = qce2204_ppe_eg_vp_athtag_set(priv, priv->cpu_port, &tx_cfg);
 	if (ret)
 		return ret;
 
@@ -2418,7 +2434,7 @@ int qce2204_teardown_cpu_port_athtag(struct qce2204_priv *priv)
 	tx_cfg.dest_info = 0;
 	tx_cfg.from_cpu = false;
 
-	ret = qce2204_ppe_eg_vp_athtag_set(priv, QCE2204_CPU_PORT_ID, &tx_cfg);
+	ret = qce2204_ppe_eg_vp_athtag_set(priv, priv->cpu_port, &tx_cfg);
 	if (ret)
 		return ret;
 
@@ -2452,7 +2468,7 @@ static int qce2204_ppe_athtag_init(struct qce2204_priv *priv)
 	rx_cfg.athtag_en = true;
 	rx_cfg.version = 0;
 
-	return qce2204_ppe_port_athtag_rx_set(priv, QCE2204_CPU_PORT_ID, &rx_cfg);
+	return qce2204_ppe_port_athtag_rx_set(priv, priv->cpu_port, &rx_cfg);
 }
 
 /**
@@ -3066,14 +3082,14 @@ int qce2204_setup_8021q_global(struct qce2204_priv *priv)
 	/* Step 2: Set CPU port as core port (QinQ role) */
 	role_cfg.port_role = true;  /* 1 = core port */
 
-	ret = qce2204_ppe_port_vlan_role_set(priv, QCE2204_CPU_PORT_ID,
+	ret = qce2204_ppe_port_vlan_role_set(priv, priv->cpu_port,
 					      QCE2204_PPE_INGRESS, &role_cfg);
 	if (ret) {
 		dev_err(priv->dev, "Failed to set CPU port ingress role: %d\n", ret);
 		return ret;
 	}
 
-	ret = qce2204_ppe_port_vlan_role_set(priv, QCE2204_CPU_PORT_ID,
+	ret = qce2204_ppe_port_vlan_role_set(priv, priv->cpu_port,
 					      QCE2204_PPE_EGRESS, &role_cfg);
 	if (ret) {
 		dev_err(priv->dev, "Failed to set CPU port egress role: %d\n", ret);
@@ -3105,14 +3121,14 @@ int qce2204_teardown_8021q_global(struct qce2204_priv *priv)
 	/* Step 1: Restore CPU port to edge port (default role) */
 	role_cfg.port_role = false;  /* 0 = edge port */
 
-	ret = qce2204_ppe_port_vlan_role_set(priv, QCE2204_CPU_PORT_ID,
+	ret = qce2204_ppe_port_vlan_role_set(priv, priv->cpu_port,
 					      QCE2204_PPE_INGRESS, &role_cfg);
 	if (ret) {
 		dev_err(priv->dev, "Failed to restore CPU port ingress role: %d\n", ret);
 		return ret;
 	}
 
-	ret = qce2204_ppe_port_vlan_role_set(priv, QCE2204_CPU_PORT_ID,
+	ret = qce2204_ppe_port_vlan_role_set(priv, priv->cpu_port,
 					      QCE2204_PPE_EGRESS, &role_cfg);
 	if (ret) {
 		dev_err(priv->dev, "Failed to restore CPU port egress role: %d\n", ret);
@@ -3208,7 +3224,7 @@ int qce2204_setup_8021q_tagging(struct qce2204_priv *priv, int port)
 	xlt_cfg.cpcp_xlt_cmd = 6;	/* To add CVLAN tag, also means pcp from spcp */
 	xlt_cfg.dest_valid = true;
 	xlt_cfg.dest_info = QCE2204_PPE_DEST_INFO(QCE2204_PPE_DEST_INFO_PORT_ID,
-						   QCE2204_CPU_PORT_ID);
+						   priv->cpu_port);
 
 	ret = qce2204_ppe_vlan_in_vlan_xlt_set(priv, port_res->in_vlan_xlt_idx, &xlt_cfg);
 	if (ret) {
@@ -3226,7 +3242,7 @@ int qce2204_setup_8021q_tagging(struct qce2204_priv *priv, int port)
 	xlt_cfg.svid_xlt = port_res->standalone_vid;
 	xlt_cfg.dest_valid = true;
 	xlt_cfg.dest_info = QCE2204_PPE_DEST_INFO(QCE2204_PPE_DEST_INFO_PORT_ID,
-						   QCE2204_CPU_PORT_ID);
+						   priv->cpu_port);
 
 	ret = qce2204_ppe_vlan_in_vlan_xlt_set(priv, port_res->in_vlan_xlt_idx + 1, &xlt_cfg);
 	if (ret) {
@@ -3237,7 +3253,7 @@ int qce2204_setup_8021q_tagging(struct qce2204_priv *priv, int port)
 
 	/* Step 4: Configure CPU port TX rule: Remove standalone VID */
 	memset(&xlt_cfg, 0, sizeof(xlt_cfg));
-	xlt_cfg.port_id = QCE2204_CPU_PORT_ID;
+	xlt_cfg.port_id = priv->cpu_port;
 	xlt_cfg.svid_fmt = 0x7;		/* Match any SVLAN format */
 	xlt_cfg.cvid_fmt = 0x7;		/* Match any CVLAN format */
 	xlt_cfg.svid_inc = true;	/* Match specific SVID */

@@ -17,7 +17,6 @@
 #include <linux/gpio/consumer.h>
 #include <net/dsa.h>
 
-#define QCE2204_CPU_PORT_ID				0
 #define QCE2204_ATHTAG_TYPE				0xaaaa
 #define QCE2204_PPE_RSTP_ACL				0	/* RSTP reserved ACL index */
 #define QCE2204_PPE_RSTP_VP					64	/* RSTP reserved virtual port which starts from 64 */
