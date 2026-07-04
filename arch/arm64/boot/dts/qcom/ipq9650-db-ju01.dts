@@ -233,6 +233,8 @@
 &ess_switch {
 	switch_mac_mode1 = <0x18>; /* mac mode for uniphy instance1 */
 	switch_mac_mode2 = <0x18>; /* mac mode for uniphy instance2 */
+	bm_tick_mode = <1>; /* 25G bm tick mode */
+	tm_tick_mode = <1>; /* 25G tm tick mode */
 
 	qcom,port_phyinfo {
 		port@4 {
