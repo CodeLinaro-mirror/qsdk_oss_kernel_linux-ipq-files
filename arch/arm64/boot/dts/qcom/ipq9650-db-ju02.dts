@@ -445,7 +445,12 @@
 	cpu-supply = <&ipq9650_s1>;
 };
 
+&cdsp_power {
+	vdd-cx-supply = <&ipq9650_s2>;
+	vdd-mx-supply = <&ipq9650_s4>;
+};
+
 &remoteproc_cdsp {
-	cx-supply = <&ipq9650_s2>;
-	mx-supply = <&ipq9650_s4>;
+	cx-supply = <&cdsp_vdd_cx>;
+	mx-supply = <&cdsp_vdd_mx>;
 };
