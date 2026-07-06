@@ -329,6 +329,13 @@
 	};
 };
 
+
+&license_manager {
+	/delete-property/ tmel-bounded;
+	/delete-property/ ep-tmel-bounded;
+	license-feature;
+};
+
 &spi1 {
 	compatible = "qcom,geni-spi";
 	pinctrl-0 = <&se4_spi_pins>;
