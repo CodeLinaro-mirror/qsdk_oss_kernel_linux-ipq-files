@@ -654,6 +654,16 @@
 			bias-pull-down;
 		};
 	};
+
+	mdio-mst-state {
+		mdc_mst {
+			drive-strength = <10>;
+		};
+
+		mdio_mst {
+			drive-strength = <10>;
+		};
+	};
 };
 
 &CPU0 {
