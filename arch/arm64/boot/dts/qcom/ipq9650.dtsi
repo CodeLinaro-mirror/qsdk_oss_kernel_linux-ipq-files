@@ -238,7 +238,6 @@
 				exit-latency-us = <901>;
 				min-residency-us = <1774>;
 				local-timer-stop;
-				status = "disabled";
 			};
 
 			big_cpu_sleep_0: gold-c3 { /* C3 */
@@ -249,7 +248,6 @@
 				exit-latency-us = <1244>;
 				min-residency-us = <2207>;
 				local-timer-stop;
-				status = "disabled";
 			};
 
 		};
