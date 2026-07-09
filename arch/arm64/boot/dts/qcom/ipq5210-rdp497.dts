@@ -137,6 +137,22 @@
 	};
 };
 
+&ddrq_data_region {
+	/*
+	 * Override parent DDRQ data region size:
+	 * 8MB (default) -> 4MB on RDP497.
+	 */
+	size = <0x0 0x00400000>;	/* 4MB */
+};
+
+&ddrq_desc_region {
+	/*
+	 * Override parent DDRQ descriptor region size:
+	 * 512KB (default) -> 256KB on RDP497.
+	 */
+	size = <0x0 0x00040000>;	/* 256KB */
+};
+
 &i2c0 {
 	clock-frequency = <100000>;
 
