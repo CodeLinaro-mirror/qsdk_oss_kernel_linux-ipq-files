@@ -236,13 +236,6 @@
 		#size-cells = <2>;
 		ranges;
 
-		tzapp:tzapp@49600000 {  /* TZAPPS */
-#if !defined(__IPQ_MEM_PROFILE_512_MB__) && !defined(__IPQ_MEM_PROFILE_256_MB__)
-			reg = <0x0 0x49600000 0x0 0x00600000>;
-#endif
-			no-map;
-		};
-
 #if defined(__IPQ_MEM_PROFILE_256_MB__)
 		bootloader@4a300000 {
 			reg = <0x0 0x4a300000 0x0 0x200000>;
@@ -277,6 +270,10 @@
 		};
 
 		minidump_mem: minidump_mem@0 {
+			no-map;
+		};
+
+		tzapp: tzapp@0 {  /* TZAPPS */
 			no-map;
 		};
 
