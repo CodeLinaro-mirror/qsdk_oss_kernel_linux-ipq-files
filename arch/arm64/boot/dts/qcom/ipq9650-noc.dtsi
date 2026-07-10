@@ -1,0 +1,191 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * IPQ9650 NoC device tree source
+ *
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ */
+
+&soc {
+		noc_tprobe: noc-tprobe-driver {
+			compatible = "qcom,noc-tprobe-driver";
+			status = "okay";
+		};
+
+		apss_comp_juhu: apss-comp-driver-juhu@4304400 {
+			compatible = "qcom,apss-comp-driver";
+			reg = <0x4304800 0x400>,  /* HistProbe base - gemnoc_chm_apss_QciHistProbe */
+			      <0x4304400 0x400>,  /* HistCtrl base - gemnoc_chm_apss_histCtl */
+			      <0x4305800 0x1000>, /* TraceProbe base - gemnoc_chm_apss_traceProbe for bandwidth */
+			      <0x431A000 0x1000>, /* EventCounter base - gemnoc_chm_ec for bandwidth */
+			      <0x680E000 0x1500>, /* APSS CTI base - for histogram controller triggers */
+			      <0x6010000 0x1500>, /* Core CTI base - for measurement triggers */
+			      <0x431A000 0x1000>, /* GEMNOC CHM EC base - for CTI delay config */
+			      <0x431B000 0x1000>, /* GEMNOC PCNOC EC base - for CTI delay config */
+			      <0x431C000 0x1000>; /* GEMNOC ANOC EC base - for CTI delay config */
+			reg-names = "histprobe-base", "histctrl-base", "traceprobe-base", "eventcounter-base",
+				    "apss-cti-base", "core-cti-base", "gemnoc-chm-ec-base",
+				    "gemnoc-pcnoc-ec-base", "gemnoc-anoc-ec-base";
+			hist_bin_width = <0x2018>;
+			ddr_addr_min_low = <0x80000000>;
+			ddr_addr_min_high = <0x0>;
+			ddr_addr_max_low = <0xffffffff>;
+			ddr_addr_max_high = <0xfff>;
+			trace_probe_extid_base = <0x4000>;  /* APSS_EXT_ID */
+			trace_probe_extid_mask = <0xff00>;
+			ec_ctl1_base_val = <180>;  /* CHI Read event ID (CMM writes 180, 182, 184, 186) */
+			apss_cti_num = <9>;           /* wrapper cti9 */
+			apss_cti_trigout_start = <2>; /* trigger out 2 and 3 */
+			apss_chi_read_event_id = <180>;
+			apss_chi_write_event_id = <182>;
+			apss_chi_cmo_event_id = <184>;
+			apss_chi_all_event_id = <186>;
+			gemnoc_chm_ec_freq = <800>;
+			gemnoc_pcnoc_ec_freq = <266>;
+			gemnoc_anoc_ec_freq = <342>;
+			status = "okay";
+		};
+
+		/* GEMNOC QNS LLCC Target HistProbe and HistCtrl */
+		llcc_target_comp_juhu: llcc-target-comp-driver-juhu@4321800 {
+			compatible = "qcom,llcc-be-apss-comp-driver";
+			reg = <0x4321c00 0x400>,  /* HistProbe base - gemnoc_qns_llcc */
+			      <0x4321800 0x400>,  /* HistCtrl base - gemnoc_qns_llcc_histCtl */
+			      <0x680E000 0x1500>; /* APSS CTI base - for histogram controller triggers */
+			reg-names = "histprobe-base", "histctrl-base", "apss-cti-base";
+
+			hist_bin_width = <0x2018>;
+			ddr_addr_min_low = <0x0>;
+			ddr_addr_min_high = <0x0>;
+			ddr_addr_max_low = <0xffffffff>;
+			ddr_addr_max_high = <0xf>;
+			trace_probe_extid_base = <0x4000>;
+			trace_probe_extid_mask = <0xff00>;
+			ec_ctl1_base_val = <180>;
+			apss_cti_num = <6>;
+			apss_cti_trigout_start = <2>;
+			status = "okay";
+		};
+
+		/* NSS/PPE TenureProbe, TraceProbe and EventCounter */
+		ppe_comp_juhu: ppe-comp-driver-juhu@1d09000 {
+			compatible = "qcom,ppe-comp-driver";
+			reg = <0x1d09000 0x1000>,  /* TenureProbe base - nssnoc_xm_ppe */
+			      <0x4320000 0x1000>,  /* TraceProbe base - gemnoc_llcc for PPE bandwidth */
+			      <0x431A000 0x1000>,  /* EventCounter base - gemnoc_chm_ec (shared with APSS) */
+			      <0x6010000 0x1000>;  /* Core CTI base - for measurement triggers */
+			reg-names = "tenureprobe-base", "traceprobe-base", "eventcounter-base", "core-cti-base";
+
+			hist_bin_width = <0x101e>;
+			ddr_addr_min_low = <0x80000000>;
+			ddr_addr_min_high = <0x0>;
+			ddr_addr_max_low = <0xffffffff>;
+			ddr_addr_max_high = <0xf>;
+			trace_probe_extid_base = <0x6300>;
+			trace_probe_extid_mask = <0xff00>;
+			ec_ctl1_base_val = <190>;
+			core_cti_num = <5>;
+			core_cti_trigout = <0>;
+			ppe_read_event_id = <190>;
+			ppe_write_event_id = <192>;
+			status = "okay";
+		};
+
+		/* ANOC PCIE 1 Lane 0 HistProbe, HistCtrl, TraceProbe and EventCounter */
+		pcie_1lane_0_comp_juhu: pcie-1lane-0-comp-driver-juhu@601400 {
+			compatible = "qcom,pcie-1lane-0-comp-driver-juhu";
+			reg = <0x602800 0x400>,
+			      <0x601400 0x400>,
+			      <0x604000 0x1000>,
+			      <0x605000 0x1000>,
+			      <0x6010000 0x1500>;
+			reg-names = "histprobe-base", "histctrl-base", "traceprobe-base", "eventcounter-base", "core-cti-base";
+
+			hist_bin_width = <0x2018>;
+			ddr_addr_min_low = <0x0>;
+			ddr_addr_min_high = <0x0>;
+			ddr_addr_max_low = <0xffffffff>;
+			ddr_addr_max_high = <0xff>;
+			trace_probe_extid_base = <0x4500>;
+			trace_probe_extid_mask = <0xff00>;
+			ec_ctl1_base_val = <4>;
+			core_cti_num = <11>;
+			core_cti_trigout_start = <6>;
+			ec_cti_num = <13>;
+			ec_cti_trigout = <1>;
+			status = "disabled";
+		};
+
+		/* ANOC PCIE 1 Lane 1 HistProbe, HistCtrl, TraceProbe and EventCounter */
+		pcie_2lane_2_comp_juhu: pcie-2lane-2-comp-driver-juhu@603000 { /* Actually 2 Lane 2 - for 6G */
+			compatible = "qcom,pcie-2lane-2-comp-driver-juhu";
+			reg = <0x603000 0x400>, /* AGGR_NOC_aggr_noc_xm_pcie_2lane_2_HistProbe_SwId_Low */
+			      <0x602400 0x400>, /* AGGR_NOC_aggr_noc_xm_pcie_2lane_2_histCtl_SwId_Low */
+			      <0x60c000 0x1000>, /* AGGR_NOC_aggr_noc_qns_aggr_gemnoc_1_traceprb_SwId_Low */
+			      <0x606000 0x1000>, /* AGGR_NOC_aggr_noc_aggrnoc_1_event_collector_ec_SwId_Low */
+			      <0x6010000 0x1500>;
+			reg-names = "histprobe-base", "histctrl-base", "traceprobe-base", "eventcounter-base", "core-cti-base";
+
+			hist_bin_width = <0x2018>;
+			ddr_addr_min_low = <0x0>;
+			ddr_addr_min_high = <0x0>;
+			ddr_addr_max_low = <0xffffffff>;
+			ddr_addr_max_high = <0xff>;
+			trace_probe_extid_base = <0x4800>;
+			trace_probe_extid_mask = <0xff00>;
+			ec_ctl1_base_val = <4>;
+			core_cti_num = <11>;
+			core_cti_trigout_start = <1>;
+			ec_cti_num = <13>;
+			ec_cti_trigout = <1>;
+			status = "okay";
+		};
+
+		pcie_2lane_0_comp_juhu: pcie-2lane-0-comp-driver-juhu@601C00 { /* 2G */
+			compatible = "qcom,pcie-2lane-0-comp-driver-juhu";
+			reg = <0x602C00 0x400>, /* AGGR_NOC_aggr_noc_xm_pcie_2lane_0_HistProbe_SwId_Low */
+			      <0x601C00 0x400>, /* AGGR_NOC_aggr_noc_xm_pcie_2lane_0_histCtl_SwId_Low */
+			      <0x604000 0x1000>, /* AGGR_NOC_aggr_noc_qns_aggr_gemnoc_0_traceprb_SwId_Low */
+			      <0x605000 0x1000>, /* AGGR_NOC_aggr_noc_aggrnoc_0_event_collector_ec_SwId_Low */
+			      <0x6010000 0x1500>;
+			reg-names = "histprobe-base", "histctrl-base", "traceprobe-base", "eventcounter-base", "core-cti-base";
+
+			hist_bin_width = <0x2018>;
+			ddr_addr_min_low = <0x0>;
+			ddr_addr_min_high = <0x0>;
+			ddr_addr_max_low = <0xffffffff>;
+			ddr_addr_max_high = <0xff>;
+			trace_probe_extid_base = <0x4600>;
+			trace_probe_extid_mask = <0xff00>;
+			ec_ctl1_base_val = <4>;
+			core_cti_num = <15>;
+			core_cti_trigout_start = <4>;
+			ec_cti_num = <13>;
+			ec_cti_trigout = <1>;
+			status = "okay";
+		};
+
+		pcie_2lane_1_comp_juhu: pcie-2lane-1-comp-driver-juhu@602000 { /* 5G */
+			compatible = "qcom,pcie-2lane-1-comp-driver-juhu";
+			reg = <0x602E00 0x400>, /* AGGR_NOC_aggr_noc_xm_pcie_2lane_1_HistProbe_SwId_Low */
+			      <0x602000 0x400>, /* AGGR_NOC_aggr_noc_xm_pcie_2lane_1_histCtl_SwId_Low */
+			      <0x60c000 0x1000>, /* AGGR_NOC_aggr_noc_qns_aggr_gemnoc_1_traceprb_SwId_Low */
+			      <0x606000 0x1000>, /* AGGR_NOC_aggr_noc_aggrnoc_1_event_collector_ec_SwId_Low */
+			      <0x6010000 0x1500>;
+			reg-names = "histprobe-base", "histctrl-base", "traceprobe-base", "eventcounter-base", "core-cti-base";
+
+			hist_bin_width = <0x2018>;
+			ddr_addr_min_low = <0x0>;
+			ddr_addr_min_high = <0x0>;
+			ddr_addr_max_low = <0xffffffff>;
+			ddr_addr_max_high = <0xff>;
+			trace_probe_extid_base = <0x4700>;
+			trace_probe_extid_mask = <0xff00>;
+			ec_ctl1_base_val = <4>;
+			core_cti_num = <6>;
+			core_cti_trigout_start = <6>;
+			ec_cti_num = <13>;
+			ec_cti_trigout = <6>;
+			status = "okay";
+		};
+
+};

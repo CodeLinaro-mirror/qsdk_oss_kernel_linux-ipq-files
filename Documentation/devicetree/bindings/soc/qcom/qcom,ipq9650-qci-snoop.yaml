@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+# IPQ9650 NoC device tree source
+#
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+%YAML 1.2
+---
+title: Qualcomm IPQ9650 QCI Snoop Component Driver
+
+description:
+  The QCI (Qualcomm Coherent Interconnect) snoop component driver provides
+  monitoring capabilities for cache coherency operations in the IPQ9650 SoC.
+
+properties:
+  compatible:
+    const: qcom,qci-snoop-comp-driver
+
+  reg:
+    maxItems: 1
+    description: EventCounter base address
+
+  reg-names:
+    items:
+      - const: eventcounter-base
+
+  qcom,snoop-base:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description: Snoop base configuration value
+
+  status:
+    description: Device status
+    enum:
+      - okay
+      - disabled
+
+required:
+  - compatible
+  - reg
+  - reg-names
+
+additionalProperties: false
+
+examples:
+  - |
+    soc {
+        #address-cells = <1>;
+        #size-cells = <1>;
+
+        qci-snoop-comp {
+            compatible = "qcom,qci-snoop-comp-driver";
+            reg = <0x431A000 0x1000>;
+            reg-names = "eventcounter-base";
+            qcom,snoop-base = <0x24>;
+            status = "okay";
+        };
+    };
