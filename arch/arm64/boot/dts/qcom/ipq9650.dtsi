@@ -2172,7 +2172,9 @@
 		};
 
 		apps_iommu: iommu@15000000 {
-			compatible = "arm,smmu-v2";
+			compatible = "qcom,ipq9650-smmu-500",
+				     "qcom,smmu-500",
+				     "arm,mmu-500";
 			reg = <0x15000000 0x40000>;
 
 			interrupts = <GIC_SPI 527 IRQ_TYPE_LEVEL_HIGH>,
