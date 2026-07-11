@@ -322,9 +322,7 @@
 
 	qseecom: qseecom {
 		compatible = "ipq5424-qseecom";
-#if !defined(__IPQ_MEM_PROFILE_256_MB__)
 		memory-region = <&tzapp>;
-#endif
 	};
 
 	reserved-memory {
@@ -333,13 +331,6 @@
 		ranges;
 
 #if !defined(__IPQ_MEM_PROFILE_256_MB__)
-		tzapp: tzapp@0x89900000 {
-		#if !defined(__IPQ_MEM_PROFILE_512_MB__)
-			reg = <0x0 0x89900000 0x0 0x600000>;
-		#endif
-			no-map;
-		};
-
 		bootloader@0x8a200000 {
 			reg = <0x0 0x8a200000 0x0 0x400000>;
 			no-map;
@@ -380,6 +371,10 @@
 		};
 
 		minidump_mem: minidump_mem@0 {
+			no-map;
+		};
+
+		tzapp: tzapp@0 {
 			no-map;
 		};
 

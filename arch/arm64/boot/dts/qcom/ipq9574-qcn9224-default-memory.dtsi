@@ -91,11 +91,6 @@
 		#size-cells = <2>;
 		ranges;
 
-		tzapp:tzapp@49600000 {  /* TZAPPS */
-			reg = <0x0 0x49600000 0x0 0x00600000>;
-			no-map;
-		};
-
 		q6_region: wcnss@4ab00000 {
 			no-map;
 			reg = <0x0 0x4ab00000 0x0 0x02b00000>;
@@ -149,6 +144,10 @@
 			reg = <0x0 0x56D00000 0x0 0x03A00000>;
 			status = "disabled";
                 };
+
+		tzapp: tzapp@0 {  /* TZAPPS */
+			no-map;
+		};
 
 		mhi_region0: dma_pool0@0 {
 			compatible = "shared-dma-pool";
