@@ -195,6 +195,8 @@ static inline bool consume_skb_can_recycle(const struct sk_buff *skb,
 	if (skb->active_extensions)
 		return false;
 #endif
+	if (unlikely(!skb->is_from_custom_cache))
+		return false;
 
 	return true;
 }
