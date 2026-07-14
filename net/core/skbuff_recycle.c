@@ -1213,23 +1213,31 @@ void __init skb_recycler_init(void)
 
 	for_each_possible_cpu(cpu) {
 		skb_queue_head_init(&per_cpu(recycle_list, cpu));
+#if defined(CONFIG_SKB_RECYCLE_SIZE) && (CONFIG_SKB_RECYCLE_SIZE == 1664)
+		skb_recycler_max_skbs_core[cpu] = SKB_RECYCLE_MAX_SKBS;
+#else
 		if (skb_get_mem_profile() == SKB_MEM_PROFILE_LOW)
 			skb_recycler_max_skbs_core[cpu] = SKB_RECYCLE_MAX_SKBS_LOW;
 		else if (skb_get_mem_profile() == SKB_MEM_PROFILE_MEDIUM)
 			skb_recycler_max_skbs_core[cpu] = SKB_RECYCLE_MAX_SKBS_MEDIUM;
 		else
 			skb_recycler_max_skbs_core[cpu] = SKB_RECYCLE_MAX_SKBS;
+#endif
 	}
 
 #ifdef CONFIG_SKB_RECYCLER_MULTI_CPU
 	for_each_possible_cpu(cpu) {
 		skb_queue_head_init(&per_cpu(recycle_spare_list, cpu));
+#if defined(CONFIG_SKB_RECYCLE_SIZE) && (CONFIG_SKB_RECYCLE_SIZE == 1664)
+		skb_recycler_max_spare_skbs_core[cpu] = SKB_RECYCLE_SPARE_MAX_SKBS;
+#else
 		if (skb_get_mem_profile() == SKB_MEM_PROFILE_LOW)
 			skb_recycler_max_spare_skbs_core[cpu] = SKB_RECYCLE_SPARE_MAX_SKBS_LOW;
 		else if (skb_get_mem_profile() == SKB_MEM_PROFILE_MEDIUM)
 			skb_recycler_max_spare_skbs_core[cpu] = SKB_RECYCLE_SPARE_MAX_SKBS_MEDIUM;
 		else
 			skb_recycler_max_spare_skbs_core[cpu] = SKB_RECYCLE_SPARE_MAX_SKBS;
+#endif
 	}
 
 	spin_lock_init(&glob_recycler.lock);
