@@ -405,6 +405,8 @@ extern struct qmi_elem_info qmi_get_chip_params_resp_msg_v01_ei[];
 
 #define DPR_QCN9625_FIRMWARE_DIR "qcn9625"
 #define CHIP_ID_QCN9625 0x111317cb
+#define DPR_QCN9589_FIRMWARE_DIR "qcn9589"
+#define CHIP_ID_QCN9589	0x111417cb
 
 /* Domain to attach number mapping node */
 struct domain_attach_node {
