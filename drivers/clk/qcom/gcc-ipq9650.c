@@ -2566,24 +2566,6 @@ static struct clk_branch gcc_primess_ahbm_partial_clk = {
 	},
 };
 
-static struct clk_branch gcc_primess_ahbs_clk = {
-	.halt_reg = 0x26034,
-	.halt_check = BRANCH_HALT,
-	.clkr = {
-		.enable_reg = 0x26034,
-		.enable_mask = BIT(0),
-		.hw.init = &(const struct clk_init_data) {
-			.name = "gcc_primess_ahbs_clk",
-			.parent_hws = (const struct clk_hw*[]) {
-				&gcc_pcnoc_bfdcd_clk_src.clkr.hw,
-			},
-			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT,
-			.ops = &clk_branch2_ops,
-		},
-	},
-};
-
 static struct clk_branch gcc_primess_atb_clk = {
 	.halt_reg = 0x26030,
 	.halt_check = BRANCH_HALT_VOTED,
@@ -3604,7 +3586,6 @@ static struct clk_regmap *gcc_ipq9650_clocks[] = {
 	[GCC_PRIMESS_AHBM_CLK] = &gcc_primess_ahbm_clk.clkr,
 	[GCC_PRIMESS_AHBM_CLK_SRC] = &gcc_primess_ahbm_clk_src.clkr,
 	[GCC_PRIMESS_AHBM_PARTIAL_CLK] = &gcc_primess_ahbm_partial_clk.clkr,
-	[GCC_PRIMESS_AHBS_CLK] = &gcc_primess_ahbs_clk.clkr,
 	[GCC_PRIMESS_ATB_CLK] = &gcc_primess_atb_clk.clkr,
 	[GCC_PRIMESS_AXIM_CLK] = &gcc_primess_axim_clk.clkr,
 	[GCC_PRIMESS_AXIM_CLK_SRC] = &gcc_primess_axim_clk_src.clkr,
