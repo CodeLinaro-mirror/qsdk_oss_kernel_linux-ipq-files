@@ -99,6 +99,7 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	ipq9574-rdp475-c1.dtb \
 	ipq9650-db-ju01.dtb \
 	ipq9650-db-ju01-c1.dtb \
+	ipq9650-db-ju01-c2.dtb \
 	ipq9650-db-ju02.dtb \
 	ipq9650-emulation.dtb \
 	ipq9650-emulation-fbc.dtb \
@@ -111,6 +112,7 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	ipq9650-rdp529.dtb \
 	ipq9650-rdp530.dtb \
 	ipq9650-rdp532.dtb \
+	ipq9650-tb-ju01.1.dtb \
 	ipq5332-rdp441.dtb \
 	ipq5332-rdp441-qca81xx.dtb \
 	ipq5332-rdp441-qca81xx-i2c.dtb \
