@@ -77,34 +77,6 @@ static int debug_panic_handler(struct notifier_block *nb, unsigned long action,
 	return NOTIFY_DONE;
 }
 
-static int ipq_debug_atomic_ssr_handler(struct notifier_block *nb,
-					unsigned long action, void *data)
-{
-	struct restart_reason *reason;
-	int val = IPQ5424_INTERNAL_Q6_CRASH;
-
-	reason = container_of(nb, struct restart_reason, atomic_ssr_blk);
-
-	if (action == QCOM_SSR_NOTIFY_CRASH)
-		memcpy_toio(reason->wr_addr, &val, sizeof(int));
-
-	return NOTIFY_DONE;
-}
-
-static int ipq_debug_ssr_handler(struct notifier_block *nb,
-				 unsigned long action, void *data)
-{
-	struct restart_reason *reason;
-	int val = 0;
-
-	reason = container_of(nb, struct restart_reason, ssr_blk);
-
-	if (action == QCOM_SSR_BEFORE_POWERUP)
-		memcpy_toio(reason->wr_addr, &val, sizeof(int));
-
-	return NOTIFY_DONE;
-}
-
 static int restart_reason_logging(unsigned int reason)
 {
 	char reset_reason_msg[RESET_REASON_MSG_MAX_LEN] = {};
@@ -292,6 +264,35 @@ static void restart_reason_logging_ipq9650(struct device *dev)
 		sbl_reason, gcc_rst_status, tz_reason, tme_reason, kernel_reason);
 }
 
+#ifdef CONFIG_REMOTEPROC
+static int ipq_debug_atomic_ssr_handler(struct notifier_block *nb,
+					unsigned long action, void *data)
+{
+	struct restart_reason *reason;
+	int val = IPQ5424_INTERNAL_Q6_CRASH;
+
+	reason = container_of(nb, struct restart_reason, atomic_ssr_blk);
+
+	if (action == QCOM_SSR_NOTIFY_CRASH)
+		memcpy_toio(reason->wr_addr, &val, sizeof(int));
+
+	return NOTIFY_DONE;
+}
+
+static int ipq_debug_ssr_handler(struct notifier_block *nb,
+				 unsigned long action, void *data)
+{
+	struct restart_reason *reason;
+	int val = 0;
+
+	reason = container_of(nb, struct restart_reason, ssr_blk);
+
+	if (action == QCOM_SSR_BEFORE_POWERUP)
+		memcpy_toio(reason->wr_addr, &val, sizeof(int));
+
+	return NOTIFY_DONE;
+}
+
 static bool is_rproc_device_available(void)
 {
 	struct device_node *node;
@@ -348,6 +349,13 @@ static int ipq_debug_register_rproc_notifiers(struct platform_device *pdev,
 
 	return 0;
 }
+#else
+static inline int ipq_debug_register_rproc_notifiers(struct platform_device *pdev,
+						     struct restart_reason *reason)
+{
+	return 0;
+}
+#endif
 
 static int ipq_debug_probe(struct platform_device *pdev)
 {
