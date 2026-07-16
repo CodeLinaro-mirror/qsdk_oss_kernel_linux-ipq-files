@@ -688,3 +688,65 @@
 &pon {
 	status = "okay";
 };
+
+&ess_switch {
+	port_scheduler_resource {
+		/delete-node/ port@2;
+		/delete-node/ port@3;
+		/delete-node/ port@4;
+		/delete-node/ port@1;
+		port@1 {
+			port_id = <1>;
+			ucast_queue = <0 31>;
+			mcast_queue = <272 275>;
+			l0sp = <0 7>;
+			l0cdrr = <0 31>;
+			l0edrr = <0 31>;
+			l1cdrr = <0 7>;
+			l1edrr = <0 7>;
+		};
+	};
+
+	port_scheduler_config {
+		/delete-node/ port@2;
+		/delete-node/ port@3;
+		/delete-node/ port@4;
+		/delete-node/ port@1;
+		port@1 {
+			port_id = <1>;
+			l1scheduler {
+				group@0 {
+					sp = <0>;
+					sp_loop_pri = <8>;
+					sp_max_pri = <1>;
+					/* cpri cdrr epri edrr */
+					cfg = <0 0 0 0>;
+				};
+			};
+			l0scheduler {
+				group@0 {
+					ucast_queue = <0>;
+					ucast_loop_pri = <8>;
+					mcast_queue = <272>;
+					mcast_loop_pri = <4>;
+					cfg = <0 0 0 0 0>;
+				};
+				group@1 {
+					ucast_queue = <8>;
+					ucast_loop_pri = <8>;
+					cfg = <2 0 8 0 8>;
+				};
+				group@2 {
+					ucast_queue = <16>;
+					ucast_loop_pri = <8>;
+					cfg = <4 0 16 0 16>;
+				};
+				group@3 {
+					ucast_queue = <24>;
+					ucast_loop_pri = <8>;
+					cfg = <6 0 24 0 24>;
+				};
+			};
+		};
+	};
+};

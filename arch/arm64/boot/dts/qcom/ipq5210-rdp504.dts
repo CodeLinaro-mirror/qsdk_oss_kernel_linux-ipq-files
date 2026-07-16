@@ -613,3 +613,61 @@
 &mlo_global_mem0 {
 	status = "okay";
 };
+
+&ess_switch {
+	port_scheduler_resource {
+		/delete-node/ port@6;
+		/delete-node/ port@5;
+		port@5 {
+			port_id = <5>;
+			ucast_queue = <32 63>;
+			mcast_queue = <288 291>;
+			l0sp = <8 15>;
+			l0cdrr = <32 63>;
+			l0edrr = <32 63>;
+			l1cdrr = <8 15>;
+			l1edrr = <8 15>;
+		};
+	};
+
+	port_scheduler_config {
+		/delete-node/ port@6;
+		/delete-node/ port@5;
+		port@5 {
+			port_id = <5>;
+			l1scheduler {
+				group@0 {
+					sp = <8>;
+					sp_loop_pri = <8>;
+					sp_max_pri = <1>;
+					/* cpri cdrr epri edrr */
+					cfg = <0 8 0 8>;
+				};
+			};
+			l0scheduler {
+				group@0 {
+					ucast_queue = <32>;
+					ucast_loop_pri = <8>;
+					mcast_queue = <288>;
+					mcast_loop_pri = <4>;
+					cfg = <8 0 32 0 32>;
+				};
+				group@1 {
+					ucast_queue = <40>;
+					ucast_loop_pri = <8>;
+					cfg = <10 0 40 0 40>;
+				};
+				group@2 {
+					ucast_queue = <48>;
+					ucast_loop_pri = <8>;
+					cfg = <12 0 48 0 48>;
+				};
+				group@3 {
+					ucast_queue = <56>;
+					ucast_loop_pri = <8>;
+					cfg = <14 0 56 0 56>;
+				};
+			};
+		};
+	};
+};

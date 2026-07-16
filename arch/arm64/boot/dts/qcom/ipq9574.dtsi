@@ -330,13 +330,6 @@
 		};
 #endif
 
-		tzapp:tzapp@49600000 {  /* TZAPPS */
-		#if !defined(__IPQ_MEM_PROFILE_512_MB__)
-			reg = <0x0 0x49600000 0x0 0x00600000>;
-		#endif
-			no-map;
-		};
-
 		bootloader@4a000000 {
 			reg = <0x0 0x4a000000 0x0 0x00500000>;
 			no-map;
@@ -360,6 +353,10 @@
 		};
 
 		minidump_mem: minidump_mem@0 {
+			no-map;
+		};
+
+		tzapp: tzapp@0 {  /* TZAPPS */
 			no-map;
 		};
 
