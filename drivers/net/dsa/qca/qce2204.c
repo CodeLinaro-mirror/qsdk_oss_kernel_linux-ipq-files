@@ -7,6 +7,7 @@
 #include <linux/phy.h>
 #include <linux/netdevice.h>
 #include <linux/bitfield.h>
+#include <linux/debugfs.h>
 #include <linux/regmap.h>
 #include <linux/of_net.h>
 #include <linux/of_platform.h>
@@ -15,6 +16,7 @@
 #include <linux/clk.h>
 #include <linux/reset.h>
 #include <linux/gpio/consumer.h>
+#include <linux/seq_file.h>
 #include <net/dsa.h>
 #include <linux/dsa/8021q.h>
 
@@ -224,6 +226,137 @@ void qce2204_port_set_status(struct qce2204_priv *priv, int port, int enable)
 	dev_dbg(priv->dev, "Port %d: %s\n", port, enable ? "enabled" : "disabled");
 }
 
+/* Queue hang detection: debugfs control interface
+ *
+ * Each switch instance exposes
+ * /sys/kernel/debug/qce2k:<dev-name>/mq_hang_polling (a top-level directory
+ * unique per switch) as a read/write interface:
+ *   cat mq_hang_polling      -- show enabled state and statistics
+ *   echo 1 > mq_hang_polling -- enable polling
+ *   echo 0 > mq_hang_polling -- disable polling and reset all counters
+ */
+static int qce2204_queue_hang_show(struct seq_file *m, void *v)
+{
+	struct qce2204_priv *priv = m->private;
+	u32 flush_ok   = READ_ONCE(priv->queue_flush_ok_cnt);
+	u32 flush_fail = READ_ONCE(priv->queue_flush_fail_cnt);
+	u32 total_flush = flush_ok + flush_fail;
+
+	seq_printf(m, "poll_enabled  : %d\n",
+		   atomic_read(&priv->queue_hang_poll_enabled));
+	seq_printf(m, "hang_cnt      : %u\n", READ_ONCE(priv->queue_hang_cnt));
+	seq_printf(m, "flush_ok_cnt  : %u\n", flush_ok);
+	seq_printf(m, "flush_fail_cnt: %u\n", flush_fail);
+
+	if (total_flush) {
+		u32 rate100 = flush_ok * 10000 / total_flush;
+
+		seq_printf(m, "flush_success : %u.%02u%%\n",
+			   rate100 / 100, rate100 % 100);
+	} else {
+		seq_puts(m, "flush_success : N/A\n");
+	}
+
+	return 0;
+}
+
+static int qce2204_queue_hang_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, qce2204_queue_hang_show, inode->i_private);
+}
+
+static ssize_t qce2204_queue_hang_write(struct file *file,
+					const char __user *buf,
+					size_t count, loff_t *ppos)
+{
+	struct qce2204_priv *priv = file_inode(file)->i_private;
+	char kbuf[4];
+	int val;
+
+	if (!count || count > sizeof(kbuf) - 1)
+		return -EINVAL;
+
+	if (copy_from_user(kbuf, buf, count))
+		return -EFAULT;
+
+	kbuf[count] = '\0';
+	if (kstrtoint(strstrip(kbuf), 10, &val))
+		return -EINVAL;
+
+	if (val) {
+		/* Queue hang detection only applies to none-tag mode DSA */
+		if (priv->tag_protocol != DSA_TAG_PROTO_NONE) {
+			dev_info(priv->dev,
+				 "queue hang polling only supported in none-tag mode\n");
+			return -EOPNOTSUPP;
+		}
+
+		atomic_set(&priv->queue_hang_poll_enabled, 1);
+		schedule_delayed_work(&priv->queue_hang_work,
+				      msecs_to_jiffies(QCE2204_QUEUE_HANG_POLL_INTERVAL_MS));
+	} else {
+		atomic_set(&priv->queue_hang_poll_enabled, 0);
+		qce2204_ppe_queue_hang_work_stop(priv);
+	}
+
+	dev_info(priv->dev, "queue hang polling %s\n",
+		 val ? "enabled" : "disabled");
+
+	return count;
+}
+
+static const struct file_operations qce2204_queue_hang_fops = {
+	.owner		= THIS_MODULE,
+	.open		= qce2204_queue_hang_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+	.write		= qce2204_queue_hang_write,
+};
+
+/**
+ * qce2204_queue_hang_debugfs_setup() - Create the queue hang debugfs interface
+ * @priv: QCE2204 private data
+ *
+ * Each instance creates its own top-level debugfs directory "qce2k:<dev-name>"
+ * (unique per switch) and places the control file "mq_hang_polling" inside it.
+ */
+static void qce2204_queue_hang_debugfs_setup(struct qce2204_priv *priv)
+{
+	char name[64];
+
+	scnprintf(name, sizeof(name), "%s:%s", QCE2204_QUEUE_HANG_DEBUGFS_ROOT,
+		  dev_name(priv->dev));
+
+	priv->root_dentry = debugfs_create_dir(name, NULL);
+	if (IS_ERR(priv->root_dentry)) {
+		dev_warn(priv->dev, "Unable to create debugfs /%s directory\n", name);
+		priv->root_dentry = NULL;
+		return;
+	}
+
+	priv->queue_hang_dentry =
+		debugfs_create_file(QCE2204_QUEUE_HANG_DEBUGFS_NAME, 0644,
+				    priv->root_dentry, priv,
+				    &qce2204_queue_hang_fops);
+	if (IS_ERR_OR_NULL(priv->queue_hang_dentry))
+		dev_warn(priv->dev, "Failed to create debugfs/%s\n",
+			 QCE2204_QUEUE_HANG_DEBUGFS_NAME);
+}
+
+/**
+ * qce2204_queue_hang_debugfs_remove() - Remove the queue hang debugfs interface
+ * @priv: QCE2204 private data
+ *
+ * Removes this instance's top-level directory and the control file within.
+ */
+static void qce2204_queue_hang_debugfs_remove(struct qce2204_priv *priv)
+{
+	debugfs_remove_recursive(priv->root_dentry);
+	priv->root_dentry = NULL;
+	priv->queue_hang_dentry = NULL;
+}
+
 /* DSA operations - placeholder implementations */
 static int qce2204_setup(struct dsa_switch *ds)
 {
@@ -265,6 +398,10 @@ static int qce2204_setup(struct dsa_switch *ds)
 	}
 
 	dev_info(priv->dev, "Setup completed.\n");
+
+	qce2204_ppe_queue_hang_work_start(priv);
+	qce2204_queue_hang_debugfs_setup(priv);
+
 	return 0;
 }
 
@@ -757,6 +894,8 @@ static void qce2204_mdio_remove(struct mdio_device *mdiodev)
 	struct qce2204_priv *priv = dev_get_drvdata(&mdiodev->dev);
 
 	if (priv && priv->ds) {
+		qce2204_queue_hang_debugfs_remove(priv);
+		qce2204_ppe_queue_hang_work_stop(priv);
 		dsa_unregister_switch(priv->ds);
 		qce2204_port_mac_deinit(priv);
 	}
