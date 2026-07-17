@@ -2544,6 +2544,8 @@ static const char *get_dpr_firmware_dir(u32 chip_id)
 	switch (chip_id) {
 	case CHIP_ID_QCN9625:
 		return DPR_QCN9625_FIRMWARE_DIR;
+	case CHIP_ID_QCN9589:
+		return DPR_QCN9589_FIRMWARE_DIR;
 	default:
 		return NULL;
 	}
