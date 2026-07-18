@@ -36,6 +36,13 @@
 		/delete-node/ cpu4-1-thermal;
 	};
 
+	reserved-memory {
+		padding {
+			reg = <0x0 0x8a540000 0x0 0xC0000>;
+			no-map;
+		};
+	};
+
 	soc@0 {
 		/delete-node/ etm@6c80000;
 
