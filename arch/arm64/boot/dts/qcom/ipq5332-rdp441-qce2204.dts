@@ -45,7 +45,7 @@
 
 		qce2204_uniphy1_ppe_250m: qce2204-uniphy1-ppe-250m {
 			compatible = "fixed-clock";
-			clock-frequency = <250000000>;
+			clock-frequency = <258000000>;
 			#clock-cells = <0>;
 		};
 	};
