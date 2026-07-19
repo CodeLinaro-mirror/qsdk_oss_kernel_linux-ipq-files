@@ -3724,6 +3724,16 @@
 					   <GIC_SPI 353 IRQ_TYPE_EDGE_RISING>;
 				interrupt-names = "cdr_proc_irq","rdr_proc_irq";
 			};
+
+#ifdef __CONFIG_IO_COHERENCY__
+			eip_ioc {
+				prop-name = "eip_ioc";
+				reg-base = <0x01D00000>;
+				reg-offset = <0x0000D038 0x44410>,	/* EIP197 Type LUT lower bits */
+					<0x0000D008 0x100>;		/* EIP197 Main control low */
+			};
+#endif
+
 		};
 
 		eip_crypto: eip_crypto {
