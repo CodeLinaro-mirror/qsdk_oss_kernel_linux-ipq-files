@@ -458,7 +458,7 @@ static void cdsp_dcvs_work_fn(struct work_struct *work)
 			if (!drv->vdd_mx) {
 				dev_dbg(drv->dev, "KVP[%d]: MX rail not available on this board\n", i);
 				ret = -EINVAL;
-				goto send_response;
+				continue;
 			}
 			reg = drv->vdd_mx;
 		} else {
