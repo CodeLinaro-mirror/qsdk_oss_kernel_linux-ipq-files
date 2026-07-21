@@ -1644,30 +1644,80 @@ free_resp_buf:
 
 }
 
+/**
+ * populate_soc_hw_features() - Populate SoC HW features from SMEM
+ * @svc: License manager service context
+ *
+ * Attempts to read HW features from SMEM. First tries the legacy format
+ * (SMEM_SOFTSKU_INFO), and if that fails, tries the new format
+ * (SMEM_FID_LIST_INFO). This approach automatically handles both old
+ * and new platforms without requiring platform detection.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
 static int populate_soc_hw_features(struct lm_svc_ctx *svc)
 {
-	u32 entries = 0;
-	int i = 0;
-	size_t size;
+	struct softsku_info_smem *smem_legacy;
+	struct sec_enforceHWFeatureId *smem_new;
 	struct lm_soc_hw_feat *feat;
+	u32 entries;
+	size_t size;
+	int i;
 
-	struct softsku_info_smem *smem = qcom_smem_get(QCOM_SMEM_HOST_ANY,
-			SMEM_SOFTSKU_INFO, &size);
-	if (IS_ERR(smem))
-		return PTR_ERR(smem);
+	smem_legacy = qcom_smem_get(QCOM_SMEM_HOST_ANY, SMEM_SOFTSKU_INFO, &size);
+	if (!IS_ERR(smem_legacy)) {
+		/* Legacy format found */
+		entries = size / sizeof(struct softsku_info_smem);
+		if (entries > MAX_SOC_HW_FID) {
+			dev_err(svc->dev, "Too many HW features: %u (max: %u)\n",
+				entries, MAX_SOC_HW_FID);
+			return -EINVAL;
+		}
 
-	entries = size / sizeof(struct softsku_info_smem);
-	if (entries > MAX_SOC_HW_FID)
+		for (i = 0; i < entries; i++) {
+			feat = kzalloc(sizeof(*feat), GFP_KERNEL);
+			if (!feat)
+				return -ENOMEM;
+
+			feat->feature_id = smem_legacy[i].feature_id;
+			feat->feature_status = smem_legacy[i].feature_status;
+			feat->HWEnforceStatus = smem_legacy[i].HWEnforceStatus;
+			feat->fid_updated = smem_legacy[i].fid_updated;
+			list_add_tail(&feat->node, &svc->soc_hw_feature_list);
+		}
+
+		dev_info(svc->dev, "Populated %u SoC HW features (legacy format)\n", entries);
+		return 0;
+	}
+
+	smem_new = qcom_smem_get(QCOM_SMEM_HOST_ANY, SMEM_FID_LIST_INFO, &size);
+	if (IS_ERR(smem_new))
+		return PTR_ERR(smem_new);
+
+	/* New format found */
+	entries = size / sizeof(struct sec_enforceHWFeatureId);
+	if (entries > MAX_SOC_HW_FID) {
+		dev_err(svc->dev, "Too many HW features: %u (max: %u)\n",
+			entries, MAX_SOC_HW_FID);
 		return -EINVAL;
+	}
 
 	for (i = 0; i < entries; i++) {
 		feat = kzalloc(sizeof(*feat), GFP_KERNEL);
-		feat->feature_id = smem[i].feature_id;
-		feat->feature_status = smem[i].feature_status;
-		feat->HWEnforceStatus = smem[i].HWEnforceStatus;
+		if (!feat)
+			return -ENOMEM;
+
+		feat->feature_id = smem_new[i].feature_id;
+		feat->HWEnforceStatus = smem_new[i].HWFeatureStatus;
+		/* Map HWFeatureStatus to feature_status */
+		feat->feature_status = smem_new[i].HWFeatureStatus ?
+				       SEC_FEATURE_STATUS_NOTACTIVE :
+				       SEC_FEATURE_STATUS_ACTIVE;
+		feat->fid_updated = true;
 		list_add_tail(&feat->node, &svc->soc_hw_feature_list);
 	}
 
+	dev_info(svc->dev, "Populated %u SoC HW features (new format)\n", entries);
 	return 0;
 }
 
