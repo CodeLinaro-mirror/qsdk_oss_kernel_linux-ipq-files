@@ -1087,6 +1087,11 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		break;
 
 		case TTIME_GET_REQ_PARAMS:
+			if (!svc->tmel_bounded) {
+				dev_err(svc->dev, "TTIME request not supported\n");
+				return -ENOTSUPP;
+			}
+
 			ret = copy_from_user(&ttime_rp, argp, sizeof(struct ttime_get_req_params));
 			if (ret) {
 				dev_err(svc->dev, "IOCTL: TTIME get req params from user error\n");
@@ -1142,6 +1147,11 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		break;
 
 		case TTIME_SET:
+			if (!svc->tmel_bounded) {
+				dev_err(svc->dev, "TTIME set not supported\n");
+				return -ENOTSUPP;
+			}
+
 			ret = copy_from_user(&ttime_st, argp, sizeof(struct ttime_set));
 			if (ret) {
 				dev_err(svc->dev, "IOCTL: TTIME set copy from user error\n");
