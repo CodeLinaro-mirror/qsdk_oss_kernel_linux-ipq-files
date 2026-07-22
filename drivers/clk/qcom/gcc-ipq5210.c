@@ -2248,7 +2248,7 @@ static struct clk_branch gcc_pon_apb_clk = {
 				&gcc_pcnoc_bfdcd_clk_src.clkr.hw,
 			},
 			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT | CLK_IS_CRITICAL,
+			.flags = CLK_SET_RATE_PARENT | CLK_IGNORE_UNUSED,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -2266,7 +2266,7 @@ static struct clk_branch gcc_pon_tm_clk = {
 				&gcc_pon_tm_div_clk_src.hw,
 			},
 			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT | CLK_IS_CRITICAL,
+			.flags = CLK_SET_RATE_PARENT | CLK_IGNORE_UNUSED,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -2284,7 +2284,7 @@ static struct clk_branch gcc_pon_tm2x_clk = {
 				&gcc_pon_tm2x_clk_src.clkr.hw,
 			},
 			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT | CLK_IS_CRITICAL,
+			.flags = CLK_SET_RATE_PARENT | CLK_IGNORE_UNUSED,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -2646,6 +2646,10 @@ static int gcc_ipq5210_probe(struct platform_device *pdev)
 	/* Configure GCC_PON_TM2X_CFG_RCGR to 400MHz */
 	regmap_write(regmap, 0x3c008, 0x205);
 	regmap_update_bits(regmap, 0x3c004, BIT(0), BIT(0));
+	/* Turn on the PON clocks */
+	regmap_update_bits(regmap, 0x3c00c, BIT(0), BIT(0));
+	regmap_update_bits(regmap, 0x3c014, BIT(0), BIT(0));
+	regmap_update_bits(regmap, 0x3c01c, BIT(0), BIT(0));
 
 	/* Configure QDSS_STM_CFG_RCGR to 200MHz */
 	regmap_write(regmap, 0x2d010, 0x107);
