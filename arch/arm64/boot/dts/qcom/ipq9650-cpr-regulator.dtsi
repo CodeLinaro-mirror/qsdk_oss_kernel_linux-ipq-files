@@ -31,11 +31,11 @@
 			    "alias2-pwr-gate",
 			    "alias3-pwr-gate",
 			    "apm-ctl-override";
-		status = "disabled";
-		qcom,apm-post-halt-delay = <0x2>;
-		qcom,apm-halt-clk-delay = <0x11>;
-		qcom,apm-resume-clk-delay = <0x10>;
-		qcom,apm-sel-switch-delay = <0x01>;
+		status = "okay";
+		qcom,apm-post-halt-delay = <0xb>;
+		qcom,apm-halt-clk-delay = <0xc>;
+		qcom,apm-resume-clk-delay = <0xd>;
+		qcom,apm-sel-switch-delay = <0xe>;
 	};
 
 	apc_cpr: cpr4-ctrl@b018000 {
