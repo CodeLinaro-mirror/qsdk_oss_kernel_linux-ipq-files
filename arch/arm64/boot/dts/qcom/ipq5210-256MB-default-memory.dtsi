@@ -23,7 +23,7 @@
 	 * |         |              |                         |
 	 * +---------+--------------+-------------------------+
 	 * |         |              |                         |
-	 * |  MLO    |    DYNAMIC   |          6MB            |
+	 * |  MLO    |    DYNAMIC   |          8MB            |
 	 * |         |              |                         |
 	 * +==================================================+
 	 * |                                                  |
@@ -41,24 +41,24 @@
 		#size-cells = <2>;
 		ranges;
 
-		qcn9625_pcie0: qcn9625_pcie0@0 {
-			no-map;
+		qcn9625_pcie0_cma: qcn9625_pcie0_cma {
+			compatible = "shared-dma-pool";
+			reusable;
 			size = <0x0 0x01c00000>;
-			alignment = <0x0 0x100000>;
 			status = "disabled";
 		};
 
-		qcn9224_pcie0: qcn9224_pcie0@0 {
+		qcn9224_pcie0: qcn9224_pcie0 {
 			no-map;
 			size = <0x0 0x1300000>;
 			alignment = <0x0 0x100000>;
 			status = "disabled";
 		};
 
-		mlo_global_mem0: mlo_global_mem_0@0 {
-			no-map;
-			size = <0x0 0x600000>;
-			alignment = <0x0 0x100000>;
+		mlo_global_cma: mlo_global_cma {
+			compatible = "shared-dma-pool";
+			reusable;
+			size = <0x0 0x800000>;
 			status = "disabled";
 		};
 	};

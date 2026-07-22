@@ -290,7 +290,7 @@
 
 		qcom,mhi@0 {
 			reg = <0 0 0 0 0>;
-			memory-region = <&qcn9589_pcie1>, <&mlo_global_mem0>;
+			memory-region = <&qcn9589_pcie1_cma>, <&mlo_global_cma>;
 			memory-region-names = "host-ddr-mem", "mlo-global-mem";
 			qcom,board_id = <0x5011>;
 
@@ -339,7 +339,7 @@
 
 		qcom,mhi@0 {
 			reg = <0 0 0 0 0>;
-			memory-region = <&qcn9625_pcie3>, <&mlo_global_mem0>;
+			memory-region = <&qcn9625_pcie3_cma>, <&mlo_global_cma>;
 			memory-region-names = "host-ddr-mem", "mlo-global-mem";
 			qcom,board_id = <0x200a>;
 			qcom,wsi-controller;
@@ -368,15 +368,15 @@
 	};
 };
 
-&qcn9589_pcie1 {
+&qcn9589_pcie1_cma {
 	status = "okay";
 };
 
-&qcn9625_pcie3 {
+&qcn9625_pcie3_cma {
 	status = "okay";
 };
 
-&mlo_global_mem0 {
+&mlo_global_cma {
 	status = "okay";
 };
 
