@@ -3,47 +3,24 @@
  * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #include <linux/err.h>
+#include <linux/list.h>
 #include <linux/module.h>
+#include <linux/mutex.h>
 #include <linux/nvmem-consumer.h>
 #include <linux/nvmem-provider.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
+#include <linux/regulator/coupler.h>
 #include <linux/regulator/driver.h>
+#include <linux/regulator/qcom-gpio-regulator.h>
+#include <linux/string.h>
 
 #include <soc/qcom/socinfo.h>
 
 #define MIN_VOLT 0
 #define MAX_VOLT 1
-
-/**
- * enum mode_id - Operating modes for 3-gpio voltage regulators
- * @MODE_SVS: Save mode
- * @MODE_NOM: Nominal mode
- * @MODE_TUR: Turbo mode
- * @MAX_MODES: Number of operating modes
- */
-enum mode_id {
-	MODE_SVS,
-	MODE_NOM,
-	MODE_TUR,
-	MAX_MODES
-};
-
-/**
- * enum type_id - Process type identifiers for voltage binning
- * @TYPE0: Type 0 (lowest voltage)
- * @TYPE1: Type 1 (nominal voltage)
- * @TYPE2: Type 2 (highest voltage)
- * @MAX_TYPES: Number of process types
- */
-enum type_id {
-	TYPE0,
-	TYPE1,
-	TYPE2,
-	MAX_TYPES
-};
 
 /**
  * struct fuse_params - NVMEM fuse parameters for voltage calculation
@@ -90,18 +67,6 @@ struct gpio_regulator_params {
 };
 
 /**
- * struct reg_info - Private data for voltage regulators
- * @types: Determined process type for each mode (SVS, NOM, TUR)
- * @voltage_table: Voltage table indexed by [mode][type] in microvolts
- * @base_regulator: Pointer to the underlying GPIO regulator
- */
-struct reg_info {
-	enum type_id types[MAX_MODES];
-	int voltage_table[MAX_MODES][MAX_TYPES];
-	struct regulator *base_regulator;
-};
-
-/**
  * struct gpio_regulator_data - unified gpio regulator data structure
  * @regulator_name:	Regulator name which needs to be controlled
  * @params:		Pointer to regulator parameters
@@ -111,71 +76,46 @@ struct gpio_regulator_data {
 	const struct gpio_regulator_params *params;
 };
 
+/**
+ * enum type_id - Process type identifiers for voltage binning
+ * @TYPE0: Lowest process corner
+ * @TYPE1: Mid process corner
+ * @TYPE2: Highest process corner
+ *
+ * Classification of a fused voltage against a rail's thresholds, used to
+ * index the 2D [mode][type] voltage table. Purely internal to this driver;
+ * qcom-open-loop-cpr-regulator.c never sees a type index, only the final
+ * voltage returned by qcom_gpio_regulator_get_voltage().
+ */
+enum type_id {
+	TYPE0,
+	TYPE1,
+	TYPE2,
+	MAX_TYPES
+};
+
 static const char * const type_names[] = {"TYPE0", "TYPE1", "TYPE2"};
 
 /**
- * get_mode_name - Get mode name string from mode ID
- * @mode: Mode identifier (MODE_SVS, MODE_NOM, MODE_TUR)
- *
- * Return: Mode name string, or "unknown" for invalid mode
+ * struct gpio_regulator_entry - Registry entry for a GPIO-backed rail's
+ *                                voltage table, keyed by owning device node
+ *                                and rail name
+ * @list: Linkage into gpio_regulator_registry
+ * @of_node: of_node of the qcom-gpio-regulator platform device that owns
+ *           this entry, matched against the gpio_np passed to
+ *           qcom_gpio_regulator_get_voltage()
+ * @rail_name: Rail name ("apc", ...)
+ * @vconfig: Voltage table + thresholds for this rail
  */
-static const char *get_mode_name(enum mode_id mode)
-{
-	switch (mode) {
-	case MODE_SVS:
-		return "svs";
-	case MODE_NOM:
-		return "nom";
-	case MODE_TUR:
-		return "tur";
-	default:
-		return "unknown";
-	}
-}
-
-/**
- * multi_threshold_regulator_set_voltage - Set voltage for multi-threshold voltage regulator
- * @rdev: Regulator device
- * @min_uV: Requested mode (1=SVS, 2=NOM, 3=TUR)
- * @max_uV: Unused (required by regulator framework)
- * @sel: Unused selector pointer (required by regulator framework)
- *
- * This callback translates mode requests into actual voltages based on the
- * determined process type. The min_uV parameter encodes the operating mode
- * (1, 2, or 3), which is converted to an array index (0, 1, or 2) to look up
- * the appropriate voltage for the device's process type.
- *
- * Return: 0 on success, negative error code on failure
- */
-static int multi_threshold_regulator_set_voltage(struct regulator_dev *rdev,
-						 int min_uV, int max_uV,
-						 unsigned int *sel)
-{
-	struct reg_info *reg_info = rdev_get_drvdata(rdev);
-	enum type_id type;
-	int voltage;
-	int mode;
-
-	mode = min_uV - 1;
-	if (mode < 0 || mode >= MAX_MODES)
-		return -EINVAL;
-
-	/* Lookup type and voltage for the requested mode */
-	type = reg_info->types[mode];
-	voltage = reg_info->voltage_table[mode][type];
-
-	dev_dbg(rdev_get_dev(rdev),
-		"mode=%d type=%s -> %duV\n",
-		mode,
-		type_names[type],
-		voltage);
-
-	return regulator_set_voltage(reg_info->base_regulator, voltage, voltage);
-}
-
-static const struct regulator_ops multi_threshold_regulator_ops = {
-	.set_voltage = multi_threshold_regulator_set_voltage,
+struct gpio_regulator_entry {
+	struct list_head list;
+	struct device_node *of_node;
+	const char *rail_name;
+	const struct voltage_config *vconfig;
 };
+
+static DEFINE_MUTEX(gpio_regulator_registry_lock);
+static LIST_HEAD(gpio_regulator_registry);
 
 /**
  * gpio_convert_open_loop_voltage_fuse - Convert fuse value to voltage
@@ -264,133 +204,215 @@ static int process_single_threshold_regulator(struct device *dev,
 }
 
 /**
- * process_multi_threshold_regulator - Process multi-threshold regulator
+ * parse_array_property - Parse integer array from device tree property
+ * @dev: Device pointer
+ * @node: Device tree node
+ * @prop_name: Property name to parse
+ * @len: Length of the property in bytes
+ *
+ * Allocates memory and reads an integer array property from device tree.
+ * Logs each parsed value at debug level.
+ *
+ * Return: Pointer to allocated array, or ERR_PTR on error
+ */
+static int *parse_array_property(struct device *dev,
+				 struct device_node *node,
+				 const char *prop_name,
+				 int len)
+{
+	int count = len / sizeof(u32);
+	int *array;
+	int ret, i;
+
+	array = devm_kzalloc(dev, len, GFP_KERNEL);
+	if (!array)
+		return ERR_PTR(-ENOMEM);
+
+	ret = of_property_read_u32_array(node, prop_name, (u32 *)array, count);
+	if (ret) {
+		dev_err(dev, "Failed to read %s: %d\n", prop_name, ret);
+		return ERR_PTR(ret);
+	}
+
+	for (i = 0; i < count; i++)
+		dev_dbg(dev, "  %s[%d] = %d\n", prop_name, i, array[i]);
+
+	return array;
+}
+
+/**
+ * override_voltage_config - Parse voltage configuration from platform subnode
+ * @dev: Device pointer
+ * @node: Platform subnode
+ *
+ * Parses qcom,voltage-table, qcom,thresholds, and qcom,num-thresholds from
+ * platform configuration. Allocates and returns a new voltage_config if
+ * property's are found.
+ *
+ * Return: Pointer to allocated voltage_config, or NULL if not found
+ */
+static struct voltage_config *override_voltage_config(struct device *dev,
+						      struct device_node *node)
+{
+	struct voltage_config *vconfig;
+	int vtable_len = 0, thresh_len = 0;
+	int *vtable;
+	int *thresh;
+	u32 val;
+
+	/* Check if all voltage config properties exist, capturing lengths */
+	if (!of_find_property(node, "qcom,voltage-table", &vtable_len) ||
+	    !of_find_property(node, "qcom,thresholds", &thresh_len) ||
+	    of_property_read_u32(node, "qcom,num-thresholds", &val) != 0) {
+		dev_info(dev, "No voltage config properties in platform configuration\n");
+		return NULL;
+	}
+
+	/* Sanitize lengths */
+	if (vtable_len <= 0 || (vtable_len % sizeof(u32)) != 0 ||
+	    thresh_len <= 0 || (thresh_len % sizeof(u32)) != 0) {
+		dev_err(dev, "Invalid property lengths: vtable=%d, thresh=%d\n",
+			vtable_len, thresh_len);
+		return ERR_PTR(-EINVAL);
+	}
+
+	vconfig = devm_kzalloc(dev, sizeof(*vconfig), GFP_KERNEL);
+	if (!vconfig)
+		return ERR_PTR(-ENOMEM);
+
+	/* Parse voltage_table */
+	vtable = parse_array_property(dev, node, "qcom,voltage-table", vtable_len);
+	if (IS_ERR(vtable))
+		return ERR_PTR(PTR_ERR(vtable));
+	vconfig->voltage_table = vtable;
+
+	/* Parse thresholds */
+	thresh = parse_array_property(dev, node, "qcom,thresholds", thresh_len);
+	if (IS_ERR(thresh))
+		return ERR_PTR(PTR_ERR(thresh));
+	vconfig->thresholds = thresh;
+
+	/* Parse num_thresholds */
+	vconfig->num_thresholds = (u8)val;
+	dev_dbg(dev, "Parsed num_thresholds = %u\n", vconfig->num_thresholds);
+
+	return vconfig;
+}
+
+/**
+ * process_multi_threshold_table - Register the 2D voltage table for a
+ *                                  GPIO-backed multi-threshold rail
  * @dev: Device pointer
  * @reg_data: Regulator configuration data
- * @fix_volt_max: Force maximum voltage flag
+ *
+ * Fuse reading, process-corner classification consumption, APM handling,
+ * and regulator_dev registration for multi-threshold (GPIO-backed) rails
+ * live in qcom-open-loop-cpr-regulator.c. This function only makes the
+ * rail's 2D [mode][type] voltage table (plus any DT override) available
+ * via qcom_gpio_regulator_get_voltage().
  *
  * Return: 0 on success, negative error code on failure
  */
-static int process_multi_threshold_regulator(struct device *dev,
-					     const struct gpio_regulator_data *reg_data,
-					     bool fix_volt_max)
+static int process_multi_threshold_table(struct device *dev,
+					 const struct gpio_regulator_data *reg_data)
 {
-	const struct gpio_regulator_params *params = reg_data->params;
-	const struct voltage_config *vconfig = params->voltage_config;
-	const struct fuse_params *fuse;
-	struct regulator_config config;
-	struct regulator_desc *desc;
-	struct regulator_dev *rdev;
-	struct reg_info *reg_info;
-	char fuse_name[32];
-	enum type_id type;
-	int fused_volt;
-	u16 volt_ticks;
-	int mode;
-	int ret;
+	const struct voltage_config *vconfig = reg_data->params->voltage_config;
+	struct voltage_config *override_vconfig;
+	struct device_node *rail_node;
+	struct gpio_regulator_entry *entry;
 
-	reg_info = devm_kzalloc(dev, sizeof(*reg_info), GFP_KERNEL);
-	if (!reg_info)
-		return -ENOMEM;
+	/* Try to override from platform configuration if subnode exists */
+	rail_node = of_get_child_by_name(dev->of_node, reg_data->regulator_name);
+	if (rail_node) {
+		override_vconfig = override_voltage_config(dev, rail_node);
+		if (override_vconfig)
+			vconfig = override_vconfig;
 
-	if (params->num_fuses > MAX_MODES)
-		return dev_err_probe(dev, -EINVAL, "Invalid num_fuses %d exceeds MAX_MODES %d\n",
-			      params->num_fuses, MAX_MODES);
-
-	memcpy(reg_info->voltage_table, vconfig->voltage_table,
-	       sizeof(int) * params->num_fuses * MAX_TYPES);
-
-	/* Read fuses and determine process type for each mode */
-	for (mode = 0; mode < params->num_fuses; mode++) {
-		fuse = &params->fuse_params[mode];
-
-		if (fix_volt_max) {
-			reg_info->types[mode] = TYPE2;
-			reg_info->voltage_table[mode][TYPE0] = reg_info->voltage_table[mode][TYPE2];
-			reg_info->voltage_table[mode][TYPE1] = reg_info->voltage_table[mode][TYPE2];
-			dev_dbg(dev,
-				"%s_%s: forced TYPE2 due to qcom,skip-voltage-scaling quirk\n",
-				reg_data->regulator_name,
-				get_mode_name(mode));
-			continue;
-		}
-
-		snprintf(fuse_name, sizeof(fuse_name), "cpr_%s_%s",
-			 reg_data->regulator_name, get_mode_name(mode));
-
-		ret = nvmem_cell_read_u16(dev, fuse_name, &volt_ticks);
-		if (ret < 0)
-			return dev_err_probe(dev,
-					     ret,
-					     "%s fuse read failed\n",
-					     fuse_name);
-
-		fused_volt = gpio_convert_open_loop_voltage_fuse(fuse->reference_volt,
-								 fuse->step_volt,
-								 volt_ticks,
-								 fuse->bit_len);
-
-		type = (fused_volt <= vconfig->thresholds[MIN_VOLT]) ? TYPE0 :
-		       (fused_volt <= vconfig->thresholds[MAX_VOLT]) ? TYPE1 : TYPE2;
-
+		of_node_put(rail_node);
+	} else {
 		dev_dbg(dev,
-			"%s_%s: fused=%duV, type=%s\n",
-			reg_data->regulator_name,
-			get_mode_name(mode),
-			fused_volt,
-			type_names[type]);
-
-		reg_info->types[mode] = type;
-
-		if (params->num_fuses == 1) {
-			reg_info->types[MODE_NOM] = type;
-			reg_info->types[MODE_TUR] = type;
-			break;
-		}
+			"No platform override for %s, using defaults\n",
+			reg_data->regulator_name);
 	}
 
-	reg_info->base_regulator = devm_regulator_get(dev, reg_data->regulator_name);
-	if (IS_ERR(reg_info->base_regulator))
-		return dev_err_probe(dev,
-				     PTR_ERR(reg_info->base_regulator),
-				     "Failed to get %s regulator: %ld\n",
-				     reg_data->regulator_name,
-				     PTR_ERR(reg_info->base_regulator));
-
-	desc = devm_kzalloc(dev, sizeof(*desc), GFP_KERNEL);
-	if (!desc)
+	entry = devm_kzalloc(dev, sizeof(*entry), GFP_KERNEL);
+	if (!entry)
 		return -ENOMEM;
 
-	desc->name = devm_kasprintf(dev, GFP_KERNEL, "%s_regulator",
-				    reg_data->regulator_name);
-	if (!desc->name)
-		return -ENOMEM;
+	entry->of_node = dev->of_node;
+	entry->rail_name = reg_data->regulator_name;
+	entry->vconfig = vconfig;
 
-	desc->of_match = reg_data->regulator_name;
-	desc->type = REGULATOR_VOLTAGE;
-	desc->ops = &multi_threshold_regulator_ops;
-	desc->owner = THIS_MODULE;
+	mutex_lock(&gpio_regulator_registry_lock);
+	list_add_tail(&entry->list, &gpio_regulator_registry);
+	mutex_unlock(&gpio_regulator_registry_lock);
 
-	config.dev = dev;
-	config.driver_data = reg_info;
-
-	rdev = devm_regulator_register(dev, desc, &config);
-	if (IS_ERR(rdev))
-		return dev_err_probe(dev,
-				     PTR_ERR(rdev),
-				     "Failed to register %s regulator\n",
-				     reg_data->regulator_name);
-
-	dev_info(dev, "%s types: ", reg_data->regulator_name);
-	for (mode = 0; mode < params->num_fuses; mode++) {
-		pr_cont("%s=%s%s",
-			get_mode_name(mode),
-			type_names[reg_info->types[mode]],
-			(mode < params->num_fuses - 1) ? ", " : "\n");
-	}
+	dev_info(dev, "%s: voltage table registered for GPIO-backed lookup\n",
+		 reg_data->regulator_name);
 
 	return 0;
 }
+
+/**
+ * qcom_gpio_regulator_get_voltage - see qcom-gpio-regulator.h
+ */
+int qcom_gpio_regulator_get_voltage(struct device_node *gpio_np,
+				    const char *rail_name,
+				    int mode, int fused_volt,
+				    bool fix_volt_max)
+{
+	struct gpio_regulator_entry *entry;
+	const struct voltage_config *vconfig = NULL;
+	bool node_found = false;
+	enum type_id type;
+
+	if (!gpio_np || !rail_name)
+		return -EINVAL;
+
+	if (mode < 0 || mode >= QCOM_GPIO_VT_MAX_MODES)
+		return -EINVAL;
+
+	mutex_lock(&gpio_regulator_registry_lock);
+	list_for_each_entry(entry, &gpio_regulator_registry, list) {
+		if (entry->of_node != gpio_np)
+			continue;
+
+		node_found = true;
+
+		if (!strcmp(entry->rail_name, rail_name)) {
+			vconfig = entry->vconfig;
+			break;
+		}
+	}
+	mutex_unlock(&gpio_regulator_registry_lock);
+
+	if (!node_found)
+		return -EPROBE_DEFER;
+
+	if (!vconfig)
+		return -ENOENT;
+
+	if (fix_volt_max) {
+		/*
+		 * qcom,skip-voltage-scaling quirk: bypass threshold
+		 * classification and use the highest process-corner column,
+		 * matching how a direct-fuse (PMIC-backed) rail falls back to
+		 * its ceiling voltage under the same quirk.
+		 */
+		type = TYPE2;
+		pr_debug("qcom-gpio-regulator: %s mode=%d forced TYPE2 (skip-voltage-scaling)\n",
+			 rail_name, mode);
+	} else {
+		type = (fused_volt <= vconfig->thresholds[MIN_VOLT]) ? TYPE0 :
+		       (fused_volt <= vconfig->thresholds[MAX_VOLT]) ? TYPE1 : TYPE2;
+
+		pr_debug("qcom-gpio-regulator: %s mode=%d fused=%duV -> %s\n",
+			 rail_name, mode, fused_volt, type_names[type]);
+	}
+
+	return vconfig->voltage_table[mode * MAX_TYPES + type];
+}
+EXPORT_SYMBOL(qcom_gpio_regulator_get_voltage);
 
 /**
  * read_single_threshold_regulator_params - Read parameters for single-threshold regulators
@@ -454,7 +476,7 @@ static int gpio_regulator_probe(struct platform_device *pdev)
 
 	for (; reg_data->regulator_name; reg_data++) {
 		if (reg_data->params->voltage_config->num_thresholds > 1)
-			ret = process_multi_threshold_regulator(dev, reg_data, fix_volt_max);
+			ret = process_multi_threshold_table(dev, reg_data);
 		else
 			ret = process_single_threshold_regulator(dev, reg_data, cpr_fuse,
 								 fix_volt_max);
@@ -535,18 +557,6 @@ static const struct voltage_config ipq9650_apc_voltages = {
 	},
 };
 
-static const struct voltage_config ipq9650_nsp_voltages = {
-	.voltage_table = (int[]) {
-		600000, 660000, 750000,
-		660000, 750000, 815000,
-	},
-	.num_thresholds = 2,
-	.thresholds = (int[]) {
-		650000,
-		750000,
-	},
-};
-
 static const struct gpio_regulator_params ipq9574_apc_params = {
 	.fuse_params = (struct fuse_params[]) {
 		{6, 862500, 10000},
@@ -589,18 +599,12 @@ static const struct gpio_regulator_params ipq9574_4state_cx_params = {
 
 static const struct gpio_regulator_params ipq9650_apc_params = {
 	.fuse_params = (struct fuse_params[]) {
-		{6, 800000, 10000},
+		{7, 660000, 10000},
+		{7, 753000, 10000},
+		{7, 895000, 10000},
 	},
 	.voltage_config = &ipq9650_apc_voltages,
-	.num_fuses = 1,
-};
-
-static const struct gpio_regulator_params ipq9650_nsp_params = {
-	.fuse_params = (struct fuse_params[]) {
-		{6, 800000, 10000},
-	},
-	.voltage_config = &ipq9650_nsp_voltages,
-	.num_fuses = 1,
+	.num_fuses = 3,
 };
 
 static const struct gpio_regulator_data ipq9574_gpio_regulator_data[] = {
@@ -618,7 +622,6 @@ static const struct gpio_regulator_data ipq9574_4state_regulator_data[] = {
 
 static const struct gpio_regulator_data ipq9650_gpio_regulator_data[] = {
 	{ "apc", &ipq9650_apc_params },
-	{ "nsp", &ipq9650_nsp_params },
 	{ }
 };
 
