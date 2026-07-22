@@ -148,38 +148,6 @@
 			clock-names = "ptp";
 		};
 
-		efuse@a4000 {
-			apc_turl1_fuse: apc_turl1_fuse@3fc {
-				reg = <0x3fc 0x2>;
-				bits = <3 7>;
-			};
-
-			apc_nom_fuse: apc_nom_fuse@3fd {
-				reg = <0x3fd 0x2>;
-				bits = <2 7>;
-			};
-
-			apc_svs_fuse: apc_svs_fuse@3fe {
-				reg = <0x3fe 0x1>;
-				bits = <1 7>;
-			};
-
-			nsp_cx_nom_fuse: nsp_cx_nom_fuse@403 {
-				reg = <0x403 0x2>;
-				bits = <6 7>;
-			};
-
-			nsp_cx_svs_fuse: nsp_cx_svs_fuse@406 {
-				reg = <0x406 0x2>;
-				bits = <2 7>;
-			};
-
-			nsp_mx_nom_fuse: nsp_mx_nom_fuse@40b {
-				reg = <0x40b 0x2>;
-				bits = <6 7>;
-			};
-		};
-
 		cdsp_cx_rail: cdsp-cx-gpio-regulator {
 			compatible = "regulator-gpio";
 			regulator-name = "vdd-cdsp-cx";
@@ -206,38 +174,51 @@
 			regulator-type = "voltage";
 			regulator-boot-on;
 			regulator-always-on;
-			regulator-min-microvolt = <732000>;
-			regulator-max-microvolt = <952000>;
+			regulator-min-microvolt = <600000>;
+			regulator-max-microvolt = <957000>;
 			regulator-ramp-delay = <250>; /* 20ms */
 			gpios = <&tlmm 33 GPIO_ACTIVE_HIGH>,
 				<&tlmm 34 GPIO_ACTIVE_HIGH>,
 				<&tlmm 35 GPIO_ACTIVE_HIGH>;
 			gpios-states = <0x7>;
-			states = <660000 0x0>,
+			states = <600000 0x0>,
 				 <660000 0x1>,
-				 <732000 0x2>,
-				 <792000 0x3>,
-				 <756000 0x4>,
-				 <817000 0x5>,
-				 <890000 0x6>,
-				 <952000 0x7>;
+				 <740000 0x2>,
+				 <753000 0x3>,
+				 <804000 0x4>,
+				 <815000 0x5>,
+				 <895000 0x6>,
+				 <957000 0x7>;
 			status = "okay";
 		};
 
-		qcom,gpio-regulator {
+		apc_gpio_regulator: qcom,gpio-regulator {
 			compatible = "qcom,ipq9650-gpio-regulator";
-			reg = <0xa4000 0x739>;
-			reg-names = "fuse_base";
+			status = "okay";
+
+			apc {
+				/* voltage_table: [SVS:T0 T1 T2] [NOM:T0 T1 T2] [TUR: T0 T1 T2] */
+				qcom,voltage-table = <600000 660000 740000
+						      660000 753000 815000
+						      804000 895000 957000>;
+				qcom,num-thresholds = <2>;
+				qcom,thresholds = <650000 750000>;
+			};
+		};
+
+		qcom,open-loop-cpr-regulator {
 			apc-supply = <&apc_rail>;
-			nvmem-cells = <&apc_nom_fuse>;
-			nvmem-cell-names = "cpr_apc_nom";
-			status = "disabled";
 
 			apc: apc {
-				regulator-min-microvolt = <732000>;
-				regulator-max-microvolt = <952000>;
-				regulator-boot-on;
-				regulator-always-on;
+				qcom,fuse-params = <7 660000 10000 600000 740000
+						    7 753000 10000 660000 815000
+						    7 895000 10000 804000 957000>;
+				qcom,num-fuses = <3>;
+				/* voltage_table: <ceiling voltages> per mode */
+				qcom,voltage-table = <740000 815000 957000>;
+				qcom,num-thresholds = <2>;
+				qcom,thresholds = <650000 750000>;
+				qcom,gpio-regulator = <&apc_gpio_regulator>;
 			};
 		};
 	};
@@ -667,61 +648,61 @@
 };
 
 &CPU0 {
-	cpu-supply = <&apc_rail>;
+	cpu-supply = <&apc>;
 };
 
 &CPU1 {
-	cpu-supply = <&apc_rail>;
+	cpu-supply = <&apc>;
 };
 
 &CPU2 {
-	cpu-supply = <&apc_rail>;
+	cpu-supply = <&apc>;
 };
 
 &CPU3 {
-	cpu-supply = <&apc_rail>;
+	cpu-supply = <&apc>;
 };
 
 &CPU4 {
-	cpu-supply = <&apc_rail>;
+	cpu-supply = <&apc>;
 };
 
 &cpu0_opp_table {
 	opp-840000000 {
 		/* <target min max> */
-		opp-microvolt = <732000 732000 952000>;
+		opp-microvolt = <1 1 3>;
 	};
 
 	opp-1368000000 {
 		/* <target min max> */
-		opp-microvolt = <817000 732000 952000>;
+		opp-microvolt = <2 1 3>;
 	};
 
 	opp-1800000000 {
 		/* <target min max> */
-		opp-microvolt = <952000 732000 952000>;
+		opp-microvolt = <3 1 3>;
 	};
 
 	opp-1944000000 {
 		/* <target min max> */
-		opp-microvolt = <952000 732000 952000>;
+		opp-microvolt = <3 1 3>;
 	};
 };
 
 &cpu4_opp_table {
 	opp-456000000 {
 		/* <target min max> */
-		opp-microvolt = <732000 732000 952000>;
+		opp-microvolt = <1 1 3>;
 	};
 
 	opp-720000000 {
 		/* <target min max> */
-		opp-microvolt = <817000 732000 952000>;
+		opp-microvolt = <2 1 3>;
 	};
 
 	opp-1032000000 {
 		/* <target min max> */
-		opp-microvolt = <952000 732000 952000>;
+		opp-microvolt = <3 1 3>;
 	};
 };
 
