@@ -274,7 +274,7 @@
 			opp-hz = /bits/ 64 <840000000>;
 			opp-supported-hw = <0x3>;
 			/* <target min max> */
-			opp-microvolt = <735000 735000 960000>;
+			opp-microvolt = <1 1 3>;
 			clock-latency-ns = <200000>;
 			opp-peak-kBps = <720000>;
 		};
@@ -283,7 +283,7 @@
 			opp-hz = /bits/ 64 <1368000000>;
 			opp-supported-hw = <0x3>;
 			/* <target min max> */
-			opp-microvolt = <815000 735000 960000>;
+			opp-microvolt = <2 1 3>;
 			clock-latency-ns = <200000>;
 			opp-peak-kBps = <1176000>;
 		};
@@ -292,7 +292,7 @@
 			opp-hz = /bits/ 64 <1800000000>;
 			opp-supported-hw = <0x3>;
 			/* <target min max> */
-			opp-microvolt = <960000 735000 960000>;
+			opp-microvolt = <3 1 3>;
 			clock-latency-ns = <200000>;
 			opp-peak-kBps = <1488000>;
 		};
@@ -301,7 +301,7 @@
 			opp-hz = /bits/ 64 <1944000000>;
 			opp-supported-hw = <0x1>;
 			/* <target min max> */
-			opp-microvolt = <960000 735000 960000>;
+			opp-microvolt = <3 1 3>;
 			clock-latency-ns = <200000>;
 			opp-peak-kBps = <1488000>;
 		};
@@ -328,7 +328,7 @@
 			opp-hz = /bits/ 64 <456000000>;
 			opp-supported-hw = <0x3>;
 			/* <target min max> */
-			opp-microvolt = <735000 735000 960000>;
+			opp-microvolt = <1 1 3>;
 			clock-latency-ns = <200000>;
 			opp-peak-kBps = <720000>;
 		};
@@ -337,7 +337,7 @@
 			opp-hz = /bits/ 64 <720000000>;
 			opp-supported-hw = <0x3>;
 			/* <target min max> */
-			opp-microvolt = <815000 735000 960000>;
+			opp-microvolt = <2 1 3>;
 			clock-latency-ns = <200000>;
 			opp-peak-kBps = <1176000>;
 		};
@@ -346,7 +346,7 @@
 			opp-hz = /bits/ 64 <1032000000>;
 			opp-supported-hw = <0x3>;
 			/* <target min max> */
-			opp-microvolt = <960000 735000 960000>;
+			opp-microvolt = <3 1 3>;
 			clock-latency-ns = <200000>;
 			opp-peak-kBps = <1488000>;
 		};
@@ -605,6 +605,46 @@
 			reg = <0xA4000 0x739>;
 			#address-cells = <1>;
 			#size-cells = <1>;
+
+			apc_turl1_fuse: cpr_apc_tur@3fc {
+				reg = <0x3fc 0x2>;
+				bits = <3 7>;
+			};
+
+			apc_nom_fuse: cpr_apc_nom@3fd {
+				reg = <0x3fd 0x2>;
+				bits = <2 7>;
+			};
+
+			apc_svs_fuse: cpr_apc_svs@3fe {
+				reg = <0x3fe 0x1>;
+				bits = <1 7>;
+			};
+
+			nsp_cx_nom_fuse: nsp_cx_nom_fuse@403 {
+				reg = <0x403 0x2>;
+				bits = <6 7>;
+			};
+
+			nsp_cx_svs_fuse: nsp_cx_svs_fuse@406 {
+				reg = <0x406 0x2>;
+				bits = <2 7>;
+			};
+
+			nsp_mx_nom_fuse: nsp_mx_nom_fuse@40b {
+				reg = <0x40b 0x2>;
+				bits = <6 7>;
+			};
+
+			cpr_fusing_rev_bit0: cpr_fusing_rev_bit0@416 {
+				reg = <0x416 0x1>;
+				bits = <7 1>;
+			};
+
+			cpr_fusing_rev_bit2_1: cpr_fusing_rev_bit2_1@418 {
+				reg = <0x418 0x1>;
+				bits = <0 2>;
+			};
 
 			s5: s5@426 {
 				reg = <0x426 0x1>;
