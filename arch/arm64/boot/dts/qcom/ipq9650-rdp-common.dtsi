@@ -83,7 +83,7 @@
 						/* APC_CX */
 						ipq9650_s1: buck1 {
 							regulator-name = "buck1";
-							regulator-min-microvolt = <735000>;
+							regulator-min-microvolt = <550000>;
 							regulator-max-microvolt = <960000>;
 							regulator-always-on;
 							regulator-boot-on;
@@ -92,7 +92,7 @@
 						/* NSP_CX */
 						ipq9650_s2: buck2 {
 							regulator-name = "buck2";
-							regulator-min-microvolt = <735000>;
+							regulator-min-microvolt = <550000>;
 							regulator-max-microvolt = <960000>;
 						};
 
@@ -339,9 +339,19 @@
 			reg = <0xa4000 0x739>;
 			reg-names = "fuse_base";
 			apc-supply = <&ipq9650_s1>;
+			nsp_cx-supply = <&ipq9650_s2>;
+			nsp_mx-supply = <&ipq9650_s4>;
 			nvmem-cells = <&apc_svs_fuse>, <&apc_nom_fuse>, <&apc_turl1_fuse>,
+				      <&nsp_cx_svs_fuse>, <&nsp_cx_svs_l1_fuse>,
+				      <&nsp_cx_nom_fuse>, <&nsp_cx_turbo_l1_fuse>,
+				      <&nsp_mx_svs_fuse>, <&nsp_mx_svs_l1_fuse>,
+				      <&nsp_mx_nom_fuse>, <&nsp_mx_turbo_l1_fuse>,
 				      <&cpr_fusing_rev_bit0>, <&cpr_fusing_rev_bit2_1>;
 			nvmem-cell-names = "cpr_apc_svs", "cpr_apc_nom", "cpr_apc_tur",
+					   "cpr_nsp_cx_svs", "cpr_nsp_cx_svs_l1",
+					   "cpr_nsp_cx_nom", "cpr_nsp_cx_tur",
+					   "cpr_nsp_mx_svs", "cpr_nsp_mx_svs_l1",
+					   "cpr_nsp_mx_nom", "cpr_nsp_mx_tur",
 					   "cpr_fusing_rev_bit0", "cpr_fusing_rev_bit2_1";
 			qcom,skip-voltage-scaling;
 			qcom,apm-ctrl = <&apc_apm>;
@@ -361,6 +371,38 @@
 
 				/* voltage_table: <ceiling voltages> per mode */
 				qcom,voltage-table = <735000 815000 960000>;
+				qcom,num-thresholds = <2>;
+				qcom,thresholds = <650000 750000>;
+			};
+
+			nsp_cx: nsp_cx {
+				regulator-min-microvolt = <1>;
+				regulator-max-microvolt = <4>;
+
+				qcom,fuse-params = <7 630000 5000 550000 735000
+						    7 685000 5000 600000 790000
+						    7 750000 5000 650000 815000
+						    7 890000 5000 750000 960000>;
+				qcom,num-fuses = <4>;
+
+				/* voltage_table: <ceiling voltages> per mode */
+				qcom,voltage-table = <735000 790000 815000 960000>;
+				qcom,num-thresholds = <2>;
+				qcom,thresholds = <650000 750000>;
+			};
+
+			nsp_mx: nsp_mx {
+				regulator-min-microvolt = <1>;
+				regulator-max-microvolt = <4>;
+
+				qcom,fuse-params = <7 750000 5000 750000 750000
+						    7 750000 5000 750000 790000
+						    7 750000 5000 750000 815000
+						    7 750000 5000 750000 815000>;
+				qcom,num-fuses = <4>;
+
+				/* voltage_table: <ceiling voltages> per mode */
+				qcom,voltage-table = <750000 790000 815000 815000>;
 				qcom,num-thresholds = <2>;
 				qcom,thresholds = <650000 750000>;
 			};
@@ -499,8 +541,8 @@
 };
 
 &cdsp_power {
-	vdd-cx-supply = <&ipq9650_s2>;
-	vdd-mx-supply = <&ipq9650_s4>;
+	vdd-cx-supply = <&nsp_cx>;
+	vdd-mx-supply = <&nsp_mx>;
 };
 
 &remoteproc_cdsp {

@@ -51,6 +51,36 @@
 /* NSP MX voltage rail resource ID */
 #define CDSP_RESOURCE_ID_MX	0x04
 
+/*
+ * HLVL corner values for the NSP CX/MX rails
+ */
+#define CDSP_HLVL_SVS		0
+#define CDSP_HLVL_SVS_L1	1
+#define CDSP_HLVL_NOM		2
+#define CDSP_HLVL_TUR_L1	3
+#define CDSP_HLVL_MAX		CDSP_HLVL_TUR_L1
+
+static const char *cdsp_hlvl_name(u32 corner)
+{
+	switch (corner) {
+	case CDSP_HLVL_SVS:	return "SVS";
+	case CDSP_HLVL_SVS_L1:	return "SVS_L1";
+	case CDSP_HLVL_NOM:	return "NOM";
+	case CDSP_HLVL_TUR_L1:	return "TUR_L1";
+	default:		return "INVALID";
+	}
+}
+
+/*
+ * Response status codes written to cdsp_smem_response.status.
+ */
+#define STATUS_OK			0x00000000
+#define STATUS_ERR_RAIL_ABSENT		0x00000001
+/* Corner exceeds this board's rail capability */
+#define STATUS_ERR_CORNER_LIMIT		0x00000002
+/* Unrecognized resource key */
+#define STATUS_ERR_UNKNOWN_KEY		0x00000003
+
 /* MPM Register Offsets */
 #define RSC_HDSHK_IRQ_STAT		0x0004
 #define CLIENT_RSC_HDSHK(n)		(0x0010 + (n) * 0x10)
@@ -147,7 +177,7 @@ struct cdsp_smem_channel_hdr {
  * struct cdsp_kvp - Key-Value-Pair entry in a DCVS request
  * @key:    Resource identifier; upper 16 bits = CDSP_RESOURCE_ID_CX or _MX
  * @length: Length of the value field in bytes (always 4)
- * @value:  Requested voltage in microvolts
+ * @value:  Requested HLVL corner integer (CDSP_HLVL_SVS..CDSP_HLVL_MAX)
  */
 struct cdsp_kvp {
 	u32 key;
@@ -182,8 +212,9 @@ struct cdsp_smem_request {
  * @msg_size:     Total message size in bytes (CDSP_RESP_MSG_SIZE = 24)
  * @sequence:     Echo of the request sequence number
  * @msg_id:       Message type; CDSP_MSG_ID_RESPONSE (0x02)
- * @status:       Result code; 0 on success, negative errno on failure
- * @data:         Actual voltage applied in microvolts (valid when status == 0)
+ * @status:       Result code
+ * @data:         On success: the HLVL corner applied. On failure: the
+ *                resource ID (CDSP_RESOURCE_ID_CX/_MX) that failed
  * @timestamp_us: Completion timestamp in microseconds
  */
 struct cdsp_smem_response {
@@ -394,12 +425,18 @@ static irqreturn_t cdsp_dcvs_irq_handler(int irq, void *data)
 }
 
 /**
- * cdsp_dcvs_work_fn() - Process a DCVS voltage scaling request from the NSP Q6
+ * cdsp_dcvs_work_fn() - Process a DCVS corner scaling request from the NSP Q6
  * @work: Work structure embedded in struct cdsp_power_driver
  *
- * Reads the KVP request from the SMEM channel, validates the resource ID and
- * voltage, applies the voltage via the regulator framework, writes the response
- * back to SMEM, and signals the NSP Q6 via the IPCC PING mailbox channel.
+ * Reads the KVP request from the SMEM channel, decodes each entry's HLVL
+ * corner and resource ID, and delegates it to the open-loop CPR regulator
+ * after translating the 0-based HLVL corner to the driver's 1-based
+ * mode-selector convention (mode = min_uV - 1, so corner + 1 is passed as
+ * min_uV)
+ * regulator_set_voltage() here only hands off the translated mode — the CPR
+ * driver derives the fused voltage for that mode and applies it. Writes the
+ * response back to SMEM and signals the NSP Q6 via the IPCC PING mailbox
+ * channel.
  */
 static void cdsp_dcvs_work_fn(struct work_struct *work)
 {
@@ -408,7 +445,8 @@ static void cdsp_dcvs_work_fn(struct work_struct *work)
 						     dcvs_work);
 	struct cdsp_smem_region *smem = drv->smem;
 	u32 sequence, num_commands;
-	int ret = 0, actual_uv = 0;
+	u32 resp_status = STATUS_OK;
+	u32 resp_data = 0;
 	int i;
 
 	mutex_lock(&drv->lock);
@@ -429,7 +467,7 @@ static void cdsp_dcvs_work_fn(struct work_struct *work)
 	if (smem->request.msg_id != CDSP_MSG_ID_REQUEST) {
 		dev_err(drv->dev, "Unexpected msg_id: 0x%x (expected 0x%x)\n",
 			smem->request.msg_id, CDSP_MSG_ID_REQUEST);
-		ret = -EINVAL;
+		resp_status = STATUS_ERR_UNKNOWN_KEY;
 		goto send_response;
 	}
 
@@ -439,65 +477,89 @@ static void cdsp_dcvs_work_fn(struct work_struct *work)
 	if (num_commands > CDSP_MAX_KVP) {
 		dev_err(drv->dev, "Too many KVP commands: %u (max %d)\n",
 			num_commands, CDSP_MAX_KVP);
-		ret = -EINVAL;
+		resp_status = STATUS_ERR_UNKNOWN_KEY;
 		goto send_response;
 	}
 
-	/* Process each KVP: key=resource_type, value=voltage_uv */
+	/*
+	 * Process each KVP: key=resource_id, value=HLVL corner.
+	 * Only the MX-absent case is non-fatal to the rest of the request:
+	 * letting a valid CX KVP in the same request be applied.
+	 */
 	for (i = 0; i < num_commands; i++) {
-		u32 key        = smem->request.kvp[i].key;
-		u32 voltage_uv = smem->request.kvp[i].value;
+		u32 key    = smem->request.kvp[i].key;
+		u32 corner = smem->request.kvp[i].value;
 		/* Upper 16 bits of the KVP key encode the resource ID */
 		u32 resource_id = (key >> 16) & 0xFFFF;
 		struct regulator *reg;
-		int uv;
+		const char *rail_name;
+		int ret;
+
+		dev_dbg(drv->dev,
+			"DCVS req[%d/%u]: seq=%u key=0x%x resource_id=0x%x corner=%u (%s)\n",
+			i, num_commands, sequence, key, resource_id, corner,
+			cdsp_hlvl_name(corner));
 
 		if (resource_id == CDSP_RESOURCE_ID_CX) {
 			reg = drv->vdd_cx;
+			rail_name = "CX";
 		} else if (resource_id == CDSP_RESOURCE_ID_MX) {
 			if (!drv->vdd_mx) {
-				dev_dbg(drv->dev, "KVP[%d]: MX rail not available on this board\n", i);
-				ret = -EINVAL;
+				dev_info(drv->dev, "KVP[%d]: MX rail not present\n", i);
+				if (resp_status == STATUS_OK) {
+					resp_status = STATUS_ERR_RAIL_ABSENT;
+					resp_data = CDSP_RESOURCE_ID_MX;
+				}
 				continue;
 			}
 			reg = drv->vdd_mx;
+			rail_name = "MX";
 		} else {
 			dev_err(drv->dev, "KVP[%d]: unknown key 0x%x\n", i, key);
-			ret = -EINVAL;
+			resp_status = STATUS_ERR_UNKNOWN_KEY;
+			resp_data = resource_id;
 			goto send_response;
 		}
 
-		/* Set voltage; the regulator framework enforces DTS constraints */
-		ret = regulator_set_voltage(reg, voltage_uv, voltage_uv);
+		if (corner > CDSP_HLVL_MAX) {
+			dev_err(drv->dev, "KVP[%d]: %s corner %u exceeds max %d\n",
+				i, rail_name, corner, CDSP_HLVL_MAX);
+			resp_status = STATUS_ERR_CORNER_LIMIT;
+			resp_data = resource_id;
+			goto send_response;
+		}
+
+		dev_info(drv->dev,
+			 "KVP[%d]: requesting %s -> HLVL %s (corner=%u), regulator mode selector=%u\n",
+			 i, rail_name, cdsp_hlvl_name(corner), corner, corner + 1);
+
+		ret = regulator_set_voltage(reg, corner + 1, corner + 1);
 		if (ret) {
-			dev_err(drv->dev, "KVP[%d]: failed to set %s voltage %u uV: %d\n",
-				i, resource_id == CDSP_RESOURCE_ID_CX ? "CX" : "MX",
-				voltage_uv, ret);
+			dev_err(drv->dev, "KVP[%d]: failed to set %s corner %u (%s): %d\n",
+				i, rail_name, corner, cdsp_hlvl_name(corner), ret);
+			resp_status = STATUS_ERR_CORNER_LIMIT;
+			resp_data = resource_id;
 			goto send_response;
 		}
 
-		/* Read back actual voltage */
-		uv = regulator_get_voltage(reg);
-		if (uv < 0) {
-			dev_warn(drv->dev, "KVP[%d]: failed to read back voltage: %d\n",
-				 i, uv);
-			uv = voltage_uv;
-		}
-		/* Track the last successfully set voltage to report in the response */
-		actual_uv = uv;
+		if (resp_status == STATUS_OK)
+			resp_data = corner;
 
-		dev_dbg(drv->dev, "DCVS: Set %s to %d uV (requested %u uV)\n",
-			resource_id == CDSP_RESOURCE_ID_CX ? "CX" : "MX",
-			actual_uv, voltage_uv);
+		dev_dbg(drv->dev, "KVP[%d]: DCVS applied -> %s now at HLVL %s (corner=%u)\n",
+			i, rail_name, cdsp_hlvl_name(corner), corner);
 	}
 
 send_response:
+	dev_info(drv->dev,
+		 "DCVS response: seq=%u status=%u data=%u\n",
+		 sequence, resp_status, resp_data);
+
 	/* Write response to SMEM response area */
 	smem->response.msg_size     = CDSP_RESP_MSG_SIZE;
 	smem->response.sequence     = sequence;
 	smem->response.msg_id       = CDSP_MSG_ID_RESPONSE;
-	smem->response.status       = ret;
-	smem->response.data         = (ret == 0) ? actual_uv : 0;
+	smem->response.status       = resp_status;
+	smem->response.data         = resp_data;
 	smem->response.timestamp_us = ktime_to_us(ktime_get());
 
 	/*
@@ -529,12 +591,7 @@ send_response:
  */
 static void cdsp_execute_isolation_sequence(struct cdsp_power_driver *drv)
 {
-	/*
-	 * When vdd_mx is absent (board has no MX regulator handle), always
-	 * execute FULL_PC isolation for both CX and MX rails regardless of
-	 * what the Q6 requested.
-	 */
-	int num_rails = (!drv->vdd_mx || cdsp_is_full_pc_mode(drv)) ? 2 : 1;
+	int num_rails = cdsp_is_full_pc_mode(drv) ? 2 : 1;
 	unsigned int iso_regs[] = {
 		VDD_RAIL_ISO_CTRL(VDD_RAIL_CX),  /* NSP/CX rail - always processed */
 		VDD_RAIL_ISO_CTRL(VDD_RAIL_MX),  /* MXC/MX rail - FULL_PC only */
@@ -602,11 +659,7 @@ static void cdsp_execute_isolation_sequence(struct cdsp_power_driver *drv)
  */
 static void cdsp_execute_restoration_sequence(struct cdsp_power_driver *drv)
 {
-	/*
-	 * When vdd_mx is absent, always restore both CX and MX rails
-	 * (FULL_PC), but skip regulator_enable for MX (no handle).
-	 */
-	int start_rail = (!drv->vdd_mx || cdsp_is_full_pc_mode(drv)) ? 0 : 1;
+	int start_rail = cdsp_is_full_pc_mode(drv) ? 0 : 1;
 	unsigned int iso_regs[] = {
 		VDD_RAIL_ISO_CTRL(VDD_RAIL_MX),  /* MXC/MX rail - FULL_PC only, restored first */
 		VDD_RAIL_ISO_CTRL(VDD_RAIL_CX),  /* NSP/CX rail - always restored */

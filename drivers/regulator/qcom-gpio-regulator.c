@@ -557,6 +557,23 @@ static const struct voltage_config ipq9650_apc_voltages = {
 	},
 };
 
+/*
+ * NSP CX has no turbo mode on GPIO-backed boards
+ * Only SVS/SVS_L1/NOM are present, matching QCOM_GPIO_VT_MAX_MODES == 3.
+ */
+static const struct voltage_config ipq9650_nsp_voltages = {
+	.voltage_table = (int[]) {
+		600000, 660000, 750000,   /* SVS:    T0 T1 T2 */
+		600000, 660000, 750000,   /* SVS_L1: T0 T1 T2 */
+		660000, 750000, 815000,   /* NOM:    T0 T1 T2 */
+	},
+	.num_thresholds = 2,
+	.thresholds = (int[]) {
+		650000,
+		750000,
+	},
+};
+
 static const struct gpio_regulator_params ipq9574_apc_params = {
 	.fuse_params = (struct fuse_params[]) {
 		{6, 862500, 10000},
@@ -607,6 +624,16 @@ static const struct gpio_regulator_params ipq9650_apc_params = {
 	.num_fuses = 3,
 };
 
+static const struct gpio_regulator_params ipq9650_nsp_params = {
+	.fuse_params = (struct fuse_params[]) {
+		{7, 660000, 10000},    /* SVS */
+		{7, 660000, 10000},    /* SVS_L1 */
+		{7, 750000, 10000},    /* NOM */
+	},
+	.voltage_config = &ipq9650_nsp_voltages,
+	.num_fuses = 3,
+};
+
 static const struct gpio_regulator_data ipq9574_gpio_regulator_data[] = {
 	{ "apc", &ipq9574_apc_params },
 	{ "cx",  &ipq9574_cx_params },
@@ -622,6 +649,7 @@ static const struct gpio_regulator_data ipq9574_4state_regulator_data[] = {
 
 static const struct gpio_regulator_data ipq9650_gpio_regulator_data[] = {
 	{ "apc", &ipq9650_apc_params },
+	{ "nsp_cx",  &ipq9650_nsp_params },
 	{ }
 };
 

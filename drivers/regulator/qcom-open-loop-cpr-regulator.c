@@ -7,7 +7,8 @@
  * This driver implements open loop Core Power Reduction (CPR) voltage
  * regulation for the Qualcomm SoC's.
  * It reads fuse correction values from eFuse registers via NVMEM and
- * calculates the final operating voltages for SVS, NOM, and TUR modes.
+ * calculates the final operating voltages for a rail's operating modes
+ * (SVS, NOM, TUR for APC; SVS, SVS_L1, NOM, TUR for NSP CX/MX).
  * The calculated voltages are supplied through the regulator set_voltage()
  * callback when invoked by the CPUFREQ framework during dynamic voltage
  * and frequency scaling (DVFS) operations.
@@ -28,19 +29,17 @@
 
 #include "internal.h"
 
-/**
- * enum mode_id - Operating modes for the APC open loop CPR regulator
- * @MODE_SVS: Save Voltage Scaling mode (lowest voltage)
- * @MODE_NOM: Nominal mode (nominal voltage)
- * @MODE_TUR: Turbo mode (highest voltage)
- * @MAX_MODES: Number of operating modes
+/*
+ * MAX_MODES - Largest number of operating modes any rail uses.
+ *
+ * Rails do not share a single mode order: APC uses 3 modes (SVS, NOM, TUR)
+ * while NSP CX/MX use 4 modes (SVS, SVS_L1, NOM, TUR). There is no global
+ * semantic index map - each rail's mode names and count come from its own
+ * open_loop_cpr_regulator_params (mode_names[], num_fuses). MAX_MODES is
+ * only used to size the fixed-length arrays below and as an upper bound
+ * on any rail's num_fuses.
  */
-enum mode_id {
-	MODE_SVS,
-	MODE_NOM,
-	MODE_TUR,
-	MAX_MODES
-};
+#define MAX_MODES 4
 
 /**
  * struct fuse_params - NVMEM fuse parameters for voltage calculation
@@ -76,28 +75,41 @@ struct voltage_config {
  * struct open_loop_cpr_regulator_params - Open loop CPR regulator parameters
  * @fuse_params: Pointer to array of fuse parameters, one entry per mode
  * @voltage_config: Pointer to voltage configuration structure
+ * @mode_names: Array of mode name strings, one entry per mode, in the same
+ *              order as fuse_params/voltage_table (e.g. APC: {"svs", "nom",
+ *              "tur"}; NSP CX/MX: {"svs", "svs_l1", "nom", "tur"})
  * @num_fuses: Number of fuses (equals number of operating modes)
  * @part_type_supported: Whether part type differentiation is supported
+ * @mx_rail_available: property to state the availability of mx rail
+ * @apm_supported: Whether this rail drives APM switching.
  */
 struct open_loop_cpr_regulator_params {
 	const struct fuse_params *fuse_params;
 	const struct voltage_config *voltage_config;
+	const char * const *mode_names;
 	u8 num_fuses;
 	bool part_type_supported;
+	bool mx_rail_available;
+	bool apm_supported;
 };
 
 /**
  * struct reg_info - Private data for the open loop CPR voltage regulator
  * @voltage_table: Final fuse-corrected voltage per operating mode in
- *                 microvolts, indexed by mode_id (SVS=0, NOM=1, TUR=2)
+ *                 microvolts, indexed by mode (0..num_modes-1)
  * @floor_table: Minimum allowed voltage per operating mode in microvolts,
- *               indexed by mode_id
+ *               indexed by mode (0..num_modes-1)
  * @ceiling_table: Maximum allowed voltage per operating mode in microvolts,
- *                 indexed by mode_id
+ *                 indexed by mode (0..num_modes-1)
+ * @mode_names: Rail-specific mode name strings, same array/order as
+ *              open_loop_cpr_regulator_params.mode_names
+ * @num_modes: Number of operating modes this rail actually uses (equals
+ *             num_fuses at process time), used as the bound for mode
+ *             indices instead of the global MAX_MODES
  * @base_rdev: Pointer to the regulator_dev of the supply regulator, used
  *             to call regulator_set_voltage_rdev() from within ops callbacks
  *             to avoid recursive locking deadlocks
- * @current_voltage: Current mode index (0=SVS, 1=NOM, 2=TUR), -1 if not set
+ * @current_voltage: Current mode index, -1 if not set
  * @apm: Handle to the APM controller device
  * @apm_threshold_volt: Voltage threshold in microvolts for APM supply switching
  * @apm_high_supply: APM supply to use when voltage >= apm_threshold_volt
@@ -111,6 +123,8 @@ struct reg_info {
 	int voltage_table[MAX_MODES];
 	int floor_table[MAX_MODES];
 	int ceiling_table[MAX_MODES];
+	const char * const *mode_names;
+	u8 num_modes;
 	struct regulator_dev *base_rdev;
 	int current_voltage;
 	struct msm_apm_ctrl_dev *apm;
@@ -132,20 +146,24 @@ struct open_loop_cpr_regulator_data {
 };
 
 /**
- * get_mode_name - Get mode name string from mode ID
- * @mode: Mode identifier (MODE_SVS, MODE_NOM, MODE_TUR)
+ * get_mode_name - Get mode name string from a rail's mode name array
+ * @mode_names: Rail-specific mode name array (from
+ *              open_loop_cpr_regulator_params.mode_names or
+ *              reg_info.mode_names)
+ * @num_modes: Number of modes in @mode_names
+ * @mode: Mode index (0..num_modes-1)
  *
- * Return: Mode name string, or "unknown" for invalid mode
+ * A single global mode_id enum cannot name modes correctly across rails:
+ * APC uses {svs, nom, tur} while NSP CX/MX use {svs, svs_l1, nom, tur} -
+ * index 1 means "nom" for APC but "svs_l1" for NSP CX/MX. Mode names are
+ * therefore looked up per-rail rather than through a fixed enum.
+ *
+ * Return: Mode name string, or "unknown" for an out-of-range mode
  */
-static const char *get_mode_name(enum mode_id mode)
+static const char *get_mode_name(const char * const *mode_names,
+				 u8 num_modes, int mode)
 {
-	static const char * const mode_names[] = {
-		[MODE_SVS] = "svs",
-		[MODE_NOM] = "nom",
-		[MODE_TUR] = "tur",
-	};
-
-	if (mode >= 0 && mode < MAX_MODES)
+	if (mode >= 0 && mode < num_modes)
 		return mode_names[mode];
 	return "unknown";
 }
@@ -263,14 +281,15 @@ static int switch_apm_order(struct regulator_dev *rdev, int new_volt)
 /**
  * open_loop_cpr_regulator_set_voltage - Set voltage for open loop CPR regulator
  * @rdev: Regulator device
- * @min_uV: Requested mode (1=SVS, 2=NOM, 3=TUR)
+ * @min_uV: Requested mode, 1-based (1=first mode, 2=second mode, ...)
  * @max_uV: Unused (required by regulator framework)
  * @sel: Unused selector pointer (required by regulator framework)
  *
  * This callback translates mode requests into actual voltages based on the
  * pre-calculated open loop CPR voltage table. The min_uV parameter encodes
- * the operating mode (1, 2, or 3), which is converted to an array index
- * (0, 1, or 2) to look up the fuse-corrected voltage for that mode.
+ * the 1-based operating mode, converted to a 0-based array index to look up
+ * the fuse-corrected voltage for that mode. The valid mode range is rail
+ * dependent (reg_info->num_modes: 3 for APC, 4 for NSP CX/MX).
  *
  * PMIC-backed rails (@apm_park_switch true) use switch_apm_park(): the
  * voltage is parked at the APM threshold and the APM rails switched before
@@ -296,7 +315,7 @@ static int open_loop_cpr_regulator_set_voltage(struct regulator_dev *rdev,
 	int rc;
 
 	mode = min_uV - 1;
-	if (mode < 0 || mode >= MAX_MODES)
+	if (mode < 0 || mode >= reg_info->num_modes)
 		return -EINVAL;
 
 	/* Look up the pre-calculated fuse-corrected voltage for this mode */
@@ -304,17 +323,21 @@ static int open_loop_cpr_regulator_set_voltage(struct regulator_dev *rdev,
 
 	if (voltage > reg_info->ceiling_table[mode]) {
 		dev_warn(dev, "%s: mode=%s requested %duV exceeds ceiling %duV, clamping\n",
-			 rdev_get_name(rdev), get_mode_name(mode), voltage,
-			 reg_info->ceiling_table[mode]);
+			 rdev_get_name(rdev),
+			 get_mode_name(reg_info->mode_names, reg_info->num_modes, mode),
+			 voltage, reg_info->ceiling_table[mode]);
 		voltage = reg_info->ceiling_table[mode];
 	} else if (voltage < reg_info->floor_table[mode]) {
 		dev_warn(dev, "%s: mode=%s requested %duV below floor %duV, clamping\n",
-			 rdev_get_name(rdev), get_mode_name(mode), voltage,
-			 reg_info->floor_table[mode]);
+			 rdev_get_name(rdev),
+			 get_mode_name(reg_info->mode_names, reg_info->num_modes, mode),
+			 voltage, reg_info->floor_table[mode]);
 		voltage = reg_info->floor_table[mode];
 	}
 
-	dev_dbg(dev, "mode=%s(%d) -> %duV\n", get_mode_name(mode), mode, voltage);
+	dev_dbg(dev, "mode=%s(%d) -> %duV\n",
+		get_mode_name(reg_info->mode_names, reg_info->num_modes, mode),
+		mode, voltage);
 
 	if (!reg_info->last_volt) {
 		rc = regulator_get_voltage_rdev(reg_info->base_rdev);
@@ -334,7 +357,8 @@ static int open_loop_cpr_regulator_set_voltage(struct regulator_dev *rdev,
 		rc = switch_apm_park(rdev, voltage);
 		if (rc) {
 			dev_err(dev, "APM switching failed for mode=%s, rc=%d\n",
-				get_mode_name(mode), rc);
+				get_mode_name(reg_info->mode_names,
+					      reg_info->num_modes, mode), rc);
 			return rc;
 		}
 
@@ -362,7 +386,8 @@ static int open_loop_cpr_regulator_set_voltage(struct regulator_dev *rdev,
 		rc = switch_apm_order(rdev, voltage);
 		if (rc) {
 			dev_err(dev, "APM switching failed for mode=%s, rc=%d\n",
-				get_mode_name(mode), rc);
+				get_mode_name(reg_info->mode_names,
+					      reg_info->num_modes, mode), rc);
 			return rc;
 		}
 
@@ -383,7 +408,8 @@ static int open_loop_cpr_regulator_set_voltage(struct regulator_dev *rdev,
 	reg_info->last_volt = voltage;
 
 	dev_dbg(dev, "mode=%s(%d) -> %duV config done\n",
-		get_mode_name(mode), mode, reg_info->last_volt);
+		get_mode_name(reg_info->mode_names, reg_info->num_modes, mode),
+		mode, reg_info->last_volt);
 
 	return 0;
 }
@@ -392,11 +418,11 @@ static int open_loop_cpr_regulator_set_voltage(struct regulator_dev *rdev,
  * open_loop_cpr_regulator_get_voltage - Get current voltage as mode index
  * @rdev: Regulator device
  *
- * Returns the current operating mode (1=SVS, 2=NOM, 3=TUR) using the
- * tracked current_voltage field. Returns 1 (SVS) if not yet set.
- * This avoids hardware access and potential deadlocks.
+ * Returns the current 1-based operating mode using the tracked
+ * current_voltage field. Returns 1 (the rail's first mode, SVS) if not yet
+ * set. This avoids hardware access and potential deadlocks.
  *
- * Return: Mode number (1-3)
+ * Return: 1-based mode number
  */
 static int open_loop_cpr_regulator_get_voltage(struct regulator_dev *rdev)
 {
@@ -411,18 +437,20 @@ static int open_loop_cpr_regulator_get_voltage(struct regulator_dev *rdev)
 /**
  * open_loop_cpr_regulator_list_voltage - List supported voltages (mode indices)
  * @rdev: Regulator device
- * @selector: Voltage selector (0=SVS, 1=NOM, 2=TUR)
+ * @selector: Voltage selector, 0-based
  *
- * Maps selector to mode index used by the OPP framework.
- * Selector 0 -> mode 1 (SVS), Selector 1 -> mode 2 (NOM),
- * Selector 2 -> mode 3 (TUR)
+ * Maps a 0-based selector to the 1-based mode index used by the OPP
+ * framework. The valid selector range is rail dependent
+ * (reg_info->num_modes: 3 for APC, 4 for NSP CX/MX).
  *
- * Return: Mode index (1-3), or -EINVAL for invalid selector
+ * Return: 1-based mode index, or -EINVAL for an out-of-range selector
  */
 static int open_loop_cpr_regulator_list_voltage(struct regulator_dev *rdev,
 						unsigned int selector)
 {
-	if (selector >= MAX_MODES)
+	struct reg_info *reg_info = rdev_get_drvdata(rdev);
+
+	if (selector >= reg_info->num_modes)
 		return -EINVAL;
 
 	return selector + 1;
@@ -795,8 +823,8 @@ free_adjustment:
  *
  * Reads fuse parameters from device tree, accesses eFuse hardware registers
  * via NVMEM, reads reference voltages, applies fuse corrections, and
- * populates the voltage table with the final operating voltage for each mode
- * (SVS, NOM, TUR). The fuse value is interpreted as a signed offset from the
+ * populates the voltage table with the final operating voltage for each of
+ * the rail's modes. The fuse value is interpreted as a signed offset from the
  * reference voltage and directly applied without process corner classification.
  * Registers the regulator with the Linux regulator framework.
  *
@@ -831,6 +859,18 @@ static int process_open_loop_cpr_regulator(struct device *dev,
 	void *buf;
 	int mode;
 	int rc;
+
+	if (default_params->mx_rail_available) {
+		char supply_prop[32];
+
+		snprintf(supply_prop, sizeof(supply_prop), "%s-supply",
+			 reg_data->regulator_name);
+		if (!of_find_property(dev->of_node, supply_prop, NULL)) {
+			dev_info(dev, "%s rail absent on this board, skipping\n",
+				 reg_data->regulator_name);
+			return 0;
+		}
+	}
 
 	/* Try to override from platform configuration if subnode exists */
 	rail_node = of_get_child_by_name(dev->of_node, reg_data->regulator_name);
@@ -877,6 +917,9 @@ static int process_open_loop_cpr_regulator(struct device *dev,
 				     num_fuses, MAX_MODES);
 	}
 
+	reg_info->mode_names = default_params->mode_names;
+	reg_info->num_modes = num_fuses;
+
 	/* Initialize fused-voltage table with ceiling voltages as safe defaults */
 	for (mode = 0; mode < num_fuses; mode++)
 		fused_volt_table[mode] = vconfig->voltage_table[mode];
@@ -893,13 +936,14 @@ static int process_open_loop_cpr_regulator(struct device *dev,
 			dev_dbg(dev,
 				"%s_%s: forced ceiling voltage %duV\n",
 				reg_data->regulator_name,
-				get_mode_name(mode),
+				get_mode_name(reg_info->mode_names, num_fuses, mode),
 				fused_volt_table[mode]);
 			continue;
 		}
 
 		snprintf(fuse_name, sizeof(fuse_name), "cpr_%s_%s",
-			 reg_data->regulator_name, get_mode_name(mode));
+			 reg_data->regulator_name,
+			 get_mode_name(reg_info->mode_names, num_fuses, mode));
 
 		cell = nvmem_cell_get(dev, fuse_name);
 		if (IS_ERR(cell)) {
@@ -939,7 +983,8 @@ static int process_open_loop_cpr_regulator(struct device *dev,
 							    fuse->bit_len);
 
 		dev_dbg(dev, "%s_%s: ref=%duV, fused=%duV\n",
-			reg_data->regulator_name, get_mode_name(mode),
+			reg_data->regulator_name,
+			get_mode_name(reg_info->mode_names, num_fuses, mode),
 			fuse->reference_volt, fused_volt);
 
 		/* Store the fuse-corrected voltage directly for this mode */
@@ -1002,7 +1047,8 @@ static int process_open_loop_cpr_regulator(struct device *dev,
 				return dev_err_probe(dev, rc,
 						     "%s_%s: gpio voltage lookup failed\n",
 						     reg_data->regulator_name,
-						     get_mode_name(mode));
+						     get_mode_name(reg_info->mode_names,
+								   num_fuses, mode));
 			}
 			reg_info->voltage_table[mode] = rc;
 		} else {
@@ -1023,21 +1069,28 @@ static int process_open_loop_cpr_regulator(struct device *dev,
 
 	of_node_put(gpio_np);
 
-	/* Initialize APM support - optional, continue without it if absent */
-	reg_info->apm = msm_apm_ctrl_dev_get(dev);
-	if (IS_ERR(reg_info->apm)) {
-		if (PTR_ERR(reg_info->apm) == -EPROBE_DEFER)
-			return -EPROBE_DEFER;
+	/*
+	 * APM tracks the APSS/APC cluster's power source, not any other
+	 * rail - skip it entirely for rails that don't drive APM.
+	 */
+	if (!default_params->apm_supported) {
 		reg_info->apm = NULL;
 	} else {
-		of_property_read_u32(dev->of_node, "qcom,apm-threshold-voltage",
-				     &reg_info->apm_threshold_volt);
-		reg_info->apm_high_supply = MSM_APM_SUPPLY_APCC;
-		reg_info->apm_low_supply  = MSM_APM_SUPPLY_MX;
+		reg_info->apm = msm_apm_ctrl_dev_get(dev);
+		if (IS_ERR(reg_info->apm)) {
+			if (PTR_ERR(reg_info->apm) == -EPROBE_DEFER)
+				return -EPROBE_DEFER;
+			reg_info->apm = NULL;
+		} else {
+			of_property_read_u32(dev->of_node, "qcom,apm-threshold-voltage",
+					     &reg_info->apm_threshold_volt);
+			reg_info->apm_high_supply = MSM_APM_SUPPLY_APCC;
+			reg_info->apm_low_supply  = MSM_APM_SUPPLY_MX;
 
-		dev_dbg(dev, "%s: APM configured, threshold=%duV, %s\n",
-			reg_data->regulator_name, reg_info->apm_threshold_volt,
-			reg_info->apm_park_switch ? "park-and-switch" : "order-switch");
+			dev_dbg(dev, "%s: APM configured, threshold=%duV, %s\n",
+				reg_data->regulator_name, reg_info->apm_threshold_volt,
+				reg_info->apm_park_switch ? "park-and-switch" : "order-switch");
+		}
 	}
 
 	desc = devm_kzalloc(dev, sizeof(*desc), GFP_KERNEL);
@@ -1054,7 +1107,7 @@ static int process_open_loop_cpr_regulator(struct device *dev,
 	desc->ops = &open_loop_cpr_regulator_ops;
 	desc->owner = THIS_MODULE;
 	desc->min_uV = 1;
-	desc->n_voltages = MAX_MODES;
+	desc->n_voltages = num_fuses;
 	desc->supply_name = reg_data->regulator_name;
 	config.dev = dev;
 	config.driver_data = reg_info;
@@ -1067,11 +1120,11 @@ static int process_open_loop_cpr_regulator(struct device *dev,
 
 	reg_info->base_rdev = rdev->supply->rdev;
 
-	dev_info(dev, "%s voltages: svs=%duV, nom=%duV, tur=%duV\n",
-		 reg_data->regulator_name,
-		 reg_info->voltage_table[MODE_SVS],
-		 reg_info->voltage_table[MODE_NOM],
-		 reg_info->voltage_table[MODE_TUR]);
+	for (mode = 0; mode < num_fuses; mode++)
+		dev_info(dev, "%s voltage[%s] = %duV\n",
+			 reg_data->regulator_name,
+			get_mode_name(reg_info->mode_names, num_fuses, mode),
+			reg_info->voltage_table[mode]);
 
 	return 0;
 }
@@ -1138,6 +1191,36 @@ static const struct voltage_config ipq9650_apc_voltages = {
 };
 
 /*
+ * IPQ9650 NSP CX/MX ceiling voltages per operating mode (SVS, SVS_L1, NOM,
+ * TUR). Array length matches num_fuses = 4.
+ */
+static const int ipq9650_nsp_cx_voltage_table[] = {
+	735000,		/* SVS ceiling voltage in microvolts */
+	790000,		/* SVS_L1 ceiling voltage in microvolts */
+	815000,		/* NOM ceiling voltage in microvolts */
+	960000,		/* TUR ceiling voltage in microvolts */
+};
+
+static const int ipq9650_nsp_mx_voltage_table[] = {
+	750000,		/* SVS ceiling voltage in microvolts */
+	790000,		/* SVS_L1 ceiling voltage in microvolts */
+	815000,		/* NOM ceiling voltage in microvolts */
+	815000,		/* TUR ceiling voltage in microvolts */
+};
+
+static const struct voltage_config ipq9650_nsp_cx_voltages = {
+	.voltage_table  = ipq9650_nsp_cx_voltage_table,
+	.num_thresholds = 2,
+	.thresholds     = ipq9650_voltage_thresholds,
+};
+
+static const struct voltage_config ipq9650_nsp_mx_voltages = {
+	.voltage_table  = ipq9650_nsp_mx_voltage_table,
+	.num_thresholds = 2,
+	.thresholds     = ipq9650_voltage_thresholds,
+};
+
+/*
  * IPQ9650 APC fuse parameters per operating mode.
  * Each entry specifies: fuse bit length, reference voltage (uV),
  * voltage step size, floor voltage and ceiling voltage for the
@@ -1149,16 +1232,67 @@ static const struct fuse_params ipq9650_apc_fuse_params[] = {
 	{ 7, 890000, 5000, 800000, 960000 },	/* TUR */
 };
 
+/*
+ * IPQ9650 NSP CX/MX fuse parameters per operating mode (SVS, SVS_L1, NOM,
+ * TUR).
+ */
+static const struct fuse_params ipq9650_nsp_cx_fuse_params[] = {
+	{ 7, 630000, 5000, 550000, 735000 },	/* SVS */
+	{ 7, 685000, 5000, 600000, 790000 },	/* SVS_L1 */
+	{ 7, 750000, 5000, 650000, 815000 },	/* NOM */
+	{ 7, 890000, 5000, 750000, 960000 },	/* TUR */
+};
+
+static const struct fuse_params ipq9650_nsp_mx_fuse_params[] = {
+	{ 7, 750000, 5000, 750000, 750000 },	/* SVS */
+	{ 7, 750000, 5000, 750000, 790000 },	/* SVS_L1 */
+	{ 7, 750000, 5000, 750000, 815000 },	/* NOM */
+	{ 7, 750000, 5000, 750000, 815000 },	/* TUR */
+};
+
+/*
+ * Mode name arrays, one entry per fuse/mode position. APC has no SVS_L1
+ * mode while NSP CX/MX does.
+ */
+static const char * const ipq9650_apc_mode_names[] = {
+	"svs", "nom", "tur",
+};
+
+static const char * const ipq9650_nsp_mode_names[] = {
+	"svs", "svs_l1", "nom", "tur",
+};
+
 static const struct open_loop_cpr_regulator_params ipq9650_apc_params = {
 	.fuse_params         = ipq9650_apc_fuse_params,
 	.voltage_config      = &ipq9650_apc_voltages,
+	.mode_names          = ipq9650_apc_mode_names,
 	.num_fuses           = 3,
 	.part_type_supported = true,
+	.apm_supported       = true,
+};
+
+static const struct open_loop_cpr_regulator_params ipq9650_nsp_cx_params = {
+	.fuse_params         = ipq9650_nsp_cx_fuse_params,
+	.voltage_config      = &ipq9650_nsp_cx_voltages,
+	.mode_names          = ipq9650_nsp_mode_names,
+	.num_fuses           = 4,
+	.part_type_supported = true,
+};
+
+static const struct open_loop_cpr_regulator_params ipq9650_nsp_mx_params = {
+	.fuse_params         = ipq9650_nsp_mx_fuse_params,
+	.voltage_config      = &ipq9650_nsp_mx_voltages,
+	.mode_names          = ipq9650_nsp_mode_names,
+	.num_fuses           = 4,
+	.part_type_supported = true,
+	.mx_rail_available   = true,
 };
 
 static const struct open_loop_cpr_regulator_data
 		ipq9650_open_loop_cpr_regulator_data[] = {
 	{ "apc", &ipq9650_apc_params },
+	{ "nsp_cx", &ipq9650_nsp_cx_params },
+	{ "nsp_mx", &ipq9650_nsp_mx_params },
 	{ }
 };
 
