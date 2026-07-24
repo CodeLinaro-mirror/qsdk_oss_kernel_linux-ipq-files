@@ -311,5 +311,10 @@
 			     <GIC_PPI 10 IRQ_TYPE_LEVEL_LOW>,
 			     <GIC_PPI 12 IRQ_TYPE_LEVEL_LOW>;
 	};
+
+
+	qcom,test@0 {
+		compatible = "qcom,testmhi";
+	};
 };
 
