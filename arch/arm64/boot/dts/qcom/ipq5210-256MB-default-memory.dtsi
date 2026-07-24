@@ -18,6 +18,11 @@
 	 * |         |              |                         |
 	 * +---------+--------------+-------------------------+
 	 * |         |              |                         |
+	 * | QCN9625 |    DYNAMIC   |          28MB           |
+	 * | PCIe1   |              |                         |
+	 * |         |              |                         |
+	 * +---------+--------------+-------------------------+
+	 * |         |              |                         |
 	 * | QCN9224 |    DYNAMIC   |          19MB           |
 	 * | PCIe0   |              |                         |
 	 * |         |              |                         |
@@ -42,6 +47,13 @@
 		ranges;
 
 		qcn9625_pcie0_cma: qcn9625_pcie0_cma {
+			compatible = "shared-dma-pool";
+			reusable;
+			size = <0x0 0x01c00000>;
+			status = "disabled";
+		};
+
+		qcn9625_pcie1_cma: qcn9625_pcie1_cma {
 			compatible = "shared-dma-pool";
 			reusable;
 			size = <0x0 0x01c00000>;

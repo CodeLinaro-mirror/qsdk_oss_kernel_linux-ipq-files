@@ -11,6 +11,13 @@
 #include "ipq5210-rdp-common.dtsi"
 #include <dt-bindings/clock/qcom,qce2204-nsscc.h>
 #include <dt-bindings/reset/qcom,qce2204-nsscc.h>
+#ifdef __IPQ_MEM_PROFILE_512_MB__
+#include "ipq5210-512MB-default-memory.dtsi"
+#elif defined(__IPQ_MEM_PROFILE_256_MB__)
+#include "ipq5210-256MB-default-memory.dtsi"
+#else
+#include "ipq5210-default-memory.dtsi"
+#endif
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ5210 DB HM02.1";
@@ -417,6 +424,23 @@
 		reg = <0 0 0 0 0>;
 		qcom,mhi@0 {
 			reg = <0 0 0 0 0>;
+
+			memory-region = <&qcn9625_pcie0_cma>, <&mlo_global_cma>;
+			memory-region-names = "host-ddr-mem", "mlo-global-mem";
+			qcom,board_id = <0x200d>;
+			status = "okay";
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+				};
+
+				port@1 {
+					reg = <1>;
+				};
+			};
 		};
 	};
 };
@@ -434,8 +458,37 @@
 		reg = <0 0 0 0 0>;
 		qcom,mhi@0 {
 			reg = <0 0 0 0 0>;
+
+			memory-region = <&qcn9625_pcie1_cma>, <&mlo_global_cma>;
+			memory-region-names = "host-ddr-mem", "mlo-global-mem";
+			qcom,board_id = <0x200d>;
+			status = "okay";
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+				};
+
+				port@1 {
+					reg = <1>;
+				};
+			};
 		};
 	};
+};
+
+&qcn9625_pcie0_cma {
+	status = "okay";
+};
+
+&qcn9625_pcie1_cma {
+	status = "okay";
+};
+
+&mlo_global_cma {
+	status = "okay";
 };
 
 &pon {
