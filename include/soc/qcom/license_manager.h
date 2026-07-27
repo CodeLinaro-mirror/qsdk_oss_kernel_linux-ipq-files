@@ -45,9 +45,10 @@
 #define CBOR_BUFFER_SIZE	4096
 
 #define SMEM_SOFTSKU_INFO	508
+#define SMEM_FID_LIST_INFO	513
 #define DDR_SPACE_LIMIT_FID	3008
 
-#define MAX_SOC_HW_FID		12
+#define MAX_SOC_HW_FID		16
 
 struct qmi_lm_feature_list_req_msg_v01 {
 	u32 reserved;
@@ -122,6 +123,11 @@ struct softsku_info_smem {
 	bool is_time_bound;
 	u64 grace_until;
 	struct sec_feature_value_type feature_value;
+};
+
+struct sec_enforceHWFeatureId {
+	u32 feature_id;
+	bool HWFeatureStatus;
 };
 
 struct lm_soc_hw_feat {
