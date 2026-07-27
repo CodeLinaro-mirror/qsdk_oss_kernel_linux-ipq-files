@@ -259,9 +259,6 @@ struct cdsp_power_driver {
 	/* State tracking */
 	atomic_t power_state;
 	struct mutex lock;
-
-	/* LPM regulator enable tracking (indexed by rail: 0=MX, 1=CX) */
-	bool lpm_reg_enabled[2];
 };
 
 /**
@@ -550,16 +547,6 @@ static void cdsp_execute_isolation_sequence(struct cdsp_power_driver *drv)
 	for (i = 0; i < num_rails; i++) {
 		unsigned int iso = iso_regs[i];
 
-		/*
-		 * Clear tracking at the start of isolation. This ensures that
-		 * if a restoration fails and is immediately followed by another
-		 * shutdown, we don't have stale tracking data. The restoration
-		 * sequence will set this to true if enable succeeds.
-		 */
-		bool was_enabled = drv->lpm_reg_enabled[i];
-
-		drv->lpm_reg_enabled[i] = false;
-
 		/* Step 1: Disable clocks */
 		regmap_update_bits(mpm_map, iso, ISO_CLK_DIS, ISO_CLK_DIS);
 
@@ -589,23 +576,9 @@ static void cdsp_execute_isolation_sequence(struct cdsp_power_driver *drv)
 		/* Step 7: Freeze outputs */
 		regmap_update_bits(mpm_map, iso, ISO_FREEZE_OUTPUT, ISO_FREEZE_OUTPUT);
 
-		/*
-		 * Step 8: Turn off regulator.
-		 *
-		 * If we successfully enabled the regulator in the restoration
-		 * sequence, use regulator_disable() (normal path).
-		 * If enable failed but hardware is ON (e.g., I2C ACK failure
-		 * after PMIC turned on), use regulator_force_disable() to
-		 * bypass enable_count check and force hardware off.
-		 */
-		if (regulators[i] && regulator_is_enabled(regulators[i])) {
-			if (was_enabled) {
-				/* Normal path: we enabled it successfully */
-				ret = regulator_disable(regulators[i]);
-			} else {
-				/* Recovery path: enable failed but HW is ON */
-				ret = regulator_force_disable(regulators[i]);
-			}
+		/* Step 8: Turn off regulator */
+		if (regulators[i]) {
+			ret = regulator_disable(regulators[i]);
 			if (ret)
 				dev_err(drv->dev, "Failed to disable %s rail: %d\n",
 					i == 0 ? "CX" : "MX", ret);
@@ -652,37 +625,10 @@ static void cdsp_execute_restoration_sequence(struct cdsp_power_driver *drv)
 		/* Step 2: Enable power rail while reset is asserted (skip if no handle) */
 		if (regulators[i]) {
 			ret = regulator_enable(regulators[i]);
-			if (ret) {
+			if (ret)
 				dev_err(drv->dev, "Failed to enable %s: %d\n", rail_names[i], ret);
-				/*
-				 * FIX: Check if HW is actually ON despite the error.
-				 * This can happen if the regulator driver's enable function
-				 * succeeds in hardware but returns an error code (e.g., -ENXIO).
-				 * If HW is ON, we must force-disable it to maintain consistency
-				 * between hardware and software state.
-				 */
-				if (regulator_is_enabled(regulators[i])) {
-					dev_warn(drv->dev, "%s: HW is ON despite enable error, forcing disable\n",
-						 rail_names[i]);
-					ret = regulator_force_disable(regulators[i]);
-					if (ret)
-						dev_err(drv->dev, "Failed to force-disable %s: %d\n",
-							rail_names[i], ret);
-				}
-
-				/* Mark as not enabled by us */
-				drv->lpm_reg_enabled[i] = false;
-
-				/*
-				 * Abort restoration sequence and clean up any rails
-				 * we successfully enabled before this failure.
-				 */
-				goto cleanup_on_error;
-			} else {
+			else
 				usleep_range(8000, 10000);
-				/* Mark as successfully enabled by us */
-				drv->lpm_reg_enabled[i] = true;
-			}
 		}
 
 		/* Step 3: Clear power-up reset */
@@ -703,23 +649,6 @@ static void cdsp_execute_restoration_sequence(struct cdsp_power_driver *drv)
 
 	dev_dbg(drv->dev, "Restoration sequence complete (%s mode)\n",
 		start_rail == 0 ? "FULL_PC" : "LONG_APCR");
-	return;
-
-cleanup_on_error:
-	/*
-	 * Rollback: Disable any rails we successfully enabled before the failure.
-	 * Walk backwards through the rails we've processed so far.
-	 */
-	dev_err(drv->dev, "Restoration failed, cleaning up previously enabled rails\n");
-	while (--i >= start_rail) {
-		if (drv->lpm_reg_enabled[i] && regulators[i]) {
-			ret = regulator_disable(regulators[i]);
-			if (ret)
-				dev_err(drv->dev, "Failed to disable %s during cleanup: %d\n",
-					rail_names[i], ret);
-			drv->lpm_reg_enabled[i] = false;
-		}
-	}
 }
 
 /**
@@ -938,15 +867,6 @@ static int cdsp_power_probe(struct platform_device *pdev)
 	drv->dev = &pdev->dev;
 	mutex_init(&drv->lock);
 	atomic_set(&drv->power_state, CDSP_POWER_ON);
-
-	/*
-	 * Initialize LPM regulator tracking to true. Remoteproc will enable
-	 * the regulators during boot (before any LPM cycles), so we assume
-	 * they're enabled. The LPM restoration sequence will update this
-	 * tracking appropriately.
-	 */
-	drv->lpm_reg_enabled[0] = true;  /* MX */
-	drv->lpm_reg_enabled[1] = true;  /* CX */
 
 	/* Get SMEM item ID from device tree */
 	ret = of_property_read_u32(pdev->dev.of_node, "qcom,smem-item", &smem_id);
