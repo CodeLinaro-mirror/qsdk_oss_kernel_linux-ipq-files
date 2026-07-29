@@ -145,3 +145,51 @@
 	status = "okay";
 };
 
+&pcie0 {
+	qcom,emulation;
+	max-link-speed = <1>;
+	phys = <>;
+	phy-names = "";
+	perst-gpio = <&tlmm 32 GPIO_ACTIVE_LOW>;
+
+	pcie0_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
+&pcie1 {
+	qcom,emulation;
+	max-link-speed = <1>;
+	phys = <>;
+	phy-names = "";
+	perst-gpio = <&tlmm 29 GPIO_ACTIVE_LOW>;
+
+	pcie1_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
+&pcie2 {
+	qcom,emulation;
+	max-link-speed = <1>;
+	phys = <>;
+	phy-names = "";
+	perst-gpio = <&tlmm 55 GPIO_ACTIVE_LOW>;
+
+	pcie2_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
