@@ -1693,6 +1693,158 @@ struct qmi_elem_info qmi_tme_fuse_blow_resp_msg_v01_ei[] = {
 	},
 };
 
+static struct qmi_elem_info qmi_tme_fuse_row_v01_v01_ei[] = {
+	{
+		.data_type	= QMI_UNSIGNED_4_BYTE,
+		.elem_len	= 1,
+		.elem_size	= sizeof(u32),
+		.array_type	= NO_ARRAY,
+		.tlv_type	= 0,
+		.offset		= offsetof(struct qmi_tme_fuse_row_v01_v01,
+					   rowAddr),
+	},
+	{
+		.data_type	= QMI_UNSIGNED_4_BYTE,
+		.elem_len	= 1,
+		.elem_size	= sizeof(u32),
+		.array_type	= NO_ARRAY,
+		.tlv_type	= 0,
+		.offset		= offsetof(struct qmi_tme_fuse_row_v01_v01,
+					   dataLO),
+	},
+	{
+		.data_type	= QMI_UNSIGNED_4_BYTE,
+		.elem_len	= 1,
+		.elem_size	= sizeof(u32),
+		.array_type	= NO_ARRAY,
+		.tlv_type	= 0,
+		.offset		= offsetof(struct qmi_tme_fuse_row_v01_v01,
+					   dataHI),
+	},
+	{
+		.data_type	= QMI_EOTI,
+		.array_type	= NO_ARRAY,
+		.tlv_type	= QMI_COMMON_TLV_TYPE,
+	},
+};
+
+struct qmi_elem_info qmi_tme_read_multi_fuses_req_msg_v01_ei[] = {
+	{
+		.data_type	= QMI_DATA_LEN,
+		.elem_len	= 1,
+		.elem_size	= sizeof(u8),
+		.array_type	= NO_ARRAY,
+		.tlv_type	= 0x01,
+		.offset		= offsetof(struct qmi_tme_read_multi_fuses_req_msg_v01,
+					   fuse_addresses_len),
+	},
+	{
+		.data_type	= QMI_UNSIGNED_4_BYTE,
+		.elem_len	= QMI_TME_MAX_MULTI_FUSES_V01,
+		.elem_size	= sizeof(u32),
+		.array_type	= VAR_LEN_ARRAY,
+		.tlv_type	= 0x01,
+		.offset		= offsetof(struct qmi_tme_read_multi_fuses_req_msg_v01,
+					   fuse_addresses),
+	},
+	{
+		.data_type	= QMI_UNSIGNED_4_BYTE,
+		.elem_len	= 1,
+		.elem_size	= sizeof(u32),
+		.array_type	= NO_ARRAY,
+		.tlv_type	= 0x02,
+		.offset		= offsetof(struct qmi_tme_read_multi_fuses_req_msg_v01,
+					   num_fuses),
+	},
+	{
+		.data_type	= QMI_EOTI,
+		.array_type	= NO_ARRAY,
+		.tlv_type	= QMI_COMMON_TLV_TYPE,
+	},
+};
+
+struct qmi_elem_info qmi_tme_read_multi_fuses_resp_msg_v01_ei[] = {
+	{
+		.data_type	= QMI_STRUCT,
+		.elem_len	= 1,
+		.elem_size	= sizeof(struct qmi_response_type_v01),
+		.array_type	= NO_ARRAY,
+		.tlv_type	= 0x02,
+		.offset		= offsetof(struct qmi_tme_read_multi_fuses_resp_msg_v01,
+					   resp),
+		.ei_array	= qmi_response_type_v01_ei,
+	},
+	{
+		.data_type	= QMI_UNSIGNED_4_BYTE,
+		.elem_len	= 1,
+		.elem_size	= sizeof(u32),
+		.array_type	= NO_ARRAY,
+		.tlv_type	= 0x03,
+		.offset		= offsetof(struct qmi_tme_read_multi_fuses_resp_msg_v01,
+					   status),
+	},
+	{
+		.data_type	= QMI_UNSIGNED_4_BYTE,
+		.elem_len	= 1,
+		.elem_size	= sizeof(u32),
+		.array_type	= NO_ARRAY,
+		.tlv_type	= 0x04,
+		.offset		= offsetof(struct qmi_tme_read_multi_fuses_resp_msg_v01,
+					   ipc_status),
+	},
+	{
+		.data_type	= QMI_OPT_FLAG,
+		.elem_len	= 1,
+		.elem_size	= sizeof(u8),
+		.array_type	= NO_ARRAY,
+		.tlv_type	= 0x10,
+		.offset		= offsetof(struct qmi_tme_read_multi_fuses_resp_msg_v01,
+					   fuse_rows_valid),
+	},
+	{
+		.data_type	= QMI_DATA_LEN,
+		.elem_len	= 1,
+		.elem_size	= sizeof(u8),
+		.array_type	= NO_ARRAY,
+		.tlv_type	= 0x10,
+		.offset		= offsetof(struct qmi_tme_read_multi_fuses_resp_msg_v01,
+					   fuse_rows_len),
+	},
+	{
+		.data_type	= QMI_STRUCT,
+		.elem_len	= QMI_TME_MAX_MULTI_FUSES_V01,
+		.elem_size	= sizeof(struct qmi_tme_fuse_row_v01_v01),
+		.array_type	= VAR_LEN_ARRAY,
+		.tlv_type	= 0x10,
+		.offset		= offsetof(struct qmi_tme_read_multi_fuses_resp_msg_v01,
+					   fuse_rows),
+		.ei_array	= qmi_tme_fuse_row_v01_v01_ei,
+	},
+	{
+		.data_type	= QMI_OPT_FLAG,
+		.elem_len	= 1,
+		.elem_size	= sizeof(u8),
+		.array_type	= NO_ARRAY,
+		.tlv_type	= 0x11,
+		.offset		= offsetof(struct qmi_tme_read_multi_fuses_resp_msg_v01,
+					   num_rows_valid),
+	},
+	{
+		.data_type	= QMI_UNSIGNED_4_BYTE,
+		.elem_len	= 1,
+		.elem_size	= sizeof(u32),
+		.array_type	= NO_ARRAY,
+		.tlv_type	= 0x11,
+		.offset		= offsetof(struct qmi_tme_read_multi_fuses_resp_msg_v01,
+					   num_rows),
+	},
+	{
+		.data_type	= QMI_EOTI,
+		.array_type	= NO_ARRAY,
+		.tlv_type	= QMI_COMMON_TLV_TYPE,
+	},
+};
+
 /* ===== Response Handlers ===== */
 
 struct qmi_elem_info qmi_get_chip_params_req_msg_v01_ei[] = {
@@ -1959,6 +2111,13 @@ static const struct qmi_msg_handler tme_qmi_msg_handlers[] = {
 		.msg_id = QMI_GET_CHIP_PARAMS_RESP_V01,
 		.ei = qmi_get_chip_params_resp_msg_v01_ei,
 		.decoded_size = sizeof(struct qmi_get_chip_params_resp_msg_v01),
+		.fn = tmelcom_qmi_response_handler,
+	},
+	{
+		.type = QMI_RESPONSE,
+		.msg_id = QMI_TME_READ_MULTI_FUSES_RESP_V01,
+		.ei = qmi_tme_read_multi_fuses_resp_msg_v01_ei,
+		.decoded_size = sizeof(struct qmi_tme_read_multi_fuses_resp_msg_v01),
 		.fn = tmelcom_qmi_response_handler,
 	},
 	{} /* Sentinel */
@@ -2287,6 +2446,138 @@ static ssize_t chip_params_show(struct kobject *kobj,
 			  client->chip_id, client->serial_number);
 }
 
+/* Multi-Fuse Read - read-only, reads all Trestles fuses */
+/*
+ * struct trestles_fuse_entry - Describes a single fuse field to read and display.
+ *
+ * Most fuse fields fit within one 32-bit word (dataLO or dataHI) of a 64-bit
+ * QFPROM row.  For those, set mask2 = 0 and the secondary fields are ignored.
+ *
+ * Some fields (e.g. OEM_PRODUCT_ID) span BOTH words of the same row:
+ *   - The primary part is extracted from the normal word (dataLO or dataHI)
+ *     using mask/shift.
+ *   - The secondary part is extracted from the paired word using mask2/shift2,
+ *     then left-shifted by out_shift2 before OR-ing into the final value.
+ *
+ * This avoids needing a separate code path for cross-word fields.
+ */
+struct qcn9625_fuse_entry {
+	const char *name;
+	u32 addr;
+	u32 mask;       /* primary word bit mask */
+	u32 shift;      /* primary word right-shift */
+	u32 mask2;      /* secondary (paired) word mask; 0 = field fits in one word */
+	u32 shift2;     /* secondary word right-shift */
+	u32 out_shift2; /* left-shift applied to secondary part before OR into value */
+};
+
+static const struct qcn9625_fuse_entry fuse_table[] = {
+	/* name                         addr        mask        shift  mask2       shift2 out_shift2 */
+	{ "OEM_ID",                   0x1F900D0, 0x0FFFF000, 12, 0,          0, 0 },  /* TME_OEM_ATE_ROW0_LSB bits [27:12] */
+	{ "OEM_PRODUCT_ID",           0x1F900D0, 0xF0000000, 28, 0x00000FFF, 0, 4 },  /* dataLO[31:28] | dataHI[11:0]<<4 */
+	{ "AUTHENABLE",               0x1F900D0, 0x00000080, 7,  0,          0, 0 },  /* TME_OEM_ATE_ROW0_LSB bit [7] */
+	{ "ENFORCE_OEM_AUTHENABLE",   0x1F900D0, 0x00000002, 1,  0,          0, 0 },  /* TME_OEM_ATE_ROW0_LSB bit [1] (OEMSECURITYPOLICY_1) */
+	{ "TOTAL_ROT_NUM",            0x1F900D0, 0x00000E00, 9,  0,          0, 0 },  /* TME_OEM_ATE_ROW0_LSB bits [11:9] (OEM_MRC_ROOTCERT_TOTAL_NUM) */
+	{ "OEM MRC hash ROW0 LSB",    0x1F900E0, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW0_LSB */
+	{ "OEM MRC hash ROW0 MSB",    0x1F900E4, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW0_MSB */
+	{ "OEM MRC hash ROW1 LSB",    0x1F900E8, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW1_LSB */
+	{ "OEM MRC hash ROW1 MSB",    0x1F900EC, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW1_MSB */
+	{ "OEM MRC hash ROW2 LSB",    0x1F900F0, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW2_LSB */
+	{ "OEM MRC hash ROW2 MSB",    0x1F900F4, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW2_MSB */
+	{ "OEM MRC hash ROW3 LSB",    0x1F900F8, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW3_LSB */
+	{ "OEM MRC hash ROW3 MSB",    0x1F900FC, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW3_MSB */
+	{ "OEM MRC hash ROW4 LSB",    0x1F90100, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW4_LSB */
+	{ "OEM MRC hash ROW4 MSB",    0x1F90104, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW4_MSB */
+	{ "OEM MRC hash ROW5 LSB",    0x1F90108, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW5_LSB */
+	{ "OEM MRC hash ROW5 MSB",    0x1F9010C, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW5_MSB */
+	{ "OEM MRC hash ROW6 LSB",    0x1F90110, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW6_LSB */
+	{ "OEM MRC hash ROW6 MSB",    0x1F90114, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW6_MSB */
+};
+#define FUSE_TABLE_SIZE ARRAY_SIZE(fuse_table)
+
+static ssize_t multi_fuse_read_show(struct kobject *kobj,
+				    struct kobj_attribute *attr, char *buf)
+{
+	struct tmelcom_qmi_client *client = kobj_to_client(kobj);
+	struct qmi_tme_fuse_row_v01_v01 fuse_rows[QMI_TME_MAX_MULTI_FUSES_V01];
+	u32 unique_addrs[QMI_TME_MAX_MULTI_FUSES_V01];
+	u32 num_unique = 0;
+	u32 num_rows = 0;
+	int ret, i, j;
+	int attach_num;
+
+	if (!client)
+		return -ENODEV;
+
+	attach_num = domain_to_attach_num(client->domain_num);
+	if (attach_num < 0)
+		return -ENOENT;
+
+	/*
+	 * A QFPROM read returns the full 64-bit row (dataLO + dataHI) for a
+	 * given LSB address.  MSB addresses (addr & 4 != 0) are never sent to
+	 * the firmware; instead we send only the corresponding LSB address
+	 * (addr & ~4U) and extract the upper 32 bits from dataHI.
+	 */
+	for (i = 0; i < FUSE_TABLE_SIZE; i++) {
+		u32 lsb_addr = fuse_table[i].addr & ~4U;
+		bool found = false;
+
+		for (j = 0; j < num_unique; j++) {
+			if (unique_addrs[j] == lsb_addr) {
+				found = true;
+				break;
+			}
+		}
+		if (!found && num_unique < QMI_TME_MAX_MULTI_FUSES_V01)
+			unique_addrs[num_unique++] = lsb_addr;
+	}
+
+	ret = tmelcom_qmi_read_multi_fuses(attach_num, unique_addrs, num_unique,
+					   fuse_rows, &num_rows);
+	if (ret) {
+		pr_err("tmelcom_qmi: Multi-fuse read failed: %d\n", ret);
+		return ret;
+	}
+
+	pr_info("\n");
+	pr_info("Fuse Name                 Address         Value\n");
+	pr_info("------------------------------------------------------\n");
+
+	for (i = 0; i < FUSE_TABLE_SIZE; i++) {
+		u32 addr     = fuse_table[i].addr;
+		u32 lsb_addr = addr & ~4U;
+		bool is_msb  = (addr & 4U) != 0;
+		u32 raw      = 0;
+		u32 raw2     = 0;
+		u32 value    = 0;
+
+		for (j = 0; j < num_rows; j++) {
+			if (fuse_rows[j].rowAddr == lsb_addr) {
+				/* primary word: dataLO for LSB addr, dataHI for MSB addr */
+				raw  = is_msb ? fuse_rows[j].dataHI : fuse_rows[j].dataLO;
+				/* secondary (paired) word: the other half of the 64-bit row */
+				raw2 = is_msb ? fuse_rows[j].dataLO : fuse_rows[j].dataHI;
+				break;
+			}
+		}
+		value = (raw & fuse_table[i].mask) >>
+			fuse_table[i].shift;
+		/* For fields that span both words (mask2 != 0), OR in the secondary part */
+		if (fuse_table[i].mask2)
+			value |= ((raw2 & fuse_table[i].mask2) >>
+				  fuse_table[i].shift2)
+				 << fuse_table[i].out_shift2;
+		pr_info("%-25s 0x%-14x 0x%x\n",
+			fuse_table[i].name,
+			addr,
+			value);
+	}
+	pr_info("------------------------------------------------------\n");
+
+	return 0;
+}
+
 /* Fuse Blow - write file path, read file and pass contents to QMI */
 static ssize_t fuse_blow_store(struct kobject *kobj,
 			       struct kobj_attribute *attr,
@@ -2420,6 +2711,7 @@ static struct kobj_attribute tmel_version_attr = __ATTR_RO(tmel_version);
 static struct kobj_attribute chip_params_attr = __ATTR_RO(chip_params);
 static struct kobj_attribute sec_elf_attr =
 	__ATTR(sec_elf, 0200, NULL, fuse_blow_store);
+static struct kobj_attribute multi_fuse_read_attr = __ATTR_RO(multi_fuse_read);
 
 static struct attribute *qmi_client_attrs[] = {
 	&instance_id_attr.attr,
@@ -2431,6 +2723,7 @@ static struct attribute *qmi_client_attrs[] = {
 	&tmel_version_attr.attr,
 	&chip_params_attr.attr,
 	&sec_elf_attr.attr,
+	&multi_fuse_read_attr.attr,
 	NULL,
 };
 

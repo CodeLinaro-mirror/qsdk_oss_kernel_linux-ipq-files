@@ -1671,3 +1671,106 @@ out_unlock:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(tmelcom_qmi_get_chip_params);
+
+/**
+ * tmelcom_qmi_read_multi_fuses() - Read multiple fuse values in a single QMI call
+ * @attach_num: Attach number - dynamically mapped based on sorted instance IDs
+ * @fuse_addrs: Array of fuse addresses to read
+ * @num_fuses: Number of fuse addresses in the array
+ * @fuse_rows: Output buffer to store fuse row data (rowAddr, dataLO, dataHI)
+ * @num_rows_out: Pointer to store the number of rows returned
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int tmelcom_qmi_read_multi_fuses(int attach_num, u32 *fuse_addrs, u32 num_fuses,
+				 struct qmi_tme_fuse_row_v01_v01 *fuse_rows,
+				 u32 *num_rows_out)
+{
+	struct tmelcom_qmi_client *client;
+	struct qmi_tme_read_multi_fuses_req_msg_v01 req = {0};
+	struct qmi_tme_read_multi_fuses_resp_msg_v01 *resp;
+	struct qmi_txn txn;
+	int ret;
+	u32 i;
+
+	if (!fuse_addrs || !num_fuses || !fuse_rows || !num_rows_out)
+		return -EINVAL;
+
+	if (num_fuses > QMI_TME_MAX_MULTI_FUSES_V01)
+		return -EINVAL;
+
+	client = tmelcom_qmi_get_client(attach_num);
+	if (!client) {
+		pr_err("tmelcom_qmi: No client for attach number %d\n", attach_num);
+		return TMELCOM_QMI_ERR_NO_CLIENT;
+	}
+
+	resp = kzalloc(sizeof(*resp), GFP_KERNEL);
+	if (!resp)
+		return -ENOMEM;
+
+	req.fuse_addresses_len = num_fuses;
+	for (i = 0; i < num_fuses; i++)
+		req.fuse_addresses[i] = fuse_addrs[i];
+	req.num_fuses = num_fuses;
+
+	mutex_lock(&client->lock);
+
+	ret = qmi_txn_init(&client->qmi, &txn,
+			   qmi_tme_read_multi_fuses_resp_msg_v01_ei, resp);
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Failed to init transaction: %d\n", ret);
+		goto out_unlock;
+	}
+
+	ret = qmi_send_request(&client->qmi, &client->sq, &txn,
+			       QMI_TME_READ_MULTI_FUSES_REQ_V01,
+			       QMI_TME_READ_MULTI_FUSES_REQ_MSG_V01_MAX_MSG_LEN,
+			       qmi_tme_read_multi_fuses_req_msg_v01_ei, &req);
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Failed to send request: %d\n", ret);
+		qmi_txn_cancel(&txn);
+		atomic_inc(&client->stats.errors);
+		goto out_unlock;
+	}
+
+	atomic_inc(&client->stats.requests_sent);
+	client->stats.last_request_time = ktime_get();
+
+	ret = qmi_txn_wait(&txn, msecs_to_jiffies(qmi_timeout_ms));
+	if (ret < 0) {
+		tmelcom_qmi_err(client, "Transaction timeout: %d\n", ret);
+		atomic_inc(&client->stats.timeouts);
+		goto out_unlock;
+	}
+
+	atomic_inc(&client->stats.responses_received);
+	client->stats.last_response_time = ktime_get();
+
+	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
+		tmelcom_qmi_err(client, "QMI request failed: ipc_status=%u, status=0x%x\n",
+				resp->ipc_status, resp->status);
+		ret = -EIO;
+		atomic_inc(&client->stats.errors);
+		client->stats.last_error_code = resp->ipc_status ? resp->ipc_status : resp->status;
+		goto out_unlock;
+	}
+
+	if (resp->fuse_rows_valid && resp->fuse_rows_len > 0) {
+		u32 copy_count = min(resp->fuse_rows_len, num_fuses);
+
+		memcpy(fuse_rows, resp->fuse_rows,
+		       copy_count * sizeof(struct qmi_tme_fuse_row_v01_v01));
+		*num_rows_out = resp->num_rows_valid ? resp->num_rows : copy_count;
+	} else {
+		*num_rows_out = 0;
+	}
+
+	ret = resp->status;
+
+out_unlock:
+	mutex_unlock(&client->lock);
+	kfree(resp);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tmelcom_qmi_read_multi_fuses);

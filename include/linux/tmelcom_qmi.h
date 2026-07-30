@@ -12,6 +12,18 @@
 
 struct tmelcom_qmi_client;
 
+/**
+ * struct qmi_tme_fuse_row_v01_v01 - Fuse row data returned by multi-fuse read
+ * @rowAddr: The fuse register address
+ * @dataLO: Lower 32 bits of the fuse row value
+ * @dataHI: Upper 32 bits of the fuse row value
+ */
+struct qmi_tme_fuse_row_v01_v01 {
+	u32 rowAddr;
+	u32 dataLO;
+	u32 dataHI;
+};
+
 /* ===== License Operation Types ===== */
 
 /* License operation types for QMI */
@@ -201,6 +213,20 @@ int tmelcom_qmi_get_ecc_public_key(int attach_num, u32 key_type, void *buf,
  */
 int tmelcom_qmi_read_fuse(int attach_num, u32 fuse_addr, u32 *fuse_val_lsb,
 			  u32 *fuse_val_msb);
+
+/**
+ * tmelcom_qmi_read_multi_fuses() - Read multiple fuse values in a single QMI call
+ * @attach_num: Attach number - dynamically mapped based on sorted instance IDs
+ * @fuse_addrs: Array of fuse addresses to read
+ * @num_fuses: Number of fuse addresses in the array
+ * @fuse_rows: Output buffer to store fuse row data (rowAddr, dataLO, dataHI)
+ * @num_rows_out: Pointer to store the number of rows returned
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int tmelcom_qmi_read_multi_fuses(int attach_num, u32 *fuse_addrs, u32 num_fuses,
+				 struct qmi_tme_fuse_row_v01_v01 *fuse_rows,
+				 u32 *num_rows_out);
 
 /**
  * tmelcom_qmi_tmel_version_read() - Read TMEL version
@@ -413,6 +439,14 @@ static inline int tmelcom_qmi_get_ecc_public_key(int attach_num, u32 key_type,
 static inline int tmelcom_qmi_read_fuse(int attach_num, u32 fuse_addr,
 					u32 *fuse_val_lsb,
 					u32 *fuse_val_msb)
+{
+	return -ENODEV;
+}
+
+static inline int tmelcom_qmi_read_multi_fuses(int attach_num, u32 *fuse_addrs,
+					       u32 num_fuses,
+					       struct qmi_tme_fuse_row_v01_v01 *fuse_rows,
+					       u32 *num_rows_out)
 {
 	return -ENODEV;
 }
