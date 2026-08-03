@@ -1929,6 +1929,49 @@ static u8 register_device_in_list(struct lm_svc_ctx *svc, int domain_num, bool i
 	return device_id;
 }
 
+/**
+ * unregister_device_from_list() - Unregister a device from the devices list
+ * @svc: License manager service context
+ * @domain_num: Domain number of the device to unregister
+ *
+ * Must be called with device_list_lock held
+ *
+ * Removes the device from the list and recalculates device_count and
+ * attach_num for all remaining devices to maintain consistency.
+ */
+static void unregister_device_from_list(struct lm_svc_ctx *svc, int domain_num)
+{
+	struct device_info *dev_info, *tmp;
+	u8 device_id;
+	int attach_num;
+
+	/* Find and remove the device with matching domain_num */
+	list_for_each_entry_safe(dev_info, tmp, &svc->devices_list, node) {
+		if (dev_info->domain_num == domain_num && !dev_info->is_soc) {
+			list_del(&dev_info->node);
+			kfree(dev_info);
+			break;
+		}
+	}
+
+	/* Recalculate device_id and attach_num for all remaining devices */
+	device_id = 0;
+	attach_num = 0;
+	list_for_each_entry(dev_info, &svc->devices_list, node) {
+		device_id++;
+		/* For attach, attach_num is sequential (1, 2, 3...) */
+		if (!dev_info->is_soc) {
+			attach_num++;
+			dev_info->attach_num = attach_num;
+		} else {
+			dev_info->attach_num = -1;
+		}
+	}
+
+	/* Update device count */
+	svc->device_count = device_id;
+}
+
 /* QMI client notification handler */
 static int license_manager_qmi_notify(struct notifier_block *nb,
 				       unsigned long action, void *data)
@@ -2023,8 +2066,15 @@ static int license_manager_qmi_notify(struct notifier_block *nb,
 
 		kfree(install_info);
 	} else if (action == TMELCOM_QMI_CLIENT_DISCONNECTED) {
-		dev_info(svc->dev, "QMI client disconnected for domain_num %d\n",
-			 notify->domain_num);
+		spin_lock_irqsave(&device_list_lock, flags);
+
+		/* Unregister the device and update device_count/attach_num */
+		unregister_device_from_list(svc, notify->domain_num);
+
+		spin_unlock_irqrestore(&device_list_lock, flags);
+
+		dev_info(svc->dev, "QMI client disconnected for domain_num %d (new device count %d)\n",
+			 notify->domain_num, svc->device_count);
 	}
 
 	return NOTIFY_OK;
@@ -2090,7 +2140,7 @@ static int license_manager_probe(struct platform_device *pdev)
 		ret = populate_soc_hw_features(svc);
 		if (ret == -EPROBE_DEFER)
 			goto free_lm_svc;
-		else if (ret != -ENOENT)
+		else if (ret && ret != -ENOENT)
 			dev_err(dev, "Failed to populate SoC HW features"
 				"from smem with err = %d\n", ret);
 	}
