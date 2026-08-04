@@ -2309,7 +2309,7 @@ static ssize_t ecc_public_key_store(struct kobject *kobj,
 	u32 src_l1_key_id;
 	u8 public_key[QMI_TME_QBEC_PUBLIC_KEY_SIZE_V01];
 	u32 public_key_len;
-	int ret, i;
+	int ret;
 
 	if (!client)
 		return -ENODEV;
@@ -2330,18 +2330,11 @@ static ssize_t ecc_public_key_store(struct kobject *kobj,
 	if (ret)
 		return ret;
 
-	/* Print public key in hex format */
+	/* Print public key in hex format - single line */
 	if (public_key_len > 0) {
-		int print_len = min_t(u32, public_key_len, 32);
-		char hex_buf[96];  /* 32 bytes * 3 chars per byte */
-		int pos = 0;
-
-		for (i = 0; i < print_len && pos < sizeof(hex_buf) - 3; i++) {
-			pos += snprintf(hex_buf + pos, sizeof(hex_buf) - pos,
-					"%02x ", public_key[i]);
-		}
-		pr_info("ECC public key (len=%u): %s%s\n", public_key_len, hex_buf,
-			public_key_len > 32 ? "..." : "");
+		pr_info("ECC public key (len=%u):\n", public_key_len);
+		print_hex_dump(KERN_INFO, "", DUMP_PREFIX_NONE, 16, 1,
+			       public_key, public_key_len, false);
 	} else {
 		pr_info("ECC public key: empty\n");
 	}
