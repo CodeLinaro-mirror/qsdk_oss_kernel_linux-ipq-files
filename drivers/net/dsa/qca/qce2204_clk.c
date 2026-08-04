@@ -126,6 +126,7 @@ void qce2204_disable_clocks(struct qce2204_priv *priv)
 	clk_disable_unprepare(priv->btq_clk);
 	clk_disable_unprepare(priv->ipe_clk);
 	clk_disable_unprepare(priv->core_clk);
+
 	dev_info(priv->dev, "Switch clocks disabled\n");
 }
 
@@ -402,7 +403,6 @@ int qce2204_init_switch_clocks_resets(struct qce2204_priv *priv)
 	ret = qce2204_reset_switch(priv);
 	if (ret) {
 		dev_err(dev, "Failed to reset switch: %d\n", ret);
-		qce2204_disable_clocks(priv);
 		return ret;
 	}
 
@@ -421,6 +421,7 @@ int qce2204_init_switch_clocks_resets(struct qce2204_priv *priv)
 void qce2204_cleanup_switch_clocks_resets(struct qce2204_priv *priv)
 {
 	qce2204_disable_clocks(priv);
+
 	dev_info(priv->dev, "Switch clocks and resets cleaned up\n");
 }
 

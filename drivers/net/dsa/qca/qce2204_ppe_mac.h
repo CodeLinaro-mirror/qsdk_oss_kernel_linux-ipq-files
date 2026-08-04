@@ -13,7 +13,10 @@ struct qce2204_priv;
 
 /* MAC Init functions */
 int qce2204_port_mac_init(struct qce2204_priv *priv);
-void qce2204_port_mac_deinit(struct qce2204_priv *priv);
+
+/* PCS Init functions */
+int qce2204_port_pcs_init(struct qce2204_priv *priv);
+void qce2204_port_pcs_deinit(struct qce2204_priv *priv);
 
 /* Phylink MAC operations */
 void qce2204_phylink_get_caps(struct dsa_switch *ds, int port,

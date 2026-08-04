@@ -357,30 +357,89 @@ static void qce2204_queue_hang_debugfs_remove(struct qce2204_priv *priv)
 	priv->queue_hang_dentry = NULL;
 }
 
+/* Release everything qce2204_setup() brought up. Shared by the setup error
+ * path and .teardown, which are mutually exclusive: DSA does not call
+ * .teardown when .setup fails.
+ */
+static void qce2204_hw_deinit(struct qce2204_priv *priv)
+{
+	qce2204_cleanup_port_clocks_resets(priv);
+	qce2204_cleanup_switch_clocks_resets(priv);
+	qce2204_port_pcs_deinit(priv);
+}
+
 /* DSA operations - placeholder implementations */
 static int qce2204_setup(struct dsa_switch *ds)
 {
 	struct qce2204_priv *priv = ds->priv;
 	struct dsa_port *dp;
+	u32 val;
 	int ret;
 
-	dev_info(priv->dev, "Setting up QCE2204 switch\n");
+	dev_info(priv->dev, "Setting up QCE2204 switch, address %d\n", priv->addr);
 
 	dsa_switch_for_each_cpu_port(dp, ds) {
 		priv->cpu_port = dp->index;
 		dev_info(priv->dev, "CPU port: %d\n", dp->index);
 	}
 
+	/* PCS must come up before the switch clocks, since the switch clock
+	 * controller consumes the raw clocks supplied by the PCS.
+	 */
+	ret = qce2204_port_pcs_init(priv);
+	if (ret) {
+		dev_err(priv->dev, "Port PCS init failed: %d\n", ret);
+		return ret;
+	}
+
+	ret = qce2204_ahb_clk_set_rate(priv, QCE2204_AHB_CLK_RATE_104M);
+	if (ret) {
+		dev_err(priv->dev, "Failed to set ahb clock to 104Mhz: %d\n", ret);
+		goto err_cleanup;
+	}
+
+	ret = qce2204_init_switch_clocks_resets(priv);
+	if (ret) {
+		dev_err(priv->dev, "Failed to init switch clocks/resets: %d\n", ret);
+		goto err_cleanup;
+	}
+
+	ret = qce2204_init_port_clocks_resets(priv);
+	if (ret) {
+		dev_err(priv->dev, "Failed to init port clocks/resets: %d\n", ret);
+		goto err_cleanup;
+	}
+
+	/* Verify chip ID now that the switch clocks/resets are up */
+	ret = regmap_read(priv->regmap, QCE2204_PPE_SWITCH_ID_ADDR, &val);
+	if (ret) {
+		dev_err(priv->dev, "Failed to read chip ID from 0x%08x\n",
+			QCE2204_PPE_SWITCH_ID_ADDR);
+		goto err_cleanup;
+	}
+
+	priv->switch_id = QCE2204_PPE_SWITCH_ID_GET_DEVICE_ID(val);
+	priv->switch_revision = QCE2204_PPE_SWITCH_ID_GET_REV_ID(val);
+
+	if (priv->switch_id != QCE2204_CHIP_ID) {
+		dev_err(priv->dev, "Unsupported chip ID: 0x%02x\n", priv->switch_id);
+		ret = -ENODEV;
+		goto err_cleanup;
+	}
+
+	dev_info(priv->dev, "QCE2204 detected, ID 0x%02x, rev 0x%02x\n",
+		 priv->switch_id, priv->switch_revision);
+
 	ret = qce2204_ppe_hw_init(priv);
 	if (ret) {
 		dev_err(priv->dev, "PPE init failed: %d\n", ret);
-		return ret;
+		goto err_cleanup;
 	}
 
 	ret = qce2204_port_mac_init(priv);
 	if (ret) {
 		dev_err(priv->dev, "Port MAC init failed: %d\n", ret);
-		return ret;
+		goto err_cleanup;
 	}
 
 	dsa_switch_for_each_user_port(dp, ds) {
@@ -393,7 +452,7 @@ static int qce2204_setup(struct dsa_switch *ds)
 		if (ret) {
 			dev_err(priv->dev, "Failed to allocate PPE resources for port %d: %d\n",
 				dp->index, ret);
-			return ret;
+			goto err_cleanup;
 		}
 	}
 
@@ -403,6 +462,23 @@ static int qce2204_setup(struct dsa_switch *ds)
 	qce2204_queue_hang_debugfs_setup(priv);
 
 	return 0;
+
+err_cleanup:
+	qce2204_hw_deinit(priv);
+
+	return ret;
+}
+
+static void qce2204_teardown(struct dsa_switch *ds)
+{
+	struct qce2204_priv *priv = ds->priv;
+
+	/* Stop the poller before the clocks go away, or it keeps touching PPE
+	 * registers with the switch clocks already released.
+	 */
+	qce2204_queue_hang_debugfs_remove(priv);
+	qce2204_ppe_queue_hang_work_stop(priv);
+	qce2204_hw_deinit(priv);
 }
 
 static enum dsa_tag_protocol qce2204_get_tag_protocol(struct dsa_switch *ds, int port,
@@ -763,6 +839,7 @@ static const struct dsa_switch_ops qce2204_switch_ops = {
 	.change_tag_protocol	= qce2204_change_tag_protocol,
 	.connect_tag_protocol	= qce2204_connect_tag_protocol,
 	.setup			= qce2204_setup,
+	.teardown		= qce2204_teardown,
 	.port_enable		= qce2204_port_enable,
 	.port_disable		= qce2204_port_disable,
 	.port_vlan_filtering	= qce2204_port_vlan_filtering,
@@ -861,7 +938,6 @@ static int qce2204_mdio_probe(struct mdio_device *mdiodev)
 	struct device *dev = &mdiodev->dev;
 	struct qce2204_priv *priv;
 	struct dsa_switch *ds;
-	u32 val;
 	int ret;
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
@@ -875,15 +951,7 @@ static int qce2204_mdio_probe(struct mdio_device *mdiodev)
 
 	priv->reg_base_offset = QCE2204_MDIO_PPE_REG_BASE_OFFSET;
 
-	dev_info(dev, "QCE2204 MDIO device at address %d\n", mdiodev->addr);
-
 	qce2204_parse_bp_mode(priv);
-
-	ret = qce2204_ahb_clk_set_rate(priv, QCE2204_AHB_CLK_RATE_104M);
-	if (ret) {
-		dev_err(dev, "Failed to set ahb clock to 104Mhz: %d\n", ret);
-		return ret;
-	}
 
 	/* Initialize regmap before reset so TDM depth config can use regmap_write */
 	priv->regmap = devm_regmap_init(dev, &qce2204_regmap_bus, priv, &qce2204_regmap_config);
@@ -893,42 +961,13 @@ static int qce2204_mdio_probe(struct mdio_device *mdiodev)
 		return ret;
 	}
 
-	ret = qce2204_init_switch_clocks_resets(priv);
-	if (ret) {
-		dev_err(dev, "Failed to init switch clocks/resets: %d\n", ret);
-		return ret;
-	}
-
-	/* Initialize per-port clocks and resets */
-	ret = qce2204_init_port_clocks_resets(priv);
-	if (ret) {
-		dev_err(dev, "Failed to init port clocks/resets: %d\n", ret);
-		goto err_disable_clocks;
-	}
-
-	ret = regmap_read(priv->regmap, QCE2204_PPE_SWITCH_ID_ADDR, &val);
-	if (ret) {
-		dev_err(dev, "Failed to read chip ID from 0x%08x\n", QCE2204_PPE_SWITCH_ID_ADDR);
-		goto err_disable_clocks;
-	}
-
-	priv->switch_id = QCE2204_PPE_SWITCH_ID_GET_DEVICE_ID(val);
-	priv->switch_revision = QCE2204_PPE_SWITCH_ID_GET_REV_ID(val);
-
-	if (priv->switch_id != QCE2204_CHIP_ID) {
-		dev_err(dev, "Unsupported chip ID: 0x%02x\n", priv->switch_id);
-		ret = -ENODEV;
-		goto err_disable_clocks;
-	}
-
-	dev_info(dev, "QCE2204 detected, ID 0x%02x, rev 0x%02x\n",
-		priv->switch_id, priv->switch_revision);
-
+	/* Switch clocks/resets and chip-ID detection happen in qce2204_setup(),
+	 * so the core clock branch is not cycled across the -EPROBE_DEFER
+	 * re-probes below.
+	 */
 	ds = devm_kzalloc(dev, sizeof(*ds), GFP_KERNEL);
-	if (!ds) {
-		ret = -ENOMEM;
-		goto err_disable_clocks;
-	}
+	if (!ds)
+		return -ENOMEM;
 
 	ds->dev = dev;
 	ds->num_ports = QCE2204_NUM_PORTS;
@@ -940,33 +979,25 @@ static int qce2204_mdio_probe(struct mdio_device *mdiodev)
 
 	ret = dsa_register_switch(ds);
 	if (ret) {
-		dev_err(dev, "Failed to register DSA switch: %d\n", ret);
-		goto err_disable_clocks;
+		/* -EPROBE_DEFER is expected until the DSA conduit netdev is up.
+		 * Probe holds no clocks/resets, so just propagate.
+		 */
+		if (ret != -EPROBE_DEFER)
+			dev_err(dev, "Failed to register DSA switch: %d\n", ret);
+		return ret;
 	}
 
 	dev_info(dev, "QCE2204 registered successfully\n");
 	return 0;
-
-err_disable_clocks:
-	qce2204_cleanup_port_clocks_resets(priv);
-	qce2204_cleanup_switch_clocks_resets(priv);
-
-	return ret;
 }
 
 static void qce2204_mdio_remove(struct mdio_device *mdiodev)
 {
 	struct qce2204_priv *priv = dev_get_drvdata(&mdiodev->dev);
 
-	if (priv && priv->ds) {
-		qce2204_queue_hang_debugfs_remove(priv);
-		qce2204_ppe_queue_hang_work_stop(priv);
+	/* Everything setup brought up is released by .teardown */
+	if (priv && priv->ds)
 		dsa_unregister_switch(priv->ds);
-		qce2204_port_mac_deinit(priv);
-	}
-
-	qce2204_cleanup_port_clocks_resets(priv);
-	qce2204_cleanup_switch_clocks_resets(priv);
 }
 
 static const struct of_device_id qce2204_of_match[] = {
