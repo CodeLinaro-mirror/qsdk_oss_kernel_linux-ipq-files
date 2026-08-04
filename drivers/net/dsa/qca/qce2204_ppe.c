@@ -2279,6 +2279,104 @@ int qce2204_ppe_mdio_backpressure_set(struct qce2204_priv *priv,
 	return regmap_write(priv->regmap, QCE2204_PPE_CROSSCHIP_BP_CTRL_ADDR, reg_val);
 }
 
+/**
+ * qce2204_ppe_crosschip_q2q_backpressure_enable - Enable/disable cross-chip
+ *	q2q BP for user-port ucast queues
+ * @priv: QCE2204 private data
+ * @enable: Enable or disable cross-chip q2q BP
+ *
+ * Only queue-based cross-chip BP mode supports q2q BP, and only the VP-tagging
+ * protocols (QCA_8021Q, 4B_QCA) carry the per-VP tagging it relies on; other
+ * combinations are a no-op. When both hold, mark each user port's unicast
+ * queues in the CROSSCHIP_QUEUE_CTRL table (bit @q enables queue @q in the
+ * 256-bit, 8 x 32-bit table) and hand their admission control off to the
+ * cross-chip path by clearing EN/FORCE_AC_EN; disabling reverses both.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int qce2204_ppe_crosschip_q2q_backpressure_enable(struct qce2204_priv *priv,
+						  bool enable)
+{
+	struct dsa_switch *ds = priv->ds;
+	struct dsa_port *dp;
+	u32 crosschip_words[QCE2204_PPE_CROSSCHIP_QUEUE_CTRL_ENTRIES] = {};
+	int ret, i;
+
+	if (priv->bp_mode != QCE2204_BP_QUEUE)
+		return 0;
+
+	if (!qce2204_proto_needs_vp_tagging(priv->tag_protocol))
+		return 0;
+
+	dsa_switch_for_each_user_port(dp, ds) {
+		int q, start = 0, end = 0;
+
+		ret = qce2204_ppe_port_resource_get(priv, dp->index,
+						    QCE2204_PPE_RES_UCAST,
+						    &start, &end);
+		if (ret) {
+			dev_err(priv->dev,
+				"Failed to get ucast queues for port %d: %d\n",
+				dp->index, ret);
+			return ret;
+		}
+
+		for (q = start; q <= end; q++) {
+			u32 ac_reg = QCE2204_PPE_AC_UNICAST_QUEUE_CFG_TBL_ADDR +
+				     QCE2204_PPE_AC_UNICAST_QUEUE_CFG_TBL_INC * q;
+			u32 ac_cfg[8];
+
+			crosschip_words[q / 32] |= BIT(q % 32);
+
+			ret = regmap_bulk_read(priv->regmap, ac_reg, ac_cfg,
+					       ARRAY_SIZE(ac_cfg));
+			if (ret) {
+				dev_err(priv->dev,
+					"Failed to read AC config for queue %d: %d\n",
+					q, ret);
+				return ret;
+			}
+
+			QCE2204_PPE_AC_UNICAST_QUEUE_SET_EN(ac_cfg, !enable);
+			QCE2204_PPE_AC_UNICAST_QUEUE_SET_FORCE_AC_EN(ac_cfg, false);
+
+			ret = regmap_bulk_write(priv->regmap, ac_reg, ac_cfg,
+						ARRAY_SIZE(ac_cfg));
+			if (ret) {
+				dev_err(priv->dev,
+					"Failed to update AC for queue %d: %d\n",
+					q, ret);
+				return ret;
+			}
+		}
+	}
+
+	/* Flush one RMW per touched 32-queue word instead of one per queue */
+	for (i = 0; i < QCE2204_PPE_CROSSCHIP_QUEUE_CTRL_ENTRIES; i++) {
+		u32 crosschip_reg;
+
+		if (!crosschip_words[i])
+			continue;
+
+		crosschip_reg = QCE2204_PPE_CROSSCHIP_QUEUE_CTRL_ADDR +
+				i * QCE2204_PPE_CROSSCHIP_QUEUE_CTRL_INC;
+
+		ret = enable ? regmap_set_bits(priv->regmap, crosschip_reg, crosschip_words[i]) :
+			       regmap_clear_bits(priv->regmap, crosschip_reg, crosschip_words[i]);
+		if (ret) {
+			dev_err(priv->dev,
+				"Failed to update crosschip queue ctrl word %d: %d\n",
+				i, ret);
+			return ret;
+		}
+	}
+
+	dev_info(priv->dev, "%s crosschip q2q BP for user-port ucast queues\n",
+		 enable ? "Enabled" : "Disabled");
+
+	return 0;
+}
+
 /* Initialize mdio backpressure config */
 static int qce2204_mdio_backpressure_init(struct qce2204_priv *priv)
 {

@@ -429,7 +429,7 @@ static enum dsa_tag_protocol qce2204_get_tag_protocol(struct dsa_switch *ds, int
  */
 static bool qce2204_proto_needs_sw_csum(enum dsa_tag_protocol proto)
 {
-	return proto == DSA_TAG_PROTO_4B_QCA || proto == DSA_TAG_PROTO_QCA_8021Q;
+	return qce2204_proto_needs_vp_tagging(proto);
 }
 
 static int qce2204_change_tag_protocol(struct dsa_switch *ds, enum dsa_tag_protocol proto)
@@ -534,7 +534,19 @@ static int qce2204_change_tag_protocol(struct dsa_switch *ds, enum dsa_tag_proto
 		}
 	}
 
+	ret = qce2204_ppe_crosschip_q2q_backpressure_enable(priv, false);
+	if (ret) {
+		dev_err(priv->dev, "Failed to disable crosschip q2q BP: %d\n", ret);
+		return ret;
+	}
+
 	priv->tag_protocol = proto;
+
+	ret = qce2204_ppe_crosschip_q2q_backpressure_enable(priv, true);
+	if (ret) {
+		dev_err(priv->dev, "Failed to enable crosschip q2q BP: %d\n", ret);
+		return ret;
+	}
 
 	/* Assigned here, not in .connect_tag_protocol: dsa_slave_setup_tagger()
 	 * consumes this bit before the TAG_PROTO_CONNECT notifier runs.
