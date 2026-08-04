@@ -590,6 +590,8 @@ int qce2204_ppe_eg_gen_ctrl_set(struct qce2204_priv *priv,
 				 struct qce2204_ppe_eg_gen_ctrl_cfg *cfg);
 int qce2204_ppe_mdio_backpressure_set(struct qce2204_priv *priv,
 				      struct qce2204_ppe_mdio_backpressure_cfg *cfg);
+int qce2204_ppe_crosschip_q2q_backpressure_enable(struct qce2204_priv *priv,
+						  bool enable);
 int qce2204_setup_cpu_port_athtag(struct qce2204_priv *priv);
 int qce2204_teardown_cpu_port_athtag(struct qce2204_priv *priv);
 int qce2204_ppe_hw_init(struct qce2204_priv *priv);
