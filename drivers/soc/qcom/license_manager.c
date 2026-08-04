@@ -525,6 +525,9 @@ static void *lm_get_license_meta_buffer(dma_addr_t *dma_addr) {
 		return ERR_PTR(-ENOMEM);
 	}
 
+	/* Zero buffer to prevent garbage data */
+	memset(lic_buf, 0, LICENSE_META_DATA_SIZE);
+
 	/* Magic */
 	magic = LICENSE_META_DATA_MAGIC;
 	memcpy(lic_buf, magic, MAGIC_SIZE);
@@ -536,6 +539,9 @@ static void *lm_get_license_meta_buffer(dma_addr_t *dma_addr) {
 			(void *)&svc->license_dma_addr, 4);
 	memcpy(lic_buf + HEADER_SIZE + 4, (void *)&svc->license_buf_len,
 			TLV_LENGTH_SIZE);
+
+	/* Flush cache to device */
+	dma_sync_single_for_device(svc->dev, *dma_addr, LICENSE_META_DATA_SIZE, DMA_TO_DEVICE);
 
 	return lic_buf;
 }
@@ -547,6 +553,8 @@ static void *lm_get_ecdsa_buffer(dma_addr_t *dma_addr, dma_addr_t nonce_dma_addr
 	int ret;
 	u32 license_metadata_len = 8;
 	void *ecdsa_buf, *lic_buf;
+	size_t metadata_offset;
+	size_t total_size;
 
 	/* Allocate buffer for ECDSA blob */
 	ecdsa_buf = dma_alloc_coherent(svc->dev, ECDSA_BUF_MAX, dma_addr, GFP_KERNEL);
@@ -555,14 +563,38 @@ static void *lm_get_ecdsa_buffer(dma_addr_t *dma_addr, dma_addr_t nonce_dma_addr
 		return ERR_PTR(-ENOMEM);
 	}
 
+	/* Zero buffer to prevent garbage data */
+	memset(ecdsa_buf, 0, ECDSA_BUF_MAX);
+
 	/* Get the ECDSA blob from TZ/TME-L. Pass the ECDSA start + HEADER_SIZE */
 	ret = qti_scm_get_ecdsa_blob(QWES_SVC_ID, QWES_ECDSA_REQUEST, nonce_dma_addr,
 					NONCE_SIZE, *dma_addr + HEADER_SIZE, ECDSA_DATA_SIZE,
 					&ecdsa_consumed);
 	if (ret) {
 		dev_err(svc->dev, "Failed to get the ECDSA blob from TZ/TME-L, ret %d\n", ret);
-		return ERR_PTR(ret);
+		goto free_buffer;
 	}
+
+	/* Invalidate CPU cache so CPU sees device-written ECDSA data */
+	dma_sync_single_for_cpu(svc->dev, *dma_addr + HEADER_SIZE, ECDSA_DATA_SIZE, DMA_FROM_DEVICE);
+
+	/* Validate ecdsa_consumed before pointer arithmetic to prevent overflow */
+	if (ecdsa_consumed > ECDSA_DATA_SIZE) {
+		dev_err(svc->dev, "ECDSA consumed %u exceeds data size %d\n",
+			ecdsa_consumed, ECDSA_DATA_SIZE);
+		ret = -EINVAL;
+		goto free_buffer;
+	}
+
+	/* ECDSA Buffer Layout (ECDSA_BUF_MAX = 2068 bytes)
+	 * ---------------------------------------------------------------------------------
+	 * | ECDSA Magic | Length | ECDSA Data (aligned) |   LICENSE_META_DATA_SIZE (16)   |
+	 * |   4 bytes   | 4 bytes|  ecdsa_consumed      |  Magic | Length | Addr | Length |
+	 * ---------------------------------------------------------------------------------
+	 * ^                      ^                       ^                                 ^
+	 * ecdsa_buf              HEADER_SIZE             lic_buf                      total_size
+	 *                                                 (metadata_offset)
+	 */
 
 	/* Copy ECDSA magic and length */
 	magic = ECDSA_MAGIC;
@@ -571,6 +603,19 @@ static void *lm_get_ecdsa_buffer(dma_addr_t *dma_addr, dma_addr_t nonce_dma_addr
 
 	/* Copy License meta data at end of ECDSA TLV */
 	lic_buf = ecdsa_buf + HEADER_SIZE + ALIGN(ecdsa_consumed, 4);
+
+	/* Calculate offset and total size for bounds checking */
+	metadata_offset = (char *)lic_buf - (char *)ecdsa_buf;
+	total_size = metadata_offset + LICENSE_META_DATA_SIZE;
+
+	/* Ensure metadata fits within allocated buffer */
+	if (total_size > ECDSA_BUF_MAX) {
+		dev_err(svc->dev, "ECDSA + metadata exceeds buffer size (need %zu, have %u)\n",
+			total_size, (unsigned int)ECDSA_BUF_MAX);
+		ret = -EINVAL;
+		goto free_buffer;
+	}
+
 	/* Magic */
 	magic = LICENSE_META_DATA_MAGIC;
 	memcpy(lic_buf, magic, MAGIC_SIZE);
@@ -583,13 +628,20 @@ static void *lm_get_ecdsa_buffer(dma_addr_t *dma_addr, dma_addr_t nonce_dma_addr
 	memcpy(lic_buf + HEADER_SIZE + 4, (void *)&svc->license_buf_len,
 			TLV_LENGTH_SIZE);
 
+	/* Flush cache to device */
+	dma_sync_single_for_device(svc->dev, *dma_addr, ECDSA_BUF_MAX, DMA_TO_DEVICE);
+
 	return ecdsa_buf;
+
+free_buffer:
+	dma_free_coherent(svc->dev, ECDSA_BUF_MAX, ecdsa_buf, *dma_addr);
+	return ERR_PTR(ret);
 }
 
 static void *lm_get_cbor_response(dma_addr_t *dma_cbor_resp, void *cbor_req_buf, u32 cbor_req_len) {
 	struct lm_svc_ctx *svc = lm_svc;
 	void *cbor_resp, *resp_buf;
-	u32 cbor_resp_len;
+	u32 cbor_resp_len = 0;
 	char *magic;
 	int ret;
 
@@ -606,6 +658,12 @@ static void *lm_get_cbor_response(dma_addr_t *dma_cbor_resp, void *cbor_req_buf,
 		return ERR_PTR(-EIO);
 	}
 
+	/* Validate response length */
+	if (cbor_resp_len > CBOR_RESP_SIZE) {
+		kfree(resp_buf);
+		return ERR_PTR(-EINVAL);
+	}
+
 	cbor_resp = dma_alloc_coherent(svc->dev, CBOR_RESP_MAX_SIZE, dma_cbor_resp, GFP_KERNEL);
 	if (!cbor_resp) {
 		dev_err(svc->dev, "cbor_resp DMA memory creation failed\n");
@@ -613,10 +671,19 @@ static void *lm_get_cbor_response(dma_addr_t *dma_cbor_resp, void *cbor_req_buf,
 		return ERR_PTR(-ENOMEM);
 	}
 
+	/* Invalidate cache before CPU write. */
+	dma_sync_single_for_cpu(svc->dev, *dma_cbor_resp, CBOR_RESP_MAX_SIZE, DMA_FROM_DEVICE);
+
+	/* Zero the DMA buffer before use to prevent garbage data */
+	memset(cbor_resp, 0, CBOR_RESP_MAX_SIZE);
+
 	magic = "SFID";
 	memcpy(cbor_resp, magic, MAGIC_SIZE);
 	memcpy(cbor_resp + MAGIC_SIZE, (void *)&cbor_resp_len, TLV_LENGTH_SIZE);
 	memcpy(cbor_resp + HEADER_SIZE, resp_buf, cbor_resp_len);
+
+	/* Flush cache to device */
+	dma_sync_single_for_device(svc->dev, *dma_cbor_resp, CBOR_RESP_MAX_SIZE, DMA_TO_DEVICE);
 
 	kfree(resp_buf);
 
@@ -1058,12 +1125,26 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				goto err;
 			}
 
+			/* Flush nonce buffer to device before SCM call */
+			dma_sync_single_for_device(svc->dev, nonce_dma_addr, NONCE_SIZE, DMA_TO_DEVICE);
+
 			ret = qti_scm_get_ecdsa_blob(QWES_SVC_ID, QWES_ECDSA_REQUEST,
 						     nonce_dma_addr, NONCE_SIZE,
 						     ecdsa_dma_addr, ECDSA_DATA_SIZE,
 						     &ecdsa_consumed);
 			if (ret) {
 				dev_err(svc->dev, "IOCTL: Failed to get the ECDSA blob from TZ, ret %d\n", ret);
+				goto err;
+			}
+
+			/* Invalidate ECDSA buffer so CPU sees device-written data */
+			dma_sync_single_for_cpu(svc->dev, ecdsa_dma_addr, ECDSA_DATA_SIZE, DMA_FROM_DEVICE);
+
+			/* Validate ecdsa_consumed to prevent buffer overread */
+			if (ecdsa_consumed > ECDSA_DATA_SIZE) {
+				dev_err(svc->dev, "IOCTL: ECDSA consumed length %u exceeds buffer size %d\n",
+					ecdsa_consumed, ECDSA_DATA_SIZE);
+				ret = -EINVAL;
 				goto err;
 			}
 
