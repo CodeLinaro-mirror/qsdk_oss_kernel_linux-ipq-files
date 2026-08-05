@@ -154,7 +154,7 @@
 			compatible = "regulator-gpio";
 			regulator-name = "vdd-cdsp-cx";
 			regulator-type = "voltage";
-			regulator-min-microvolt = <735000>;
+			regulator-min-microvolt = <600000>;
 			regulator-max-microvolt = <815000>;
 			enable-gpio = <&tlmm 20 GPIO_ACTIVE_HIGH>;
 			enable-active-high;
@@ -163,7 +163,7 @@
 			gpios-states = <0x3>;
 			states = <600000 0x0>,
 				 <660000 0x1>,
-				 <735000 0x2>,
+				 <750000 0x2>,
 				 <815000 0x3>;
 			pinctrl-0 = <&cdsp_default_state>;
 			pinctrl-names = "default";
@@ -206,11 +206,34 @@
 				qcom,num-thresholds = <2>;
 				qcom,thresholds = <650000 750000>;
 			};
+
+			nsp_cx {
+				/*
+				 * No turbo on GPIO-backed NSP CX - 3 modes only.
+				 * voltage_table: [SVS:T0 T1 T2] [SVS_L1:T0 T1 T2
+				 * duplicates SVS)] [NOM:T0 T1 T2]
+				 */
+				qcom,voltage-table = <600000 660000 750000
+						      600000 660000 750000
+						      660000 750000 815000>;
+				qcom,num-thresholds = <2>;
+				qcom,thresholds = <650000 750000>;
+			};
+
 		};
 
 		qcom,open-loop-cpr-regulator {
 			apc-supply = <&apc_rail>;
-
+			nsp_cx-supply = <&cdsp_cx_rail>;
+			/delete-property/ nsp_mx-supply;
+			nvmem-cells = <&apc_svs_fuse>, <&apc_nom_fuse>, <&apc_turl1_fuse>,
+				      <&nsp_cx_svs_fuse>, <&nsp_cx_svs_l1_fuse>,
+				      <&nsp_cx_nom_fuse>, <&cpr_fusing_rev_bit0>,
+				      <&cpr_fusing_rev_bit2_1>;
+			nvmem-cell-names = "cpr_apc_svs", "cpr_apc_nom", "cpr_apc_tur",
+					   "cpr_nsp_cx_svs", "cpr_nsp_cx_svs_l1",
+					   "cpr_nsp_cx_nom", "cpr_fusing_rev_bit0",
+					   "cpr_fusing_rev_bit2_1";
 			apc: apc {
 				qcom,fuse-params = <7 660000 10000 600000 740000
 						    7 753000 10000 660000 815000
@@ -220,6 +243,22 @@
 				qcom,voltage-table = <740000 815000 957000>;
 				qcom,num-thresholds = <2>;
 				qcom,thresholds = <650000 750000>;
+				qcom,gpio-regulator = <&apc_gpio_regulator>;
+			};
+
+			nsp_cx: nsp_cx {
+				regulator-min-microvolt = <1>;
+				regulator-max-microvolt = <3>;
+
+				/* SVS/SVS_L1/NOM - [bitlen][ref][step][floor][ceiling] */
+				qcom,fuse-params = <7 660000 10000 600000 750000
+						    7 660000 10000 600000 750000
+						    7 750000 10000 660000 815000>;
+				/* voltage_table: <ceiling voltages> per mode */
+				qcom,voltage-table = <750000 750000 815000>;
+				qcom,num-thresholds = <2>;
+				qcom,thresholds = <650000 750000>;
+				qcom,num-fuses = <3>;
 				qcom,gpio-regulator = <&apc_gpio_regulator>;
 			};
 		};
@@ -709,7 +748,7 @@
 };
 
 &cdsp_power {
-	vdd-cx-supply = <&cdsp_cx_rail>;
+	vdd-cx-supply = <&nsp_cx>;
 	/delete-property/ vdd-mx-supply;
 };
 

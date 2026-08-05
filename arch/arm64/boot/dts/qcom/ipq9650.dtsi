@@ -621,9 +621,19 @@
 				bits = <1 7>;
 			};
 
+			nsp_cx_turbo_l1_fuse: nsp_cx_turbo_l1_fuse@402 {
+				reg = <0x402 0x2>;
+				bits = <7 7>;
+			};
+
 			nsp_cx_nom_fuse: nsp_cx_nom_fuse@403 {
 				reg = <0x403 0x2>;
 				bits = <6 7>;
+			};
+
+			nsp_cx_svs_l1_fuse: nsp_cx_svs_l1_fuse@404 {
+				reg = <0x404 0x2>;
+				bits = <5 7>;
 			};
 
 			nsp_cx_svs_fuse: nsp_cx_svs_fuse@406 {
@@ -631,9 +641,24 @@
 				bits = <2 7>;
 			};
 
+			nsp_mx_turbo_l1_fuse: nsp_mx_turbo_l1_fuse@40a {
+				reg = <0x40a 0x2>;
+				bits = <7 7>;
+			};
+
 			nsp_mx_nom_fuse: nsp_mx_nom_fuse@40b {
 				reg = <0x40b 0x2>;
 				bits = <6 7>;
+			};
+
+			nsp_mx_svs_l1_fuse: nsp_mx_svs_l1_fuse@40c {
+				reg = <0x40c 0x2>;
+				bits = <5 7>;
+			};
+
+			nsp_mx_svs_fuse: nsp_mx_svs_fuse@40d {
+				reg = <0x40d 0x2>;
+				bits = <4 7>;
 			};
 
 			cpr_fusing_rev_bit0: cpr_fusing_rev_bit0@416 {
