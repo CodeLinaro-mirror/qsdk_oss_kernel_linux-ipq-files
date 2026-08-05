@@ -32,6 +32,10 @@
 #include <linux/io.h>
 #include <linux/of_reserved_mem.h>
 #include <linux/of_address.h>
+#include <linux/pid_namespace.h>
+#include <linux/sched.h>
+#include <linux/mm.h>
+#include <linux/vmstat.h>
 
 /* Separate timeouts for different phases of minidump collection */
 #define MINIDUMP_OPEN_TIMEOUT_MSECS	20000  /* 20s for userspace to open device */
@@ -1670,6 +1674,41 @@ static int ctx_save_setup_uio_regions(void)
 
 	return 0;
 }
+
+static int ctx_save_fill_vmstat_tlv(void)
+{
+	int ret;
+
+	ret = minidump_fill_segments_internal((u64)(uintptr_t)vm_zone_stat,
+			sizeof(vm_zone_stat),
+			QCA_WDT_LOG_DUMP_TYPE_MOD, "vm_zone_stat",
+			MINIDUMP_CRASH_TYPE_DEFAULT);
+	if (ret)
+		return ret;
+
+	ret = minidump_fill_segments_internal((u64)(uintptr_t)vm_node_stat,
+			sizeof(vm_node_stat),
+			QCA_WDT_LOG_DUMP_TYPE_MOD, "vm_node_stat",
+			MINIDUMP_CRASH_TYPE_DEFAULT);
+	if (ret)
+		return ret;
+
+	ret = minidump_fill_segments_internal((u64)(uintptr_t)&_totalram_pages,
+			sizeof(_totalram_pages),
+			QCA_WDT_LOG_DUMP_TYPE_MOD, "totalram_pages",
+			MINIDUMP_CRASH_TYPE_DEFAULT);
+	if (ret)
+		return ret;
+
+	ret = minidump_fill_segments_internal((u64)(uintptr_t)&contig_page_data,
+			sizeof(contig_page_data),
+			QCA_WDT_LOG_DUMP_TYPE_MOD, "contig_page_data",
+			MINIDUMP_CRASH_TYPE_DEFAULT);
+	if (ret)
+		return ret;
+
+	return 0;
+}
 #endif /* CONFIG_QCA_MINIDUMP */
 
 /*
@@ -1690,6 +1729,7 @@ static int ctx_save_fill_log_dump_tlv(void)
 	struct minidump_tlv_info pagetable_tlv_info;
 	struct minidump_tlv_info log_buf_info;
 	struct minidump_tlv_info linux_banner_info;
+	struct task_struct *procd;
 	minidump_meta_info.mod_log_len = 0;
 	struct minidump_tlv_info dmesg_tail_lpos;
 	minidump.hdr.num_seg = 0;
@@ -1819,6 +1859,30 @@ static int ctx_save_fill_log_dump_tlv(void)
 	if (ret_val) {
 		pr_err("Minidump: failed to setup UIO regions: %d\n", ret_val);
 		return ret_val;
+	}
+
+	ret_val = ctx_save_fill_vmstat_tlv();
+	if (ret_val)
+		pr_err("Minidump: failed to add vmstat info: %d\n", ret_val);
+
+	/*
+	 * rcu_read_lock required by find_task_by_pid_ns(); PID 1 task_struct
+	 * is never freed so the pointer stays valid after the lock is dropped.
+	 */
+	rcu_read_lock();
+	procd = find_task_by_pid_ns(1, &init_pid_ns);
+	rcu_read_unlock();
+
+	if (procd) {
+		ret_val = minidump_fill_segments_internal((uint64_t)(uintptr_t)procd,
+				sizeof(struct task_struct),
+				QCA_WDT_LOG_DUMP_TYPE_MOD, "procd",
+				MINIDUMP_CRASH_TYPE_DEFAULT);
+		if (ret_val)
+			pr_err("Minidump: failed to add procd task_struct: %d\n",
+			       ret_val);
+	} else {
+		pr_warn("Minidump: procd (PID 1) not found, skipping\n");
 	}
 
 #endif /* CONFIG_QCA_MINIDUMP */
