@@ -67,18 +67,6 @@
 #define SKB_RECYCLE_SPARE_MAX_SKBS_MEDIUM	128
 #define SKB_RECYCLE_SPARE_MAX_SKBS_LOW		64
 
-/*
- * Memory profile detected from kernel bootargs (mem-profile=<value>).
- * SKB_MEM_PROFILE_HIGH : 1G  (default / no param)
- * SKB_MEM_PROFILE_MEDIUM  : 512M (mem-profile=balanced)
- * SKB_MEM_PROFILE_LOW     : 256M (mem-profile=optimized)
- */
-enum skb_mem_profile {
-	SKB_MEM_PROFILE_LOW = 0,
-	SKB_MEM_PROFILE_MEDIUM,
-	SKB_MEM_PROFILE_HIGH,
-};
-
 enum skb_mem_profile skb_get_mem_profile(void);
 
 #ifdef CONFIG_SKB_RECYCLER_PREALLOC
