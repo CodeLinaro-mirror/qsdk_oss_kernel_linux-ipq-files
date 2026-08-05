@@ -1953,33 +1953,10 @@ static int wlan_modinfo_panic_handler(struct notifier_block *this,
 */
 static int wlan_module_notify_exit(struct notifier_block *self, unsigned long val, void *data) {
 	struct module *mod = data;
-	int i = 0;
-	int index = 0;
 
 	if (val == MODULE_STATE_GOING) {
 	/* Remove module info TLV from metadata list and invalidate entires in Metadata files*/
 		minidump_remove_segments((const uint64_t)(uintptr_t)mod);
-
-		while (minidump_module_list[index] && index <= minidump_modules_count) {
-			if (!strcmp(minidump_module_list[index], mod->name)) {
-			/* For specific modules, additionally remove bss and sect attribute TLVs*/
-				minidump_remove_segments((const uint64_t)(uintptr_t)mod->sect_attrs);
-				for (i = 0; i < mod->sect_attrs->nsections; i++) {
-					if ((!strcmp(".bss", mod->sect_attrs->attrs[i].battr.attr.name))) {
-						minidump_remove_segments((const uint64_t)
-						(uintptr_t)mod->sect_attrs->attrs[i].address);
-						pr_debug("\n Minidump: mod=%s sect=%lx bss=%lx has been removed",
-							 mod->name,
-							 (unsigned long)(uintptr_t)mod->sect_attrs,
-							 (unsigned long)(uintptr_t)
-							 mod->sect_attrs->attrs[i].address);
-						break;
-					}
-				}
-				break;
-			}
-			index++;
-		}
 	}
 	return 0;
 }

@@ -87,15 +87,4 @@ int do_minidump(void);
 int minidump_dump_modules(void);
 void minidump_get_dmesg_read_info(u64 *dmesg_tail_lpos, u64 *dmesg_tail_len);
 
-struct module_sect_attr {
-	struct bin_attribute battr;
-	unsigned long address;
-};
-
-struct module_sect_attrs {
-	struct attribute_group grp;
-	unsigned int nsections;
-	struct module_sect_attr attrs[0];
-};
-
 #endif
