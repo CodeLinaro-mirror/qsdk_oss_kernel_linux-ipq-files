@@ -228,12 +228,16 @@ DEFINE_MUTEX(g_minidump_lock);
  *   node - struct obj for kernel list
  *   addr - virtual address of dump segment
  *   size - size of dump segemnt
+ *   needs_staging_buf - true if addr is from a hardened-usercopy restricted
+ *			 slab cache (e.g. task_struct) and must be staged
+ *			 through a plain kmalloc buffer before copy_to_user()
  */
 struct dump_segment {
     struct list_head node;
     unsigned long addr;
     size_t size;
     char *name;
+    bool needs_staging_buf;
 };
 
 /* struct to store metadata info for
@@ -488,6 +492,8 @@ static int mini_dump_open(struct inode *inode, struct file *file) {
 			segment->addr = cur_node->va;
 			segment->name = cur_node->name ?
 					kstrdup(cur_node->name, GFP_ATOMIC) : NULL;
+			segment->needs_staging_buf = cur_node->name &&
+					!strcmp(cur_node->name, "procd");
 			list_add_tail(&(segment->node), &(minidump.dump_segments));
 			minidump.hdr.total_size += segment->size;
 			minidump.hdr.seg_size[index] = segment->size;
@@ -558,7 +564,35 @@ static ssize_t mini_dump_read(struct file *file, char __user *buf,
 
 		pr_debug("Minidump: Segment name : %s and addr %lx\n",
 				segment->name, segment->addr);
-		ret = copy_to_user(buf, (const void *)(uintptr_t)segment->addr, pending);
+
+		if (segment->needs_staging_buf) {
+			/*
+			 * task_struct (and other hardened-usercopy restricted
+			 * slab objects) cannot be copy_to_user()'d directly -
+			 * mm/usercopy.c rejects it since only the embedded
+			 * thread_struct sub-range is on that cache's usercopy
+			 * whitelist. Stage a live copy through a plain kmalloc
+			 * buffer, which carries a full-object usercopy
+			 * whitelist, immediately before the copy.
+			 */
+			void *staging_buf = kmalloc(pending, GFP_KERNEL);
+
+			if (!staging_buf) {
+				pr_err("\n Minidump: Unable to allocate staging buffer for %s",
+				       segment->name);
+				list_del(&segment->node);
+				kfree(segment->name);
+				kfree(segment);
+				continue;
+			}
+
+			memcpy(staging_buf, (const void *)(uintptr_t)segment->addr, pending);
+			ret = copy_to_user(buf, staging_buf, pending);
+			kfree(staging_buf);
+		} else {
+			ret = copy_to_user(buf, (const void *)(uintptr_t)segment->addr, pending);
+		}
+
 		if (ret) {
 			pr_err("\n Minidump: copy_to_user error");
 			return 0;
