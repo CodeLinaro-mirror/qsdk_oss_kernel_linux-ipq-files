@@ -422,7 +422,7 @@
 			reg = <0x3a500000 0x4000>;
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
-			qcom,mht-dev = <1>;
+			qcom,htt-dev = <1>;
 			qcom,is_switch_connected = <1>;
 			qcom,ppe-offload-disabled = <1>;
 		};
