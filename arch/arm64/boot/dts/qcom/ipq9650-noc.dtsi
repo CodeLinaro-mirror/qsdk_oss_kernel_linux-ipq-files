@@ -90,6 +90,52 @@
 			status = "okay";
 		};
 
+	/* GEMNOC NSP0 HistProbe, HistCtrl, TraceProbe and EventCounter */
+	nsp0_comp_juhu: nsp0-comp-driver-juhu@4307400 {
+		compatible = "qcom,nsp0-comp-driver-juhu";
+		reg = <0x4307400 0x400>,  /* HistProbe base - GEMNOC_gemnoc_qnm_nsp0_HistProbe */
+		      <0x4307000 0x400>,  /* HistCtrl base - GEMNOC_gemnoc_qnm_nsp0_histCtl */
+		      <0x260c5000 0x1000>,  /* TraceProbe base - nsp_noc_0_traceprb */
+		      <0x260c9000 0x1000>,  /* EventCounter base - nsp_noc_ec (shared) */
+		      <0x6010000 0x1000>;  /* Core CTI base - for measurement triggers */
+		reg-names = "histprobe-base", "histctrl-base", "traceprobe-base", "eventcounter-base", "core-cti-base";
+
+		hist_bin_width = <0x2018>;
+		ddr_addr_min_low = <0x0>;
+		ddr_addr_min_high = <0x0>;
+		ddr_addr_max_low = <0xffffffff>;
+		ddr_addr_max_high = <0xf>;
+		trace_probe_extid_base = <0x8000>;  /* NSP0_EXT_ID */
+		trace_probe_extid_mask = <0xff00>;
+		ec_ctl1_base_val = <4>;
+		core_cti_num = <5>;
+		core_cti_trigout = <0>;
+		status = "okay";
+	};
+
+	/* GEMNOC NSP1 HistProbe, HistCtrl, TraceProbe and EventCounter */
+	nsp1_comp_juhu: nsp1-comp-driver-juhu@4307C00 {
+		compatible = "qcom,nsp1-comp-driver-juhu";
+		reg = <0x4307C00 0x400>,  /* HistProbe base - GEMNOC_gemnoc_qnm_nsp1_HistProbe */
+		      <0x4307800 0x400>,  /* HistCtrl base - GEMNOC_gemnoc_qnm_nsp1_histCtl */
+		      <0x260c5800 0x1000>,  /* TraceProbe base - nsp_noc_1_traceprb */
+		      <0x260c9000 0x1000>,  /* EventCounter base - nsp_noc_ec (shared) */
+		      <0x6010000 0x1000>;  /* Core CTI base - for measurement triggers */
+		reg-names = "histprobe-base", "histctrl-base", "traceprobe-base", "eventcounter-base", "core-cti-base";
+
+		hist_bin_width = <0x2018>;
+		ddr_addr_min_low = <0x0>;
+		ddr_addr_min_high = <0x0>;
+		ddr_addr_max_low = <0xffffffff>;
+		ddr_addr_max_high = <0xf>;
+		trace_probe_extid_base = <0x8100>;  /* NSP1_EXT_ID */
+		trace_probe_extid_mask = <0xff00>;
+		ec_ctl1_base_val = <4>;
+		core_cti_num = <5>;
+		core_cti_trigout = <0>;
+		status = "okay";
+	};
+
 		/* ANOC PCIE 1 Lane 0 HistProbe, HistCtrl, TraceProbe and EventCounter */
 		pcie_1lane_0_comp_juhu: pcie-1lane-0-comp-driver-juhu@601400 {
 			compatible = "qcom,pcie-1lane-0-comp-driver-juhu";
