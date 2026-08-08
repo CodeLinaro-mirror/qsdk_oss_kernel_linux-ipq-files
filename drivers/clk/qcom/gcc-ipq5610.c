@@ -92,6 +92,8 @@ static struct clk_regmap *gcc_ipq5610_dummy_clks[] = {
 	[GCC_QUPV3_AHB_MST_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_ahb_mst_clk),
 	[GCC_QUPV3_AHB_SLV_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_ahb_slv_clk),
 	[GCC_QUPV3_WRAP_SE1_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_wrap_se1_clk),
+	[GCC_SDCC1_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_sdcc1_ahb_clk),
+	[GCC_SDCC1_APPS_CLK] = DEFINE_DUMMY_CLK(gcc_sdcc1_apps_clk),
 };
 
 static const struct qcom_reset_map gcc_ipq5610_resets[] = {
