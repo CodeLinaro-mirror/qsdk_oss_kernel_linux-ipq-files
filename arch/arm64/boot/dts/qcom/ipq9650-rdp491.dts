@@ -66,7 +66,7 @@
 			qcom,ppe-offload-disabled = <0>;
 			pinctrl-0 = <&pps_state>;
 			pinctrl-names = "default";
-			interrupts = <GIC_SPI 362 IRQ_TYPE_EDGE_RISING>;
+			interrupts = <GIC_SPI 362 IRQ_TYPE_EDGE_RISING 0>;
 			interrupt-names = "pps_in";
 			clocks = <&nsscc NSS_CC_XGMAC0_PTP_REF_CLK>;
 			clock-names = "ptp";
