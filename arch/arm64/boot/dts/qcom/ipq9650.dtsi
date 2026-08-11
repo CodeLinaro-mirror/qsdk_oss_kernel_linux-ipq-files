@@ -2459,7 +2459,9 @@
 				 <&gcc GCC_PCIE3_AHB_CLK>,
 				 <&gcc GCC_PCIE3_AUX_CLK>,
 				 <&gcc GCC_PCIE3_AXI_S_BRIDGE_CLK>,
-				 <&gcc GCC_PCIE3_RCHNG_CLK>;
+				 <&gcc GCC_PCIE3_RCHNG_CLK>,
+				 <&gcc GCC_ANOC_PCIE3_2LANE_M_CLK>,
+				 <&gcc GCC_ANOC_PCIE3_2LANE_S_CLK>;
 
 			clock-names = "axi_m",
 				      "axi_s",
@@ -2516,15 +2518,7 @@
 #ifdef __CONFIG_IO_COHERENCY__
 					qcom,no-tmel;
 					/* Configuring IOC registers */
-					secure-reg =  <0x613008 0x130100>,
-							<0x613038 0x44410>,
-							<0x613048 0x100>,
-							<0x613050 0x6>,
-							<0x614008 0x130100>,
-							<0x614038 0x44410>,
-							<0x614048 0x100>,
-							<0x614050 0x7>,
-							<0x615008 0x130100>,
+					secure-reg =  <0x615008 0x130100>,
 							<0x615038 0x44410>,
 							<0x615048 0x100>,
 							<0x615050 0x8>;
@@ -2568,7 +2562,9 @@
 				 <&gcc GCC_PCIE2_AHB_CLK>,
 				 <&gcc GCC_PCIE2_AUX_CLK>,
 				 <&gcc GCC_PCIE2_AXI_S_BRIDGE_CLK>,
-				 <&gcc GCC_PCIE2_RCHNG_CLK>;
+				 <&gcc GCC_PCIE2_RCHNG_CLK>,
+				 <&gcc GCC_ANOC_PCIE2_2LANE_M_CLK>,
+				 <&gcc GCC_ANOC_PCIE2_2LANE_S_CLK>;
 
 			clock-names = "axi_m",
 				      "axi_s",
@@ -2625,18 +2621,10 @@
 #ifdef __CONFIG_IO_COHERENCY__
 					qcom,no-tmel;
 					/* Configuring IOC registers */
-					secure-reg =  <0x613008 0x130100>,
-							<0x613038 0x44410>,
-							<0x613048 0x100>,
-							<0x613050 0x6>,
-							<0x614008 0x130100>,
+					secure-reg =  <0x614008 0x130100>,
 							<0x614038 0x44410>,
 							<0x614048 0x100>,
-							<0x614050 0x7>,
-							<0x615008 0x130100>,
-							<0x615038 0x44410>,
-							<0x615048 0x100>,
-							<0x615050 0x8>;
+							<0x614050 0x6>;
 #endif
 				};
 			};
@@ -2676,7 +2664,9 @@
 				 <&gcc GCC_PCIE1_AHB_CLK>,
 				 <&gcc GCC_PCIE1_AUX_CLK>,
 				 <&gcc GCC_PCIE1_AXI_S_BRIDGE_CLK>,
-				 <&gcc GCC_PCIE1_RCHNG_CLK>;
+				 <&gcc GCC_PCIE1_RCHNG_CLK>,
+				 <&gcc GCC_ANOC_PCIE1_2LANE_M_CLK>,
+				 <&gcc GCC_ANOC_PCIE1_2LANE_S_CLK>;
 
 			clock-names = "axi_m",
 				      "axi_s",
@@ -2736,15 +2726,7 @@
 					secure-reg =  <0x613008 0x130100>,
 							<0x613038 0x44410>,
 							<0x613048 0x100>,
-							<0x613050 0x6>,
-							<0x614008 0x130100>,
-							<0x614038 0x44410>,
-							<0x614048 0x100>,
-							<0x614050 0x7>,
-							<0x615008 0x130100>,
-							<0x615038 0x44410>,
-							<0x615048 0x100>,
-							<0x615050 0x8>;
+							<0x613050 0x7>;
 #endif
 				};
 			};
@@ -2784,7 +2766,9 @@
 				 <&gcc GCC_PCIE4_AHB_CLK>,
 				 <&gcc GCC_PCIE4_AUX_CLK>,
 				 <&gcc GCC_PCIE4_AXI_S_BRIDGE_CLK>,
-				 <&gcc GCC_PCIE4_RCHNG_CLK>;
+				 <&gcc GCC_PCIE4_RCHNG_CLK>,
+				 <&gcc GCC_ANOC_PCIE4_1LANE_M_CLK>,
+				 <&gcc GCC_ANOC_PCIE4_1LANE_S_CLK>;
 
 			clock-names = "axi_m",
 				      "axi_s",
@@ -2834,6 +2818,20 @@
 			nvmem-cells = <&pcie4_disable>;
 
 			status = "disabled";
+			pcie4_rp {
+				reg = <0 0 0 0 0>;
+				qcom,mhi@0 {
+					reg = <0 0 0 0 0>;
+#ifdef __CONFIG_IO_COHERENCY__
+					qcom,no-tmel;
+					/* Configuring IOC registers */
+					secure-reg =  <0x612008 0x130100>,
+							<0x612038 0x44410>,
+							<0x612048 0x100>,
+							<0x612050 0x7>;
+#endif
+				};
+			};
 		};
 
 		pcie0: pcie@70000000 {
@@ -2870,7 +2868,9 @@
 				 <&gcc GCC_PCIE0_AHB_CLK>,
 				 <&gcc GCC_PCIE0_AUX_CLK>,
 				 <&gcc GCC_PCIE0_AXI_S_BRIDGE_CLK>,
-				 <&gcc GCC_PCIE0_RCHNG_CLK>;
+				 <&gcc GCC_PCIE0_RCHNG_CLK>,
+				 <&gcc GCC_ANOC_PCIE0_1LANE_M_CLK>,
+				 <&gcc GCC_ANOC_PCIE0_1LANE_S_CLK>;
 
 			clock-names = "axi_m",
 				      "axi_s",
@@ -2920,6 +2920,20 @@
 			nvmem-cells = <&pcie0_disable>;
 
 			status = "disabled";
+			pcie0_rp {
+				reg = <0 0 0 0 0>;
+				qcom,mhi@0 {
+					reg = <0 0 0 0 0>;
+#ifdef __CONFIG_IO_COHERENCY__
+					qcom,no-tmel;
+					/* Configuring IOC registers */
+					secure-reg =  <0x61108 0x130100>,
+							<0x61138 0x44410>,
+							<0x61148 0x100>,
+							<0x61150 0x7>;
+#endif
+				};
+			};
 		};
 
 		ess_uniphy: ess-uniphy@7a00000 {
