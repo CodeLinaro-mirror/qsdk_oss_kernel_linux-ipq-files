@@ -66,21 +66,21 @@
 
 			ess_switch: ess-switch@3a000000 {
 				switch_lan_bmp = <0x10>; /* lan port bitmap */
-				switch_wan_bmp = <0x20>; /* wan port bitmap */
-				switch_mac_mode = <0xff>; /* unused */
-				switch_mac_mode1 = <0xf>; /* SGMII for QCA8033 */
+				switch_wan_bmp = <0x2>; /* wan port bitmap */
+				switch_mac_mode = <0xf>; /* SGMII for QCA8033 */
+				switch_mac_mode1 = <0xff>; /* unused */
 				switch_mac_mode2 = <0xff>; /* unused */
 
 				qcom,port_phyinfo {
-					port@3 {
-						port_id = <4>;
-						phy-mode = "internal";
-					};
-					port@4 {
-						port_id = <5>;
+					port@0 {
+						port_id = <1>;
 						phy_address = <4>;
 						phy-handle = <&phy0>;
 						phy-mode = "sgmii";
+					};
+					port@3 {
+						port_id = <4>;
+						phy-mode = "internal";
 					};
 				};
 			};
@@ -89,8 +89,8 @@
 		dp1 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
-			qcom,id = <4>;
-			reg = <0x3a001600 0x200>;
+			qcom,id = <1>;
+			reg = <0x3a001000 0x200>;
 			qcom,mactype = <0>;
 			local-mac-address = [000000000000];
 			qcom,ppe-offload-disabled = <0>;
@@ -99,8 +99,8 @@
 		dp2 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
-			qcom,id = <5>;
-			reg = <0x3A001800 0x200>;
+			qcom,id = <4>;
+			reg = <0x3A001600 0x200>;
 			qcom,mactype = <0>;
 			local-mac-address = [000000000000];
 			qcom,ppe-offload-disabled = <0>;
@@ -191,26 +191,26 @@
 
 &ess_switch {
 	port_scheduler_resource {
-		/delete-node/ port@1;
+		/delete-node/ port@5;
 		/delete-node/ port@2;
 		/delete-node/ port@3;
 		/delete-node/ port@6;
-		/delete-node/ port@4;
-		port@4 {
-			port_id = <4>;
+		/delete-node/ port@1;
+		port@1 {
+			port_id = <1>;
 			ucast_queue = <0 31>;
-			mcast_queue = <284 287>;
+			mcast_queue = <272 275>;
 			l0sp = <0 7>;
 			l0cdrr = <0 31>;
 			l0edrr = <0 31>;
 			l1cdrr = <0 7>;
 			l1edrr = <0 7>;
 		};
-		/delete-node/ port@5;
-		port@5 {
-			port_id = <5>;
+		/delete-node/ port@4;
+		port@4 {
+			port_id = <4>;
 			ucast_queue = <32 63>;
-			mcast_queue = <288 291>;
+			mcast_queue = <284 287>;
 			l0sp = <8 15>;
 			l0cdrr = <32 63>;
 			l0edrr = <32 63>;
@@ -220,13 +220,13 @@
 	};
 
 	port_scheduler_config {
-		/delete-node/ port@1;
+		/delete-node/ port@5;
 		/delete-node/ port@2;
 		/delete-node/ port@3;
 		/delete-node/ port@6;
-		/delete-node/ port@4;
-		port@4 {
-			port_id = <4>;
+		/delete-node/ port@1;
+		port@1 {
+			port_id = <1>;
 			l1scheduler {
 				group@0 {
 					sp = <0>;
@@ -240,7 +240,7 @@
 				group@0 {
 					ucast_queue = <0>;
 					ucast_loop_pri = <8>;
-					mcast_queue = <284>;
+					mcast_queue = <272>;
 					mcast_loop_pri = <4>;
 					cfg = <0 0 0 0 0>;
 				};
@@ -261,9 +261,9 @@
 				};
 			};
 		};
-		/delete-node/ port@5;
-		port@5 {
-			port_id = <5>;
+		/delete-node/ port@4;
+		port@4 {
+			port_id = <4>;
 			l1scheduler {
 				group@0 {
 					sp = <8>;
@@ -277,7 +277,7 @@
 				group@0 {
 					ucast_queue = <32>;
 					ucast_loop_pri = <8>;
-					mcast_queue = <288>;
+					mcast_queue = <284>;
 					mcast_loop_pri = <4>;
 					cfg = <8 0 32 0 32>;
 				};
