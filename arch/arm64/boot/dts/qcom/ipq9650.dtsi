@@ -2033,7 +2033,7 @@
 			assigned-clocks = <&gcc GCC_USB1_MASTER_CLK>,
 					  <&gcc GCC_USB1_MOCK_UTMI_CLK>;
 			assigned-clock-rates = <200000000>,
-					       <60000000>;
+					       <24000000>;
 
 			resets = <&gcc GCC_USB1_BCR>;
 			qcom,select-utmi-as-pipe-clk;
@@ -2121,7 +2121,7 @@
 			assigned-clocks = <&gcc GCC_USB0_MASTER_CLK>,
 					  <&gcc GCC_USB0_MOCK_UTMI_CLK>;
 			assigned-clock-rates = <200000000>,
-					       <60000000>;
+					       <24000000>;
 
 			resets = <&gcc GCC_USB_BCR>;
 			status = "disabled";
