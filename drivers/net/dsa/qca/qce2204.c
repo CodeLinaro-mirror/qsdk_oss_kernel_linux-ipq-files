@@ -416,6 +416,22 @@ static enum dsa_tag_protocol qce2204_get_tag_protocol(struct dsa_switch *ds, int
 	return DSA_TAG_PROTO_NONE;
 }
 
+/* Both qca_8021q and qca_4b can insert an ATH header, which defeats the
+ * conduit's TX checksum engine, so the stack has to compute it.
+ *
+ * This must not be gated on qce2204_fcgroup: the driver is loaded at boot,
+ * and to keep the original MHT HOLB command sequence the fc_group ids are
+ * only written through the (0644) module param afterwards. Writing that
+ * param does not re-run .change_tag_protocol, so a verdict taken here while
+ * the array is still unset would leave HW checksum offload enabled for
+ * ATH-tagged frames once HOLB is turned on. The per-port fc_group id is
+ * instead evaluated per packet by the tagger.
+ */
+static bool qce2204_proto_needs_sw_csum(enum dsa_tag_protocol proto)
+{
+	return proto == DSA_TAG_PROTO_4B_QCA || proto == DSA_TAG_PROTO_QCA_8021Q;
+}
+
 static int qce2204_change_tag_protocol(struct dsa_switch *ds, enum dsa_tag_protocol proto)
 {
 	struct qce2204_priv *priv = ds->priv;
@@ -444,7 +460,11 @@ static int qce2204_change_tag_protocol(struct dsa_switch *ds, enum dsa_tag_proto
 
 	/* Teardown old protocol configuration */
 	if (priv->tag_protocol == DSA_TAG_PROTO_QCA_8021Q) {
-		qce2204_teardown_8021q_global(priv);
+		ret = qce2204_teardown_8021q_global(priv);
+		if (ret) {
+			dev_err(priv->dev, "Failed to teardown global 8021Q config: %d\n", ret);
+			return ret;
+		}
 		dsa_switch_for_each_user_port(dp, ds) {
 			ret = qce2204_teardown_8021q_tagging(priv, dp->index);
 			if (ret) {
@@ -478,7 +498,11 @@ static int qce2204_change_tag_protocol(struct dsa_switch *ds, enum dsa_tag_proto
 
 	/* Setup new protocol configuration */
 	if (proto == DSA_TAG_PROTO_QCA_8021Q) {
-		qce2204_setup_8021q_global(priv);
+		ret = qce2204_setup_8021q_global(priv);
+		if (ret) {
+			dev_err(priv->dev, "Failed to setup global 8021Q config: %d\n", ret);
+			return ret;
+		}
 		dsa_switch_for_each_user_port(dp, ds) {
 			ret = qce2204_setup_8021q_tagging(priv, dp->index);
 			if (ret) {
@@ -487,8 +511,6 @@ static int qce2204_change_tag_protocol(struct dsa_switch *ds, enum dsa_tag_proto
 				return ret;
 			}
 		}
-
-		ds->fc_group = qce2204_fcgroup;
 	} else if (proto == DSA_TAG_PROTO_4B_QCA) {
 		/* Configure ATH tag */
 		ret = qce2204_setup_cpu_port_athtag(priv);
@@ -496,8 +518,6 @@ static int qce2204_change_tag_protocol(struct dsa_switch *ds, enum dsa_tag_proto
 			dev_err(priv->dev, "Failed to config ATH tag: %d\n", ret);
 			return ret;
 		}
-
-		ds->fc_group = qce2204_fcgroup;
 	} else if (proto == DSA_TAG_PROTO_NONE) {
 		/* Setup none tag VSI configuration */
 		ret = qce2204_setup_none_tag_vsi(priv);
@@ -512,10 +532,17 @@ static int qce2204_change_tag_protocol(struct dsa_switch *ds, enum dsa_tag_proto
 			dev_err(priv->dev, "Failed to setup none tag RSTP: %d\n", ret);
 			return ret;
 		}
-		ds->fc_group = NULL;
 	}
 
 	priv->tag_protocol = proto;
+
+	/* Assigned here, not in .connect_tag_protocol: dsa_slave_setup_tagger()
+	 * consumes this bit before the TAG_PROTO_CONNECT notifier runs.
+	 * Unconditional so switching back to a protocol that does not need it
+	 * clears the bit.
+	 */
+	ds->needs_sw_csum = qce2204_proto_needs_sw_csum(proto);
+
 	dev_info(priv->dev, "Tag protocol changed to %d successfully\n", proto);
 	return 0;
 }
@@ -689,6 +716,43 @@ static int qce2204_set_mac_eee(struct dsa_switch *ds, int port, struct ethtool_e
 	return 0;
 }
 
+static int qce2204_connect_tag_protocol(struct dsa_switch *ds,
+					enum dsa_tag_protocol proto)
+{
+	struct qce2204_priv *priv = ds->priv;
+	struct qca_tagger_data *tagger_data = ds->tagger_data;
+
+	if (!tagger_data)
+		return 0;
+
+	switch (proto) {
+	case DSA_TAG_PROTO_QCA_8021Q:
+		/* xmit_tpid is only consumed by qca_8021q_tag_xmit(); other
+		 * protocols never read it, so it is only set here.
+		 */
+		tagger_data->xmit_tpid = (priv->bp_mode == QCE2204_BP_QUEUE) ?
+					  ETH_P_DSA_8021Q : ETH_P_8021Q;
+		fallthrough;
+	case DSA_TAG_PROTO_4B_QCA:
+		/* Point at the module param array unconditionally: its entries
+		 * are filled in after boot by the MHT HOLB command sequence,
+		 * long after this runs. The tagger checks the per-port id
+		 * (< QCE2204_FCGROUP_MAX) on every packet, so unset 0xff
+		 * entries are already a no-op.
+		 */
+		tagger_data->fc_group = qce2204_fcgroup;
+		break;
+	default:
+		/* tagger_data is persistent across tag protocol switches, so
+		 * drop the fc_group installed by a previous protocol.
+		 */
+		tagger_data->fc_group = NULL;
+		break;
+	}
+
+	return 0;
+}
+
 static const struct dsa_switch_ops qce2204_switch_ops = {
 	.phylink_get_caps	= qce2204_phylink_get_caps,
 	.phylink_mac_select_pcs	= qce2204_phylink_mac_select_pcs,
@@ -697,6 +761,7 @@ static const struct dsa_switch_ops qce2204_switch_ops = {
 	.phylink_mac_link_up	= qce2204_phylink_mac_link_up,
 	.get_tag_protocol	= qce2204_get_tag_protocol,
 	.change_tag_protocol	= qce2204_change_tag_protocol,
+	.connect_tag_protocol	= qce2204_connect_tag_protocol,
 	.setup			= qce2204_setup,
 	.port_enable		= qce2204_port_enable,
 	.port_disable		= qce2204_port_disable,
