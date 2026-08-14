@@ -529,9 +529,9 @@ static void cdsp_dcvs_work_fn(struct work_struct *work)
 			goto send_response;
 		}
 
-		dev_info(drv->dev,
-			 "KVP[%d]: requesting %s -> HLVL %s (corner=%u), regulator mode selector=%u\n",
-			 i, rail_name, cdsp_hlvl_name(corner), corner, corner + 1);
+		dev_dbg(drv->dev,
+			"KVP[%d]: requesting %s -> HLVL %s (corner=%u), regulator mode selector=%u\n",
+			i, rail_name, cdsp_hlvl_name(corner), corner, corner + 1);
 
 		ret = regulator_set_voltage(reg, corner + 1, corner + 1);
 		if (ret) {
@@ -550,8 +550,8 @@ static void cdsp_dcvs_work_fn(struct work_struct *work)
 	}
 
 send_response:
-	dev_info(drv->dev,
-		 "DCVS response: seq=%u status=%u data=%u\n",
+	dev_dbg(drv->dev,
+		"DCVS response: seq=%u status=%u data=%u\n",
 		 sequence, resp_status, resp_data);
 
 	/* Write response to SMEM response area */
