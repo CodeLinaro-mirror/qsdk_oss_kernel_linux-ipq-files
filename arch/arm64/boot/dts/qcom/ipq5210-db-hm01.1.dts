@@ -439,7 +439,7 @@
 
 			memory-region = <&qcn9625_pcie0_cma>, <&mlo_global_cma>;
 			memory-region-names = "host-ddr-mem", "mlo-global-mem";
-			qcom,board_id = <0x200d>;
+			qcom,board_id = <0x200c>;
 			status = "okay";
 			ports {
 				#address-cells = <1>;
@@ -473,7 +473,7 @@
 
 			memory-region = <&qcn9625_pcie1_cma>, <&mlo_global_cma>;
 			memory-region-names = "host-ddr-mem", "mlo-global-mem";
-			qcom,board_id = <0x200d>;
+			qcom,board_id = <0x5005>;
 			status = "okay";
 			ports {
 				#address-cells = <1>;
