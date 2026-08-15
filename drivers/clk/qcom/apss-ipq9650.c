@@ -417,11 +417,13 @@ static const struct qcom_cc_desc apss_silver_only_desc = {
  * @pdev: platform device
  *
  * Maps the APSS register region, detects Cortex-A78 Gold core presence
- * via of_find_compatible_node(), and conditionally configures the Gold PLL.
- * Always configures Silver and L3 Zonda PLLs. Registers GFMUX clocks and
- * all regmap-based clocks via qcom_cc_really_probe(). When the A78 core is
- * absent (32-bit configuration), Gold PLL clock entries are skipped and the
- * MASTER_CPU_GOLD ICC path is excluded from registration.
+ * via of_find_compatible_node(), and conditionally configures the Gold PLL
+ * based on whether the Gold core was brought online at boot. Always
+ * configures Silver and L3 Zonda PLLs. Registers GFMUX clocks and all
+ * regmap-based clocks via qcom_cc_really_probe(). When the A78 core is
+ * absent (32-bit configuration) or was kept offline (nosmp/maxcpus=1..4),
+ * Gold PLL clock entries are skipped and the MASTER_CPU_GOLD ICC path is
+ * excluded from registration.
  *
  * Return: 0 on success, negative error code on failure
  */
@@ -449,7 +451,7 @@ static int apss_ipq9650_probe(struct platform_device *pdev)
 
 	/*
 	 * Detect Cortex-A78 Gold core presence from the device tree
-	 * and check if it will be brought online (handles nosmp)
+	 * and check if it will be brought online (handles nosmp & maxcpus=1)
 	 */
 	a78_node = of_find_compatible_node(NULL, "cpu", "arm,cortex-a78");
 	if (a78_node) {
@@ -457,7 +459,7 @@ static int apss_ipq9650_probe(struct platform_device *pdev)
 		of_node_put(a78_node);
 	}
 
-	if (cpu_id >= 0 && cpu_present(cpu_id)) {
+	if (cpu_id >= 0 && cpu_online(cpu_id)) {
 		clk_zonda_pll_configure(&gold_apss_pll, regmap, &gold_apss_pll_config);
 	} else {
 		desc = &apss_silver_only_desc;
