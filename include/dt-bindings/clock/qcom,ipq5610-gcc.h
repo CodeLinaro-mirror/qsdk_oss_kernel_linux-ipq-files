@@ -43,5 +43,9 @@
 #define GCC_QPIC_AHB_CLK		33
 #define GCC_QPIC_CLK			34
 #define GCC_QPIC_IO_MACRO_CLK		35
+#define GCC_QUPV3_WRAP_SE2_CLK		36
+#define GCC_QUPV3_WRAP_SE3_CLK		37
+#define GCC_QUPV3_WRAP_SE4_CLK		38
+#define GCC_QUPV3_WRAP_SE7_CLK		39
 
 #endif

@@ -125,6 +125,10 @@ static struct clk_regmap *gcc_ipq5610_dummy_clks[] = {
 	[GCC_QPIC_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_qpic_ahb_clk),
 	[GCC_QPIC_CLK] = DEFINE_DUMMY_CLK(gcc_qpic_clk),
 	[GCC_QPIC_IO_MACRO_CLK] = DEFINE_DUMMY_CLK(gcc_qpic_io_macro_clk),
+	[GCC_QUPV3_WRAP_SE2_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_wrap_se2_clk),
+	[GCC_QUPV3_WRAP_SE3_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_wrap_se3_clk),
+	[GCC_QUPV3_WRAP_SE4_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_wrap_se4_clk),
+	[GCC_QUPV3_WRAP_SE7_CLK] = DEFINE_DUMMY_CLK(gcc_qupv3_wrap_se7_clk),
 
 };
 
