@@ -122,6 +122,10 @@ static struct clk_regmap *gcc_ipq5610_dummy_clks[] = {
 	[GCC_PCIE2_AXI_S_BRIDGE_CLK] = DEFINE_DUMMY_CLK(gcc_pcie2_axi_s_bridge_clk),
 	[GCC_PCIE2_RCHNG_CLK] = DEFINE_DUMMY_CLK(gcc_pcie2_rchng_clk),
 	[GCC_PCIE2_PIPE_CLK] = DEFINE_DUMMY_CLK(gcc_pcie2_pipe_clk),
+	[GCC_QPIC_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_qpic_ahb_clk),
+	[GCC_QPIC_CLK] = DEFINE_DUMMY_CLK(gcc_qpic_clk),
+	[GCC_QPIC_IO_MACRO_CLK] = DEFINE_DUMMY_CLK(gcc_qpic_io_macro_clk),
+
 };
 
 static const struct qcom_reset_map gcc_ipq5610_resets[] = {
