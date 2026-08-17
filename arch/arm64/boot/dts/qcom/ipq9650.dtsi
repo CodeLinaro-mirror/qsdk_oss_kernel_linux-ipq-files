@@ -436,11 +436,6 @@
 			linux,cma-default;
 		};
 
-		bootloader@8a100000 {
-			reg = <0x0 0x8a100000 0x0 0x400000>;
-			no-map;
-		};
-
 		smem@8a500000 {
 			compatible = "qcom,smem";
 			reg = <0x0 0x8a500000 0x0 0x40000>;
