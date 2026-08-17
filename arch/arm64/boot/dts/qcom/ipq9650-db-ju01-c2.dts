@@ -10,6 +10,11 @@
 
 #include "ipq9650-rdp-common.dtsi"
 #include <dt-bindings/clock/qcom,qce2204-pcs.h>
+#ifdef __IPQ_MEM_PROFILE_512_MB__
+#include "ipq9650-512MB-default-memory.dtsi"
+#else
+#include "ipq9650-default-memory.dtsi"
+#endif
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ9650 DB JU01-C2";
@@ -615,6 +620,30 @@
 
 		qcom,mhi@0 {
 			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9625_pcie1_cma>, <&mlo_global_cma>;
+			memory-region-names = "host-ddr-mem", "mlo-global-mem";
+			qcom,board_id = <0x2002>;
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+
+					wifi1_wsi_tx: endpoint {
+						remote-endpoint = <&wifi3_wsi_rx>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+
+					wifi1_wsi_rx: endpoint {
+						remote-endpoint = <&wifi2_wsi_tx>;
+					};
+				};
+			};
 		};
 	};
 };
@@ -632,6 +661,31 @@
 
 		qcom,mhi@0 {
 			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9625_pcie2_cma>, <&mlo_global_cma>;
+			memory-region-names = "host-ddr-mem", "mlo-global-mem";
+			qcom,board_id = <0x2001>;
+			qcom,wsi-controller;
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+
+					wifi2_wsi_tx: endpoint {
+						remote-endpoint = <&wifi1_wsi_rx>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+
+					wifi2_wsi_rx: endpoint {
+						remote-endpoint = <&wifi3_wsi_tx>;
+					};
+				};
+			};
 		};
 	};
 };
@@ -649,8 +703,48 @@
 
 		qcom,mhi@0 {
 			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9625_pcie3_cma>, <&mlo_global_cma>;
+			memory-region-names = "host-ddr-mem", "mlo-global-mem";
+			qcom,board_id = <0x2004>;
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+
+					wifi3_wsi_tx: endpoint {
+						remote-endpoint = <&wifi2_wsi_rx>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+
+					wifi3_wsi_rx: endpoint {
+						remote-endpoint = <&wifi1_wsi_tx>;
+					};
+				};
+			};
 		};
 	};
+};
+
+&qcn9625_pcie1_cma {
+	status = "okay";
+};
+
+&qcn9625_pcie2_cma {
+	status = "okay";
+};
+
+&qcn9625_pcie3_cma {
+	status = "okay";
+};
+
+&mlo_global_cma {
+	status = "okay";
 };
 
 &qusb_phy_1 {
