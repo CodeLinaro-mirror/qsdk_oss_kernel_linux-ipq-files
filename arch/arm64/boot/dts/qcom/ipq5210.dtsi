@@ -208,11 +208,6 @@
 		#size-cells = <2>;
 		ranges;
 
-		bootloader@87800000 {
-			reg = <0x0 0x87800000 0x0 0x400000>;
-			no-map;
-		};
-
 		smem@87c00000 {
 			compatible = "qcom,smem";
 			reg = <0x0 0x87c00000 0x0 0x40000>;
