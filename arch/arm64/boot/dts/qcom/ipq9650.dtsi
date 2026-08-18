@@ -3497,7 +3497,7 @@
 							group@0 {
 								sp = <10>;
 								sp_loop_pri = <4>;
-								sp_max_pri = <1>;
+								sp_max_pri = <2>;
 								cfg = <0 10 0 10>;
 							};
 						};
@@ -3506,7 +3506,7 @@
 							group@0 {
 								ucast_queue = <40>;
 								ucast_loop_pri = <32>;
-								ucast_max_pri = <16>;
+								ucast_max_pri = <8>;
 								mcast_queue = <292>;
 								mcast_loop_pri = <4>;
 								cfg = <10 0 40 0 40>;
