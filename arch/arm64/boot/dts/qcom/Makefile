@@ -122,6 +122,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= ipq9650-rdp506.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9650-rdp490.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9650-rdp491.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9650-rdp507.dtb
+dtb-$(CONFIG_ARCH_QCOM) += ipq9650-rdp525.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9650-rdp529.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9650-rdp530.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9650-rdp532.dtb
