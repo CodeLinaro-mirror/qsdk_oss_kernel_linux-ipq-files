@@ -388,6 +388,7 @@
 
 &pcie0 {
 	perst-gpio = <&tlmm 25 GPIO_ACTIVE_LOW>;
+	status = "disabled";
 
 	pcie0_rp {
 		reg = <0 0 0 0 0>;
@@ -395,11 +396,11 @@
 };
 
 &pcie1_phy {
-	status = "okay";
+	status = "disabled";
 };
 
 &pcie1 {
-	status = "okay";
+	status = "disabled";
 	perst-gpio = <&tlmm 28 GPIO_ACTIVE_LOW>;
 
 	pcie1_rp {
@@ -421,11 +422,11 @@
 };
 
 &pcie2_phy {
-	status = "okay";
+	status = "disabled";
 };
 
 &pcie2 {
-	status = "okay";
+	status = "disabled";
 	perst-gpio = <&tlmm 31 GPIO_ACTIVE_LOW>;
 
 	pcie2_rp {
@@ -459,12 +460,7 @@
 
 		qcom,mhi@3 {
 			reg = <0 0 0 0 0>;
-			boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
-					0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
-					0x6 0x4 0x30 0x7 0x0 0x0  /* WSI0, GPIO48, Drive strength 16mA */
-					0x7 0x4 0x31 0x7 0x0 0x0  /* WSI1, GPIO49, Drive strength 16mA */
-					0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
-			memory-region = <&qcn9224_pcie3>, <&mhi_region3>;
+			memory-region = <&cnss_wlan_mem3>, <&mhi_region3>;
 			qcom,board_id = <0x22>;
 			qcom,wsi = <&wsi>;
 			qcom,wsi_index = <1>;
@@ -746,27 +742,34 @@
 };
 
 &qcn9224_pcie1 {
-	status = "okay";
+	status = "disabled";
 };
 
 &qcn9224_pcie2 {
-	status = "okay";
+	status = "disabled";
 };
 
 &qcn9224_pcie3 {
-	status = "okay";
+	status = "disabled";
 };
 
 #if defined(__MHI_BUS_RESERVED_DMA_POOL__)
 &mhi_region1 {
-	status = "okay";
+	status = "disabled";
 };
 
 &mhi_region2 {
-	status = "okay";
+	status = "disabled";
 };
 
 &mhi_region3 {
+	/*
+	 * Congo specific: 9 MB -> 20 MB
+	 * (size of amss.bin ~ 8MB) +
+	 * (size of RDDM ~ 7.5MB) +
+	 * some buffer (at least 512KB ~ 1MB)
+	 */
+	size = <0x0 0x01400000>;
 	status = "okay";
 };
 #endif
@@ -796,7 +799,7 @@
 	board_id = <0x21>;
 	hw_link_id = <2 0>;
 	probe-order = <3>;
-	status = "okay";
+	status = "disabled";
 };
 
 /* 6G radio */
@@ -805,7 +808,7 @@
 	board_id = <0x26>;
 	hw_link_id = <3 0>;
 	probe-order = <4>;
-	status = "okay";
+	status = "disabled";
 };
 
 /* 5GH radio */
@@ -814,6 +817,21 @@
 	board_id = <0x22>;
 	hw_link_id = <1 0>;
 	probe-order = <2>;
+	status = "disabled";
+};
+
+
+/* ===== Congo (fig_v2) on PCIe3 slot =====
+ * Enable wlan_fig (qcom,cnss-fig) which binds to pcie3 via wlan-rc-num=<3>.
+ * wlan_fig_cnss2 stays disabled (only needed for secondary cnss2-path radios).
+ * cnss_wlan_mem3 (defined in ipq5424-congo-memory.dtsi) is enabled for
+ * Congo FW host-ddr-mem backing.
+ */
+&wlan_fig {
+	status = "okay";
+};
+
+&cnss_wlan_mem3 {
 	status = "okay";
 };
 

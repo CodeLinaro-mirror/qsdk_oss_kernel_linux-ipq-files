@@ -169,5 +169,13 @@
 			reg = <0x0 0x9b300000 0x0 0x1200000>;
 			status = "disabled";
 		};
+
+		cnss_wlan_mem3: cnss_wlan_region3 {
+			compatible = "shared-dma-pool";
+			no-map;
+			reg = <0x0 0x9cb00000 0x0 0x04000000>; /* 64M */
+			alignment = <0x0 0x400000>; /* 4 MB */
+			status = "disabled";
+		};
 	};
 };

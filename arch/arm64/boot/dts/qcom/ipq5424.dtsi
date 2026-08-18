@@ -3588,6 +3588,31 @@
 			status = "disabled";
 		};
 
+		wlan_fig: qcom,cnss-fig {
+			compatible = "qcom,cnss-fig";
+		#ifdef __CONFIG_IO_COHERENCY__
+			dma-coherent;
+			secure-reg = <0x00610708 0x130100>, /* pcie3 Main Ctl Low */
+				     <0x00610738 0x44410>, /* pcie3 TrType LUT Low */
+				     <0x00610748 0x100>, /* pci3 dynattr Alloc Low */
+				     <0x00610750 0x7>; /* pci3 dynattr CacheIndexVal Low */
+		#endif
+			supported-ids = <0x1111>;
+			qcom,wlan;
+			qcom,wlan-rc-num = <3>;
+			qcom,wlan-ramdump-dynamic = <0x780000>;
+			cnss-enable-self-recovery;
+			use-pm-domain;
+			qcom,same-dt-multi-dev;
+			platform-name-required;
+			cx-mode = <0>;
+
+			/* WLAN power always on */
+			power-ctrl-mode = <2>;
+			wlan-txrx-intr-cpumask = <0x3 0xc>;
+			status = "disabled";
+		};
+
 		stm: stm@6002000 {
 			compatible = "arm,coresight-stm", "arm,primecell";
 			reg = <0x06002000 0x1000>,
