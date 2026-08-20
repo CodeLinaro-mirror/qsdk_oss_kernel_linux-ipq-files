@@ -2956,10 +2956,10 @@
 #ifdef __CONFIG_IO_COHERENCY__
 					qcom,no-tmel;
 					/* Configuring IOC registers */
-					secure-reg =  <0x61108 0x130100>,
-							<0x61138 0x44410>,
-							<0x61148 0x100>,
-							<0x61150 0x7>;
+					secure-reg =  <0x611008 0x130100>,
+							<0x611038 0x44410>,
+							<0x611048 0x100>,
+							<0x611050 0x7>;
 #endif
 				};
 			};

@@ -217,11 +217,36 @@
 	perst-gpio = <&tlmm 25 GPIO_ACTIVE_LOW>;
 	status = "okay";
 
-	pcie1_rp {
+	pcie0_rp {
 		reg = <0 0 0 0 0>;
 
 		qcom,mhi@0 {
 			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9589_pcie1_cma>, <&mlo_global_cma>;
+			memory-region-names = "host-ddr-mem", "mlo-global-mem";
+			qcom,board_id = <0x5014>;
+			qcom,wsi-controller;
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+
+					wifi0_wsi_tx: endpoint {
+						remote-endpoint = <&wifi3_wsi_rx>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+
+					wifi0_wsi_rx: endpoint {
+						remote-endpoint = <&wifi1_wsi_tx>;
+					};
+				};
+			};
 		};
 	};
 };
@@ -239,6 +264,30 @@
 
 		qcom,mhi@0 {
 			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9625_pcie1_cma>, <&mlo_global_cma>;
+			memory-region-names = "host-ddr-mem", "mlo-global-mem";
+			qcom,board_id = <0x2015>;
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+
+					wifi1_wsi_tx: endpoint {
+						remote-endpoint = <&wifi0_wsi_rx>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+
+					wifi1_wsi_rx: endpoint {
+						remote-endpoint = <&wifi2_wsi_tx>;
+					};
+				};
+			};
 		};
 	};
 };
@@ -256,6 +305,30 @@
 
 		qcom,mhi@0 {
 			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9625_pcie2_cma>, <&mlo_global_cma>;
+			memory-region-names = "host-ddr-mem", "mlo-global-mem";
+			qcom,board_id = <0x2010>;
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+
+					wifi2_wsi_tx: endpoint {
+						remote-endpoint = <&wifi1_wsi_rx>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+
+					wifi2_wsi_rx: endpoint {
+						remote-endpoint = <&wifi3_wsi_tx>;
+					};
+				};
+			};
 		};
 	};
 };
@@ -273,8 +346,52 @@
 
 		qcom,mhi@0 {
 			reg = <0 0 0 0 0>;
+			memory-region = <&qcn9625_pcie3_cma>, <&mlo_global_cma>;
+			memory-region-names = "host-ddr-mem", "mlo-global-mem";
+			qcom,board_id = <0x5008>;
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+
+					wifi3_wsi_tx: endpoint {
+						remote-endpoint = <&wifi2_wsi_rx>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+
+					wifi3_wsi_rx: endpoint {
+						remote-endpoint = <&wifi0_wsi_tx>;
+					};
+				};
+			};
 		};
 	};
+};
+
+&qcn9589_pcie1_cma {
+	status = "okay";
+};
+
+&qcn9625_pcie1_cma {
+	status = "okay";
+};
+
+&qcn9625_pcie2_cma {
+	status = "okay";
+};
+
+&qcn9625_pcie3_cma {
+	status = "okay";
+};
+
+&mlo_global_cma {
+	status = "okay";
 };
 
 &qusb_phy_1 {
