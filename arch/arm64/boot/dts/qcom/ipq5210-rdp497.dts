@@ -140,17 +140,17 @@
 &ddrq_data_region {
 	/*
 	 * Override parent DDRQ data region size:
-	 * 8MB (default) -> 4MB on RDP497.
+	 * 8MB (default) -> 32MB on RDP497.
 	 */
-	size = <0x0 0x00400000>;	/* 4MB */
+	size = <0x0 0x02000000>;	/* 32MB */
 };
 
 &ddrq_desc_region {
 	/*
 	 * Override parent DDRQ descriptor region size:
-	 * 512KB (default) -> 256KB on RDP497.
+	 * 512KB (default) -> 2MB on RDP497.
 	 */
-	size = <0x0 0x00040000>;	/* 256KB */
+	size = <0x0 0x00200000>;	/* 2MB */
 };
 
 &i2c0 {
