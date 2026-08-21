@@ -117,6 +117,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= ipq9650-db-ju02.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9650-emulation.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9650-emulation-fbc.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9650-rdp488.dtb
+dtb-$(CONFIG_ARCH_QCOM)	+= ipq9650-rdp488-c2.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9650-rdp489.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9650-rdp506.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9650-rdp490.dtb
