@@ -532,6 +532,20 @@ static void cdsp_dcvs_work_fn(struct work_struct *work)
 		dev_dbg(drv->dev,
 			"KVP[%d]: requesting %s -> HLVL %s (corner=%u), regulator mode selector=%u\n",
 			i, rail_name, cdsp_hlvl_name(corner), corner, corner + 1);
+		/*
+		 * TUR_L1 mode for NSP_CX rail is not supported on GPIO regulator
+		 * based RDPs. Hence query the regulator framework to check if
+		 * the mode is supported before calling regulator_set_voltage()
+		 */
+		if (resource_id == CDSP_RESOURCE_ID_CX &&
+		    !regulator_is_supported_voltage(reg, corner + 1, corner + 1)) {
+			dev_err(drv->dev,
+				"KVP[%d]: %s HLVL %s (corner=%u) not supported on this RDP\n",
+				i, rail_name, cdsp_hlvl_name(corner), corner);
+			resp_status = STATUS_ERR_CORNER_LIMIT;
+			resp_data = resource_id;
+			goto send_response;
+		}
 
 		ret = regulator_set_voltage(reg, corner + 1, corner + 1);
 		if (ret) {
