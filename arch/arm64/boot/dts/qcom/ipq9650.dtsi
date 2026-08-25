@@ -688,9 +688,9 @@
 				bits = <5 7>;
 			};
 
-			nsp_cx_svs_fuse: nsp_cx_svs_fuse@406 {
-				reg = <0x406 0x2>;
-				bits = <2 7>;
+			nsp_cx_svs_fuse: nsp_cx_svs_fuse@405 {
+				reg = <0x405 0x2>;
+				bits = <4 7>;
 			};
 
 			nsp_mx_turbo_l1_fuse: nsp_mx_turbo_l1_fuse@40a {

@@ -353,7 +353,6 @@
 					   "cpr_nsp_mx_svs", "cpr_nsp_mx_svs_l1",
 					   "cpr_nsp_mx_nom", "cpr_nsp_mx_tur",
 					   "cpr_fusing_rev_bit0", "cpr_fusing_rev_bit2_1";
-			qcom,skip-voltage-scaling;
 			qcom,apm-ctrl = <&apc_apm>;
 			qcom,apm-threshold-voltage = <750000>;
 			status = "okay";
