@@ -82,6 +82,7 @@ struct minidump_metadata_list {
 
 ctx_save_tlv_msg_t tlv_msg;
 u32 minidump_version_lvl;
+static phys_addr_t tmel_dump_addr;
 
 /**
  * struct ctx_save_platform_data - Platform-specific configuration data
@@ -2130,7 +2131,6 @@ static int ctx_save_setup_tmel_log_buf(struct platform_device *pdev,
 				       void **tmel_buffer)
 {
 	void __iomem *reg_addr = NULL;
-	phys_addr_t tmel_phy_addr;
 	int ret;
 
 	/* Return success if platform data is not available */
@@ -2144,29 +2144,29 @@ static int ctx_save_setup_tmel_log_buf(struct platform_device *pdev,
 		return -ENOMEM;
 	}
 
-	tmel_phy_addr = virt_to_phys(*tmel_buffer);
+	tmel_dump_addr = virt_to_phys(*tmel_buffer);
 
 	/* Validate physical address */
-	if (!tmel_phy_addr || !virt_addr_valid(*tmel_buffer)) {
+	if (!tmel_dump_addr || !virt_addr_valid(*tmel_buffer)) {
 		dev_err(&pdev->dev,
 			"Invalid physical address for TMEL buffer: phys=0x%llx\n",
-			(u64)tmel_phy_addr);
+			(u64)tmel_dump_addr);
 		ret = -EINVAL;
 		goto err_free_tmel;
 	}
 
 	/* Ensure address fits in 32-bit register */
-	if (tmel_phy_addr > 0xFFFFFFFF) {
+	if (tmel_dump_addr > 0xFFFFFFFF) {
 		dev_err(&pdev->dev,
 			"TMEL physical address 0x%llx exceeds 32-bit range\n",
-			(u64)tmel_phy_addr);
+			(u64)tmel_dump_addr);
 		ret = -EINVAL;
 		goto err_free_tmel;
 	}
 
 	dev_dbg(&pdev->dev,
 		"TMEL buffer allocated: virt=0x%lx phys=0x%llx size=%u\n",
-		(unsigned long)*tmel_buffer, (u64)tmel_phy_addr,
+		(unsigned long)*tmel_buffer, (u64)tmel_dump_addr,
 		pdata->tmel_buffer_size);
 
 	/* Map and write TMEL buffer address to register */
@@ -2178,13 +2178,13 @@ static int ctx_save_setup_tmel_log_buf(struct platform_device *pdev,
 		goto err_free_tmel;
 	}
 
-	writel(tmel_phy_addr, reg_addr);
+	writel(tmel_dump_addr, reg_addr);
 
 	/* Validate write operation */
-	if (readl(reg_addr) != tmel_phy_addr) {
+	if (readl(reg_addr) != tmel_dump_addr) {
 		dev_warn(&pdev->dev,
 			 "TMEL register write verification failed at 0x%x: expected 0x%llx, read 0x%x\n",
-			 pdata->tmel_log_buffer_reg_addr, (u64)tmel_phy_addr, readl(reg_addr));
+			 pdata->tmel_log_buffer_reg_addr, (u64)tmel_dump_addr, readl(reg_addr));
 	}
 
 	dev_dbg(&pdev->dev,
