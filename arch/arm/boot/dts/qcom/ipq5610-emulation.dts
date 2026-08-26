@@ -13,4 +13,14 @@
 		/delete-node/ cpu@300;
 		/delete-node/ cpu-map;
 	};
+
+	/delete-node/ pmu-a78;
+
+	pmu-dsu {
+		compatible = "arm,dsu-pmu";
+		interrupts = <GIC_SPI 50 IRQ_TYPE_EDGE_RISING>;
+		cpus = <&cpu0>, <&cpu1>, <&cpu2>;
+		status = "disabled";
+	};
+
 };
