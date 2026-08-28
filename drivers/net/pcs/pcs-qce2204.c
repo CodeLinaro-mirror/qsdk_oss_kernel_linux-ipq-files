@@ -50,6 +50,14 @@
 #define PCS_CH0_SPEED_100			1
 #define PCS_CH0_SPEED_10			0
 
+#define PCS_CH0_MII_STS				0x122
+#define PCS_MII_LINK_STS			BIT(7)
+#define PCS_MII_STS_DUPLEX_FULL			BIT(6)
+#define PCS_MII_STS_SPEED_MASK			GENMASK(5, 4)
+#define PCS_MII_STS_SPEED_10			0
+#define PCS_MII_STS_SPEED_100			1
+#define PCS_MII_STS_SPEED_1000			2
+
 #define QP_USXG_RESET				0x18c
 #define QP_USXG_SGMII_FUNC_RESET		BIT(4)
 #define QP_USXG_P3_FUNC_RESET			BIT(3)
@@ -239,7 +247,7 @@ static void qce2204_pcs_get_state_10gbaser(struct qce2204_pcs *qce2204,
 	int ret;
 
 	ret = mdiodev_c45_read(qce2204->mdiodev, MDIO_MMD_PCS, XPCS_KR_STS);
-	if (ret) {
+	if (ret < 0) {
 		state->link = 0;
 		return;
 	}
@@ -295,6 +303,72 @@ static void qce2204_pcs_get_state_usxgmii(struct qce2204_pcs *qce2204,
 	state->duplex = DUPLEX_FULL;
 }
 
+static void qce2204_pcs_get_state_2500basex(struct qce2204_pcs *qce2204,
+					    struct phylink_link_state *state)
+{
+	int ret;
+
+	ret = mdiodev_c45_read(qce2204->mdiodev, MDIO_MMD_PMAPMD, PCS_CH0_MII_STS);
+	if (ret < 0) {
+		state->link = 0;
+		return;
+	}
+
+	state->link = !!(ret & PCS_MII_LINK_STS);
+	if (!state->link)
+		return;
+
+	state->speed = SPEED_2500;
+	state->duplex = DUPLEX_FULL;
+}
+
+static void qce2204_pcs_get_state_sgmii(struct qce2204_pcs *qce2204,
+					struct phylink_link_state *state)
+{
+	int ret;
+
+	ret = mdiodev_c45_read(qce2204->mdiodev, MDIO_MMD_PMAPMD, PCS_CH0_MII_STS);
+	if (ret < 0) {
+		state->link = 0;
+		return;
+	}
+
+	state->link = !!(ret & PCS_MII_LINK_STS);
+
+	if (!state->link)
+		return;
+
+	switch (FIELD_GET(PCS_MII_STS_SPEED_MASK, ret)) {
+	case PCS_MII_STS_SPEED_1000:
+		state->speed = SPEED_1000;
+		break;
+	case PCS_MII_STS_SPEED_100:
+		state->speed = SPEED_100;
+		break;
+	case PCS_MII_STS_SPEED_10:
+		state->speed = SPEED_10;
+		break;
+	default:
+		state->link = false;
+		return;
+	}
+
+	if (ret & PCS_MII_STS_DUPLEX_FULL)
+		state->duplex = DUPLEX_FULL;
+	else
+		state->duplex = DUPLEX_HALF;
+}
+
+static int qce2204_pcs_validate(struct phylink_pcs *pcs, unsigned long *supported,
+				const struct phylink_link_state *state)
+{
+	/* Autoneg is not supported for 2500BASEX */
+	if (state->interface == PHY_INTERFACE_MODE_2500BASEX)
+		phylink_clear(supported, Autoneg);
+
+	return 0;
+}
+
 static void qce2204_pcs_get_state(struct phylink_pcs *pcs,
 				  struct phylink_link_state *state)
 {
@@ -306,6 +380,12 @@ static void qce2204_pcs_get_state(struct phylink_pcs *pcs,
 		break;
 	case PHY_INTERFACE_MODE_USXGMII:
 		qce2204_pcs_get_state_usxgmii(qce2204, state);
+		break;
+	case PHY_INTERFACE_MODE_2500BASEX:
+		qce2204_pcs_get_state_2500basex(qce2204, state);
+		break;
+	case PHY_INTERFACE_MODE_SGMII:
+		qce2204_pcs_get_state_sgmii(qce2204, state);
 		break;
 	default:
 		break;
@@ -428,27 +508,6 @@ static int qce2204_pcs_set_mode(struct qce2204_pcs *qce2204, phy_interface_t ifm
 	return 0;
 }
 
-static int qce2204_pcs_config_sgmii(struct qce2204_pcs *qce2204,
-				    unsigned int neg_mode,
-				    phy_interface_t ifmode,
-				    const unsigned long *advertising,
-				    bool permit)
-{
-	int ret, val;
-
-	ret = qce2204_pcs_set_mode(qce2204, ifmode);
-	if (ret) {
-		dev_err(&qce2204->mdiodev->dev, "Failed to set sgmii interface mode.\n");
-		return ret;
-	}
-
-	val = neg_mode == PHYLINK_PCS_NEG_INBAND_ENABLED ? 0 : PCS_CH0_AUTONEG_DIS;
-	return mdiodev_c45_modify(qce2204->mdiodev, MDIO_MMD_PMAPMD,
-				  PCS_CH0_CONFIG,
-				  PCS_CH0_AUTONEG_DIS,
-				  val);
-}
-
 static int qce2204_do_calibration(struct mdio_device *mdio_dev)
 {
 	int ret;
@@ -473,11 +532,56 @@ static int qce2204_do_calibration(struct mdio_device *mdio_dev)
 				 MDIO_MMD_PMAPMD, CALIBRATION4);
 }
 
+static int qce2204_pcs_config_sgmii(struct qce2204_pcs *qce2204,
+				    unsigned int neg_mode,
+				    phy_interface_t ifmode)
+{
+	int ret, val, i;
+
+	ret = qce2204_pcs_set_mode(qce2204, ifmode);
+	if (ret) {
+		dev_err(&qce2204->mdiodev->dev, "Failed to set sgmii interface mode.\n");
+		return ret;
+	}
+
+	/* Assert reset for PCS RX and TX */
+	for (i = PCS_FUNC_RX; i <= PCS_FUNC_TX; i++) {
+		ret = reset_control_assert(qce2204->rstcs[i]);
+		if (ret) {
+			dev_err(&qce2204->mdiodev->dev,
+				"Failed to assert reset %s.\n", pcs_func_name[i]);
+			return ret;
+		}
+	}
+
+	/* Wait 1ms */
+	usleep_range(1000, 1100);
+
+	/* Deassert reset for PCS RX and TX */
+	for (i = PCS_FUNC_RX; i <= PCS_FUNC_TX; i++) {
+		ret = reset_control_deassert(qce2204->rstcs[i]);
+		if (ret) {
+			dev_err(&qce2204->mdiodev->dev,
+				"Failed to deassert reset %s.\n", pcs_func_name[i]);
+			return ret;
+		}
+	}
+
+	ret = qce2204_do_calibration(qce2204->mdiodev);
+	if (ret) {
+		dev_err(&qce2204->mdiodev->dev, "Calibration timeout!\n");
+		return ret;
+	}
+
+	val = neg_mode == PHYLINK_PCS_NEG_INBAND_ENABLED ? 0 : PCS_CH0_AUTONEG_DIS;
+	return mdiodev_c45_modify(qce2204->mdiodev, MDIO_MMD_PMAPMD,
+				  PCS_CH0_CONFIG,
+				  PCS_CH0_AUTONEG_DIS,
+				  val);
+}
+
 static int qce2204_pcs_config_10g_mode(struct qce2204_pcs *qce2204,
-				       unsigned int neg_mode,
-				       phy_interface_t ifmode,
-				       const unsigned long *advertising,
-				       bool permit)
+				       phy_interface_t ifmode)
 {
 	int ret, val, i;
 
@@ -657,6 +761,7 @@ static int qce2204_pcs_config(struct phylink_pcs *pcs,
 			      bool permit)
 {
 	struct qce2204_pcs *qce2204 = phylink_pcs_to_qce2204(pcs);
+	unsigned long rate = 312500000;
 	int ret;
 
 	/* Check if the requested mode is the same as current mode */
@@ -669,22 +774,38 @@ static int qce2204_pcs_config(struct phylink_pcs *pcs,
 
 	switch (ifmode) {
 	case PHY_INTERFACE_MODE_SGMII:
+		rate = 125000000;
+		fallthrough;
 	case PHY_INTERFACE_MODE_2500BASEX:
-		ret = qce2204_pcs_config_sgmii(qce2204, neg_mode, ifmode, advertising, permit);
+		ret = qce2204_pcs_config_sgmii(qce2204, neg_mode, ifmode);
 		break;
 	case PHY_INTERFACE_MODE_10GBASER:
 	case PHY_INTERFACE_MODE_USXGMII:
-		ret = qce2204_pcs_config_10g_mode(qce2204, neg_mode, ifmode, advertising, permit);
+		ret = qce2204_pcs_config_10g_mode(qce2204, ifmode);
 		break;
 	default:
 		return -EOPNOTSUPP;
 	}
 
-	/* Save current mode if configuration was successful */
 	if (ret == 0) {
+		/* Set raw clock to 312.5M or 125M */
+		ret = clk_set_rate(qce2204->raw_clk[QCE2204_PCS_RX_CLK].hw_clk.clk, rate);
+		if (ret) {
+			dev_err(&qce2204->mdiodev->dev, "Failed to set RX clock rate\n");
+			return ret;
+		}
+
+		ret = clk_set_rate(qce2204->raw_clk[QCE2204_PCS_TX_CLK].hw_clk.clk, rate);
+		if (ret) {
+			dev_err(&qce2204->mdiodev->dev, "Failed to set TX clock rate\n");
+			return ret;
+		}
+
+		/* Save current mode */
 		qce2204->curr_mode = ifmode;
 		dev_dbg(&qce2204->mdiodev->dev,
 			"PCS mode configured to %s\n", phy_modes(ifmode));
+
 	}
 
 	return ret;
@@ -724,73 +845,43 @@ static int qce2204_pcs_ipg_tune_reset(struct mdio_device *mdio_dev)
 static int qce2204_pcs_link_up_sgmii(struct qce2204_pcs *qce2204,
 				     unsigned int neg_mode,
 				     phy_interface_t ifmode,
-				     int speed, int duplex)
+				     int speed)
 {
 	u16 sgmii_config = 0;
 	unsigned long rate;
 	int ret, i;
 
+	switch (speed) {
+	case SPEED_2500:
+		rate = 312500000;
+		sgmii_config = PCS_CH0_SPEED_1000;
+		break;
+	case SPEED_1000:
+		rate = 125000000;
+		sgmii_config = PCS_CH0_SPEED_1000;
+		break;
+	case SPEED_100:
+		rate = 25000000;
+		sgmii_config = PCS_CH0_SPEED_100;
+		break;
+	case SPEED_10:
+		rate = 2500000;
+		sgmii_config = PCS_CH0_SPEED_10;
+		break;
+	case SPEED_UNKNOWN:
+	default:
+		dev_err(&qce2204->mdiodev->dev, "Invalid SGMII speed %d\n", speed);
+		return -EINVAL;
+	}
+
 	if (neg_mode != PHYLINK_PCS_NEG_INBAND_ENABLED) {
-		switch (speed) {
-		case SPEED_2500:
-			rate = 312500000;
-			sgmii_config = PCS_CH0_SPEED_1000;
-			break;
-		case SPEED_1000:
-			rate = 125000000;
-			sgmii_config = PCS_CH0_SPEED_1000;
-			break;
-		case SPEED_100:
-			rate = 25000000;
-			sgmii_config = PCS_CH0_SPEED_100;
-			break;
-		case SPEED_10:
-			rate = 2500000;
-			sgmii_config = PCS_CH0_SPEED_10;
-			break;
-		case SPEED_UNKNOWN:
-		default:
-			dev_err(&qce2204->mdiodev->dev,
-				"Invalid SGMII speed %d\n", speed);
-			return -EINVAL;
-		}
-	}
-
-	/* Configure auto-negotiation parameters */
-	ret = mdiodev_c45_modify(qce2204->mdiodev, MDIO_MMD_PMAPMD,
-				 PCS_CH0_CONFIG,
-				 PCS_CH0_SPEED_MASK,
-				 FIELD_PREP(PCS_CH0_SPEED_MASK, sgmii_config));
-	if (ret)
-		return ret;
-
-	/* Assert reset for PCS RX and TX */
-	for (i = PCS_FUNC_RX; i <= PCS_FUNC_TX; i++) {
-		ret = reset_control_assert(qce2204->rstcs[i]);
-		if (ret) {
-			dev_err(&qce2204->mdiodev->dev,
-				"Failed to assert reset %s.\n", pcs_func_name[i]);
+		/* set force speed for sgmii force mode */
+		ret = mdiodev_c45_modify(qce2204->mdiodev, MDIO_MMD_PMAPMD,
+					 PCS_CH0_CONFIG,
+					 PCS_CH0_SPEED_MASK,
+					 FIELD_PREP(PCS_CH0_SPEED_MASK, sgmii_config));
+		if (ret)
 			return ret;
-		}
-	}
-
-	/* Wait 1ms */
-	usleep_range(1000, 1100);
-
-	/* Deassert reset for PCS RX and TX */
-	for (i = PCS_FUNC_RX; i <= PCS_FUNC_TX; i++) {
-		ret = reset_control_deassert(qce2204->rstcs[i]);
-		if (ret) {
-			dev_err(&qce2204->mdiodev->dev,
-				"Failed to deassert reset %s.\n", pcs_func_name[i]);
-			return ret;
-		}
-	}
-
-	ret = qce2204_do_calibration(qce2204->mdiodev);
-	if (ret) {
-		dev_err(&qce2204->mdiodev->dev, "Calibration timeout!\n");
-		return ret;
 	}
 
 	/* Set clock rate for PCS RX and TX */
@@ -823,9 +914,8 @@ static int qce2204_pcs_link_up_sgmii(struct qce2204_pcs *qce2204,
 }
 
 static int qce2204_pcs_link_up_10g_mode(struct qce2204_pcs *qce2204,
-					unsigned int neg_mode,
 					phy_interface_t ifmode,
-					int speed, int duplex)
+					int speed)
 {
 	int ret, xpcs_speed, i;
 	unsigned long rate;
@@ -895,6 +985,10 @@ static int qce2204_pcs_link_up_10g_mode(struct qce2204_pcs *qce2204,
 				  XPCS_USXG_ADPT_RESET);
 }
 
+static void qce2204_pcs_an_restart(struct phylink_pcs *pcs)
+{
+}
+
 static void qce2204_pcs_link_up(struct phylink_pcs *pcs, unsigned int neg_mode,
 				phy_interface_t interface, int speed, int duplex)
 {
@@ -904,11 +998,11 @@ static void qce2204_pcs_link_up(struct phylink_pcs *pcs, unsigned int neg_mode,
 	switch (interface) {
 	case PHY_INTERFACE_MODE_SGMII:
 	case PHY_INTERFACE_MODE_2500BASEX:
-		ret = qce2204_pcs_link_up_sgmii(qce2204, neg_mode, interface, speed, duplex);
+		ret = qce2204_pcs_link_up_sgmii(qce2204, neg_mode, interface, speed);
 		break;
 	case PHY_INTERFACE_MODE_10GBASER:
 	case PHY_INTERFACE_MODE_USXGMII:
-		ret = qce2204_pcs_link_up_10g_mode(qce2204, neg_mode, interface, speed, duplex);
+		ret = qce2204_pcs_link_up_10g_mode(qce2204, interface, speed);
 		break;
 	default:
 		return;
@@ -920,8 +1014,10 @@ static void qce2204_pcs_link_up(struct phylink_pcs *pcs, unsigned int neg_mode,
 }
 
 static const struct phylink_pcs_ops qce2204_pcs_phylink_ops = {
+	.pcs_validate = qce2204_pcs_validate,
 	.pcs_get_state = qce2204_pcs_get_state,
 	.pcs_config = qce2204_pcs_config,
+	.pcs_an_restart = qce2204_pcs_an_restart,
 	.pcs_link_up = qce2204_pcs_link_up,
 };
 
