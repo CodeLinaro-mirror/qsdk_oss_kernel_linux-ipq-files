@@ -783,6 +783,94 @@ int tmelcom_aes_clear_key(u32 handle)
 }
 EXPORT_SYMBOL_GPL(tmelcom_aes_clear_key);
 
+int tmelcom_aes_distribute_key(u32 key_id, u32 dst_id, u32 dst_key_index)
+{
+	struct tmel_aes_distribute_key_msg msg = {0};
+	struct device *dev = tmelcom_get_device();
+	int ret;
+
+	if (!dev)
+		return -ENODEV;
+
+	msg.req.key_id = key_id;
+	msg.req.dst_id = dst_id;
+	msg.req.dst_key_index = dst_key_index;
+
+	ret = tmelcom_process_request(TMEL_MSG_UID_KM_DISTRIBUTE, &msg, sizeof(msg));
+	if (ret || msg.resp.status)
+		dev_err(dev, "%s : IPC Failed. ret: %d msg->resp.status = %x\n",
+			__func__, ret, msg.resp.status);
+
+	return ret ? ret : msg.resp.status;
+}
+EXPORT_SYMBOL_GPL(tmelcom_aes_distribute_key);
+
+/*
+ * Mirrors TZ's tzbsp_hlos_hw_kdf() sw_context-present branch: derive a key
+ * via TME_KID_OEM_PRODUCT_SEED with the caller's sw_context, distribute the
+ * result to dst_id at dst_key_index, then clear the transient key handle.
+ * No key material is ever returned to the caller.
+ */
+int tmelcom_derive_distribute_key(u32 dst_id, u32 dst_key_index, u32 hw_key_len,
+				   const u8 *ctx, size_t ctx_len)
+{
+	struct device *dev = tmelcom_get_device();
+	struct tme_kdf_spec *kdf_spec;
+	dma_addr_t dma_kdf_spec;
+	u8 key_handle;
+	int ret;
+
+	if (!dev)
+		return -ENODEV;
+
+	if (hw_key_len != 16 && hw_key_len != 32)
+		return -EINVAL;
+
+	if (ctx_len > TME_KDF_SW_CONTEXT_BYTES_MAX)
+		return -EINVAL;
+
+	kdf_spec = dma_alloc_coherent(dev, sizeof(*kdf_spec), &dma_kdf_spec,
+				      GFP_KERNEL);
+	if (!kdf_spec)
+		return -ENOMEM;
+
+	kdf_spec->kdf_algo = TME_KAL_KDF_NIST;
+	kdf_spec->input_key = TME_KID_OEM_PRODUCT_SEED;
+	kdf_spec->policy.low = TME_KT_Symmetric | TME_KP_Generic |
+		TME_KOP_Encryption | TME_KOP_Decryption | TME_KSL_HWKey |
+		TME_KO_HLOS_HYP | TME_KLI_NA |
+		((hw_key_len == 32) ? (TME_KL_256 | TME_KAL_POLICY_AES256_ECB) :
+				      (TME_KL_128 | TME_KAL_POLICY_AES128_ECB));
+	kdf_spec->policy.high = TME_KPV_Version | TME_KAU_HLOS_HYP | dst_id;
+	kdf_spec->security_context = TME_KSC_SWCONTEXT;
+	kdf_spec->salt_label_len = TME_KDF_SALT_LABEL_BYTES_MAX;
+	if (ctx_len)
+		memcpy(kdf_spec->sw_context, ctx, ctx_len);
+	kdf_spec->sw_context_len = ctx_len;
+	kdf_spec->prf_digest_algo = TME_KAL_SHA512_HMAC;
+
+	ret = tmelcom_aes_derive_key(TME_KID_ALLOC, &dma_kdf_spec,
+				     sizeof(*kdf_spec), &key_handle);
+	if (ret) {
+		dev_err(dev, "%s: TME derive failed, ret=%d\n", __func__, ret);
+		goto free_kdf;
+	}
+
+	ret = tmelcom_aes_distribute_key(key_handle, dst_id, dst_key_index);
+	if (ret)
+		dev_err(dev, "%s: distribute dst_id=%u idx=%u failed, ret=%d\n",
+			__func__, dst_id, dst_key_index, ret);
+
+	if (tmelcom_aes_clear_key(key_handle))
+		dev_err(dev, "%s: clear key handle=%u failed\n", __func__,
+			key_handle);
+
+free_kdf:
+	dma_free_coherent(dev, sizeof(*kdf_spec), kdf_spec, dma_kdf_spec);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tmelcom_derive_distribute_key);
+
 int tmelcom_aes_encrypt(struct tmel_aes_encrypt_msg *msg, u32 size)
 {
 	struct device *dev = tmelcom_get_device();
