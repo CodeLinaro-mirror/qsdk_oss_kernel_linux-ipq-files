@@ -7,7 +7,9 @@
 #include <linux/bitmap.h>
 #include <linux/bits.h>
 #include <linux/device.h>
+#include <linux/module.h>
 #include <linux/random.h>
+#include <linux/dsa/qce2204_api.h>
 
 #include "qce2204.h"
 #include "qce2204_ppe.h"
@@ -3825,3 +3827,231 @@ void qce2204_ppe_queue_hang_work_stop(struct qce2204_priv *priv)
 	priv->queue_flush_ok_cnt = 0;
 	priv->queue_flush_fail_cnt = 0;
 }
+
+/* -----------------------------------------------------------------------
+ * Exported APIs for qca-ssdk HTTPPE adapter (FAL integration)
+ * -----------------------------------------------------------------------
+ */
+
+/* Base addresses of the 6 MCAST_PRIORITY_MAP register banks (one per port) */
+static const u32 qce2204_ppe_mcast_prio_map_base[6] = {
+	QCE2204_PPE_MCAST_PRIORITY_MAP0_ADDR,
+	QCE2204_PPE_MCAST_PRIORITY_MAP1_ADDR,
+	QCE2204_PPE_MCAST_PRIORITY_MAP2_ADDR,
+	QCE2204_PPE_MCAST_PRIORITY_MAP3_ADDR,
+	QCE2204_PPE_MCAST_PRIORITY_MAP4_ADDR,
+	QCE2204_PPE_MCAST_PRIORITY_MAP5_ADDR,
+};
+
+/**
+ * qce2204_ppe_port_mcast_priority_class_set - Set multicast priority→class mapping
+ * @netdev:      DSA user-port net_device
+ * @priority:    Internal priority value (0–15)
+ * @queue_class: Queue class to assign (0–15)
+ *
+ * Return: 0 on success, negative errno on failure
+ */
+int qce2204_ppe_port_mcast_priority_class_set(struct net_device *netdev,
+					      int priority, int queue_class)
+{
+	struct dsa_port *dp = dsa_port_from_netdev(netdev);
+	struct qce2204_priv *priv;
+	u32 reg, val;
+	int port;
+
+	if (!dp)
+		return -EINVAL;
+
+	priv = dp->ds->priv;
+	port = dp->index;
+
+	if (!priv || port < 0 ||
+	    port >= (int)ARRAY_SIZE(qce2204_ppe_mcast_prio_map_base) ||
+	    priority < 0 || priority >= QCE2204_PPE_MCAST_PRIORITY_MAP_ENTRIES)
+		return -EINVAL;
+
+	reg = qce2204_ppe_mcast_prio_map_base[port] +
+	      priority * QCE2204_PPE_MCAST_PRIORITY_MAP_INC;
+	val = FIELD_PREP(QCE2204_PPE_MCAST_PRIORITY_MAP_CLASS, queue_class);
+
+	return regmap_update_bits(priv->regmap, reg,
+				  QCE2204_PPE_MCAST_PRIORITY_MAP_CLASS, val);
+}
+EXPORT_SYMBOL_GPL(qce2204_ppe_port_mcast_priority_class_set);
+
+/**
+ * qce2204_ppe_ucast_priority_class_set - Set unicast priority→queue-offset mapping
+ * @netdev:       Any already-registered DSA user-port net_device on the switch
+ * @profile_id:   Queue profile ID
+ * @priority:     Internal priority value (0–15)
+ * @queue_offset: Queue offset to assign
+ *
+ * Return: 0 on success, negative errno on failure
+ */
+int qce2204_ppe_ucast_priority_class_set(struct net_device *netdev,
+					 int profile_id, int priority,
+					 int queue_offset)
+{
+	struct dsa_port *dp = dsa_port_from_netdev(netdev);
+	struct qce2204_priv *priv;
+
+	if (!dp)
+		return -EINVAL;
+
+	priv = dp->ds->priv;
+	if (!priv)
+		return -EINVAL;
+
+	return qce2204_ppe_queue_ucast_offset_pri_set(priv, profile_id,
+						      priority, queue_offset);
+}
+EXPORT_SYMBOL_GPL(qce2204_ppe_ucast_priority_class_set);
+
+/**
+ * qce2204_ppe_qm_threshold_reset - Reset QM AC threshold for a queue to defaults
+ * @netdev:   Any already-registered DSA user-port net_device on the switch
+ * @queue_id: PPE queue ID (0–255 unicast, 256–291 multicast)
+ *
+ * Return: 0 on success, negative errno on failure
+ */
+int qce2204_ppe_qm_threshold_reset(struct net_device *netdev, int queue_id)
+{
+	struct dsa_port *dp = dsa_port_from_netdev(netdev);
+	struct qce2204_priv *priv;
+	u32 reg;
+	int ret;
+
+	if (!dp)
+		return -EINVAL;
+
+	priv = dp->ds->priv;
+	if (!priv || queue_id < 0)
+		return -EINVAL;
+
+	if (queue_id >= 256 &&
+	    (unsigned int)(queue_id - 256) >= QCE2204_PPE_AC_MULTICAST_QUEUE_CFG_TBL_ENTRIES)
+		return -EINVAL;
+
+	if (queue_id < 256) {
+		/* Unicast queue: restore dynamic threshold defaults */
+		u32 unicast_queue_cfg[8];
+
+		reg = QCE2204_PPE_AC_UNICAST_QUEUE_CFG_TBL_ADDR +
+		      QCE2204_PPE_AC_UNICAST_QUEUE_CFG_TBL_INC * queue_id;
+
+		ret = regmap_bulk_read(priv->regmap, reg, unicast_queue_cfg,
+				       ARRAY_SIZE(unicast_queue_cfg));
+		if (ret)
+			return ret;
+
+		QCE2204_PPE_AC_UNICAST_QUEUE_SET_DYNAMIC(unicast_queue_cfg, true);
+		QCE2204_PPE_AC_UNICAST_QUEUE_SET_WEIGHT(unicast_queue_cfg, 7);
+		/* ceil = 2200 (12-bit split) */
+		QCE2204_PPE_AC_UNICAST_QUEUE_SET_THRESHOLD_LO(unicast_queue_cfg,
+							      2200 & 0x3FF);
+		QCE2204_PPE_AC_UNICAST_QUEUE_SET_THRESHOLD_HI(unicast_queue_cfg,
+							      (2200 >> 10) & 0x3);
+		/* resume = 36 */
+		QCE2204_PPE_AC_UNICAST_QUEUE_SET_GRN_RESUME_LO(unicast_queue_cfg,
+								36 & 0x3FF);
+		QCE2204_PPE_AC_UNICAST_QUEUE_SET_GRN_RESUME_HI(unicast_queue_cfg,
+								(36 >> 10) & 0x3);
+
+		return regmap_bulk_write(priv->regmap, reg, unicast_queue_cfg,
+					 ARRAY_SIZE(unicast_queue_cfg));
+	} else {
+		/* Multicast queue: restore static threshold defaults */
+		u32 multicast_queue_cfg[3];
+
+		reg = QCE2204_PPE_AC_MULTICAST_QUEUE_CFG_TBL_ADDR +
+		      QCE2204_PPE_AC_MULTICAST_QUEUE_CFG_TBL_INC * (queue_id - 256);
+
+		ret = regmap_bulk_read(priv->regmap, reg, multicast_queue_cfg,
+				       ARRAY_SIZE(multicast_queue_cfg));
+		if (ret)
+			return ret;
+
+		QCE2204_PPE_AC_MULTICAST_QUEUE_SET_GRN_THRESHOLD(multicast_queue_cfg, 250);
+		QCE2204_PPE_AC_MULTICAST_QUEUE_SET_GRN_RESUME(multicast_queue_cfg, 36);
+
+		return regmap_bulk_write(priv->regmap, reg, multicast_queue_cfg,
+					 ARRAY_SIZE(multicast_queue_cfg));
+	}
+}
+EXPORT_SYMBOL_GPL(qce2204_ppe_qm_threshold_reset);
+
+/**
+ * qce2204_ppe_port_scheduler_resource_get - Get port scheduler resource allocation
+ * @netdev: DSA user-port net_device
+ * @res:    Output: filled with the scheduler resource allocation for @netdev's port
+ *
+ * Return: 0 on success, negative errno on failure
+ */
+int qce2204_ppe_port_scheduler_resource_get(struct net_device *netdev,
+					    struct qce2204_ppe_scheduler_resource *res)
+{
+	struct dsa_port *dp = dsa_port_from_netdev(netdev);
+	const struct qce2204_ppe_port_schedule_resource *r;
+	int port;
+
+	if (!dp || !res)
+		return -EINVAL;
+
+	port = dp->index;
+	if (port < 0 || port >= (int)ARRAY_SIZE(qce2204_ppe_scheduler_res))
+		return -EINVAL;
+
+	r = &qce2204_ppe_scheduler_res[port];
+	res->ucastq_start  = r->ucastq_start;
+	res->ucastq_end    = r->ucastq_end;
+	res->mcastq_start  = r->mcastq_start;
+	res->mcastq_end    = r->mcastq_end;
+	res->flow_id_start = r->flow_id_start;
+	res->flow_id_end   = r->flow_id_end;
+	res->l0node_start  = r->l0node_start;
+	res->l0node_end    = r->l0node_end;
+	res->l1node_start  = r->l1node_start;
+	res->l1node_end    = r->l1node_end;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(qce2204_ppe_port_scheduler_resource_get);
+
+/**
+ * qce2204_ppe_port_scheduler_cfg_reset - Reset port scheduler to bootup defaults
+ * @netdev: DSA user-port net_device
+ *
+ * Re-applies the bootup scheduler configuration for the given port by
+ * iterating qce2204_ppe_port_sch_config[] and calling
+ * qce2204_ppe_node_scheduler_config() for each matching entry.
+ *
+ * Supports fal_port_scheduler_cfg_reset() for the QCE2204 chip.
+ * Returns 0 on success, negative errno on failure.
+ */
+int qce2204_ppe_port_scheduler_cfg_reset(struct net_device *netdev)
+{
+	struct dsa_port *dp = dsa_port_from_netdev(netdev);
+	struct qce2204_priv *priv;
+	int i, ret, port;
+
+	if (!dp)
+		return -EINVAL;
+
+	priv = dp->ds->priv;
+	port = dp->index;
+
+	if (!priv)
+		return -EINVAL;
+
+	for (i = 0; i < ARRAY_SIZE(qce2204_ppe_port_sch_config); i++) {
+		if (qce2204_ppe_port_sch_config[i].port != port)
+			continue;
+		ret = qce2204_ppe_node_scheduler_config(priv,
+						qce2204_ppe_port_sch_config[i]);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(qce2204_ppe_port_scheduler_cfg_reset);
