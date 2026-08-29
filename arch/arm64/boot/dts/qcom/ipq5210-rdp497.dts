@@ -27,6 +27,41 @@
 			reg = <0x0 0x87800000 0x0 0x300000>;
 			no-map;
 		};
+
+		padding@87c40000 {
+			reg = <0x0 0x87c40000 0x0 0xc0000>;
+			no-map;
+		};
+
+		ddrq_data_region: ddrq_data_region@0 {
+			/*
+			 * Override parent DDRQ data region size:
+			 * 8MB (default) -> 32MB on RDP497.
+			 */
+			size = <0x0 0x02000000>;	/* 32MB */
+		};
+
+		ddrq_desc_region: ddrq_desc_region@0 {
+			/*
+			 * Override parent DDRQ descriptor region size:
+			 * 512KB (default) -> 2MB on RDP497.
+			 */
+			/delete-property/ size;
+			reg = <0x0 0x87e00000 0x0 0x00200000>;	/* 2MB at end of DDR */
+		};
+
+		uio_firmware: uio_firmware@0 {
+			status = "disabled";
+		};
+
+		uio_host: uio_host@0 {
+			status = "disabled";
+		};
+
+		uio_nss: uio_nss@0 {
+			status = "disabled";
+		};
+
 	};
 
 	soc@0 {
@@ -143,22 +178,6 @@
 			clock-names = "ptp";
 		};
 	};
-};
-
-&ddrq_data_region {
-	/*
-	 * Override parent DDRQ data region size:
-	 * 8MB (default) -> 32MB on RDP497.
-	 */
-	size = <0x0 0x02000000>;	/* 32MB */
-};
-
-&ddrq_desc_region {
-	/*
-	 * Override parent DDRQ descriptor region size:
-	 * 512KB (default) -> 2MB on RDP497.
-	 */
-	size = <0x0 0x00200000>;	/* 2MB */
 };
 
 &i2c0 {
