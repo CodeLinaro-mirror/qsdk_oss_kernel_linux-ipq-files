@@ -302,10 +302,7 @@ enum ipq5610_functions {
 	msm_mux_qdss_traceclk_a,
 	msm_mux_qdss_tracectl_a,
 	msm_mux_qdss_tracedata_a,
-	msm_mux_qspi0,
-	msm_mux_qspi1,
-	msm_mux_qspi2,
-	msm_mux_qspi3,
+	msm_mux_qspi_data,
 	msm_mux_qspi_clk,
 	msm_mux_qspi_cs_n,
 	msm_mux_qup_se0_l0,
@@ -862,20 +859,8 @@ static const char *const qdss_tracedata_a_groups[] = {
 	"gpio38", "gpio39", "gpio40", "gpio41",
 };
 
-static const char *const qspi0_groups[] = {
-	"gpio3",
-};
-
-static const char *const qspi1_groups[] = {
-	"gpio2",
-};
-
-static const char *const qspi2_groups[] = {
-	"gpio1",
-};
-
-static const char *const qspi3_groups[] = {
-	"gpio0",
+static const char *const qspi_data_groups[] = {
+	"gpio0", "gpio1", "gpio2", "gpio3",
 };
 
 static const char *const qspi_clk_groups[] = {
@@ -1261,10 +1246,7 @@ static const struct pinfunction ipq5610_functions[] = {
 	MSM_PIN_FUNCTION(qdss_traceclk_a),
 	MSM_PIN_FUNCTION(qdss_tracectl_a),
 	MSM_PIN_FUNCTION(qdss_tracedata_a),
-	MSM_PIN_FUNCTION(qspi0),
-	MSM_PIN_FUNCTION(qspi1),
-	MSM_PIN_FUNCTION(qspi2),
-	MSM_PIN_FUNCTION(qspi3),
+	MSM_PIN_FUNCTION(qspi_data),
 	MSM_PIN_FUNCTION(qspi_clk),
 	MSM_PIN_FUNCTION(qspi_cs_n),
 	MSM_PIN_FUNCTION(qup_se0_l0),
@@ -1339,10 +1321,10 @@ static const struct pinfunction ipq5610_functions[] = {
  * Clients would not be able to request these dummy pin groups.
  */
 static const struct msm_pingroup ipq5610_groups[] = {
-	[0] = PINGROUP(0, sdc_data3, qspi3, pwm_out52, _, _, _, _, _, _, _, _),
-	[1] = PINGROUP(1, sdc_data2, qspi2, pwm_out42, _, _, _, _, _, _, _, _),
-	[2] = PINGROUP(2, sdc_data1, qspi1, pwm_out32, _, _, _, _, _, _, _, _),
-	[3] = PINGROUP(3, sdc_data0, qspi0, pwm_out22, _, _, _, _, _, _, _, _),
+	[0] = PINGROUP(0, sdc_data3, qspi_data, pwm_out52, _, _, _, _, _, _, _, _),
+	[1] = PINGROUP(1, sdc_data2, qspi_data, pwm_out42, _, _, _, _, _, _, _, _),
+	[2] = PINGROUP(2, sdc_data1, qspi_data, pwm_out32, _, _, _, _, _, _, _, _),
+	[3] = PINGROUP(3, sdc_data0, qspi_data, pwm_out22, _, _, _, _, _, _, _, _),
 	[4] = PINGROUP(4, sdc_cmd, qspi_cs_n, pwm_out12, _, _, _, _, _, _, _, _),
 	[5] = PINGROUP(5, sdc_clk, qspi_clk, pwm_out02, _, _, _, _, _, _, _, _),
 	[6] = PINGROUP(6, qup_se0_l2, led02, pwm_out31, _, cri_trng0, qdss_tracedata_a, _, _, _, _, _),

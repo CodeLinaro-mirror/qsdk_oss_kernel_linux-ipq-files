@@ -40,5 +40,8 @@
 #define GCC_PCIE2_AXI_S_BRIDGE_CLK	30
 #define GCC_PCIE2_RCHNG_CLK		31
 #define GCC_PCIE2_PIPE_CLK		32
+#define GCC_QPIC_AHB_CLK		33
+#define GCC_QPIC_CLK			34
+#define GCC_QPIC_IO_MACRO_CLK		35
 
 #endif
