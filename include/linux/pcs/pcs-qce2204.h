@@ -20,5 +20,7 @@
 
 struct phylink_pcs *qce2204_pcs_create_fwnode(struct fwnode_handle *node);
 void qce2204_pcs_destroy(struct phylink_pcs *pcs);
+int qce2204_pcs_hw_init(struct phylink_pcs *pcs);
+void qce2204_pcs_hw_deinit(struct phylink_pcs *pcs);
 
 #endif /* __LINUX_PCS_QCE2204_H */

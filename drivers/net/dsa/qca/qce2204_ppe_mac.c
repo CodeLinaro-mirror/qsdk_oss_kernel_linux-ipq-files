@@ -1164,8 +1164,10 @@ static struct phylink_pcs *qce2204_pcs_create(struct device_node *dp_node)
 static int qce2204_setup_pcs(struct qce2204_priv *priv, int port)
 {
 	struct dsa_switch *ds = priv->ds;
+	struct phylink_pcs *pcs;
 	struct dsa_port *dp;
 	int pcs_index;
+	int ret;
 
 	/* Determine PCS index based on port */
 	if (port == 0) {
@@ -1184,13 +1186,76 @@ static int qce2204_setup_pcs(struct qce2204_priv *priv, int port)
 		return -ENODEV;
 	}
 
-	/* Create PCS instance */
-	priv->pcs[pcs_index] = qce2204_pcs_create(dp->dn);
-	if (IS_ERR(priv->pcs[pcs_index])) {
-		dev_err(priv->dev, "Port %d: PCS not available\n", port);
-		return PTR_ERR(priv->pcs[pcs_index]);
-	} else {
-		dev_info(priv->dev, "Port %d: PCS created successfully\n", port);
+	pcs = qce2204_pcs_create(dp->dn);
+	if (IS_ERR(pcs)) {
+		dev_err(priv->dev, "Port %d: PCS not available: %ld\n",
+			port, PTR_ERR(pcs));
+		return PTR_ERR(pcs);
+	}
+
+	/* Only publish pcs after hw_init succeeds; on failure hw_init has
+	 * already undone its own clock, so the cleanup loop must not see it
+	 * and disable the clock a second time.
+	 */
+	ret = qce2204_pcs_hw_init(pcs);
+	if (ret) {
+		qce2204_pcs_destroy(pcs);
+		return ret;
+	}
+
+	priv->pcs[pcs_index] = pcs;
+	dev_dbg(priv->dev, "Port %d: PCS created successfully\n", port);
+
+	return 0;
+}
+
+/**
+ * qce2204_port_pcs_deinit() - Destroy PCS instances of port 0 and port 5
+ * @priv: QCE2204 private data
+ */
+void qce2204_port_pcs_deinit(struct qce2204_priv *priv)
+{
+	int i;
+
+	for (i = 0; i < QCE2204_NUM_CPU_PORTS; i++) {
+		if (!priv->pcs[i])
+			continue;
+
+		qce2204_pcs_hw_deinit(priv->pcs[i]);
+		qce2204_pcs_destroy(priv->pcs[i]);
+		priv->pcs[i] = NULL;
+	}
+
+	dev_dbg(priv->dev, "DSA port PCS cleanup completed successfully\n");
+}
+
+/**
+ * qce2204_port_pcs_init() - Create and bring up PCS for port 0 and port 5
+ * @priv: QCE2204 private data
+ *
+ * Runs before the switch clocks/resets are initialized, because the PCS
+ * supplies the raw clocks the switch clock controller consumes. PCS registers
+ * are reached over MDIO, so this does not depend on the switch clocks.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int qce2204_port_pcs_init(struct qce2204_priv *priv)
+{
+	struct dsa_switch *ds = priv->ds;
+	struct dsa_port *dp;
+	int ret;
+
+	dsa_switch_for_each_available_port(dp, ds) {
+		if (dp->index != 0 && dp->index != 5)
+			continue;
+
+		ret = qce2204_setup_pcs(priv, dp->index);
+		if (ret) {
+			dev_err(priv->dev, "Failed to setup PCS for port %d: %d\n",
+				dp->index, ret);
+			qce2204_port_pcs_deinit(priv);
+			return ret;
+		}
 	}
 
 	return 0;
@@ -1246,13 +1311,6 @@ int qce2204_port_mac_init(struct qce2204_priv *priv)
 			/* Store MAC type configuration (default to GMAC) */
 			priv->ppe_port[port].mac_type = QCE2204_PORT_MAC_TYPE_GMAC;
 			dev_info(priv->dev, "Port %d MAC type set to GMAC\n", port);
-
-			/* Setup PCS for port 0 and port 5 */
-			ret = qce2204_setup_pcs(priv, port);
-			if (ret) {
-				dev_err(priv->dev, "Failed to setup PCS for port %d: %d\n", port, ret);
-				return ret;
-			}
 		} else {
 			/* Initialize only GMAC */
 			dev_info(priv->dev, "User port %d: initializing GMAC only\n", port);
@@ -1272,28 +1330,4 @@ int qce2204_port_mac_init(struct qce2204_priv *priv)
 
 	dev_info(priv->dev, "DSA port MAC initialization completed successfully\n");
 	return 0;
-}
-
-/**
- * qce2204_port_mac_deinit() - Cleanup DSA ports MAC configuration
- * @priv: QCE2204 private data
- *
- * Destroy PCS instances for port 0 and 5.
- */
-void qce2204_port_mac_deinit(struct qce2204_priv *priv)
-{
-	/* Destroy PCS instances */
-	if (priv->pcs[0]) {
-		qce2204_pcs_destroy(priv->pcs[0]);
-		priv->pcs[0] = NULL;
-		dev_info(priv->dev, "Port 0: PCS destroyed\n");
-	}
-
-	if (priv->pcs[1]) {
-		qce2204_pcs_destroy(priv->pcs[1]);
-		priv->pcs[1] = NULL;
-		dev_info(priv->dev, "Port 5: PCS destroyed\n");
-	}
-
-	dev_info(priv->dev, "DSA port MAC cleanup completed successfully\n");
 }
