@@ -118,6 +118,8 @@ struct open_loop_cpr_regulator_params {
  *                    rails), false for order-change handling with no park
  *                    step (GPIO-backed rails)
  * @last_volt: Last voltage set in microvolts, used for APM threshold crossing
+ * @enabled: Software-tracked enable state - the real gating happens on
+ *           the base supply via the core's automatic supply chaining
  */
 struct reg_info {
 	int voltage_table[MAX_MODES];
@@ -133,6 +135,7 @@ struct reg_info {
 	enum msm_apm_supply apm_low_supply;
 	bool apm_park_switch;
 	int last_volt;
+	bool enabled;
 };
 
 /**
@@ -456,10 +459,59 @@ static int open_loop_cpr_regulator_list_voltage(struct regulator_dev *rdev,
 	return selector + 1;
 }
 
+/**
+ * open_loop_cpr_regulator_enable - Mark this regulator as enabled
+ * @rdev: Regulator device
+ *
+ * Mark this regulator as enable while the real supply is
+ * enabled by the regulator core's automatic supply chaining via
+ * rdev->supply. This only tracks software state so that is_enabled()
+ * reports real balance
+ *
+ * Return: 0 always
+ */
+static int open_loop_cpr_regulator_enable(struct regulator_dev *rdev)
+{
+	struct reg_info *reg_info = rdev_get_drvdata(rdev);
+
+	reg_info->enabled = true;
+	return 0;
+}
+
+/**
+ * open_loop_cpr_regulator_disable - Mark this regulator as disabled
+ * @rdev: Regulator device
+ *
+ * Return: 0 always
+ */
+static int open_loop_cpr_regulator_disable(struct regulator_dev *rdev)
+{
+	struct reg_info *reg_info = rdev_get_drvdata(rdev);
+
+	reg_info->enabled = false;
+	return 0;
+}
+
+/**
+ * open_loop_cpr_regulator_is_enabled - Report software-tracked enable state
+ * @rdev: Regulator device
+ *
+ * Return: 1 if enabled, 0 if disabled
+ */
+static int open_loop_cpr_regulator_is_enabled(struct regulator_dev *rdev)
+{
+	struct reg_info *reg_info = rdev_get_drvdata(rdev);
+
+	return reg_info->enabled;
+}
+
 static const struct regulator_ops open_loop_cpr_regulator_ops = {
 	.list_voltage = open_loop_cpr_regulator_list_voltage,
 	.set_voltage  = open_loop_cpr_regulator_set_voltage,
 	.get_voltage  = open_loop_cpr_regulator_get_voltage,
+	.enable       = open_loop_cpr_regulator_enable,
+	.disable      = open_loop_cpr_regulator_disable,
+	.is_enabled   = open_loop_cpr_regulator_is_enabled,
 };
 
 /**
