@@ -224,7 +224,7 @@
 			reg = <0 0 0 0 0>;
 			memory-region = <&qcn9625_pcie1_cma>, <&mlo_global_cma>;
 			memory-region-names = "host-ddr-mem", "mlo-global-mem";
-			qcom,board_id = <0x2001>;
+			qcom,board_id = <0x2070>;
 			qcom,wsi-controller;
 
 			ports {
@@ -266,7 +266,7 @@
 			reg = <0 0 0 0 0>;
 			memory-region = <&qcn9625_pcie2_cma>, <&mlo_global_cma>;
 			memory-region-names = "host-ddr-mem", "mlo-global-mem";
-			qcom,board_id = <0x2070>;
+			qcom,board_id = <0x2001>;
 
 			ports {
 				#address-cells = <1>;
