@@ -2,33 +2,65 @@
 /*
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
- * CDSP Power Management Driver for IPQ9650
+ * IPQ9650 CDSP (NSP) remoteproc driver.
  *
- * Regulator ownership hierarchy:
- *   PAS remoteproc (cx-supply / mx-supply)
- *       -> cdsp-vdd-cx / cdsp-vdd-mx  (virtual, provided by this driver)
- *           -> vdd-cx / vdd-mx        (voltage regulators, consumed by this driver)
+ * Owns the full CDSP lifecycle: PAS image load/auth/reset and the SMEM
+ * DCVS/LPM power-management protocol handling, serialized under a single
+ * lock covering every vdd_cx/vdd_mx regulator transition.
+ *
+ * The SMEM channel layout, DCVS KVP encoding, IPCC PING mailbox mechanism
+ * and MPM 4-phase handshake are dictated by the NSP Q6 firmware and are not
+ * altered by this driver.
  */
 
 #include <linux/delay.h>
+#include <linux/elf.h>
+#include <linux/firmware.h>
+#include <linux/firmware/qcom/qcom_pas.h>
 #include <linux/interrupt.h>
 #include <linux/iopoll.h>
 #include <linux/ktime.h>
 #include <linux/mailbox_client.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
+#include <linux/nvmem-consumer.h>
 #include <linux/of.h>
+#include <linux/of_address.h>
+#include <linux/of_reserved_mem.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
-#include <linux/regulator/driver.h>
-#include <linux/regulator/machine.h>
+#include <linux/remoteproc.h>
+#include <linux/soc/qcom/mdt_loader.h>
 #include <linux/soc/qcom/smem.h>
 #include <linux/workqueue.h>
+
+#include "qcom_common.h"
+#include "qcom_pil_info.h"
+#include "qcom_q6v5.h"
+#include "remoteproc_internal.h"
+
+/* IPQ9650-CDSP-specific break-at-start debug hook */
+#define TCSR_SPARE_REG0		0x1959000
+#define TCSR_SPARE_REG0_SIZE	4
+
+static int debug_q6;
+module_param(debug_q6, int, 0644);
+
+/* PAS image identity, fixed for this SoC */
+#define CDSP_PAS_ID		18
+#define CDSP_DTB_PAS_ID		0x25
+#define CDSP_FIRMWARE_NAME	"cdsp.mbn"
+#define CDSP_DTB_FIRMWARE_NAME	"cdsp_dtb.mbn"
+#define CDSP_CRASH_REASON_SMEM	601
+#define CDSP_SSCTL_ID		0x17
+#define CDSP_SSR_NAME		"cdsp"
 
 /* SMEM Protocol Definitions */
 /* NSP Q6 SMEM host ID */
 #define CDSP_SMEM_NSP_HOST_ID	5
+/* CDSP DCVS SMEM item ID (driver-internal constant, not a DT property) */
+#define CDSP_SMEM_ITEM		503
 /* hdr(64) + request_area(1024) + response_area(256) */
 #define CDSP_SMEM_SIZE		1344
 /* Protocol magic number 'RPMH' */
@@ -51,29 +83,14 @@
 /* NSP MX voltage rail resource ID */
 #define CDSP_RESOURCE_ID_MX	0x04
 
-/*
- * HLVL corner values for the NSP CX/MX rails
- */
+/* HLVL corner values for the NSP CX/MX rails */
 #define CDSP_HLVL_SVS		0
 #define CDSP_HLVL_SVS_L1	1
 #define CDSP_HLVL_NOM		2
 #define CDSP_HLVL_TUR_L1	3
 #define CDSP_HLVL_MAX		CDSP_HLVL_TUR_L1
 
-static const char *cdsp_hlvl_name(u32 corner)
-{
-	switch (corner) {
-	case CDSP_HLVL_SVS:	return "SVS";
-	case CDSP_HLVL_SVS_L1:	return "SVS_L1";
-	case CDSP_HLVL_NOM:	return "NOM";
-	case CDSP_HLVL_TUR_L1:	return "TUR_L1";
-	default:		return "INVALID";
-	}
-}
-
-/*
- * Response status codes written to cdsp_smem_response.status.
- */
+/* Response status codes written to cdsp_smem_response.status */
 #define STATUS_OK			0x00000000
 #define STATUS_ERR_RAIL_ABSENT		0x00000001
 /* Corner exceeds this board's rail capability */
@@ -116,20 +133,9 @@ static const char *cdsp_hlvl_name(u32 corner)
 /* NSP/CX rail mapped to isolation control register index 1 */
 #define VDD_RAIL_CX			1
 
-/* Power States */
-#define CDSP_POWER_OFF			0
-#define CDSP_POWER_ON			1
-
 /* Timeouts */
 #define MPM_POLL_TIMEOUT_US		10000
 #define MPM_POLL_SLEEP_US		10
-
-/* Virtual regulator IDs */
-enum cdsp_virt_reg_id {
-	CDSP_VIRT_NSP_CX = 0,
-	CDSP_VIRT_NSP_MX = 1,
-	CDSP_VIRT_MAX,
-};
 
 /**
  * struct cdsp_smem_channel_hdr - SMEM channel header (64 bytes, at offset 0x000)
@@ -149,10 +155,6 @@ enum cdsp_virt_reg_id {
  * @apss_tx_count:     Number of DCVS responses sent by APSS
  * @apss_rx_count:     Number of DCVS requests received by APSS
  * @reserved:          Reserved, must be zero
- *
- * Fixed at offset 0x000 in the SMEM item. Matches rpmh_smem_channel_header_t
- * on the NSP Q6 side. APSS initialises this at probe time; NSP Q6 reads it
- * to discover the request/response area offsets and to synchronise readiness.
  */
 struct cdsp_smem_channel_hdr {
 	u32 magic;
@@ -233,8 +235,6 @@ struct cdsp_smem_response {
  * @_req_pad:  Padding to align response area to offset 0x440
  * @response:  DCVS response area at offset 0x440 (padded to 256 bytes)
  * @_resp_pad: Padding to complete the 256-byte response area
- *
- * Layout matches the rpmh_smem_channel_header_t offsets on the NSP Q6 side.
  */
 struct cdsp_smem_region {
 	struct cdsp_smem_channel_hdr hdr;
@@ -245,141 +245,91 @@ struct cdsp_smem_region {
 } __packed;
 
 /**
- * struct cdsp_power_driver - Main driver context
+ * struct cdsp_pas_priv - Merged CDSP PAS + power-management driver context
  * @dev: Device pointer
- * @smem: Pointer to SMEM region
- * @dcvs_mbox_client: Mailbox client for DCVS response interrupt (APSS->NSP)
- * @dcvs_mbox_chan: Mailbox channel for DCVS response interrupt
- * @dcvs_irq: DCVS interrupt number (NSP->APSS IPCC PING)
- * @dcvs_work: Work structure for DCVS processing
- * @mpm_regmap: Regmap for MPM handshake registers
- * @lpm_irq: LPM interrupt number
- * @lpm_work: Work structure for LPM processing
- * @rscc_regmap: Regmap for RSCC power mode detection register
- * @vdd_cx: CX voltage regulator (consumer handle)
- * @vdd_mx: MX voltage regulator (consumer handle, NULL if absent on this board)
- * @power_state: Current NSP power state (CDSP_POWER_ON / CDSP_POWER_OFF)
- * @lock: Mutex serialising DCVS and LPM work
+ * @rproc: Backing remoteproc instance
+ * @q6v5: Common Q6V5 wdog/fatal/ready/stop-ack/handover IPC helper state
+ * @glink_subdev, @smd_subdev, @ssr_subdev, @sysmon: Common remoteproc subdevices
+ * @mem_phys, @mem_reloc, @mem_size, @mem_region: Main PAS memory-region mapping
+ * @dtb_mem_phys, @dtb_mem_reloc, @dtb_mem_size, @dtb_mem_region: DTB memory-region mapping
+ * @firmware, @dtb_firmware: Firmware handles held between .load and .start
+ * @pas_ctx, @dtb_pas_ctx: PAS metadata contexts for the main/dtb images
+ * @cx, @mx: Sole-owned NSP CX/MX voltage regulators
+ * @smem: Pointer to the DCVS SMEM channel
+ * @dcvs_mbox_client, @dcvs_mbox_chan: Mailbox client/channel for DCVS response IPCC PING
+ * @dcvs_irq: DCVS request interrupt (NSP -> APSS IPCC PING)
+ * @dcvs_work: Work item processing DCVS requests
+ * @mpm_regmap: Regmap for MPM handshake/isolation registers
+ * @rscc_regmap: Regmap for RSCC power-collapse-mode detection register
+ * @lpm_irq: LPM request interrupt (MPM)
+ * @lpm_wq, @lpm_work: Workqueue/work item processing LPM requests
+ * @lock: Serialises PAS start/stop, LPM isolate/restore and DCVS voltage-set
+ * @pas_active: True for the whole PAS start()->stop() window
+ * @lpm_active_cx, @lpm_active_mx: True while LPM independently holds the cx/mx vote
+ * @nsp_up: Defensive duplicate-IRQ / DCVS-drop tracking of LPM's last-known state
  */
-struct cdsp_power_driver {
+struct cdsp_pas_priv {
 	struct device *dev;
+	struct rproc *rproc;
+	struct qcom_q6v5 q6v5;
 
-	/* SMEM for DCVS */
+	struct qcom_rproc_glink glink_subdev;
+	struct qcom_rproc_subdev smd_subdev;
+	struct qcom_rproc_ssr ssr_subdev;
+	struct qcom_sysmon *sysmon;
+
+	phys_addr_t mem_phys;
+	phys_addr_t mem_reloc;
+	size_t mem_size;
+	void *mem_region;
+
+	phys_addr_t dtb_mem_phys;
+	phys_addr_t dtb_mem_reloc;
+	size_t dtb_mem_size;
+	void *dtb_mem_region;
+
+	const struct firmware *firmware;
+	const struct firmware *dtb_firmware;
+	struct qcom_pas_context pas_ctx;
+	struct qcom_pas_context dtb_pas_ctx;
+
+	struct regulator *cx;
+	struct regulator *mx;
+
 	struct cdsp_smem_region *smem;
 
-	/* Mbox for DCVS response (APSS -> NSP via IPCC PING) */
 	struct mbox_client dcvs_mbox_client;
-	struct mbox_chan   *dcvs_mbox_chan;
-
+	struct mbox_chan *dcvs_mbox_chan;
 	int dcvs_irq;
 	struct work_struct dcvs_work;
 
-	/* MPM for LPM */
 	struct regmap *mpm_regmap;
+	struct regmap *rscc_regmap;
 	int lpm_irq;
 	struct workqueue_struct *lpm_wq;
 	struct work_struct lpm_work;
 
-	/* RSCC for power mode detection */
-	struct regmap *rscc_regmap;
-
-	/* PMIC regulator consumer handles */
-	struct regulator *vdd_cx;
-	struct regulator *vdd_mx;
-
-	/* State tracking */
-	atomic_t power_state;
 	struct mutex lock;
+	bool pas_active;
+	bool lpm_active_cx;
+	bool lpm_active_mx;
+	bool nsp_up;
 };
 
-/**
- * cdsp_virt_reg_enable() - Enable a virtual NSP regulator
- * @rdev: Regulator device
- *
- * Passes the enable request through to the underlying PMIC consumer handle
- * (vdd_cx or vdd_mx). Returns 0 immediately if the MX rail is absent on
- * this board.
- *
- * Return: 0 on success, negative error code on failure
- */
-static int cdsp_virt_reg_enable(struct regulator_dev *rdev)
+static const char *cdsp_hlvl_name(u32 corner)
 {
-	struct cdsp_power_driver *drv = rdev_get_drvdata(rdev);
-	int id = rdev_get_id(rdev);
-	struct regulator *reg = (id == CDSP_VIRT_NSP_CX) ? drv->vdd_cx : drv->vdd_mx;
-
-	if (!reg)
-		return 0;
-	return regulator_enable(reg);
+	switch (corner) {
+	case CDSP_HLVL_SVS:	return "SVS";
+	case CDSP_HLVL_SVS_L1:	return "SVS_L1";
+	case CDSP_HLVL_NOM:	return "NOM";
+	case CDSP_HLVL_TUR_L1:	return "TUR_L1";
+	default:		return "INVALID";
+	}
 }
-
-/**
- * cdsp_virt_reg_is_enabled() - Check if a virtual NSP regulator is enabled
- * @rdev: Regulator device
- *
- * Return: use_count of virtual NSP regulator *
- */
-static int cdsp_virt_reg_is_enabled(struct regulator_dev *rdev)
-{
-	return rdev->use_count;
-}
-
-/**
- * cdsp_virt_reg_disable() - Disable a virtual NSP regulator
- * @rdev: Regulator device
- *
- * Passes the disable request through to the underlying PMIC consumer handle
- * (vdd_cx or vdd_mx). Returns 0 immediately if the MX rail is absent on
- * this board.
- *
- * Return: 0 on success, negative error code on failure
- */
-static int cdsp_virt_reg_disable(struct regulator_dev *rdev)
-{
-	struct cdsp_power_driver *drv = rdev_get_drvdata(rdev);
-	int id = rdev_get_id(rdev);
-	struct regulator *reg = (id == CDSP_VIRT_NSP_CX) ? drv->vdd_cx : drv->vdd_mx;
-
-	if (!reg)
-		return 0;
-
-	/* Disable the regulator if it's enabled */
-	if (regulator_is_enabled(reg))
-		return regulator_disable(reg);
-
-	return 0;
-}
-
-static const struct regulator_ops cdsp_virt_reg_ops = {
-	.enable      = cdsp_virt_reg_enable,
-	.disable     = cdsp_virt_reg_disable,
-	.is_enabled  = cdsp_virt_reg_is_enabled,
-};
-
-static const struct regulator_desc cdsp_virt_reg_descs[CDSP_VIRT_MAX] = {
-	[CDSP_VIRT_NSP_CX] = {
-		.id              = CDSP_VIRT_NSP_CX,
-		.name            = "cdsp-vdd-cx",
-		.of_match        = "cdsp-vdd-cx",
-		.regulators_node = "regulators",
-		.ops             = &cdsp_virt_reg_ops,
-		.type            = REGULATOR_VOLTAGE,
-		.owner           = THIS_MODULE,
-	},
-	[CDSP_VIRT_NSP_MX] = {
-		.id              = CDSP_VIRT_NSP_MX,
-		.name            = "cdsp-vdd-mx",
-		.of_match        = "cdsp-vdd-mx",
-		.regulators_node = "regulators",
-		.ops             = &cdsp_virt_reg_ops,
-		.type            = REGULATOR_VOLTAGE,
-		.owner           = THIS_MODULE,
-	},
-};
 
 /**
  * cdsp_is_full_pc_mode() - Check if FULL_PC mode is selected
- * @drv: Driver context
+ * @priv: Driver context
  *
  * Reads the CDSP RSCC_BR_EVENT register to determine power collapse mode.
  * Bit 3: 0 = FULL_PC (collapse both CX and MX)
@@ -387,149 +337,125 @@ static const struct regulator_desc cdsp_virt_reg_descs[CDSP_VIRT_MAX] = {
  *
  * Return: true if FULL_PC mode, false if LONG_APCR mode
  */
-static bool cdsp_is_full_pc_mode(struct cdsp_power_driver *drv)
+static bool cdsp_is_full_pc_mode(struct cdsp_pas_priv *priv)
 {
 	u32 br_event;
 	int ret;
 
-	ret = regmap_read(drv->rscc_regmap, RSCC_BR_EVENT, &br_event);
+	ret = regmap_read(priv->rscc_regmap, RSCC_BR_EVENT, &br_event);
 	if (ret) {
-		dev_err(drv->dev, "Failed to read RSCC_BR_EVENT: %d\n", ret);
+		dev_err(priv->dev, "failed to read RSCC_BR_EVENT: %d\n", ret);
 		return true; /* Default to FULL_PC on error */
 	}
 
-	/* Bit 3: 0 = FULL_PC (collapse both CX and MX)
-	 *        1 = LONG_APCR (collapse only CX)
-	 */
 	return !(br_event & RSCC_BR_EVENT_PC_MODE);
 }
 
 /**
  * cdsp_dcvs_irq_handler() - DCVS interrupt handler
- * @irq: Interrupt number
- * @data: Driver context
  *
  * Called when CDSP sends a DCVS request via IPCC PING interrupt.
  * Schedules work to process the request.
- *
- * Return: IRQ_HANDLED
  */
 static irqreturn_t cdsp_dcvs_irq_handler(int irq, void *data)
 {
-	struct cdsp_power_driver *drv = data;
+	struct cdsp_pas_priv *priv = data;
 
-	/* Schedule work to process DCVS request */
-	schedule_work(&drv->dcvs_work);
+	schedule_work(&priv->dcvs_work);
 
 	return IRQ_HANDLED;
 }
 
 /**
  * cdsp_dcvs_work_fn() - Process a DCVS corner scaling request from the NSP Q6
- * @work: Work structure embedded in struct cdsp_power_driver
  *
  * Reads the KVP request from the SMEM channel, decodes each entry's HLVL
- * corner and resource ID, and delegates it to the open-loop CPR regulator
- * after translating the 0-based HLVL corner to the driver's 1-based
- * mode-selector convention (mode = min_uV - 1, so corner + 1 is passed as
- * min_uV)
- * regulator_set_voltage() here only hands off the translated mode — the CPR
- * driver derives the fused voltage for that mode and applies it. Writes the
- * response back to SMEM and signals the NSP Q6 via the IPCC PING mailbox
- * channel.
+ * corner and resource ID, and applies it via regulator_set_voltage() (DCVS
+ * never toggles a rail on/off, only its corner). Writes the response back
+ * to SMEM and signals the NSP Q6 via the IPCC PING mailbox channel.
  */
 static void cdsp_dcvs_work_fn(struct work_struct *work)
 {
-	struct cdsp_power_driver *drv = container_of(work,
-						     struct cdsp_power_driver,
-						     dcvs_work);
-	struct cdsp_smem_region *smem = drv->smem;
+	struct cdsp_pas_priv *priv = container_of(work, struct cdsp_pas_priv, dcvs_work);
+	struct cdsp_smem_region *smem = priv->smem;
 	u32 sequence, num_commands;
 	u32 resp_status = STATUS_OK;
 	u32 resp_data = 0;
 	int i;
 
-	mutex_lock(&drv->lock);
+	mutex_lock(&priv->lock);
 
-	/* Drop DCVS requests while the NSP Q6 is powered off */
-	if (atomic_read(&drv->power_state) == CDSP_POWER_OFF) {
-		dev_warn(drv->dev, "DCVS request while powered off, dropping\n");
-		mutex_unlock(&drv->lock);
+	/* Drop DCVS requests while the NSP Q6 is isolated via LPM */
+	if (!priv->nsp_up) {
+		dev_warn(priv->dev, "DCVS request while powered off, dropping\n");
+		mutex_unlock(&priv->lock);
 		return;
 	}
 
-	/* Read request header from SMEM */
 	rmb();
 	sequence     = smem->request.sequence;
 	num_commands = smem->request.num_commands;
 
-	/* Validate message type — only process DCVS requests */
 	if (smem->request.msg_id != CDSP_MSG_ID_REQUEST) {
-		dev_err(drv->dev, "Unexpected msg_id: 0x%x (expected 0x%x)\n",
+		dev_err(priv->dev, "unexpected msg_id: 0x%x (expected 0x%x)\n",
 			smem->request.msg_id, CDSP_MSG_ID_REQUEST);
 		resp_status = STATUS_ERR_UNKNOWN_KEY;
 		goto send_response;
 	}
 
-	dev_dbg(drv->dev, "DCVS request: seq=%u, num_commands=%u, timestamp=%u us\n",
+	dev_dbg(priv->dev, "DCVS request: seq=%u, num_commands=%u, timestamp=%u us\n",
 		sequence, num_commands, smem->request.timestamp_us);
 
 	if (num_commands > CDSP_MAX_KVP) {
-		dev_err(drv->dev, "Too many KVP commands: %u (max %d)\n",
+		dev_err(priv->dev, "too many KVP commands: %u (max %d)\n",
 			num_commands, CDSP_MAX_KVP);
 		resp_status = STATUS_ERR_UNKNOWN_KEY;
 		goto send_response;
 	}
 
-	/*
-	 * Process each KVP: key=resource_id, value=HLVL corner.
-	 * Only the MX-absent case is non-fatal to the rest of the request:
-	 * letting a valid CX KVP in the same request be applied.
-	 */
 	for (i = 0; i < num_commands; i++) {
 		u32 key    = smem->request.kvp[i].key;
 		u32 corner = smem->request.kvp[i].value;
-		/* Upper 16 bits of the KVP key encode the resource ID */
 		u32 resource_id = (key >> 16) & 0xFFFF;
 		struct regulator *reg;
 		const char *rail_name;
 		int ret;
 
-		dev_dbg(drv->dev,
+		dev_dbg(priv->dev,
 			"DCVS req[%d/%u]: seq=%u key=0x%x resource_id=0x%x corner=%u (%s)\n",
 			i, num_commands, sequence, key, resource_id, corner,
 			cdsp_hlvl_name(corner));
 
 		if (resource_id == CDSP_RESOURCE_ID_CX) {
-			reg = drv->vdd_cx;
+			reg = priv->cx;
 			rail_name = "CX";
 		} else if (resource_id == CDSP_RESOURCE_ID_MX) {
-			if (!drv->vdd_mx) {
-				dev_info(drv->dev, "KVP[%d]: MX rail not present\n", i);
+			if (!priv->mx) {
+				dev_info(priv->dev, "KVP[%d]: MX rail not present\n", i);
 				if (resp_status == STATUS_OK) {
 					resp_status = STATUS_ERR_RAIL_ABSENT;
 					resp_data = CDSP_RESOURCE_ID_MX;
 				}
 				continue;
 			}
-			reg = drv->vdd_mx;
+			reg = priv->mx;
 			rail_name = "MX";
 		} else {
-			dev_err(drv->dev, "KVP[%d]: unknown key 0x%x\n", i, key);
+			dev_err(priv->dev, "KVP[%d]: unknown key 0x%x\n", i, key);
 			resp_status = STATUS_ERR_UNKNOWN_KEY;
 			resp_data = resource_id;
 			goto send_response;
 		}
 
 		if (corner > CDSP_HLVL_MAX) {
-			dev_err(drv->dev, "KVP[%d]: %s corner %u exceeds max %d\n",
+			dev_err(priv->dev, "KVP[%d]: %s corner %u exceeds max %d\n",
 				i, rail_name, corner, CDSP_HLVL_MAX);
 			resp_status = STATUS_ERR_CORNER_LIMIT;
 			resp_data = resource_id;
 			goto send_response;
 		}
 
-		dev_dbg(drv->dev,
+		dev_dbg(priv->dev,
 			"KVP[%d]: requesting %s -> HLVL %s (corner=%u), regulator mode selector=%u\n",
 			i, rail_name, cdsp_hlvl_name(corner), corner, corner + 1);
 		/*
@@ -539,7 +465,7 @@ static void cdsp_dcvs_work_fn(struct work_struct *work)
 		 */
 		if (resource_id == CDSP_RESOURCE_ID_CX &&
 		    !regulator_is_supported_voltage(reg, corner + 1, corner + 1)) {
-			dev_err(drv->dev,
+			dev_err(priv->dev,
 				"KVP[%d]: %s HLVL %s (corner=%u) not supported on this RDP\n",
 				i, rail_name, cdsp_hlvl_name(corner), corner);
 			resp_status = STATUS_ERR_CORNER_LIMIT;
@@ -549,7 +475,7 @@ static void cdsp_dcvs_work_fn(struct work_struct *work)
 
 		ret = regulator_set_voltage(reg, corner + 1, corner + 1);
 		if (ret) {
-			dev_err(drv->dev, "KVP[%d]: failed to set %s corner %u (%s): %d\n",
+			dev_err(priv->dev, "KVP[%d]: failed to set %s corner %u (%s): %d\n",
 				i, rail_name, corner, cdsp_hlvl_name(corner), ret);
 			resp_status = STATUS_ERR_CORNER_LIMIT;
 			resp_data = resource_id;
@@ -559,16 +485,14 @@ static void cdsp_dcvs_work_fn(struct work_struct *work)
 		if (resp_status == STATUS_OK)
 			resp_data = corner;
 
-		dev_dbg(drv->dev, "KVP[%d]: DCVS applied -> %s now at HLVL %s (corner=%u)\n",
+		dev_dbg(priv->dev, "KVP[%d]: DCVS applied -> %s now at HLVL %s (corner=%u)\n",
 			i, rail_name, cdsp_hlvl_name(corner), corner);
 	}
 
 send_response:
-	dev_dbg(drv->dev,
-		"DCVS response: seq=%u status=%u data=%u\n",
-		 sequence, resp_status, resp_data);
+	dev_dbg(priv->dev, "DCVS response: seq=%u status=%u data=%u\n",
+		sequence, resp_status, resp_data);
 
-	/* Write response to SMEM response area */
 	smem->response.msg_size     = CDSP_RESP_MSG_SIZE;
 	smem->response.sequence     = sequence;
 	smem->response.msg_id       = CDSP_MSG_ID_RESPONSE;
@@ -576,42 +500,38 @@ send_response:
 	smem->response.data         = resp_data;
 	smem->response.timestamp_us = ktime_to_us(ktime_get());
 
-	/*
-	 * Update header statistics and clear in-flight flag.
-	 * Order: write response data -> clear request_in_flight -> wmb ->
-	 * send interrupt. NSP Q6 checks request_in_flight == 0 to know
-	 * the response is ready.
-	 */
 	smem->hdr.apss_rx_count++;
 	smem->hdr.apss_tx_count++;
-	/* Mark channel idle before sending the interrupt */
 	smem->hdr.request_in_flight = 0;
 	wmb();
 
-	/* Send IPCC PING interrupt to NSP Q6 */
-	mbox_send_message(drv->dcvs_mbox_chan, NULL);
-	mbox_client_txdone(drv->dcvs_mbox_chan, 0);
+	mbox_send_message(priv->dcvs_mbox_chan, NULL);
+	mbox_client_txdone(priv->dcvs_mbox_chan, 0);
 
-	mutex_unlock(&drv->lock);
+	mutex_unlock(&priv->lock);
 }
 
 /**
- * cdsp_execute_isolation_sequence() - Execute isolation and power-down sequence
- * @drv: Driver context
+ * cdsp_execute_isolation_sequence() - MPM isolation bit-bang + regulator disable
+ * @priv: Driver context
+ * @full_pc: true to also isolate/disable the MX rail
  *
- * Executes the isolation sequence for power collapse as defined in
- * the MPM power collapse specification, followed by regulator disable.
- * Processes NSP/CX rail first (always), then MXC/MX rail (FULL_PC mode only).
+ * Processes NSP/CX rail first (always), then MXC/MX rail (FULL_PC mode
+ * only). The regulator is disabled unconditionally on every cycle -- Q6
+ * genuinely wants the rail powered down while isolated, cycling this many
+ * times a second during normal runtime. cdsp_pas_start()/cdsp_pas_handover()
+ * consult lpm_active_cx/lpm_active_mx before enabling/disabling the same
+ * regulator themselves, so the two paths never double-toggle it.
  */
-static void cdsp_execute_isolation_sequence(struct cdsp_power_driver *drv)
+static void cdsp_execute_isolation_sequence(struct cdsp_pas_priv *priv, bool full_pc)
 {
-	int num_rails = cdsp_is_full_pc_mode(drv) ? 2 : 1;
+	int num_rails = full_pc ? 2 : 1;
 	unsigned int iso_regs[] = {
 		VDD_RAIL_ISO_CTRL(VDD_RAIL_CX),  /* NSP/CX rail - always processed */
 		VDD_RAIL_ISO_CTRL(VDD_RAIL_MX),  /* MXC/MX rail - FULL_PC only */
 	};
-	struct regulator *regulators[] = { drv->vdd_cx, drv->vdd_mx };
-	struct regmap *mpm_map = drv->mpm_regmap;
+	struct regulator *regulators[] = { priv->cx, priv->mx };
+	struct regmap *mpm_map = priv->mpm_regmap;
 	int ret, i;
 	u32 val;
 
@@ -627,7 +547,7 @@ static void cdsp_execute_isolation_sequence(struct cdsp_power_driver *drv)
 						       (val & ISO_CLK_DIS_ACK),
 						       MPM_POLL_SLEEP_US, MPM_POLL_TIMEOUT_US);
 			if (ret)
-				dev_err(drv->dev, "Timeout waiting for NSP CLK_DIS_ACK\n");
+				dev_err(priv->dev, "timeout waiting for NSP CLK_DIS_ACK\n");
 		}
 
 		/* Step 2: Isolate inputs */
@@ -647,56 +567,65 @@ static void cdsp_execute_isolation_sequence(struct cdsp_power_driver *drv)
 		/* Step 7: Freeze outputs */
 		regmap_update_bits(mpm_map, iso, ISO_FREEZE_OUTPUT, ISO_FREEZE_OUTPUT);
 
-		/* Step 8: Turn off regulator */
+		/* Step 8: Drop the LPM vote and disable the rail */
+		if (i == 0)
+			priv->lpm_active_cx = false;
+		else
+			priv->lpm_active_mx = false;
+
 		if (regulators[i]) {
 			ret = regulator_disable(regulators[i]);
 			if (ret)
-				dev_err(drv->dev, "Failed to disable %s rail: %d\n",
+				dev_err(priv->dev, "failed to disable %s rail: %d\n",
 					i == 0 ? "CX" : "MX", ret);
 			else
 				usleep_range(8000, 10000);
 		}
 	}
 
-	dev_dbg(drv->dev, "Isolation sequence complete (%s mode)\n",
+	dev_dbg(priv->dev, "isolation sequence complete (%s mode)\n",
 		num_rails > 1 ? "FULL_PC" : "LONG_APCR");
 }
 
 /**
- * cdsp_execute_restoration_sequence() - Execute 9-step restoration sequence
- * @drv: Driver context
+ * cdsp_execute_restoration_sequence() - MPM restoration bit-bang + regulator enable
+ * @priv: Driver context
+ * @full_pc: true to also restore/enable the MX rail
  *
- * Executes the restoration sequence for power restore as defined in
- * the MPM power collapse specification.
  * FULL_PC: Restores MXC (MX) rail first, then NSP (CX) rail
  * LONG_APCR: Restores NSP (CX) rail only
  */
-static void cdsp_execute_restoration_sequence(struct cdsp_power_driver *drv)
+static void cdsp_execute_restoration_sequence(struct cdsp_pas_priv *priv, bool full_pc)
 {
-	int start_rail = cdsp_is_full_pc_mode(drv) ? 0 : 1;
+	int start_rail = full_pc ? 0 : 1;
 	unsigned int iso_regs[] = {
 		VDD_RAIL_ISO_CTRL(VDD_RAIL_MX),  /* MXC/MX rail - FULL_PC only, restored first */
 		VDD_RAIL_ISO_CTRL(VDD_RAIL_CX),  /* NSP/CX rail - always restored */
 	};
-	struct regulator *regulators[] = { drv->vdd_mx, drv->vdd_cx };
-	struct regmap *mpm_map = drv->mpm_regmap;
-	char *rail_names[] = { "MX", "CX" };
+	struct regulator *regulators[] = { priv->mx, priv->cx };
+	struct regmap *mpm_map = priv->mpm_regmap;
 	int ret, i;
 
 	for (i = start_rail; i < ARRAY_SIZE(iso_regs); i++) {
 		unsigned int iso = iso_regs[i];
+		bool is_mx = (i == 0);
 
 		/* Step 1: Assert power-up reset */
 		regmap_update_bits(mpm_map, iso, ISO_PWR_UP_RESET, ISO_PWR_UP_RESET);
 
-		/* Step 2: Enable power rail while reset is asserted (skip if no handle) */
+		/* Step 2: Vote the rail on while reset is asserted */
 		if (regulators[i]) {
 			ret = regulator_enable(regulators[i]);
 			if (ret)
-				dev_err(drv->dev, "Failed to enable %s: %d\n", rail_names[i], ret);
+				dev_err(priv->dev, "failed to enable %s: %d\n",
+					is_mx ? "MX" : "CX", ret);
 			else
 				usleep_range(8000, 10000);
 		}
+		if (is_mx)
+			priv->lpm_active_mx = true;
+		else
+			priv->lpm_active_cx = true;
 
 		/* Step 3: Clear power-up reset */
 		regmap_update_bits(mpm_map, iso, ISO_PWR_UP_RESET, 0);
@@ -714,31 +643,28 @@ static void cdsp_execute_restoration_sequence(struct cdsp_power_driver *drv)
 		regmap_update_bits(mpm_map, iso, ISO_CLK_DIS, 0);
 	}
 
-	dev_dbg(drv->dev, "Restoration sequence complete (%s mode)\n",
+	dev_dbg(priv->dev, "restoration sequence complete (%s mode)\n",
 		start_rail == 0 ? "FULL_PC" : "LONG_APCR");
 }
 
 /**
- * cdsp_lpm_shutdown_sequence() - Execute LPM shutdown sequence
- * @drv: Driver context
+ * cdsp_lpm_shutdown_sequence() - Handle a power collapse request from CDSP
+ * @priv: Driver context, called with priv->lock held
  *
- * Handles power collapse request from CDSP:
- * 1. Completes MPM 4-phase handshake
- * 2. Executes isolation sequence
- * 3. Disables regulators
- *
- * The regulator_disable() calls here are balanced against the
- * regulator_enable() calls made by PAS remoteproc via the virtual
- * vdd-cx/vdd-mx regulators (which pass through to vdd_cx/vdd_mx).
+ * Runs the isolation + regulator-drop sequence first, then completes the
+ * MPM 4-phase handshake -- the lpm_active_cx/mx state is settled before the
+ * handshake is acknowledged, not after.
  */
-static void cdsp_lpm_shutdown_sequence(struct cdsp_power_driver *drv)
+static void cdsp_lpm_shutdown_sequence(struct cdsp_pas_priv *priv)
 {
-	struct regmap *mpm_map = drv->mpm_regmap;
-	bool is_full_pc = cdsp_is_full_pc_mode(drv);
+	struct regmap *mpm_map = priv->mpm_regmap;
+	bool is_full_pc = cdsp_is_full_pc_mode(priv);
 	u32 hdshk_status;
 	int ret;
 
-	dev_dbg(drv->dev, "LPM: Starting power collapse sequence\n");
+	dev_dbg(priv->dev, "LPM: starting power collapse sequence\n");
+
+	cdsp_execute_isolation_sequence(priv, is_full_pc);
 
 	/* Phase 1: Acknowledge shutdown request */
 	regmap_update_bits(mpm_map, CLIENT_RSC_HDSHK(0), MPM_SHUTDOWN_ACK, MPM_SHUTDOWN_ACK);
@@ -748,40 +674,33 @@ static void cdsp_lpm_shutdown_sequence(struct cdsp_power_driver *drv)
 				       !(hdshk_status & MPM_SHUTDOWN_REQ),
 				       MPM_POLL_SLEEP_US, MPM_POLL_TIMEOUT_US);
 	if (ret) {
-		dev_err(drv->dev, "Timeout waiting for shutdown_req clear\n");
+		dev_err(priv->dev, "timeout waiting for shutdown_req clear\n");
 		return;
 	}
 
 	/* Phase 3: Clear acknowledgment */
 	regmap_update_bits(mpm_map, CLIENT_RSC_HDSHK(0), MPM_SHUTDOWN_ACK, 0x0);
 
-	/* Phase 4: Execute isolation sequence */
-	cdsp_execute_isolation_sequence(drv);
+	priv->nsp_up = false;
 
-	atomic_set(&drv->power_state, CDSP_POWER_OFF);
-
-	dev_dbg(drv->dev, "LPM: Power collapse complete (%s mode)\n",
+	dev_dbg(priv->dev, "LPM: power collapse complete (%s mode)\n",
 		is_full_pc ? "FULL_PC" : "LONG_APCR");
 }
 
 /**
- * cdsp_lpm_restore_sequence() - Execute LPM restore sequence
- * @drv: Driver context
- *
- * Handles power restore request from CDSP:
- * 1. Executes restoration sequence (includes regulator enable)
- * 2. Completes MPM bringup handshake
+ * cdsp_lpm_restore_sequence() - Handle a power restore request from CDSP
+ * @priv: Driver context, called with priv->lock held
  */
-static void cdsp_lpm_restore_sequence(struct cdsp_power_driver *drv)
+static void cdsp_lpm_restore_sequence(struct cdsp_pas_priv *priv)
 {
-	struct regmap *mpm_map = drv->mpm_regmap;
+	struct regmap *mpm_map = priv->mpm_regmap;
+	bool is_full_pc = cdsp_is_full_pc_mode(priv);
 	u32 hdshk_status;
 	int ret;
 
-	dev_dbg(drv->dev, "LPM: Starting power restore sequence\n");
+	dev_dbg(priv->dev, "LPM: starting power restore sequence\n");
 
-	/* Execute restoration sequence (includes regulator enable) */
-	cdsp_execute_restoration_sequence(drv);
+	cdsp_execute_restoration_sequence(priv, is_full_pc);
 
 	/* Assert BRINGUP_ACK */
 	regmap_update_bits(mpm_map, CLIENT_RSC_HDSHK(0), MPM_BRINGUP_ACK, MPM_BRINGUP_ACK);
@@ -791,61 +710,53 @@ static void cdsp_lpm_restore_sequence(struct cdsp_power_driver *drv)
 				       !(hdshk_status & MPM_BRINGUP_REQ),
 				       MPM_POLL_SLEEP_US, MPM_POLL_TIMEOUT_US);
 	if (ret) {
-		dev_err(drv->dev, "Timeout waiting for BRINGUP_REQ clear\n");
+		dev_err(priv->dev, "timeout waiting for BRINGUP_REQ clear\n");
 		return;
 	}
 
 	/* Clear BRINGUP_ACK */
 	regmap_update_bits(mpm_map, CLIENT_RSC_HDSHK(0), MPM_BRINGUP_ACK, 0);
 
-	atomic_set(&drv->power_state, CDSP_POWER_ON);
+	priv->nsp_up = true;
 
-	dev_dbg(drv->dev, "LPM: Power restore complete\n");
+	dev_dbg(priv->dev, "LPM: power restore complete\n");
 }
 
 /**
  * cdsp_lpm_irq_handler() - LPM interrupt handler
- * @irq: Interrupt number
- * @data: Driver context
  *
- * Called when CDSP sends an LPM request via MPM.
- * Schedules work to process the request.
- *
- * Return: IRQ_HANDLED
+ * Called when CDSP sends an LPM request via MPM. Schedules work to process
+ * the request.
  */
 static irqreturn_t cdsp_lpm_irq_handler(int irq, void *data)
 {
-	struct cdsp_power_driver *drv = data;
+	struct cdsp_pas_priv *priv = data;
 	unsigned int client_rsc_hdsk_irq_val;
 	unsigned int rsc_hdsk_irq_val;
 
-	regmap_read(drv->mpm_regmap, RSC_HDSHK_IRQ_STAT, &rsc_hdsk_irq_val);
-	regmap_read(drv->mpm_regmap, CLIENT_RSC_IRQ_STAT(0), &client_rsc_hdsk_irq_val);
+	regmap_read(priv->mpm_regmap, RSC_HDSHK_IRQ_STAT, &rsc_hdsk_irq_val);
+	regmap_read(priv->mpm_regmap, CLIENT_RSC_IRQ_STAT(0), &client_rsc_hdsk_irq_val);
 	if (!client_rsc_hdsk_irq_val || !rsc_hdsk_irq_val)
 		return IRQ_NONE;
 
-	/* Schedule work to process LPM request */
-	queue_work(drv->lpm_wq, &drv->lpm_work);
+	queue_work(priv->lpm_wq, &priv->lpm_work);
 
 	return IRQ_HANDLED;
 }
 
 /**
- * cdsp_lpm_work_fn() - LPM work function
- * @work: Work structure
+ * cdsp_lpm_work_fn() - Process an LPM request from CDSP
  *
- * Processes LPM requests from CDSP by reading MPM handshake status
- * and executing appropriate shutdown or restore sequence.
+ * Reads MPM handshake status and dispatches to the shutdown or restore
+ * sequence.
  */
 static void cdsp_lpm_work_fn(struct work_struct *work)
 {
-	struct cdsp_power_driver *drv = container_of(work,
-						      struct cdsp_power_driver,
-						      lpm_work);
+	struct cdsp_pas_priv *priv = container_of(work, struct cdsp_pas_priv, lpm_work);
 	u32 hdshk_status;
 	bool is_shutdown;
 
-	synchronize_irq(drv->dcvs_irq);
+	synchronize_irq(priv->dcvs_irq);
 
 	/*
 	 * Ensure any pending DCVS vote is applied before entering power
@@ -853,39 +764,36 @@ static void cdsp_lpm_work_fn(struct work_struct *work)
 	 * asserting the LPM shutdown request (MPM). Since dcvs_work runs on
 	 * the global system_wq and lpm_work runs on cdsp_lpm_wq there is no
 	 * ordering guarantee between them. flush_work() must be called before
-	 * taking drv->lock because dcvs_work_fn also acquires it.
+	 * taking priv->lock because dcvs_work_fn also acquires it.
 	 */
-	flush_work(&drv->dcvs_work);
+	flush_work(&priv->dcvs_work);
 
-	mutex_lock(&drv->lock);
+	mutex_lock(&priv->lock);
 
-	/* Read MPM handshake status */
-	regmap_read(drv->mpm_regmap, CLIENT_RSC_HDSHK(0), &hdshk_status);
+	regmap_read(priv->mpm_regmap, CLIENT_RSC_HDSHK(0), &hdshk_status);
 
-	/* Clear the interrupt */
-	regmap_write(drv->mpm_regmap, CLIENT_RSC_IRQ_CLR(0), 0x0);
-	regmap_write(drv->mpm_regmap, CLIENT_RSC_IRQ_CLR(0), 0x1);
-	regmap_write(drv->mpm_regmap, CLIENT_RSC_IRQ_CLR(0), 0x0);
+	regmap_write(priv->mpm_regmap, CLIENT_RSC_IRQ_CLR(0), 0x0);
+	regmap_write(priv->mpm_regmap, CLIENT_RSC_IRQ_CLR(0), 0x1);
+	regmap_write(priv->mpm_regmap, CLIENT_RSC_IRQ_CLR(0), 0x0);
 
-	/* Determine if this is shutdown or bringup */
 	is_shutdown = !!(hdshk_status & MPM_SHUTDOWN_REQ);
 
 	if (is_shutdown) {
-		if (atomic_read(&drv->power_state) == CDSP_POWER_OFF) {
-			dev_warn(drv->dev, "Spurious shutdown request, already powered off\n");
+		if (!priv->nsp_up) {
+			dev_warn(priv->dev, "spurious shutdown request, already isolated\n");
 			goto out_unlock;
 		}
-		cdsp_lpm_shutdown_sequence(drv);
+		cdsp_lpm_shutdown_sequence(priv);
 	} else {
-		if (atomic_read(&drv->power_state) == CDSP_POWER_ON) {
-			dev_warn(drv->dev, "Spurious bringup request, already powered on\n");
+		if (priv->nsp_up) {
+			dev_warn(priv->dev, "spurious bringup request, already restored\n");
 			goto out_unlock;
 		}
-		cdsp_lpm_restore_sequence(drv);
+		cdsp_lpm_restore_sequence(priv);
 	}
 
 out_unlock:
-	mutex_unlock(&drv->lock);
+	mutex_unlock(&priv->lock);
 }
 
 static const struct regmap_config cdsp_rscc_regmap_config = {
@@ -896,7 +804,7 @@ static const struct regmap_config cdsp_rscc_regmap_config = {
 	.fast_io        = true,
 };
 
-static const struct regmap_config cdsp_regmap_config = {
+static const struct regmap_config cdsp_mpm_regmap_config = {
 	.reg_bits       = 32,
 	.reg_stride     = 4,
 	.val_bits       = 32,
@@ -905,226 +813,608 @@ static const struct regmap_config cdsp_regmap_config = {
 };
 
 /**
- * cdsp_power_probe() - Probe the CDSP power management driver
- * @pdev: Platform device
- *
- * Acquires the PMIC regulator consumer handles, registers the virtual
- * cdsp-vdd-cx (and optionally cdsp-vdd-mx) regulator providers, maps the
- * MPM and RSCC register regions, and registers the DCVS and LPM interrupt
- * handlers.
- *
- * Return: 0 on success, negative error code on failure
+ * cdsp_alloc_memory_region() - Resolve the main and dtb memory-region reservations
  */
-static int cdsp_power_probe(struct platform_device *pdev)
+static int cdsp_alloc_memory_region(struct cdsp_pas_priv *priv)
 {
-	struct regulator_config virt_cfg = {};
-	struct cdsp_power_driver *drv;
-	struct regulator_dev *rdev;
-	void __iomem *rscc_base;
-	void __iomem *mpm_base;
-	size_t smem_size;
-	u32 smem_id;
+	struct device *dev = priv->dev;
+	struct device_node *node;
+	struct reserved_mem *rmem;
+
+	node = of_parse_phandle(dev->of_node, "memory-region", 0);
+	if (!node)
+		return dev_err_probe(dev, -EINVAL, "no memory-region specified\n");
+
+	rmem = of_reserved_mem_lookup(node);
+	of_node_put(node);
+	if (!rmem)
+		return dev_err_probe(dev, -EINVAL, "unable to resolve memory-region\n");
+
+	priv->mem_phys = priv->mem_reloc = rmem->base;
+	priv->mem_size = rmem->size;
+	priv->mem_region = devm_ioremap_wc(dev, priv->mem_phys, priv->mem_size);
+	if (!priv->mem_region)
+		return dev_err_probe(dev, -EBUSY, "unable to map memory region: %pa+%pa\n",
+				     &rmem->base, &rmem->size);
+
+	node = of_parse_phandle(dev->of_node, "memory-region", 1);
+	if (!node)
+		return 0;
+
+	rmem = of_reserved_mem_lookup(node);
+	of_node_put(node);
+	if (!rmem)
+		return dev_err_probe(dev, -EINVAL, "unable to resolve dtb memory-region\n");
+
+	priv->dtb_mem_phys = priv->dtb_mem_reloc = rmem->base;
+	priv->dtb_mem_size = rmem->size;
+	priv->dtb_mem_region = devm_ioremap_wc(dev, priv->dtb_mem_phys, priv->dtb_mem_size);
+	if (!priv->dtb_mem_region)
+		return dev_err_probe(dev, -EBUSY, "unable to map dtb memory region: %pa+%pa\n",
+				     &rmem->base, &rmem->size);
+
+	return 0;
+}
+
+/**
+ * cdsp_pas_load() - .load rproc_op: stash the main firmware, load the dtb image
+ */
+static int cdsp_pas_load(struct rproc *rproc, const struct firmware *fw)
+{
+	struct cdsp_pas_priv *priv = rproc->priv;
 	int ret;
 
-	/* Allocate driver context */
-	drv = devm_kzalloc(&pdev->dev, sizeof(*drv), GFP_KERNEL);
-	if (!drv)
-		return -ENOMEM;
+	priv->firmware = fw;
 
-	drv->dev = &pdev->dev;
-	mutex_init(&drv->lock);
-	atomic_set(&drv->power_state, CDSP_POWER_ON);
+	ret = request_firmware(&priv->dtb_firmware, CDSP_DTB_FIRMWARE_NAME, priv->dev);
+	if (ret) {
+		dev_err(priv->dev, "failed to load %s: %d\n", CDSP_DTB_FIRMWARE_NAME, ret);
+		return ret;
+	}
 
-	/* Get SMEM item ID from device tree */
-	ret = of_property_read_u32(pdev->dev.of_node, "qcom,smem-item", &smem_id);
+	ret = qcom_mdt_pas_init(priv->dev, priv->dtb_firmware, CDSP_DTB_FIRMWARE_NAME,
+				CDSP_DTB_PAS_ID, priv->dtb_mem_phys, &priv->dtb_pas_ctx);
 	if (ret)
-		return dev_err_probe(&pdev->dev, ret, "Failed to get SMEM item ID\n");
+		goto release_dtb_firmware;
 
-	/* Create SMEM entry for DCVS */
-	ret = qcom_smem_alloc(CDSP_SMEM_NSP_HOST_ID, smem_id, CDSP_SMEM_SIZE);
+	ret = qcom_mdt_load_no_init(priv->dev, priv->dtb_firmware, CDSP_DTB_FIRMWARE_NAME,
+				    CDSP_DTB_PAS_ID, priv->dtb_mem_region, priv->dtb_mem_phys,
+				    priv->dtb_mem_size, &priv->dtb_mem_reloc);
+	if (ret)
+		goto release_dtb_firmware;
+
+	return 0;
+
+release_dtb_firmware:
+	release_firmware(priv->dtb_firmware);
+	priv->dtb_firmware = NULL;
+	return ret;
+}
+
+/**
+ * cdsp_pas_handover() - Drop the PAS regulator vote, gated by the LPM state machine
+ *
+ * Registered as the qcom_q6v5 handover callback and also invoked directly
+ * and synchronously from cdsp_pas_stop() -- IPQ9650 has no AOSS, so the
+ * handover IRQ this would normally fire on never arrives, and
+ * qcom_q6v5_unprepare() always reports handover-already-issued=true.
+ */
+static void cdsp_pas_handover(struct qcom_q6v5 *q6v5)
+{
+	struct cdsp_pas_priv *priv = container_of(q6v5, struct cdsp_pas_priv, q6v5);
+
+	mutex_lock(&priv->lock);
+
+	priv->pas_active = false;
+
+	if (!priv->lpm_active_mx && priv->mx)
+		regulator_disable(priv->mx);
+	if (!priv->lpm_active_cx)
+		regulator_disable(priv->cx);
+
+	mutex_unlock(&priv->lock);
+}
+
+/**
+ * cdsp_dump_start_timeout_diagnostics() - Dump state useful for root-causing a start timeout
+ * @priv: Driver context, called with priv->lock held
+ *
+ * qcom_q6v5_wait_for_start() times out when the NSP Q6 never signals "ready"
+ * via SMP2P. This alone doesn't say why -- dump the CX/MX rail state the Q6
+ * saw at reset-release, the MPM handshake/IRQ-status registers (in case Q6
+ * already tried an LPM request that's stuck), the RSCC power-mode register,
+ * and the SMEM channel state (cdsp_state != 0 means Q6 got far enough into
+ * its own boot to touch SMEM, independent of the SMP2P ready signal).
+ */
+static void cdsp_dump_start_timeout_diagnostics(struct cdsp_pas_priv *priv)
+{
+	struct cdsp_smem_region *smem = priv->smem;
+	u32 rsc_irq_stat = 0, hdshk = 0, br_event = 0;
+	int cx_uv = -1, mx_uv = -1;
+
+	regmap_read(priv->mpm_regmap, RSC_HDSHK_IRQ_STAT, &rsc_irq_stat);
+	regmap_read(priv->mpm_regmap, CLIENT_RSC_HDSHK(0), &hdshk);
+	regmap_read(priv->rscc_regmap, RSCC_BR_EVENT, &br_event);
+
+	if (priv->cx)
+		cx_uv = regulator_get_voltage(priv->cx);
+	if (priv->mx)
+		mx_uv = regulator_get_voltage(priv->mx);
+
+	dev_err(priv->dev,
+		"start timeout diagnostics: cx=%s(%duV) mx=%s(%duV) rsc_hdshk_irq_stat=0x%x "
+		"client_rsc_hdshk=0x%x rscc_br_event=0x%x smem: magic=0x%x cdsp_state=%u "
+		"apss_state=%u req_in_flight=%u cdsp_tx=%u cdsp_rx=%u\n",
+		priv->cx ? (regulator_is_enabled(priv->cx) ? "on" : "off") : "n/a", cx_uv,
+		priv->mx ? (regulator_is_enabled(priv->mx) ? "on" : "off") : "n/a", mx_uv,
+		rsc_irq_stat, hdshk, br_event, smem->hdr.magic, smem->hdr.cdsp_state,
+		smem->hdr.apss_state, smem->hdr.request_in_flight,
+		smem->hdr.cdsp_tx_count, smem->hdr.cdsp_rx_count);
+}
+
+/**
+ * cdsp_pas_start() - .start rproc_op: authenticate and reset both PAS images
+ */
+static int cdsp_pas_start(struct rproc *rproc)
+{
+	struct cdsp_pas_priv *priv = rproc->priv;
+	void __iomem *tcsr;
+	int ret;
+
+	ret = qcom_q6v5_prepare(&priv->q6v5);
+	if (ret)
+		return ret;
+
+	mutex_lock(&priv->lock);
+
+	priv->pas_active = true;
+
+	if (!priv->lpm_active_cx) {
+		ret = regulator_enable(priv->cx);
+		if (ret)
+			goto clear_pas_active;
+	}
+
+	if (!priv->lpm_active_mx && priv->mx) {
+		ret = regulator_enable(priv->mx);
+		if (ret)
+			goto disable_cx;
+	}
+
+	ret = qcom_pas_auth_and_reset(CDSP_DTB_PAS_ID);
+	if (ret) {
+		dev_err(priv->dev, "failed to authenticate dtb image and release reset\n");
+		goto disable_mx;
+	}
+
+	ret = qcom_mdt_pas_init(priv->dev, priv->firmware, CDSP_FIRMWARE_NAME,
+				CDSP_PAS_ID, priv->mem_phys, &priv->pas_ctx);
+	if (ret)
+		goto disable_mx;
+
+	ret = qcom_mdt_load_no_init(priv->dev, priv->firmware, CDSP_FIRMWARE_NAME,
+				    CDSP_PAS_ID, priv->mem_region, priv->mem_phys,
+				    priv->mem_size, &priv->mem_reloc);
+	if (ret)
+		goto disable_mx;
+
+	qcom_pil_info_store(CDSP_SSR_NAME, priv->mem_phys, priv->mem_size);
+
+	if (debug_q6) {
+		tcsr = ioremap(TCSR_SPARE_REG0, TCSR_SPARE_REG0_SIZE);
+		if (tcsr) {
+			writel(0x1, tcsr);
+			iounmap(tcsr);
+		}
+	}
+
+	ret = qcom_pas_auth_and_reset(CDSP_PAS_ID);
+	if (ret) {
+		dev_err(priv->dev, "failed to authenticate image and release reset\n");
+		goto disable_mx;
+	}
+
+	dev_info(priv->dev, "cx=%s(%duV) mx=%s(%duV): reset released, waiting for Q6 ready ack\n",
+		 regulator_is_enabled(priv->cx) ? "on" : "off", regulator_get_voltage(priv->cx),
+		 priv->mx ? (regulator_is_enabled(priv->mx) ? "on" : "off") : "n/a",
+		 priv->mx ? regulator_get_voltage(priv->mx) : -1);
+
+	/*
+	 * Drop priv->lock across the blocking wait: the NSP Q6 sends a DCVS
+	 * request over SMEM before/while it brings itself up, and
+	 * cdsp_dcvs_work_fn() needs this same lock to process it and reply.
+	 * Holding the lock here deadlocks against Q6, which stalls waiting on
+	 * that reply before it ever raises its ready ack.
+	 */
+	mutex_unlock(&priv->lock);
+
+wait_for_start:
+	ret = qcom_q6v5_wait_for_start(&priv->q6v5, msecs_to_jiffies(5000));
+	if (ret == -ETIMEDOUT && debug_q6) {
+		dev_err(priv->dev, "start timed out, debug_q6 set, retrying wait\n");
+		goto wait_for_start;
+	}
+
+	mutex_lock(&priv->lock);
+
+	if (ret) {
+		dev_err(priv->dev, "start timed out\n");
+		cdsp_dump_start_timeout_diagnostics(priv);
+	}
+
+	qcom_pas_metadata_release(&priv->dtb_pas_ctx);
+	qcom_pas_metadata_release(&priv->pas_ctx);
+	release_firmware(priv->dtb_firmware);
+	priv->dtb_firmware = NULL;
+	priv->firmware = NULL;
+
+	mutex_unlock(&priv->lock);
+
+	return ret;
+
+disable_mx:
+	if (!priv->lpm_active_mx && priv->mx)
+		regulator_disable(priv->mx);
+disable_cx:
+	if (!priv->lpm_active_cx)
+		regulator_disable(priv->cx);
+clear_pas_active:
+	priv->pas_active = false;
+	mutex_unlock(&priv->lock);
+	qcom_q6v5_unprepare(&priv->q6v5);
+	release_firmware(priv->dtb_firmware);
+	priv->dtb_firmware = NULL;
+	priv->firmware = NULL;
+	return ret;
+}
+
+/**
+ * cdsp_pas_stop() - .stop rproc_op: request stop, shut down both PAS images
+ */
+static int cdsp_pas_stop(struct rproc *rproc)
+{
+	struct cdsp_pas_priv *priv = rproc->priv;
+	int handover;
+	int dtb_ret;
+	int ret;
+
+	ret = qcom_q6v5_request_stop(&priv->q6v5, priv->sysmon);
+	if (ret == -ETIMEDOUT)
+		dev_err(priv->dev, "timed out on wait\n");
+
+	ret = qcom_pas_shutdown(CDSP_PAS_ID);
+	if (ret)
+		dev_err(priv->dev, "failed to shutdown: %d\n", ret);
+
+	dtb_ret = qcom_pas_shutdown(CDSP_DTB_PAS_ID);
+	if (dtb_ret)
+		dev_err(priv->dev, "failed to shutdown dtb: %d\n", dtb_ret);
+	if (!ret && dtb_ret)
+		ret = dtb_ret;
+
+	handover = qcom_q6v5_unprepare(&priv->q6v5);
+	if (handover)
+		cdsp_pas_handover(&priv->q6v5);
+
+	return ret;
+}
+
+/**
+ * cdsp_pas_unprepare() - .unprepare rproc_op: release PAS metadata contexts
+ */
+static int cdsp_pas_unprepare(struct rproc *rproc)
+{
+	struct cdsp_pas_priv *priv = rproc->priv;
+
+	qcom_pas_metadata_release(&priv->pas_ctx);
+	qcom_pas_metadata_release(&priv->dtb_pas_ctx);
+
+	return 0;
+}
+
+static void *cdsp_pas_da_to_va(struct rproc *rproc, u64 da, size_t len, bool *is_iomem)
+{
+	struct cdsp_pas_priv *priv = rproc->priv;
+	int offset;
+
+	offset = da - priv->mem_reloc;
+	if (offset < 0 || offset + len > priv->mem_size)
+		return NULL;
+
+	if (is_iomem)
+		*is_iomem = true;
+
+	return priv->mem_region + offset;
+}
+
+static unsigned long cdsp_pas_panic(struct rproc *rproc)
+{
+	struct cdsp_pas_priv *priv = rproc->priv;
+
+	return qcom_q6v5_panic(&priv->q6v5);
+}
+
+static const struct rproc_ops cdsp_pas_ops = {
+	.unprepare = cdsp_pas_unprepare,
+	.start = cdsp_pas_start,
+	.stop = cdsp_pas_stop,
+	.da_to_va = cdsp_pas_da_to_va,
+	.parse_fw = qcom_register_dump_segments,
+	.load = cdsp_pas_load,
+	.panic = cdsp_pas_panic,
+};
+
+/**
+ * cdsp_smem_init() - Allocate and initialise the DCVS SMEM channel
+ *
+ * Zeroes the entire SMEM region first so all padding/reserved fields are
+ * clean, then fills in the fixed protocol fields. apss_state is set last
+ * (after wmb) so the NSP Q6 only observes a fully-populated header once
+ * APSS is ready -- this must run after every other dependency (regulators,
+ * mailbox, IRQs) is already live.
+ */
+static int cdsp_smem_init(struct cdsp_pas_priv *priv)
+{
+	size_t smem_size;
+	int ret;
+
+	ret = qcom_smem_alloc(CDSP_SMEM_NSP_HOST_ID, CDSP_SMEM_ITEM, CDSP_SMEM_SIZE);
 	if (ret && ret != -EEXIST)
-		return dev_err_probe(&pdev->dev, ret, "Failed to allocate SMEM\n");
+		return dev_err_probe(priv->dev, ret, "failed to allocate SMEM\n");
 
-	/* Get SMEM pointer and validate size */
-	drv->smem = qcom_smem_get(CDSP_SMEM_NSP_HOST_ID, smem_id, &smem_size);
-	if (IS_ERR(drv->smem))
-		return dev_err_probe(&pdev->dev, PTR_ERR(drv->smem),
-				     "Failed to get SMEM\n");
+	priv->smem = qcom_smem_get(CDSP_SMEM_NSP_HOST_ID, CDSP_SMEM_ITEM, &smem_size);
+	if (IS_ERR(priv->smem))
+		return dev_err_probe(priv->dev, PTR_ERR(priv->smem), "failed to get SMEM\n");
 
 	if (smem_size < CDSP_SMEM_SIZE)
-		return dev_err_probe(&pdev->dev, -EINVAL,
+		return dev_err_probe(priv->dev, -EINVAL,
 				     "SMEM region too small: got %zu, expected %u\n",
 				     smem_size, CDSP_SMEM_SIZE);
 
-	/*
-	 * Initialise the SMEM channel header.
-	 * Zero the entire region first so all padding and reserved fields
-	 * are clean, then fill in the fixed protocol fields.
-	 * apss_state is set to 1 last (after wmb) so NSP Q6 only sees a
-	 * fully-populated header once APSS is ready.
-	 */
-	memset(drv->smem, 0, sizeof(*drv->smem));
-	drv->smem->hdr.magic           = CDSP_SMEM_MAGIC;
-	drv->smem->hdr.version         = CDSP_SMEM_VERSION;
-	drv->smem->hdr.request_offset  = CDSP_SMEM_REQUEST_OFFSET;
-	drv->smem->hdr.request_size    = CDSP_SMEM_REQUEST_SIZE;
-	drv->smem->hdr.response_offset = CDSP_SMEM_RESPONSE_OFFSET;
-	drv->smem->hdr.response_size   = CDSP_SMEM_RESPONSE_SIZE;
-	/* Signal APSS readiness to NSP Q6 */
-	drv->smem->hdr.apss_state = 1;
+	memset(priv->smem, 0, sizeof(*priv->smem));
+	priv->smem->hdr.magic           = CDSP_SMEM_MAGIC;
+	priv->smem->hdr.version         = CDSP_SMEM_VERSION;
+	priv->smem->hdr.request_offset  = CDSP_SMEM_REQUEST_OFFSET;
+	priv->smem->hdr.request_size    = CDSP_SMEM_REQUEST_SIZE;
+	priv->smem->hdr.response_offset = CDSP_SMEM_RESPONSE_OFFSET;
+	priv->smem->hdr.response_size   = CDSP_SMEM_RESPONSE_SIZE;
+	priv->smem->hdr.apss_state = 1;
 	wmb();
 
-	/*
-	 * Get voltage regulator consumer handles.
-	 * These are the actual NSP_CX and NSP_MX voltage rails.
-	 * The virtual regulator ops pass through to these handles.
-	 */
-	drv->vdd_cx = devm_regulator_get(&pdev->dev, "vdd-cx");
-	if (IS_ERR(drv->vdd_cx))
-		return dev_err_probe(&pdev->dev, PTR_ERR(drv->vdd_cx),
-				     "Failed to get vdd-cx regulator\n");
-
-	drv->vdd_mx = devm_regulator_get_optional(&pdev->dev, "vdd-mx");
-	if (IS_ERR(drv->vdd_mx)) {
-		if (PTR_ERR(drv->vdd_mx) != -ENODEV)
-			return dev_err_probe(&pdev->dev, PTR_ERR(drv->vdd_mx),
-					     "Failed to get vdd-mx regulator\n");
-		drv->vdd_mx = NULL;
-		dev_dbg(&pdev->dev, "No vdd-mx regulator, MX rail absent on this board\n");
-	}
-
-	/*
-	 * Register virtual regulator provider.
-	 *
-	 * Expose vdd-cx and vdd-mx virtual regulators so that PAS remoteproc
-	 * can consume them via cx-supply / mx-supply DTS properties.
-	 * The enable/disable ops pass through to vdd_cx / vdd_mx above,
-	 * making CDSP the sole hardware power manager for the NSP subsystem.
-	 */
-	virt_cfg.dev         = &pdev->dev;
-	virt_cfg.driver_data = drv;
-	virt_cfg.of_node     = pdev->dev.of_node;
-
-	rdev = devm_regulator_register(&pdev->dev,
-				       &cdsp_virt_reg_descs[CDSP_VIRT_NSP_CX],
-				       &virt_cfg);
-	if (IS_ERR(rdev))
-		return dev_err_probe(&pdev->dev, PTR_ERR(rdev),
-				     "Failed to register cdsp-vdd-cx virtual regulator\n");
-
-	if (drv->vdd_mx) {
-		rdev = devm_regulator_register(&pdev->dev,
-					       &cdsp_virt_reg_descs[CDSP_VIRT_NSP_MX],
-					       &virt_cfg);
-		if (IS_ERR(rdev))
-			return dev_err_probe(&pdev->dev, PTR_ERR(rdev),
-					     "Failed to register cdsp-vdd-mx virtual regulator\n");
-	}
-
-	/* Register DCVS interrupt */
-	drv->dcvs_irq = platform_get_irq_byname(pdev, "dcvs");
-	if (drv->dcvs_irq < 0)
-		return dev_err_probe(&pdev->dev, drv->dcvs_irq,
-				     "Failed to get DCVS IRQ\n");
-
-	ret = devm_request_threaded_irq(&pdev->dev, drv->dcvs_irq,
-					NULL, cdsp_dcvs_irq_handler,
-					IRQF_ONESHOT, "cdsp-dcvs", drv);
-	if (ret)
-		return dev_err_probe(&pdev->dev, ret,
-				     "Failed to request DCVS IRQ\n");
-
-	/* Setup MPM for LPM */
-	mpm_base = devm_platform_ioremap_resource_byname(pdev, "mpm");
-	if (IS_ERR(mpm_base))
-		return dev_err_probe(&pdev->dev, PTR_ERR(mpm_base),
-				     "Failed to map MPM registers\n");
-
-	drv->mpm_regmap = devm_regmap_init_mmio(&pdev->dev, mpm_base, &cdsp_regmap_config);
-	if (IS_ERR(drv->mpm_regmap))
-		return dev_err_probe(&pdev->dev, PTR_ERR(drv->mpm_regmap),
-				     "Failed to init MPM regmap\n");
-
-	/* Setup RSCC for power mode detection */
-	rscc_base = devm_platform_ioremap_resource_byname(pdev, "rscc");
-	if (IS_ERR(rscc_base))
-		return dev_err_probe(&pdev->dev, PTR_ERR(rscc_base),
-				     "Failed to map RSCC registers\n");
-
-	drv->rscc_regmap = devm_regmap_init_mmio(&pdev->dev, rscc_base, &cdsp_rscc_regmap_config);
-	if (IS_ERR(drv->rscc_regmap))
-		return dev_err_probe(&pdev->dev, PTR_ERR(drv->rscc_regmap),
-				     "Failed to init RSCC regmap\n");
-
-	drv->lpm_irq = platform_get_irq_byname(pdev, "lpm");
-	if (drv->lpm_irq < 0)
-		return dev_err_probe(&pdev->dev, drv->lpm_irq,
-				     "Failed to get LPM IRQ\n");
-
-	ret = devm_request_threaded_irq(&pdev->dev, drv->lpm_irq,
-					NULL, cdsp_lpm_irq_handler,
-					IRQF_ONESHOT, "cdsp-lpm", drv);
-	if (ret)
-		return dev_err_probe(&pdev->dev, ret,
-				     "Failed to request LPM IRQ\n");
-
-	/* Setup mbox for DCVS response */
-	drv->dcvs_mbox_client.dev = &pdev->dev;
-	drv->dcvs_mbox_client.knows_txdone = true;
-	drv->dcvs_mbox_chan = mbox_request_channel(&drv->dcvs_mbox_client, 0);
-	if (IS_ERR(drv->dcvs_mbox_chan))
-		return dev_err_probe(&pdev->dev, PTR_ERR(drv->dcvs_mbox_chan),
-				     "Failed to get dcvs mbox channel\n");
-
-	INIT_WORK(&drv->dcvs_work, cdsp_dcvs_work_fn);
-	INIT_WORK(&drv->lpm_work, cdsp_lpm_work_fn);
-
-	drv->lpm_wq = alloc_ordered_workqueue("cdsp_lpm_wq", 0);
-	if (!drv->lpm_wq) {
-		mbox_free_channel(drv->dcvs_mbox_chan);
-		return dev_err_probe(&pdev->dev,
-				     -ENOMEM,
-				     "failed to allocate cdsp lpm workqueue\n");
-	}
-
-	platform_set_drvdata(pdev, drv);
-
-	dev_dbg(&pdev->dev, "CDSP power driver initialized\n");
-
 	return 0;
 }
 
-static int cdsp_power_remove(struct platform_device *pdev)
+static int cdsp_pas_probe(struct platform_device *pdev)
 {
-	struct cdsp_power_driver *drv = platform_get_drvdata(pdev);
+	struct cdsp_pas_priv *priv;
+	struct nvmem_cell *nvmem;
+	void __iomem *mpm_base;
+	void __iomem *rscc_base;
+	struct rproc *rproc;
+	u8 *disable_status;
+	size_t len;
+	int ret;
 
-	/* Cancel any pending work */
-	cancel_work_sync(&drv->dcvs_work);
-	cancel_work_sync(&drv->lpm_work);
+	/*
+	 * If nvmem-cells present on NSP/Turing node in DTSI, check QFPROM fuse
+	 * for Turing SS disable status (SOFTSKU_STATUS_TURING, bit 0).
+	 * 0 = enabled, 1 = disabled.
+	 */
+	nvmem = devm_nvmem_cell_get(&pdev->dev, NULL);
+	if (IS_ERR(nvmem)) {
+		if (PTR_ERR(nvmem) == -EPROBE_DEFER)
+			return -EPROBE_DEFER;
+	} else {
+		disable_status = nvmem_cell_read(nvmem, &len);
+		devm_nvmem_cell_put(&pdev->dev, nvmem);
+		if (!IS_ERR(disable_status) && ((unsigned int)(*disable_status) == 1)) {
+			dev_info(&pdev->dev, "NSP/Turing disabled in qfprom efuse\n");
+			kfree(disable_status);
+			return -ENODEV;
+		}
+		kfree(disable_status);
+	}
 
-	if (drv->lpm_wq)
-		destroy_workqueue(drv->lpm_wq);
+	if (!qcom_pas_is_available())
+		return -EPROBE_DEFER;
 
-	mbox_free_channel(drv->dcvs_mbox_chan);
+	rproc = rproc_alloc(&pdev->dev, pdev->name, &cdsp_pas_ops,
+			    CDSP_FIRMWARE_NAME, sizeof(*priv));
+	if (!rproc)
+		return -ENOMEM;
+
+	rproc->auto_boot = false;
+	rproc_coredump_set_elf_info(rproc, ELFCLASS32, EM_NONE);
+	rproc->dump_conf = RPROC_COREDUMP_INLINE;
+
+	priv = rproc->priv;
+	priv->dev = &pdev->dev;
+	priv->rproc = rproc;
+	mutex_init(&priv->lock);
+	priv->nsp_up = true;
+	platform_set_drvdata(pdev, priv);
+	device_init_wakeup(&pdev->dev, true);
+
+	ret = cdsp_alloc_memory_region(priv);
+	if (ret)
+		goto free_rproc;
+
+	priv->cx = devm_regulator_get(&pdev->dev, "vdd-cx");
+	if (IS_ERR(priv->cx)) {
+		ret = dev_err_probe(&pdev->dev, PTR_ERR(priv->cx), "failed to get vdd-cx\n");
+		goto free_rproc;
+	}
+
+	priv->mx = devm_regulator_get_optional(&pdev->dev, "vdd-mx");
+	if (IS_ERR(priv->mx)) {
+		if (PTR_ERR(priv->mx) != -ENODEV) {
+			ret = dev_err_probe(&pdev->dev, PTR_ERR(priv->mx),
+					    "failed to get vdd-mx\n");
+			goto free_rproc;
+		}
+		priv->mx = NULL;
+		dev_dbg(&pdev->dev, "no vdd-mx regulator, MX rail absent on this board\n");
+	}
+
+	priv->dcvs_mbox_client.dev = &pdev->dev;
+	priv->dcvs_mbox_client.knows_txdone = true;
+	priv->dcvs_mbox_chan = mbox_request_channel(&priv->dcvs_mbox_client, 0);
+	if (IS_ERR(priv->dcvs_mbox_chan)) {
+		ret = dev_err_probe(&pdev->dev, PTR_ERR(priv->dcvs_mbox_chan),
+				    "failed to get dcvs mbox channel\n");
+		goto free_rproc;
+	}
+
+	priv->dcvs_irq = platform_get_irq_byname(pdev, "dcvs");
+	if (priv->dcvs_irq < 0) {
+		ret = priv->dcvs_irq;
+		goto free_mbox;
+	}
+
+	ret = devm_request_threaded_irq(&pdev->dev, priv->dcvs_irq, NULL,
+					cdsp_dcvs_irq_handler, IRQF_ONESHOT,
+					"cdsp-dcvs", priv);
+	if (ret) {
+		dev_err_probe(&pdev->dev, ret, "failed to request dcvs irq\n");
+		goto free_mbox;
+	}
+
+	mpm_base = devm_platform_ioremap_resource_byname(pdev, "mpm");
+	if (IS_ERR(mpm_base)) {
+		ret = PTR_ERR(mpm_base);
+		goto free_mbox;
+	}
+
+	priv->mpm_regmap = devm_regmap_init_mmio(&pdev->dev, mpm_base, &cdsp_mpm_regmap_config);
+	if (IS_ERR(priv->mpm_regmap)) {
+		ret = PTR_ERR(priv->mpm_regmap);
+		goto free_mbox;
+	}
+
+	rscc_base = devm_platform_ioremap_resource_byname(pdev, "rscc");
+	if (IS_ERR(rscc_base)) {
+		ret = PTR_ERR(rscc_base);
+		goto free_mbox;
+	}
+
+	priv->rscc_regmap = devm_regmap_init_mmio(&pdev->dev, rscc_base, &cdsp_rscc_regmap_config);
+	if (IS_ERR(priv->rscc_regmap)) {
+		ret = PTR_ERR(priv->rscc_regmap);
+		goto free_mbox;
+	}
+
+	priv->lpm_irq = platform_get_irq_byname(pdev, "lpm");
+	if (priv->lpm_irq < 0) {
+		ret = priv->lpm_irq;
+		goto free_mbox;
+	}
+
+	INIT_WORK(&priv->dcvs_work, cdsp_dcvs_work_fn);
+	INIT_WORK(&priv->lpm_work, cdsp_lpm_work_fn);
+
+	priv->lpm_wq = alloc_ordered_workqueue("cdsp_lpm_wq", 0);
+	if (!priv->lpm_wq) {
+		ret = dev_err_probe(&pdev->dev, -ENOMEM, "failed to allocate lpm workqueue\n");
+		goto free_mbox;
+	}
+
+	ret = devm_request_threaded_irq(&pdev->dev, priv->lpm_irq, NULL,
+					cdsp_lpm_irq_handler, IRQF_ONESHOT,
+					"cdsp-lpm", priv);
+	if (ret) {
+		dev_err_probe(&pdev->dev, ret, "failed to request lpm irq\n");
+		goto free_lpm_wq;
+	}
+
+	ret = qcom_q6v5_init(&priv->q6v5, pdev, rproc, QCOM_SMEM_HOST_ANY,
+			     CDSP_CRASH_REASON_SMEM, CDSP_SSR_NAME, cdsp_pas_handover);
+	if (ret)
+		goto free_lpm_wq;
+
+	qcom_add_glink_subdev(rproc, &priv->glink_subdev, CDSP_SSR_NAME);
+	priv->sysmon = qcom_add_sysmon_subdev(rproc, CDSP_SSR_NAME, CDSP_SSCTL_ID);
+	qcom_add_smd_subdev(rproc, &priv->smd_subdev);
+	qcom_add_ssr_subdev(rproc, &priv->ssr_subdev, CDSP_SSR_NAME);
+
+	ret = cdsp_smem_init(priv);
+	if (ret)
+		goto remove_subdevs;
+
+	ret = rproc_add(rproc);
+	if (ret)
+		goto remove_subdevs;
+
 	return 0;
+
+remove_subdevs:
+	qcom_remove_glink_subdev(rproc, &priv->glink_subdev);
+	qcom_remove_sysmon_subdev(priv->sysmon);
+	qcom_remove_smd_subdev(rproc, &priv->smd_subdev);
+	qcom_remove_ssr_subdev(rproc, &priv->ssr_subdev);
+	qcom_q6v5_deinit(&priv->q6v5);
+free_lpm_wq:
+	destroy_workqueue(priv->lpm_wq);
+free_mbox:
+	mbox_free_channel(priv->dcvs_mbox_chan);
+free_rproc:
+	device_init_wakeup(&pdev->dev, false);
+	rproc_free(rproc);
+	return ret;
 }
 
-static const struct of_device_id cdsp_power_of_match[] = {
-	{ .compatible = "qcom,cdsp-power" },
+static void cdsp_pas_remove(struct platform_device *pdev)
+{
+	struct cdsp_pas_priv *priv = platform_get_drvdata(pdev);
+	struct rproc *rproc = priv->rproc;
+
+	disable_irq(priv->dcvs_irq);
+	disable_irq(priv->lpm_irq);
+
+	cancel_work_sync(&priv->dcvs_work);
+	cancel_work_sync(&priv->lpm_work);
+
+	destroy_workqueue(priv->lpm_wq);
+
+	rproc_del(rproc);
+
+	qcom_q6v5_deinit(&priv->q6v5);
+
+	qcom_remove_glink_subdev(rproc, &priv->glink_subdev);
+	qcom_remove_sysmon_subdev(priv->sysmon);
+	qcom_remove_smd_subdev(rproc, &priv->smd_subdev);
+	qcom_remove_ssr_subdev(rproc, &priv->ssr_subdev);
+
+	mbox_free_channel(priv->dcvs_mbox_chan);
+
+	/* Belt-and-braces: the normal path already dropped both votes via cdsp_pas_stop() */
+	mutex_lock(&priv->lock);
+	if (priv->mx && (priv->pas_active || priv->lpm_active_mx))
+		regulator_disable(priv->mx);
+	if (priv->pas_active || priv->lpm_active_cx)
+		regulator_disable(priv->cx);
+	mutex_unlock(&priv->lock);
+
+	device_init_wakeup(&pdev->dev, false);
+
+	rproc_free(rproc);
+}
+
+static const struct of_device_id cdsp_pas_of_match[] = {
+	{ .compatible = "qcom,ipq9650-cdsp-pas" },
 	{ }
 };
-MODULE_DEVICE_TABLE(of, cdsp_power_of_match);
+MODULE_DEVICE_TABLE(of, cdsp_pas_of_match);
 
-static struct platform_driver cdsp_power_driver = {
-	.probe = cdsp_power_probe,
-	.remove = cdsp_power_remove,
+static struct platform_driver cdsp_pas_driver = {
+	.probe = cdsp_pas_probe,
+	.remove_new = cdsp_pas_remove,
 	.driver = {
-		.name = "cdsp-power",
-		.of_match_table = cdsp_power_of_match,
+		.name = "qcom-q6v5-ipq-cdsp",
+		.of_match_table = cdsp_pas_of_match,
 	},
 };
 
-module_platform_driver(cdsp_power_driver);
+module_platform_driver(cdsp_pas_driver);
 
-MODULE_DESCRIPTION("CDSP Power Management Driver");
-MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("QTI IPQ9650 CDSP PAS/Power remoteproc driver");
+MODULE_LICENSE("GPL v2");
