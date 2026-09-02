@@ -640,32 +640,6 @@
 			status = "okay";
 		};
 
-		cdsp_power: cdsp-power@4AE000 {
-			compatible = "qcom,cdsp-power";
-			reg = <0x004AE000 0x1000>,
-			      <0x26018018 0x4>;
-			reg-names = "mpm", "rscc";
-
-			interrupts-extended = <&intc GIC_SPI 65 IRQ_TYPE_EDGE_RISING 0>,
-					      <&ipcc IPCC_MPROC_NSP IPCC_MPROC_SIGNAL_PING
-					      IRQ_TYPE_EDGE_RISING>;
-			interrupt-names = "lpm", "dcvs";
-
-			mboxes = <&ipcc IPCC_MPROC_NSP IPCC_MPROC_SIGNAL_PING>;
-
-			qcom,smem-item = <503>;
-
-			regulators {
-				cdsp_vdd_cx: cdsp-vdd-cx {
-					regulator-name = "cdsp-vdd-cx";
-				};
-
-				cdsp_vdd_mx: cdsp-vdd-mx {
-					regulator-name = "cdsp-vdd-mx";
-				};
-			};
-		};
-
 		feature_prov: syscon@a20a0 {
 			compatible = "syscon";
 			reg = <0xA20A0 0x10>;
@@ -2374,7 +2348,10 @@
 
 		remoteproc_cdsp: remoteproc@24000000 {
 			compatible = "qcom,ipq9650-cdsp-pas";
-			reg = <0x24000000 0x10000>;
+			reg = <0x24000000 0x10000>,
+			      <0x004AE000 0x1000>,
+			      <0x26018018 0x4>;
+			reg-names = "qdsp6", "mpm", "rscc";
 
 			nvmem-cells = <&turing_disable>;
 
@@ -2384,13 +2361,20 @@
 					      <&cdsp_smp2p_in 1 IRQ_TYPE_EDGE_RISING>,
 					      <&cdsp_smp2p_in 2 IRQ_TYPE_EDGE_RISING>,
 					      <&cdsp_smp2p_in 3 IRQ_TYPE_EDGE_RISING>,
-					      <&cdsp_smp2p_in 7 IRQ_TYPE_EDGE_RISING>;
+					      <&cdsp_smp2p_in 7 IRQ_TYPE_EDGE_RISING>,
+					      <&intc GIC_SPI 65 IRQ_TYPE_EDGE_RISING 0>,
+					      <&ipcc IPCC_MPROC_NSP IPCC_MPROC_SIGNAL_PING
+					      IRQ_TYPE_EDGE_RISING>;
 			interrupt-names = "wdog",
 					  "fatal",
 					  "ready",
 					  "handover",
 					  "stop-ack",
-					  "shutdown-ack";
+					  "shutdown-ack",
+					  "lpm",
+					  "dcvs";
+
+			mboxes = <&ipcc IPCC_MPROC_NSP IPCC_MPROC_SIGNAL_PING>;
 
 			memory-region = <&cdsp_mem &q6_cdsp_dtb_mem>;
 
