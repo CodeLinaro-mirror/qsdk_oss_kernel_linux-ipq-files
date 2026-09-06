@@ -11,6 +11,19 @@
 #define TME_KDF_SW_CONTEXT_BYTES_MAX 128
 #define TME_KDF_SALT_LABEL_BYTES_MAX 64
 
+#define TME_KID_ALLOC			0xAAAAAAAA
+#define TME_KID_CHIP_RAND_BASE		0x9
+#define TME_KID_L2_SECURESTRGSVC	0x7
+#define TME_KID_OEM_PRODUCT_SEED	0xC
+#define TME_KAL_KDF_NIST		0x80000
+#define TME_KAL_SHA512_HMAC		0x58000
+#define TME_KSC_SWCONTEXT		0x00000020
+
+/* GPCE key-distribution index and TCSR fuse registers where the result lands */
+#define GPCE_HW_KEY_INDEX		1
+#define TCSR_FUSE_SEC_HW_KEY_0		0x0193D424
+#define TCSR_FUSE_SEC_HW_KEY_COUNT	8
+
 struct tmel_msg_param_type_buf_in {
 	u32 buf;
 	u32 buf_len;
@@ -318,6 +331,53 @@ struct tmel_aes_clear_key_msg {
 	struct tmel_aes_clear_key_resp resp;
 } __packed;
 
+/*
+ * struct tme_key_policy {low,high} bitfields, mirroring TZ's tme_km_defs.h.
+ * low word:  Key Type(shift 0) | Key Length(3) | Key Purpose(7) |
+ *            Key Operation(10) | Key Algorithm(14) |
+ *            Key Storage Location(20) | Key Owner(26) | Key Lineage(30).
+ * high word: shifts below are relative to bit 32. Key Destination(38-32=6) |
+ *            Key Policy Version(44-32=12) | Authorised User(48-32=16).
+ */
+#define TME_KT_Symmetric		0x0
+#define TME_KL_128			(0x1 << 3)
+#define TME_KL_256			(0x4 << 3)
+#define TME_KP_Generic			0x0
+#define TME_KOP_Encryption		(0x1 << 10)
+#define TME_KOP_Decryption		(0x2 << 10)
+#define TME_KAL_POLICY_AES128_ECB	(0x0 << 14)
+#define TME_KAL_POLICY_AES256_ECB	(0x1 << 14)
+#define TME_KSL_HWKey			(0x2 << 20)
+#define TME_KO_TZ			(0x2 << 26)	/* EEID_TZ */
+#define TME_KO_HLOS_HYP			(0x3 << 26)	/* EEID_HLOS_HYP */
+#define TME_KLI_NA			(0x0 << 30)
+
+/* Key Destination IDs for tmelcom_aes_distribute_key(), per TME_KD_Shift = 38-32 */
+#define TME_KD_ICE	(0x2 << 6)
+#define TME_KD_GPCE	(0x4 << 6)
+
+#define TME_KPV_Version			(0x4 << 12)	/* TME_KPVERSION */
+#define TME_KAU_TZ			(0x1 << 18)	/* TME_KAU_FROM_EEID(EEID_TZ) */
+#define TME_KAU_HLOS_HYP		(0x1 << 19)	/* TME_KAU_FROM_EEID(EEID_HLOS_HYP) */
+/* Wrappable with KWK_TRANSPORT; required for OEM_PRODUCT_SEED-derived keys */
+#define TME_KWC_Wrappable_KTP		(0x4 << 1)
+
+struct tmel_aes_distribute_key_req {
+	u32 key_id;
+	u32 dst_id;
+	u32 dst_key_index;
+} __packed;
+
+struct tmel_aes_distribute_key_resp {
+	tme_status status;
+	struct tme_sequencer_status_resp seq_status;
+} __packed;
+
+struct tmel_aes_distribute_key_msg {
+	struct tmel_aes_distribute_key_req req;
+	struct tmel_aes_distribute_key_resp resp;
+} __packed;
+
 struct tmel_aes_encrypt_req {
 	u32 algo;
 	u32 key_id;
@@ -596,6 +656,9 @@ int tmelcomm_get_ecc_public_key(u32 type, void *buf, u32 size, u32 *rsp_len);
 int tmelcom_aes_derive_key(u32 key_id, dma_addr_t *dma_kdf_spec, u32 kdf_len,
 			   u8 *key_handle);
 int tmelcom_aes_clear_key(u32 handle);
+int tmelcom_aes_distribute_key(u32 key_id, u32 dst_id, u32 dst_key_index);
+int tmelcom_derive_distribute_key(u32 dst_id, u32 dst_key_index, u32 hw_key_len,
+				   const u8 *ctx, size_t ctx_len);
 int tmelcom_aes_encrypt(struct tmel_aes_encrypt_msg *msg, u32 size);
 int tmelcom_aes_decrypt(struct tmel_aes_decrypt_msg *msg, u32 size);
 int tmelcom_aes_generate_key(u32 key_id, struct tme_key_policy *policy,
@@ -756,6 +819,19 @@ static inline int tmelcom_aes_derive_key(u32 key_id, dma_addr_t *dma_kdf_spec,
 }
 
 static inline int tmelcom_aes_clear_key(u32 handle)
+{
+	return -EOPNOTSUPP;
+}
+
+static inline int tmelcom_aes_distribute_key(u32 key_id, u32 dst_id,
+					     u32 dst_key_index)
+{
+	return -EOPNOTSUPP;
+}
+
+static inline int tmelcom_derive_distribute_key(u32 dst_id, u32 dst_key_index,
+						 u32 hw_key_len, const u8 *ctx,
+						 size_t ctx_len)
 {
 	return -EOPNOTSUPP;
 }
