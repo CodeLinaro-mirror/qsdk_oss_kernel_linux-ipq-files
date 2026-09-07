@@ -24,3 +24,9 @@
 	};
 
 };
+
+&intc {
+	ppi-partitions {
+		/delete-node/ interrupt-partition-1;
+	};
+};
