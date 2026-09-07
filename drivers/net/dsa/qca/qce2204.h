@@ -97,6 +97,12 @@ enum qce2204_bp_mode {
 	QCE2204_BP_EDMA  = 1,
 };
 
+/* QCA_8021Q and 4B_QCA both insert a per-VP ATH tag; other protocols don't */
+static inline bool qce2204_proto_needs_vp_tagging(enum dsa_tag_protocol proto)
+{
+	return proto == DSA_TAG_PROTO_QCA_8021Q || proto == DSA_TAG_PROTO_4B_QCA;
+}
+
 /* QCE2204 Hardware Module Base Addresses */
 #define QCE2204_NSS_SW_GLB_REG_BASE			0x07000000
 #define QCE2204_NSS_GMAC0_BASE				0x07001000
