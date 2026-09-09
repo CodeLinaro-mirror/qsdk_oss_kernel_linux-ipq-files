@@ -947,10 +947,10 @@ void qce2204_phylink_mac_link_up(struct dsa_switch *ds, int port,
 	}
 
 	/* Set PPE port BM flow control
-	 * BM port mapping: port 0 -> BM port 7, port 1-5 -> BM port 8-12
+	 * BM port mapping: bm id equal to port id
 	 */
 	reg = QCE2204_PPE_BM_PORT_FC_MODE_ADDR +
-		QCE2204_PPE_BM_PORT_FC_MODE_INC * (port + 7);
+		QCE2204_PPE_BM_PORT_FC_MODE_INC * port;
 	val = tx_pause ? QCE2204_PPE_BM_PORT_FC_MODE_EN : 0;
 	ret = regmap_update_bits(priv->regmap, reg,
 				 QCE2204_PPE_BM_PORT_FC_MODE_EN, val);
