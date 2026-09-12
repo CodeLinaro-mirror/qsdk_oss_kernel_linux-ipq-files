@@ -852,9 +852,11 @@
 	status = "okay";
 };
 
+#if defined(__MHI_BUS_RESERVED_DMA_POOL__)
 &mhi_region1 {
 	status = "okay";
 };
+#endif
 
 &wifi3 {
 	hremote_node = <&qcn9224_pcie1>;
