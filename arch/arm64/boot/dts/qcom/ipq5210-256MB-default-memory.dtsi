@@ -6,7 +6,7 @@
  */
 
 / {
-	/*	  256MB Profile for IPQ5210 + QCN9625 + QCN9224
+	/* 256MB Profile for IPQ5210 + QCN9625 + QCN9589 + QCN9224
 	 * +==========+==============+========================+
 	 * |         |              |                         |
 	 * |  Region | Start Offset |          Size           |
@@ -19,6 +19,11 @@
 	 * +---------+--------------+-------------------------+
 	 * |         |              |                         |
 	 * | QCN9625 |    DYNAMIC   |          28MB           |
+	 * | PCIe1   |              |                         |
+	 * |         |              |                         |
+	 * +---------+--------------+-------------------------+
+	 * |         |              |                         |
+	 * | QCN9589 |    DYNAMIC   |          28MB           |
 	 * | PCIe1   |              |                         |
 	 * |         |              |                         |
 	 * +---------+--------------+-------------------------+
@@ -54,6 +59,13 @@
 		};
 
 		qcn9625_pcie1_cma: qcn9625_pcie1_cma {
+			compatible = "shared-dma-pool";
+			reusable;
+			size = <0x0 0x01c00000>;
+			status = "disabled";
+		};
+
+		qcn9589_pcie1_cma: qcn9589_pcie1_cma {
 			compatible = "shared-dma-pool";
 			reusable;
 			size = <0x0 0x01c00000>;
