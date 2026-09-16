@@ -4121,6 +4121,20 @@
 				};
 			};
 		};
+
+		soc-max-thermal {
+			polling-delay-passive = <0>;
+			polling-delay = <0>;
+			thermal-sensors = <&tsens 129>;
+
+			trips {
+				soc_max-critical {
+					temperature = <120000>;
+					hysteresis = <9000>;
+					type = "critical";
+				};
+			};
+		};
 	};
 };
 
