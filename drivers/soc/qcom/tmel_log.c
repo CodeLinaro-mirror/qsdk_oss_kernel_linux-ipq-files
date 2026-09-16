@@ -292,9 +292,13 @@ static int list_fuse_v2(const struct tmellog_data *data, char *buf)
 
 	n += scnprintf(buf + n, PAGE_SIZE - n, "TME_AUTH_EN\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
 		       fuse[0].lsb_val & data->tme_auth_en_mask);
+	n += scnprintf(buf + n, PAGE_SIZE - n, "TME_ENFORCE_OEM_AUTHEN\t0x%08X\t0x%08X\n",
+		       fuse[0].fuse_addr, fuse[0].lsb_val & 0x2);
+	n += scnprintf(buf + n, PAGE_SIZE - n, "TME_OEM_MRC_ROT\t0x%08X\t0x%08X\n",
+		       fuse[0].fuse_addr, fuse[0].lsb_val & 0xE00);
 	n += scnprintf(buf + n, PAGE_SIZE - n, "TME_OEM_ID\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
 		       fuse[0].lsb_val & 0xFFFF0000);
-	n += scnprintf(buf + n, PAGE_SIZE - n, "TME_PRODUCT_ID\t0x%08X\t0x%08X\n",
+	n += scnprintf(buf + n, PAGE_SIZE - n, "TME_OEM_PRODUCT_ID\t0x%08X\t0x%08X\n",
 		       fuse[0].fuse_addr + 0x4, fuse[0].msb_val & 0xFFFF);
 
 	for (index = 1; index < data->fuse_addr_size; index++) {

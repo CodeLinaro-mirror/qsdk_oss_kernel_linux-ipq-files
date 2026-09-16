@@ -25,6 +25,8 @@
 
 #include "tmelcom_qmi_internal.h"
 
+#define DUMP_FUSE_MAX_ADDR	32
+
 /* Global client list */
 LIST_HEAD(tmelcom_qmi_clients);
 /* Protects tmelcom_qmi_clients list */
@@ -2348,35 +2350,61 @@ static ssize_t ecc_public_key_show(struct kobject *kobj,
 	return sysfs_emit(buf, "Write src_l1_key_id to get key\n");
 }
 
-/* Fuse Read - write fuse_addr, read returns fuse value */
+/* Fuse Read - write one or more fuse_addr (space separated), read returns fuse value(s) */
 static ssize_t fuse_read_store(struct kobject *kobj,
 			       struct kobj_attribute *attr,
 			       const char *buf, size_t count)
 {
 	struct tmelcom_qmi_client *client = kobj_to_client(kobj);
-	u32 fuse_addr, fuse_val_lsb, fuse_val_msb;
-	int ret;
+	u32 addrs[DUMP_FUSE_MAX_ADDR];
+	u32 fuse_val_lsb, fuse_val_msb;
+	char *buf_copy, *token, *cur;
+	int num_addrs = 0;
+	int attach_num;
+	int ret = 0;
+	int i;
 
 	if (!client)
 		return -ENODEV;
 
-	ret = kstrtou32(buf, 0, &fuse_addr);
-	if (ret)
-		return ret;
+	buf_copy = kstrndup(buf, count, GFP_KERNEL);
+	if (!buf_copy)
+		return -ENOMEM;
+
+	cur = buf_copy;
+	while ((token = strsep(&cur, " \t\n")) != NULL) {
+		if (!*token)
+			continue;
+		if (num_addrs >= DUMP_FUSE_MAX_ADDR) {
+			pr_err("fuse_read: too many addresses, max supported is %d\n",
+			       DUMP_FUSE_MAX_ADDR);
+			kfree(buf_copy);
+			return -EINVAL;
+		}
+		ret = kstrtou32(token, 0, &addrs[num_addrs]);
+		if (ret)
+			break;
+		num_addrs++;
+	}
+	kfree(buf_copy);
+
+	if (!num_addrs || ret)
+		return ret ? ret : -EINVAL;
 
 	/* Calculate attach_num on-demand */
-	int attach_num = domain_to_attach_num(client->domain_num);
+	attach_num = domain_to_attach_num(client->domain_num);
 	if (attach_num < 0)
 		return -ENOENT;
 
-	/* Call IPC directly */
-	ret = tmelcom_qmi_read_fuse(attach_num, fuse_addr,
-				    &fuse_val_lsb, &fuse_val_msb);
-	if (ret)
-		return ret;
+	for (i = 0; i < num_addrs; i++) {
+		ret = tmelcom_qmi_read_fuse(attach_num, addrs[i],
+					    &fuse_val_lsb, &fuse_val_msb);
+		if (ret)
+			return ret;
 
-	pr_info("Fuse[0x%x]: lsb=0x%08x msb=0x%08x\n",
-		fuse_addr, fuse_val_lsb, fuse_val_msb);
+		pr_info("Fuse[0x%x]: lsb=0x%08x msb=0x%08x\n",
+			addrs[i], fuse_val_lsb, fuse_val_msb);
+	}
 
 	return count;
 }
@@ -2386,6 +2414,7 @@ static ssize_t fuse_read_show(struct kobject *kobj,
 {
 	return sysfs_emit(buf, "Write fuse_addr to read fuse value\n");
 }
+
 
 /* TMEL Version - read-only, returns version */
 static ssize_t tmel_version_show(struct kobject *kobj,
@@ -2466,30 +2495,30 @@ struct qcn9625_fuse_entry {
 
 static const struct qcn9625_fuse_entry fuse_table[] = {
 	/* name                         addr        mask        shift  mask2       shift2 out_shift2 */
-	{ "OEM_ID",                   0x1F900D0, 0x0FFFF000, 12, 0,          0, 0 },  /* TME_OEM_ATE_ROW0_LSB bits [27:12] */
-	{ "OEM_PRODUCT_ID",           0x1F900D0, 0xF0000000, 28, 0x00000FFF, 0, 4 },  /* dataLO[31:28] | dataHI[11:0]<<4 */
-	{ "AUTHENABLE",               0x1F900D0, 0x00000080, 7,  0,          0, 0 },  /* TME_OEM_ATE_ROW0_LSB bit [7] */
-	{ "ENFORCE_OEM_AUTHENABLE",   0x1F900D0, 0x00000002, 1,  0,          0, 0 },  /* TME_OEM_ATE_ROW0_LSB bit [1] (OEMSECURITYPOLICY_1) */
-	{ "TOTAL_ROT_NUM",            0x1F900D0, 0x00000E00, 9,  0,          0, 0 },  /* TME_OEM_ATE_ROW0_LSB bits [11:9] (OEM_MRC_ROOTCERT_TOTAL_NUM) */
-	{ "OEM MRC hash ROW0 LSB",    0x1F900E0, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW0_LSB */
-	{ "OEM MRC hash ROW0 MSB",    0x1F900E4, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW0_MSB */
-	{ "OEM MRC hash ROW1 LSB",    0x1F900E8, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW1_LSB */
-	{ "OEM MRC hash ROW1 MSB",    0x1F900EC, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW1_MSB */
-	{ "OEM MRC hash ROW2 LSB",    0x1F900F0, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW2_LSB */
-	{ "OEM MRC hash ROW2 MSB",    0x1F900F4, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW2_MSB */
-	{ "OEM MRC hash ROW3 LSB",    0x1F900F8, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW3_LSB */
-	{ "OEM MRC hash ROW3 MSB",    0x1F900FC, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW3_MSB */
-	{ "OEM MRC hash ROW4 LSB",    0x1F90100, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW4_LSB */
-	{ "OEM MRC hash ROW4 MSB",    0x1F90104, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW4_MSB */
-	{ "OEM MRC hash ROW5 LSB",    0x1F90108, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW5_LSB */
-	{ "OEM MRC hash ROW5 MSB",    0x1F9010C, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW5_MSB */
-	{ "OEM MRC hash ROW6 LSB",    0x1F90110, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW6_LSB */
-	{ "OEM MRC hash ROW6 MSB",    0x1F90114, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW6_MSB */
+	{ "TME_AUTH_EN",              0x1F940D0, 0x00000080, 7,  0,          0, 0 },  /* TME_OEM_ATE_ROW0_LSB bit [7] */
+	{ "TME_ENFORCE_OEM_AUTHEN",   0x1F940D0, 0x00000002, 1,  0,          0, 0 },  /* TME_OEM_ATE_ROW0_LSB bit [1] (OEMSECURITYPOLICY_1) */
+	{ "TME_OEM_MRC_ROT",          0x1F940D0, 0x00000E00, 9,  0,          0, 0 },  /* TME_OEM_ATE_ROW0_LSB bits [11:9] (OEM_MRC_ROOTCERT_TOTAL_NUM) */
+	{ "TME_OEM_ID",               0x1F940D0, 0x0FFFF000, 12, 0,          0, 0 },  /* TME_OEM_ATE_ROW0_LSB bits [27:12] */
+	{ "TME_OEM_PRODUCT_ID",       0x1F940D0, 0xF0000000, 28, 0x00000FFF, 0, 4 },  /* dataLO[31:28] | dataHI[11:0]<<4 */
+	{ "TME_MRC_HASH",             0x1F940E0, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW0_LSB */
+	{ "TME_MRC_HASH",             0x1F940E4, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW0_MSB */
+	{ "TME_MRC_HASH",             0x1F940E8, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW1_LSB */
+	{ "TME_MRC_HASH",             0x1F940EC, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW1_MSB */
+	{ "TME_MRC_HASH",             0x1F940F0, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW2_LSB */
+	{ "TME_MRC_HASH",             0x1F940F4, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW2_MSB */
+	{ "TME_MRC_HASH",             0x1F940F8, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW3_LSB */
+	{ "TME_MRC_HASH",             0x1F940FC, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW3_MSB */
+	{ "TME_MRC_HASH",             0x1F94100, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW4_LSB */
+	{ "TME_MRC_HASH",             0x1F94104, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW4_MSB */
+	{ "TME_MRC_HASH",             0x1F94108, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW5_LSB */
+	{ "TME_MRC_HASH",             0x1F9410C, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW5_MSB */
+	{ "TME_MRC_HASH",             0x1F94110, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW6_LSB */
+	{ "TME_MRC_HASH",             0x1F94114, 0xFFFFFFFF, 0,  0,          0, 0 },  /* TME_OEM_MRC_HASH_ROW6_MSB */
 };
 #define FUSE_TABLE_SIZE ARRAY_SIZE(fuse_table)
 
-static ssize_t multi_fuse_read_show(struct kobject *kobj,
-				    struct kobj_attribute *attr, char *buf)
+static ssize_t list_fuse_show(struct kobject *kobj,
+			      struct kobj_attribute *attr, char *buf)
 {
 	struct tmelcom_qmi_client *client = kobj_to_client(kobj);
 	struct qmi_tme_fuse_row_v01_v01 fuse_rows[QMI_TME_MAX_MULTI_FUSES_V01];
@@ -2704,7 +2733,7 @@ static struct kobj_attribute tmel_version_attr = __ATTR_RO(tmel_version);
 static struct kobj_attribute chip_params_attr = __ATTR_RO(chip_params);
 static struct kobj_attribute sec_elf_attr =
 	__ATTR(sec_elf, 0200, NULL, fuse_blow_store);
-static struct kobj_attribute multi_fuse_read_attr = __ATTR_RO(multi_fuse_read);
+static struct kobj_attribute list_fuse_attr = __ATTR_RO(list_fuse);
 
 static struct attribute *qmi_client_attrs[] = {
 	&instance_id_attr.attr,
@@ -2716,7 +2745,7 @@ static struct attribute *qmi_client_attrs[] = {
 	&tmel_version_attr.attr,
 	&chip_params_attr.attr,
 	&sec_elf_attr.attr,
-	&multi_fuse_read_attr.attr,
+	&list_fuse_attr.attr,
 	NULL,
 };
 
