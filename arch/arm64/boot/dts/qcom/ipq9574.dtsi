@@ -353,7 +353,8 @@
 		};
 
 		minidump_mem: minidump_mem@0 {
-			no-map;
+			compatible = "shared-dma-pool";
+			reusable;
 		};
 
 		tzapp: tzapp@0 {  /* TZAPPS */
