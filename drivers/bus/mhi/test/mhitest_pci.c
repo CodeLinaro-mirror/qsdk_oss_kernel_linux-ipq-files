@@ -29,6 +29,7 @@
 #define QCN9224_DEFAULT_FW_FILE_NAME	"qcn9224/amss.bin"
 #define QCC2072_DEFAULT_FW_FILE_NAME	"qcc2072/amss.bin"
 #define QCN9625_DEFAULT_FW_FILE_NAME	"qcn9625/amss.bin"
+#define QCN9625_V2_DEFAULT_FW_FILE_NAME	"qcn9625_v2/amss.bin"
 #define QCN9589_DEFAULT_FW_FILE_NAME	"qcn9589/amss.bin"
 
 #define PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV0		0x3164
@@ -2134,6 +2135,14 @@ int mhitest_pci_probe(struct pci_dev *pci_dev, const struct pci_device_id *id)
 	if (ret) {
 		pr_err("Error prep. pci_mhi_msi  ret:%d\n", ret);
 		goto unreg_ramdump;
+	}
+
+	if (mplat->device_id == QCN96XX_DEVICE_ID &&
+	    mplat->mhi_ctrl->major_version == 2) {
+		pr_info("Overriding FW name for QCN9625 V2\n");
+		snprintf(mplat->fw_name, sizeof(mplat->fw_name),
+			 QCN9625_V2_DEFAULT_FW_FILE_NAME);
+		mplat->mhi_ctrl->fw_image = mplat->fw_name;
 	}
 
 	if (autostart) {
