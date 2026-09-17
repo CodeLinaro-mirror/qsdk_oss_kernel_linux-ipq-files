@@ -1,0 +1,50 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/* 
+ * QMIP (QoS Management IP) Device Tree — IPQ9650 (Juhu)
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ */
+
+&soc {
+	qmip_juhu: qmip-juhu@69000 {
+			compatible = "qcom,qmip";
+			reg = <0x042EA000 0x100>,	/* danger-apss */
+			      <0x042E9000 0x100>,	/* danger-nss */
+			      <0x00030000 0x100>,	/* danger-primess */
+			      <0x042E7000 0x100>,	/* danger-nsp0 */
+			      <0x042E8000 0x100>,	/* danger-nsp1 */
+			      <0x0062A000 0x100>,	/* danger-pcie0 */
+			      <0x0062B000 0x100>,	/* danger-pcie4 */
+			      <0x0062C000 0x100>,	/* danger-pcie1 */
+			      <0x0062D000 0x100>,	/* danger-pcie2 */
+			      <0x0062E000 0x100>,	/* danger-pcie3 */
+			      <0x00031000 0x100>,	/* throttle-primess */
+			      <0x042E5000 0x100>,	/* throttle-nss */
+			      <0x00630000 0x100>,	/* throttle-pcie0 */
+			      <0x00631000 0x100>,	/* throttle-pcie4 */
+			      <0x00632000 0x100>,	/* throttle-pcie1 */
+			      <0x00633000 0x100>,	/* throttle-pcie2 */
+			      <0x00634000 0x100>,	/* throttle-pcie3 */
+			      <0x042E4000 0x100>,	/* throttle-nsp */
+			      <0x00069000 0x800>;	/* qm-base */
+			reg-names = "danger-apss",
+				    "danger-nss",
+				    "danger-primess",
+				    "danger-nsp0",
+				    "danger-nsp1",
+				    "danger-pcie0",
+				    "danger-pcie4",
+				    "danger-pcie1",
+				    "danger-pcie2",
+				    "danger-pcie3",
+				    "throttle-primess",
+				    "throttle-nss",
+				    "throttle-pcie0",
+				    "throttle-pcie4",
+				    "throttle-pcie1",
+				    "throttle-pcie2",
+				    "throttle-pcie3",
+				    "throttle-nsp",
+				    "qm-base";
+			status = "okay";
+	};
+};
