@@ -24,14 +24,12 @@
 #define SEC_MODE_CBC		BIT(1)
 #define SEC_MODE_ECB		BIT(2)
 #define SEC_MODE_CTR		BIT(3)
+#define SEC_MODE_XTS		BIT(4)
 
-#define IS_CBC(mode)                    (mode & SEC_MODE_CBC)
-#define IS_ECB(mode)                    (mode & SEC_MODE_ECB)
-#define IS_CTR(mode)                    (mode & SEC_MODE_CTR)
-
-#define MODE_CBC	1
-#define MODE_ECB	0
-#define MODE_CTR	2
+#define IS_CBC(mode)                    ((mode) & SEC_MODE_CBC)
+#define IS_ECB(mode)                    ((mode) & SEC_MODE_ECB)
+#define IS_CTR(mode)                    ((mode) & SEC_MODE_CTR)
+#define IS_XTS(mode)                    ((mode) & SEC_MODE_XTS)
 
 struct sec_cipher_ctx {
 	u8 enc_key[SEC_MAX_KEY_SIZE];
@@ -105,12 +103,27 @@ static LIST_HEAD(skcipher_algs);
 
 static DEFINE_MUTEX(seccrypt_spinlock);
 
-static int seccrypt_setkey_sec(unsigned int keylen)
+static int seccrypt_setkey_sec(unsigned int keylen, unsigned long flag)
 {
-	struct sec_config_key_sec key;
+	struct aes_set_key_req cfg;
 
-	key.keylen = keylen;
-	return qcom_seccrypt_set_key(&key, sizeof(struct sec_config_key_sec));
+	cfg.seed_type = AES_CRBK;
+	cfg.key_size = keylen;
+	if (IS_CBC(flag)) {
+		cfg.algo_mode = AES_MODE_CBC;
+	} else if (IS_ECB(flag)) {
+		cfg.algo_mode = AES_MODE_ECB;
+	} else if (IS_CTR(flag)) {
+		cfg.algo_mode = AES_MODE_CTR;
+	} else if (IS_XTS(flag)) {
+		/* XTS keylen is data key + tweak key; PTA key_size is per key */
+		cfg.algo_mode = AES_MODE_XTS;
+		cfg.key_size = keylen / 2;
+	} else {
+		return -EOPNOTSUPP;
+	}
+
+	return qcom_seccrypt_set_key(&cfg, sizeof(cfg), NULL, 0, NULL, 0);
 }
 
 static inline struct skcipher_alg *__crypto_skcipher_alg(
@@ -162,7 +175,7 @@ static int sec_skcipher_setkey(struct crypto_skcipher *tfm, const u8 *key,
 		return -EINVAL;
 
 	if (sec->fallback_tz) {
-		ret = seccrypt_setkey_sec(keylen);
+		ret = seccrypt_setkey_sec(keylen, tmpl->alg_flags);
 		if (ret) {
 			pr_info("Error in setting Key by tz\n");
 			return ret;
@@ -204,19 +217,32 @@ static int seccrypt_tz(struct skcipher_request *req,
 	/* OP-TEE backend - does not require DMA mapping */
 	if (cptr_tee) {
 		cptr_tee->direction = encrypt;
-		if (IS_CBC(flag))
-			cptr_tee->mode = MODE_CBC;
-		else if (IS_ECB(flag))
-			cptr_tee->mode = MODE_ECB;
-		else if (IS_CTR(flag))
-			cptr_tee->mode = MODE_CTR;
-		cptr_tee->iv_buf_virt = iv_buf;
-		cptr_tee->iv_buf = (u64 *)virt_to_phys(iv_buf);
+		if (IS_CBC(flag)) {
+			cptr_tee->mode = AES_MODE_CBC;
+		} else if (IS_ECB(flag)) {
+			cptr_tee->mode = AES_MODE_ECB;
+		} else if (IS_CTR(flag)) {
+			cptr_tee->mode = AES_MODE_CTR;
+		} else if (IS_XTS(flag)) {
+			cptr_tee->mode = AES_MODE_XTS;
+		} else {
+			err = -EOPNOTSUPP;
+			goto out_unlock;
+		}
+		/* PTA contract: ECB takes no IV, other modes need a 16-byte IV */
+		if (IS_ECB(flag)) {
+			cptr_tee->iv_buf_virt = NULL;
+			cptr_tee->iv_buf = NULL;
+			cptr_tee->iv_size = 0;
+		} else {
+			cptr_tee->iv_buf_virt = iv_buf;
+			cptr_tee->iv_buf = iv_buf ? (u64 *)virt_to_phys(iv_buf) : NULL;
+			cptr_tee->iv_size = iv_buf ? AES_BLOCK_SIZE : 0;
+		}
 		cptr_tee->req_buf_virt = src;
 		cptr_tee->req_buf = (u64 *)virt_to_phys(src);
 		cptr_tee->rsp_buf_virt = dst;
 		cptr_tee->rsp_buf = (u64 *)virt_to_phys(dst);
-		cptr_tee->iv_size = AES_BLOCK_SIZE;
 		cptr_tee->reqlen = reqlen;
 		cptr_tee->rsplen = reqlen;
 		err = qcom_seccrypt_crypt(cptr_tee, sizeof(struct secure_nand_aes_cmd_tee));
@@ -229,6 +255,12 @@ static int seccrypt_tz(struct skcipher_request *req,
 
 	/* SCM backend - requires DMA mapping */
 	if (cptr_scm) {
+		/* SCM backend has no XTS support */
+		if (IS_XTS(flag)) {
+			err = -EOPNOTSUPP;
+			goto out_unlock;
+		}
+
 		if (src) {
 			phy_src = dma_map_single(dev, src, reqlen, DMA_TO_DEVICE);
 			if (dma_mapping_error(dev, phy_src)) {
@@ -259,11 +291,11 @@ static int seccrypt_tz(struct skcipher_request *req,
 		/* Fill the structure to pass to TZ */
 		cptr_scm->direction = encrypt;
 		if (IS_CBC(flag))
-			cptr_scm->mode = MODE_CBC;
+			cptr_scm->mode = AES_MODE_CBC;
 		else if (IS_ECB(flag))
-			cptr_scm->mode = MODE_ECB;
+			cptr_scm->mode = AES_MODE_ECB;
 		else if (IS_CTR(flag))
-			cptr_scm->mode = MODE_CTR;
+			cptr_scm->mode = AES_MODE_CTR;
 		cptr_scm->iv_buf = (u64 *)phy_iv;
 		cptr_scm->req_buf = (u64 *)phy_src;
 		cptr_scm->rsp_buf = (u64 *)phy_dst;
@@ -442,7 +474,7 @@ static const struct sec_skcipher_def skcipher_def[] = {
 	},
 #endif
 	{
-		.flags          = 0,
+		.flags          = SEC_ALG_AES | SEC_MODE_XTS,
 		.name           = "xts(aes)",
 		.drv_name       = "xts-aes-qce",
 		.blocksize      = AES_BLOCK_SIZE,
@@ -630,6 +662,11 @@ static int seccrypt_probe(struct platform_device *pdev)
 		sec->fallback_tz = true;
 
 	for (i = 0; i < ARRAY_SIZE(skcipher_def); i++) {
+		/* SCM backend has no XTS support; don't advertise it via TZ */
+		if (IS_XTS(skcipher_def[i].flags) && !sec->cptr_tee &&
+		    sec->fallback_tz)
+			continue;
+
 		ret =  sec_skcipher_register_one(&skcipher_def[i], sec);
 		if (ret)
 			goto err;

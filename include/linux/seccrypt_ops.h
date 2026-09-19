@@ -25,7 +25,9 @@ struct qcom_seccrypt_ops {
 	struct device *dev;
 
 	bool (*available)(struct device *dev);
-	int (*set_key)(struct device *dev, void *conf_buf, u32 conf_size);
+	int (*set_key)(struct device *dev, void *conf_buf, u32 conf_size,
+		       void *ctx1_buf, u32 ctx1_size,
+		       void *ctx2_buf, u32 ctx2_size);
 	int (*crypt)(struct device *dev, void *cmd_buf, u32 cmd_size);
 	int (*clear_key)(struct device *dev);
 };
@@ -35,7 +37,9 @@ void qcom_seccrypt_ops_register(struct qcom_seccrypt_ops *ops);
 bool qcom_seccrypt_ops_available(void);
 
 /* Wrapper functions for SecCrypt operations */
-int qcom_seccrypt_set_key(void *conf_buf, u32 conf_size);
+int qcom_seccrypt_set_key(void *conf_buf, u32 conf_size,
+			  void *ctx1_buf, u32 ctx1_size,
+			  void *ctx2_buf, u32 ctx2_size);
 int qcom_seccrypt_crypt(void *cmd_buf, u32 cmd_size);
 int qcom_seccrypt_clear_key(void);
 const char *qcom_seccrypt_get_backend_name(void);
