@@ -852,9 +852,6 @@
 
 /* Enable the reserved memory regions of QCN9224 on PCIe0, PCIe1, PCIe2, PCIe3 */
 
-&mhi_region0 {
-        status = "ok";
-};
 
 &qcn9224_pcie0 {
         status = "ok";
@@ -864,15 +861,7 @@
         status = "ok";
 };
 
-&mhi_region1 {
-        status = "ok";
-};
-
 &qcn9224_pcie2 {
-        status = "ok";
-};
-
-&mhi_region2 {
         status = "ok";
 };
 
@@ -880,9 +869,23 @@
         status = "ok";
 };
 
-&mhi_region3 {
-        status = "ok";
+#if defined(__MHI_BUS_RESERVED_DMA_POOL__)
+&mhi_region0 {
+	status = "ok";
 };
+
+&mhi_region1 {
+	status = "ok";
+};
+
+&mhi_region2 {
+	status = "ok";
+};
+
+&mhi_region3 {
+	status = "ok";
+};
+#endif
 
 /* MLO GLOBAL MEM REGION size is 24MB for RDP with 4 QCN9224 radios */
 &mlo_global_mem0 {
