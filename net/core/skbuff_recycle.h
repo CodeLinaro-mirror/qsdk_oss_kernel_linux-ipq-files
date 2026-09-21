@@ -46,15 +46,8 @@
 #include <linux/ath_memdebug.h>
 #endif
 
-
-#if (CONFIG_IPQ_MEM_PROFILE == 256) && (CONFIG_SKB_RECYCLE_SIZE != 1664)
-#define SKB_RECYCLE_SIZE	1856
-#else
-#define SKB_RECYCLE_SIZE	CONFIG_SKB_RECYCLE_SIZE
-#endif
-
-#define SKB_RECYCLE_MIN_SIZE	SKB_RECYCLE_SIZE
-#define SKB_RECYCLE_MAX_SIZE	SKB_RECYCLE_SIZE
+#define SKB_RECYCLE_MIN_SIZE	skb_recycle_size
+#define SKB_RECYCLE_MAX_SIZE	skb_recycle_size
 #define SKB_RECYCLE_MAX_SKBS	1024
 
 #define SKB_RECYCLE_SPARE_MAX_SKBS		256
@@ -71,6 +64,8 @@
 
 #define SKB_RECYCLE_SPARE_MAX_SKBS_MEDIUM	128
 #define SKB_RECYCLE_SPARE_MAX_SKBS_LOW		64
+
+extern unsigned int skb_recycle_size;
 
 enum skb_mem_profile skb_get_mem_profile(void);
 
