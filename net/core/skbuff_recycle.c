@@ -122,7 +122,7 @@ inline struct sk_buff *skb_recycler_alloc(struct net_device *dev,
 		return NULL;
 	}
 
-	if (unlikely(length > SKB_RECYCLE_SIZE))
+	if (unlikely(length > skb_recycle_size))
 		return NULL;
 
 	h = &get_cpu_var(recycle_list);
@@ -194,6 +194,7 @@ inline struct sk_buff *skb_recycler_alloc(struct net_device *dev,
 		struct skb_shared_info *shinfo;
 		bool is_fast_recycled = skb->fast_recycled;
 		bool recycled_for_ds = skb->recycled_for_ds;
+		bool is_from_custom_cache = skb->is_from_custom_cache;
 
 		/* We're about to write a large amount to the skb to
 		 * zero most of the structure so prefetch the start
@@ -228,6 +229,9 @@ inline struct sk_buff *skb_recycler_alloc(struct net_device *dev,
 		}
 		if (likely(recycled_for_ds)) {
 			skb->recycled_for_ds = 1;
+		}
+		if (is_from_custom_cache) {
+			skb->is_from_custom_cache = 1;
 		}
 		mem_debug_update_skb(skb);
 	} else {
