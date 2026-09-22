@@ -200,7 +200,7 @@
 
 			apc {
 				/* voltage_table: [SVS:T0 T1 T2] [NOM:T0 T1 T2] [TUR: T0 T1 T2] */
-				qcom,voltage-table = <600000 660000 740000
+				qcom,voltage-table = <600000 660000 815000
 						      660000 753000 815000
 						      804000 895000 957000>;
 				qcom,num-thresholds = <2>;
