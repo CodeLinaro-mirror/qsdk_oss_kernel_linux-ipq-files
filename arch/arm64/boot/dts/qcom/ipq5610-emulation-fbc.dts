@@ -55,7 +55,27 @@
 		qupv3: geniqup@1ac0000 {
 			status = "okay";
 
+			spi0: spi@1a80000 {
+				status = "disabled";
+
+				flash@0 {
+					compatible = "spansion,s25fs128s1", "jedec,spi-nor";
+					#address-cells = <1>;
+					#size-cells = <1>;
+					reg = <0>;
+					spi-max-frequency = <50000000>;
+				};
+			};
+
 			uart0: serial@1a84000 {
+				status = "okay";
+			};
+
+			i2c1: i2c@1a88000 {
+				status = "okay";
+			};
+
+			i2c2: i2c@1a8c000 {
 				status = "okay";
 			};
 		};
@@ -85,3 +105,82 @@
 	status = "okay";
 };
 
+&tlmm {
+	pcie0_default_state: pcie0-default-state {
+		perst-n-pins {
+			pins = "gpio32";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-pull-down;
+			output-low;
+		};
+	};
+
+	pcie1_default_state: pcie1-default-state {
+		perst-n-pins {
+			pins = "gpio29";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-pull-down;
+			output-low;
+		};
+	};
+
+	pcie2_default_state: pcie2-default-state {
+		perst-n-pins {
+			pins = "gpio55";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-pull-down;
+			output-low;
+		};
+	};
+};
+
+&pcie0 {
+	qcom,emulation;
+	max-link-speed = <1>;
+	phys = <>;
+	phy-names = "";
+	perst-gpio = <&tlmm 32 GPIO_ACTIVE_LOW>;
+
+	pcie0_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
+&pcie1 {
+	qcom,emulation;
+	max-link-speed = <1>;
+	phys = <>;
+	phy-names = "";
+	perst-gpio = <&tlmm 29 GPIO_ACTIVE_LOW>;
+
+	pcie1_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
+&pcie2 {
+	qcom,emulation;
+	max-link-speed = <1>;
+	phys = <>;
+	phy-names = "";
+	perst-gpio = <&tlmm 55 GPIO_ACTIVE_LOW>;
+
+	pcie2_rp {
+		reg = <0 0 0 0 0>;
+
+		qcom,mhi@0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
