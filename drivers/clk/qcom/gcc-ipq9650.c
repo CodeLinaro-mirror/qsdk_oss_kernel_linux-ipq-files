@@ -1250,6 +1250,25 @@ static struct clk_rcg2 gcc_usb1_mock_utmi_clk_src = {
 	},
 };
 
+static const struct freq_tbl ftbl_gcc_qmip_core_clk_src[] = {
+	F(300000000, P_GPLL4_OUT_MAIN, 4, 0, 0),
+	{ }
+};
+
+static struct clk_rcg2 gcc_qmip_core_clk_src = {
+	.cmd_rcgr = 0x0A008,
+	.mnd_width = 0,
+	.hid_width = 5,
+	.parent_map = gcc_parent_map_1,
+	.freq_tbl = ftbl_gcc_qmip_core_clk_src,
+	.clkr.hw.init = &(const struct clk_init_data) {
+		.name = "gcc_qmip_core_clk_src",
+		.parent_data = gcc_parent_data_1,
+		.num_parents = ARRAY_SIZE(gcc_parent_data_1),
+		.ops = &clk_rcg2_ops,
+	},
+};
+
 static struct clk_regmap_div gcc_nssnoc_memnoc_div_clk_src = {
 	.reg = 0x1700c,
 	.shift = 0,
@@ -3487,6 +3506,42 @@ static struct clk_branch gcc_lpass_core_axim_clk = {
 	},
 };
 
+static struct clk_branch gcc_throttle_xo_clk = {
+	.halt_reg = 0x0A010,
+	.halt_check = BRANCH_HALT,
+	.clkr = {
+		.enable_reg = 0x0A010,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data) {
+			.name = "gcc_throttle_xo_clk",
+			.parent_hws = (const struct clk_hw*[]) {
+				&gcc_xo_clk_src.clkr.hw,
+			},
+			.num_parents = 1,
+			.flags = CLK_SET_RATE_PARENT,
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_qmip_core_clk = {
+	.halt_reg = 0x0A00C,
+	.halt_check = BRANCH_HALT,
+	.clkr = {
+		.enable_reg = 0x0A00C,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data) {
+			.name = "gcc_qmip_core_clk",
+			.parent_hws = (const struct clk_hw*[]) {
+				&gcc_qmip_core_clk_src.clkr.hw,
+			},
+			.num_parents = 1,
+			.flags = CLK_SET_RATE_PARENT,
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
 static struct clk_regmap *gcc_ipq9650_clocks[] = {
 	[GCC_ADSS_PWM_CLK] = &gcc_adss_pwm_clk.clkr,
 	[GCC_ADSS_PWM_CLK_SRC] = &gcc_adss_pwm_clk_src.clkr,
@@ -3669,6 +3724,9 @@ static struct clk_regmap *gcc_ipq9650_clocks[] = {
 	[GPLL4] = &gpll4.clkr,
 	[GCC_REFGEN_CMN_UPHY_HCLK] = &gcc_refgen_cmn_uphy_hclk.clkr,
 	[GCC_REFGEN_CMN_UPHY_CORE_CLK] = &gcc_refgen_cmn_uphy_core_clk.clkr,
+	[GCC_QMIP_CORE_CLK_SRC] = &gcc_qmip_core_clk_src.clkr,
+	[GCC_QMIP_CORE_CLK] = &gcc_qmip_core_clk.clkr,
+	[GCC_THROTTLE_XO_CLK] = &gcc_throttle_xo_clk.clkr,
 };
 
 static const struct qcom_reset_map gcc_ipq9650_resets[] = {
