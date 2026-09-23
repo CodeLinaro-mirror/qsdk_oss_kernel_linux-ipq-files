@@ -207,19 +207,22 @@ static int qcom_ice_tee_program_key(struct device *dev, u8 algorithm_id,
 	inv_arg.session = priv->session_id;
 	inv_arg.num_params = 4;
 
+	/* p[0]: slot_index (value.a) + cap_index/cipher (value.b) */
 	param[0].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INPUT;
 	param[0].u.value.a = slot;
+	param[0].u.value.b = cipher;
 
-	param[1].attr = TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INPUT;
-	param[1].u.memref.shm = key_shm;
-	param[1].u.memref.size = key_len;
-	param[1].u.memref.shm_offs = 0;
+	/* p[1]: data_unit_size */
+	param[1].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INPUT;
+	param[1].u.value.a = data_unit_size;
 
-	param[2].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INPUT;
-	param[2].u.value.a = cipher;
+	/* p[2]: key (and salt for XTS) in shared memory */
+	param[2].attr = TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INPUT;
+	param[2].u.memref.shm = key_shm;
+	param[2].u.memref.size = key_len;
+	param[2].u.memref.shm_offs = 0;
 
-	param[3].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INPUT;
-	param[3].u.value.a = data_unit_size;
+	/* p[3]: unused */
 
 	ret = tee_client_invoke_func(priv->ctx, &inv_arg, param);
 	if (ret < 0 || inv_arg.ret != TEEC_SUCCESS) {
@@ -248,10 +251,12 @@ static int qcom_ice_tee_evict_key(struct device *dev, int slot)
 
 	inv_arg.func = ICE_TA_CMD_INVALIDATE_KEY;
 	inv_arg.session = priv->session_id;
-	inv_arg.num_params = 1;
+	inv_arg.num_params = 4;
 
 	param[0].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INPUT;
 	param[0].u.value.a = slot;
+	param[0].u.value.b = 0;
+	/* params[1..3] stay TEE_IOCTL_PARAM_ATTR_TYPE_NONE (zeroed above) */
 
 	ret = tee_client_invoke_func(priv->ctx, &inv_arg, param);
 	if (ret < 0 || inv_arg.ret != TEEC_SUCCESS) {
