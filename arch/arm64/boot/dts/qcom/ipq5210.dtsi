@@ -286,11 +286,21 @@
 
 	sysregister {
 		compatible = "qcom,sysregister";
-		reg-names = "bootcount", "force_inactive";
-		reg-access-type = "syscon", "syscon";
-		reg-phandle = <&imem>, <&imem>;
-		reg-offset = <0xC8>, <0xCC>;
-		reg-bit-position = <0xffffffff>, <0xffffffff>;
+		reg-names = "bootcount", "force_inactive", "cpr_fuse",
+			    "cpu_speed_bin", "feat_prov_out0",
+			    "feat_prov_out1", "feat_prov_out2",
+			    "feat_prov_out3";
+		reg-access-type = "syscon", "syscon", "fuse",
+				  "fuse", "fuse", "fuse", "fuse", "fuse";
+		reg-phandle = <&imem>, <&imem>, <&qfprom_fuse>,
+			      <&qfprom_fuse>, <&feature_prov>, <&feature_prov>,
+			      <&feature_prov>, <&feature_prov>;
+		reg-offset = <0xC8>, <0xCC>, <0x3F0>, <0x28>, <0x0>,
+			     <0x4>, <0x8>, <0xC>;
+		reg-bit-position = <0xffffffff>, <0xffffffff>, <15>, <0>,
+				   <0xffffffff>, <0xffffffff>, <0xffffffff>,
+				   <0xffffffff>;
+		reg-bit-width = <0>, <0>, <6>, <8>, <0>, <0>, <0>, <0>;
 	};
 
 	soc@0 {
@@ -310,8 +320,13 @@
 			status = "disabled";
 		};
 
-		efuse@a4000 {
-			compatible = "qcom,qfprom";
+		feature_prov: syscon@a20a0 {
+			compatible = "syscon";
+			reg = <0xA20A0 0x10>;
+		};
+
+		qfprom_fuse: efuse@a4000 {
+			compatible = "qcom,qfprom", "syscon";
 			reg = <0xA4000 0x741>;
 			#address-cells = <1>;
 			#size-cells = <1>;
