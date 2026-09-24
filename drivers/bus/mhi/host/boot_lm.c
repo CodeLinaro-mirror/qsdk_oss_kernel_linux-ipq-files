@@ -12,7 +12,8 @@
 
 #define PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV1     0x3168
 #define PCIE_SOC_PCIE_REG_PCIE_SCRATCH_0	0x4040
-#define PCIE_REMAP_BAR_CTRL_OFFSET              0x310C
+#define PCIE_REMAP_BAR_CTRL_OFFSET_QCN9224      0x310C
+#define PCIE_REMAP_BAR_CTRL_OFFSET_QCN9625      0x3278
 #define PCIE_SCRATCH_0_WINDOW_VAL		0x4000003C
 #define MAX_UNWINDOWED_ADDRESS                  0x80000
 #define WINDOW_ENABLE_BIT                       0x40000000
@@ -26,15 +27,27 @@
 #define CBOR_REQ_MAGIC				"SFID"
 #define CBOR_REQ_SIZE				2048
 
+static u32 mhi_get_pcie_remap_bar_ctrl_offset(struct mhi_controller *mhi_cntrl)
+{
+	switch (mhi_cntrl->device_number) {
+	case QCN9625_DEVICE_NUM:
+	case QCN9589_DEVICE_NUM:
+		return PCIE_REMAP_BAR_CTRL_OFFSET_QCN9625;
+	default:
+		return PCIE_REMAP_BAR_CTRL_OFFSET_QCN9224;
+	}
+}
+
 static int mhi_select_window(struct mhi_controller *mhi_cntrl, u32 addr)
 {
+	u32 remap_bar_ctrl_offset = mhi_get_pcie_remap_bar_ctrl_offset(mhi_cntrl);
 	u32 window = (addr >> WINDOW_SHIFT) & WINDOW_VALUE_MASK;
 	u32 prev_window = 0, curr_window = 0;
 	u32 read_val = 0;
 	int retry = 0;
 	int ret;
 
-	 ret = mhi_read_reg(mhi_cntrl, mhi_cntrl->regs, PCIE_REMAP_BAR_CTRL_OFFSET, &prev_window);
+	 ret = mhi_read_reg(mhi_cntrl, mhi_cntrl->regs, remap_bar_ctrl_offset, &prev_window);
 	 if (ret)
 		 return ret;
 
@@ -46,16 +59,16 @@ static int mhi_select_window(struct mhi_controller *mhi_cntrl, u32 addr)
 
 	curr_window |= WINDOW_ENABLE_BIT;
 
-	mhi_write_reg(mhi_cntrl, mhi_cntrl->regs, PCIE_REMAP_BAR_CTRL_OFFSET, curr_window);
+	mhi_write_reg(mhi_cntrl, mhi_cntrl->regs, remap_bar_ctrl_offset, curr_window);
 
-	ret = mhi_read_reg(mhi_cntrl, mhi_cntrl->regs, PCIE_REMAP_BAR_CTRL_OFFSET, &read_val);
+	ret = mhi_read_reg(mhi_cntrl, mhi_cntrl->regs, remap_bar_ctrl_offset, &read_val);
 	if (ret)
 		return ret;
 
 	/* Wait till written value reflects */
 	while((read_val != curr_window) && (retry < 10)) {
 		mdelay(1);
-		ret = mhi_read_reg(mhi_cntrl, mhi_cntrl->regs, PCIE_REMAP_BAR_CTRL_OFFSET, &read_val);
+		ret = mhi_read_reg(mhi_cntrl, mhi_cntrl->regs, remap_bar_ctrl_offset, &read_val);
 		if (ret)
 			return ret;
 		retry++;
@@ -207,20 +220,20 @@ void mhi_download_fw_license(struct mhi_controller *mhi_cntrl)
 static int mhi_update_scratch_reg(struct mhi_controller *mhi_cntrl, u32 val)
 {
 	struct device *dev = &mhi_cntrl->mhi_dev->dev;
+	u32 remap_bar_ctrl_offset = mhi_get_pcie_remap_bar_ctrl_offset(mhi_cntrl);
 	u32 rd_val;
 	int ret = 0;
 	int retry;
 	const int max_retries = 3;
 
 	/* Program Window register to update boot args pointer */
-	ret = mhi_read_reg(mhi_cntrl, mhi_cntrl->regs, PCIE_REMAP_BAR_CTRL_OFFSET,
-			&rd_val);
+	ret = mhi_read_reg(mhi_cntrl, mhi_cntrl->regs, remap_bar_ctrl_offset, &rd_val);
 	if (ret)
 		return ret;
 
 	rd_val = rd_val & ~(0x3f);
 
-	mhi_write_reg(mhi_cntrl, mhi_cntrl->regs, PCIE_REMAP_BAR_CTRL_OFFSET,
+	mhi_write_reg(mhi_cntrl, mhi_cntrl->regs, remap_bar_ctrl_offset,
 		      PCIE_SCRATCH_0_WINDOW_VAL | rd_val);
 
 	/* Retry loop for writing and verifying scratch register */
