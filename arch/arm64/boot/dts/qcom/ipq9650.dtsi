@@ -3853,13 +3853,13 @@
 
 			trips {
 				cpu-critical {
-					temperature = <115000>;
+					temperature = <120000>;
 					hysteresis = <9000>;
 					type = "critical";
 				};
 
 				cpu0_thermal_alert: cpu-passive {
-					temperature = <100000>;
+					temperature = <110000>;
 					hysteresis = <9000>;
 					type = "passive";
 				};
@@ -3884,13 +3884,13 @@
 
 			trips {
 				cpu-critical {
-					temperature = <115000>;
+					temperature = <120000>;
 					hysteresis = <9000>;
 					type = "critical";
 				};
 
 				cpu-passive {
-					temperature = <100000>;
+					temperature = <110000>;
 					hysteresis = <9000>;
 					type = "passive";
 				};
@@ -3904,13 +3904,13 @@
 
 			trips {
 				cpu-critical {
-					temperature = <115000>;
+					temperature = <120000>;
 					hysteresis = <9000>;
 					type = "critical";
 				};
 
 				cpu-passive {
-					temperature = <100000>;
+					temperature = <110000>;
 					hysteresis = <9000>;
 					type = "passive";
 				};
@@ -3924,13 +3924,13 @@
 
 			trips {
 				cpu-critical {
-					temperature = <115000>;
+					temperature = <120000>;
 					hysteresis = <9000>;
 					type = "critical";
 				};
 
 				cpu-passive {
-					temperature = <100000>;
+					temperature = <110000>;
 					hysteresis = <9000>;
 					type = "passive";
 				};
@@ -3944,13 +3944,13 @@
 
 			trips {
 				cpu-critical {
-					temperature = <115000>;
+					temperature = <120000>;
 					hysteresis = <9000>;
 					type = "critical";
 				};
 
 				cpu-passive {
-					temperature = <100000>;
+					temperature = <110000>;
 					hysteresis = <9000>;
 					type = "passive";
 				};
@@ -3964,13 +3964,13 @@
 
 			trips {
 				cpu-critical {
-					temperature = <115000>;
+					temperature = <120000>;
 					hysteresis = <9000>;
 					type = "critical";
 				};
 
 				cpu-passive {
-					temperature = <100000>;
+					temperature = <110000>;
 					hysteresis = <9000>;
 					type = "passive";
 				};
