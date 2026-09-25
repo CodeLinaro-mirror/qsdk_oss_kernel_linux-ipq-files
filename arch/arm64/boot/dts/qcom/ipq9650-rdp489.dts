@@ -186,8 +186,8 @@
 			states = <600000 0x0>,
 				 <660000 0x1>,
 				 <740000 0x2>,
-				 <753000 0x3>,
-				 <804000 0x4>,
+				 <804000 0x3>,
+				 <753000 0x4>,
 				 <815000 0x5>,
 				 <895000 0x6>,
 				 <957000 0x7>;
@@ -226,19 +226,13 @@
 			apc-supply = <&apc_rail>;
 			nsp_cx-supply = <&cdsp_cx_rail>;
 			/delete-property/ nsp_mx-supply;
-			nvmem-cells = <&apc_svs_fuse>, <&apc_nom_fuse>, <&apc_turl1_fuse>,
-				      <&nsp_cx_svs_fuse>, <&nsp_cx_svs_l1_fuse>,
-				      <&nsp_cx_nom_fuse>, <&cpr_fusing_rev_bit0>,
-				      <&cpr_fusing_rev_bit2_1>;
-			nvmem-cell-names = "cpr_apc_svs", "cpr_apc_nom", "cpr_apc_tur",
-					   "cpr_nsp_cx_svs", "cpr_nsp_cx_svs_l1",
-					   "cpr_nsp_cx_nom", "cpr_fusing_rev_bit0",
-					   "cpr_fusing_rev_bit2_1";
+			nvmem-cells = <&apc_nom_fuse>, <&nsp_cx_nom_fuse>,
+				      <&cpr_fusing_rev_bit0>, <&cpr_fusing_rev_bit2_1>;
+			nvmem-cell-names = "cpr_apc_nom", "cpr_nsp_cx_nom",
+					   "cpr_fusing_rev_bit0", "cpr_fusing_rev_bit2_1";
 			apc: apc {
-				qcom,fuse-params = <7 660000 10000 600000 740000
-						    7 753000 10000 660000 815000
-						    7 895000 10000 804000 957000>;
-				qcom,num-fuses = <3>;
+				qcom,fuse-params = <7 753000 10000 660000 815000>;
+				qcom,num-fuses = <1>;
 				/* voltage_table: <ceiling voltages> per mode */
 				qcom,voltage-table = <740000 815000 957000>;
 				qcom,num-thresholds = <2>;
@@ -249,16 +243,12 @@
 			nsp_cx: nsp_cx {
 				regulator-min-microvolt = <1>;
 				regulator-max-microvolt = <3>;
-
-				/* SVS/SVS_L1/NOM - [bitlen][ref][step][floor][ceiling] */
-				qcom,fuse-params = <7 660000 10000 600000 750000
-						    7 660000 10000 600000 750000
-						    7 750000 10000 660000 815000>;
+				qcom,fuse-params = <7 750000 10000 660000 815000>;
 				/* voltage_table: <ceiling voltages> per mode */
 				qcom,voltage-table = <750000 750000 815000>;
 				qcom,num-thresholds = <2>;
 				qcom,thresholds = <650000 750000>;
-				qcom,num-fuses = <3>;
+				qcom,num-fuses = <1>;
 				qcom,gpio-regulator = <&apc_gpio_regulator>;
 			};
 		};
