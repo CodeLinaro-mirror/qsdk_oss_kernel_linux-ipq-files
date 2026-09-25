@@ -364,13 +364,13 @@
 				regulator-boot-on;
 				regulator-always-on;
 
-				qcom,fuse-params = <7 630000 5000 550000 735000
+				qcom,fuse-params = <7 750000 5000 550000 750000
 						    7 750000 5000 650000 815000
 						    7 890000 5000 800000 960000>;
 				qcom,num-fuses = <3>;
 
 				/* voltage_table: <ceiling voltages> per mode */
-				qcom,voltage-table = <735000 815000 960000>;
+				qcom,voltage-table = <750000 815000 960000>;
 				qcom,num-thresholds = <2>;
 				qcom,thresholds = <650000 750000>;
 			};
