@@ -731,7 +731,7 @@ static int read_cpr_fusing_revision(struct device *dev, u8 *cpr_rev)
 	/* Combine: [BIT2 BIT1 BIT0] */
 	*cpr_rev = (bit2_1 << 1) | bit0;
 
-	dev_dbg(dev, "CPR fusing revision: %d (bit0=%d, bit2_1=%d)\n",
+	dev_info(dev, "CPR fusing revision: %d (bit0=%d, bit2_1=%d)\n",
 		*cpr_rev, bit0, bit2_1);
 
 	return 0;
@@ -872,6 +872,8 @@ free_adjustment:
  * @dev: Device pointer
  * @reg_data: Regulator configuration data
  * @fix_volt_max: Force maximum (ceiling) voltage flag
+ * @cpr_rev: CPR fusing revision (0-7), read once by the caller and reused
+ *           here for the voltage-adjustment matrix lookup
  *
  * Reads fuse parameters from device tree, accesses eFuse hardware registers
  * via NVMEM, reads reference voltages, applies fuse corrections, and
@@ -884,7 +886,7 @@ free_adjustment:
  */
 static int process_open_loop_cpr_regulator(struct device *dev,
 					   const struct open_loop_cpr_regulator_data *reg_data,
-					   bool fix_volt_max)
+					   bool fix_volt_max, u8 cpr_rev)
 {
 	const struct open_loop_cpr_regulator_params *default_params = reg_data->params;
 	const struct voltage_config *vconfig = default_params->voltage_config;
@@ -903,7 +905,7 @@ static int process_open_loop_cpr_regulator(struct device *dev,
 	struct reg_info *reg_info;
 	struct nvmem_cell *cell;
 	u8 override_num_fuses;
-	u8 cpr_rev, part_type;
+	u8 part_type;
 	char fuse_name[32];
 	int fused_volt;
 	u16 volt_ticks;
@@ -983,7 +985,8 @@ static int process_open_loop_cpr_regulator(struct device *dev,
 		if (fix_volt_max) {
 			/*
 			 * Use ceiling voltage directly when voltage scaling is
-			 * disabled via qcom,skip-voltage-scaling quirk.
+			 * disabled: blank part (cpr_revision of 0) or the
+			 * qcom,skip-voltage-scaling override is set.
 			 */
 			dev_dbg(dev,
 				"%s_%s: forced ceiling voltage %duV\n",
@@ -1049,11 +1052,6 @@ static int process_open_loop_cpr_regulator(struct device *dev,
 	 * lookup never used them, so skip this block for GPIO-backed rails.
 	 */
 	if (!fix_volt_max && !gpio_np) {
-		rc = read_cpr_fusing_revision(dev, &cpr_rev);
-		if (rc)
-			return dev_err_probe(dev, rc,
-					     "Failed to read CPR fusing revision\n");
-
 		determine_part_type(dev, default_params, vconfig,
 				    fused_volt_table[num_fuses - 1],
 				    &part_type);
@@ -1186,9 +1184,15 @@ static int process_open_loop_cpr_regulator(struct device *dev,
  * @pdev: Platform device pointer
  *
  * Retrieves platform-specific regulator data from the device tree match
- * table, checks for voltage scaling quirks, and invokes
- * process_open_loop_cpr_regulator() for each regulator entry to perform
- * fuse reading, voltage calculation, and regulator registration.
+ * table, then determines whether voltage scaling should be skipped in favor
+ * of ceiling voltages. This is decided by the CPR fusing revision: a
+ * revision of 0 marks a non-fused board, which falls back to ceiling
+ * voltages; any other revision marks a CPR-fused board, which uses
+ * fuse-corrected voltages. The qcom,skip-voltage-scaling property remains
+ * a manual override that forces ceiling voltages regardless of CPR fusing
+ * revision. Invokes process_open_loop_cpr_regulator() for each regulator
+ * entry to perform fuse reading, voltage calculation, and regulator
+ * registration.
  *
  * Return: 0 on success, negative error code on failure
  */
@@ -1197,18 +1201,28 @@ static int open_loop_cpr_regulator_probe(struct platform_device *pdev)
 	const struct open_loop_cpr_regulator_data *reg_data;
 	struct device *dev = &pdev->dev;
 	bool fix_volt_max = false;
+	u8 cpr_rev = 0;
 	int ret = 0;
 
 	reg_data = of_device_get_match_data(dev);
 	if (!reg_data)
 		return -ENODEV;
 
+	ret = read_cpr_fusing_revision(dev, &cpr_rev);
+	if (ret)
+		return dev_err_probe(dev, ret,
+				     "Failed to read CPR fusing revision\n");
+
+	/* Apply ceiling voltages for blank parts */
+	if (cpr_rev == 0)
+		fix_volt_max = true;
+
 	if (device_property_read_bool(dev, "qcom,skip-voltage-scaling"))
 		fix_volt_max = true;
 
 	for (; reg_data->regulator_name; reg_data++) {
 		ret = process_open_loop_cpr_regulator(dev, reg_data,
-						      fix_volt_max);
+						      fix_volt_max, cpr_rev);
 		if (ret < 0)
 			return dev_err_probe(dev,
 					     ret,
