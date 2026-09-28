@@ -85,6 +85,7 @@ void skb_recycler_clear_fast_flags(struct sk_buff *skb)
 	skb->fast_recycled = 0;
 	skb->recycled_for_ds = 0;
 	skb->fast_qdisc = 0;
+	skb->is_from_custom_cache = 0;
 }
 
 /**
