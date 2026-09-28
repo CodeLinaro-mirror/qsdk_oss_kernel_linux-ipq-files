@@ -303,13 +303,13 @@ static int nft_npt_init(const struct nft_ctx *ctx, const struct nft_expr *expr, 
 	priv->family = family;
 
 	if (tb[NFTA_NPT_REG_SRC_PFX]) {
-		err = nft_parse_register_load(tb[NFTA_NPT_REG_SRC_PFX], &priv->sreg_src_pfx, alen);
+		err = nft_parse_register_load(ctx, tb[NFTA_NPT_REG_SRC_PFX], &priv->sreg_src_pfx, alen);
 		if (err < 0)
 			return err;
 	}
 
 	if (tb[NFTA_NPT_REG_DST_PFX]) {
-		err = nft_parse_register_load(tb[NFTA_NPT_REG_DST_PFX], &priv->sreg_dst_pfx, alen);
+		err = nft_parse_register_load(ctx, tb[NFTA_NPT_REG_DST_PFX], &priv->sreg_dst_pfx, alen);
 		if (err < 0)
 			return err;
 	}
