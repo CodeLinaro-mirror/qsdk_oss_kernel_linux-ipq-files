@@ -324,18 +324,25 @@ static int open_loop_cpr_regulator_set_voltage(struct regulator_dev *rdev,
 	/* Look up the pre-calculated fuse-corrected voltage for this mode */
 	voltage = reg_info->voltage_table[mode];
 
-	if (voltage > reg_info->ceiling_table[mode]) {
-		dev_warn(dev, "%s: mode=%s requested %duV exceeds ceiling %duV, clamping\n",
-			 rdev_get_name(rdev),
-			 get_mode_name(reg_info->mode_names, reg_info->num_modes, mode),
-			 voltage, reg_info->ceiling_table[mode]);
-		voltage = reg_info->ceiling_table[mode];
-	} else if (voltage < reg_info->floor_table[mode]) {
-		dev_warn(dev, "%s: mode=%s requested %duV below floor %duV, clamping\n",
-			 rdev_get_name(rdev),
-			 get_mode_name(reg_info->mode_names, reg_info->num_modes, mode),
-			 voltage, reg_info->floor_table[mode]);
-		voltage = reg_info->floor_table[mode];
+	/*
+	 * floor_table/ceiling_table are only populated for PMIC-backed rails
+	 * as GPIO-backed rails get their final voltage from the lookup
+	 * table.
+	 */
+	if (reg_info->ceiling_table[mode]) {
+		if (voltage > reg_info->ceiling_table[mode]) {
+			dev_warn(dev, "%s: mode=%s requested %duV exceeds ceiling %duV, clamping\n",
+				 rdev_get_name(rdev),
+				 get_mode_name(reg_info->mode_names, reg_info->num_modes, mode),
+				 voltage, reg_info->ceiling_table[mode]);
+			voltage = reg_info->ceiling_table[mode];
+		} else if (voltage < reg_info->floor_table[mode]) {
+			dev_warn(dev, "%s: mode=%s requested %duV below floor %duV, clamping\n",
+				 rdev_get_name(rdev),
+				 get_mode_name(reg_info->mode_names, reg_info->num_modes, mode),
+				 voltage, reg_info->floor_table[mode]);
+			voltage = reg_info->floor_table[mode];
+		}
 	}
 
 	dev_dbg(dev, "mode=%s(%d) -> %duV\n",
@@ -892,6 +899,7 @@ static int process_open_loop_cpr_regulator(struct device *dev,
 	const struct voltage_config *vconfig = default_params->voltage_config;
 	const struct fuse_params *fparams = default_params->fuse_params;
 	u8 num_fuses = default_params->num_fuses;
+	u8 num_modes;
 	int fused_volt_table[MAX_MODES];
 	struct voltage_config *override_vconfig;
 	struct fuse_params *override_fparams;
@@ -907,6 +915,7 @@ static int process_open_loop_cpr_regulator(struct device *dev,
 	u8 override_num_fuses;
 	u8 part_type;
 	char fuse_name[32];
+	const char *fuse_mode_name;
 	int fused_volt;
 	u16 volt_ticks;
 	size_t len;
@@ -971,8 +980,21 @@ static int process_open_loop_cpr_regulator(struct device *dev,
 				     num_fuses, MAX_MODES);
 	}
 
+	/*
+	 * GPIO-backed rails classify the part once from NOM fuse
+	 * and reuse that classification for every mode
+	 */
+	if (gpio_np && num_fuses != 1) {
+		of_node_put(gpio_np);
+		return dev_err_probe(dev, -EINVAL,
+				     "%s: GPIO-backed rails requires only nom fuse, got %u\n",
+				     reg_data->regulator_name, num_fuses);
+	}
+
+	num_modes = gpio_np ? QCOM_GPIO_VT_MAX_MODES : num_fuses;
+
 	reg_info->mode_names = default_params->mode_names;
-	reg_info->num_modes = num_fuses;
+	reg_info->num_modes = num_modes;
 
 	/* Initialize fused-voltage table with ceiling voltages as safe defaults */
 	for (mode = 0; mode < num_fuses; mode++)
@@ -981,6 +1003,13 @@ static int process_open_loop_cpr_regulator(struct device *dev,
 	/* Read fuses and calculate operating voltage for each mode */
 	for (mode = 0; mode < num_fuses; mode++) {
 		fuse = &fparams[mode];
+
+		/*
+		 * GPIO-backed rails read only NOM fuse so hardcode nom instead
+		 * of fetching the mode name which returns the mode based on index
+		 */
+		fuse_mode_name = gpio_np ? "nom" :
+				 get_mode_name(reg_info->mode_names, num_fuses, mode);
 
 		if (fix_volt_max) {
 			/*
@@ -991,14 +1020,14 @@ static int process_open_loop_cpr_regulator(struct device *dev,
 			dev_dbg(dev,
 				"%s_%s: forced ceiling voltage %duV\n",
 				reg_data->regulator_name,
-				get_mode_name(reg_info->mode_names, num_fuses, mode),
+				fuse_mode_name,
 				fused_volt_table[mode]);
 			continue;
 		}
 
 		snprintf(fuse_name, sizeof(fuse_name), "cpr_%s_%s",
 			 reg_data->regulator_name,
-			 get_mode_name(reg_info->mode_names, num_fuses, mode));
+			 fuse_mode_name);
 
 		cell = nvmem_cell_get(dev, fuse_name);
 		if (IS_ERR(cell)) {
@@ -1039,7 +1068,7 @@ static int process_open_loop_cpr_regulator(struct device *dev,
 
 		dev_dbg(dev, "%s_%s: ref=%duV, fused=%duV\n",
 			reg_data->regulator_name,
-			get_mode_name(reg_info->mode_names, num_fuses, mode),
+			fuse_mode_name,
 			fuse->reference_volt, fused_volt);
 
 		/* Store the fuse-corrected voltage directly for this mode */
@@ -1079,18 +1108,17 @@ static int process_open_loop_cpr_regulator(struct device *dev,
 	 * its 2D [mode][type] table (or forces the TYPE2 column when
 	 * fix_volt_max is set, same intent as the ceiling fallback used below
 	 * for PMIC-backed rails). PMIC-backed rails use the fused voltage
-	 * directly, as before.
+	 * directly
 	 *
-	 * Regardless of path, also copy the per-mode floor/ceiling bounds
-	 * from fparams onto reg_info so they are available at set_voltage()
-	 * time to check the value actually handed to the regulator framework.
+	 * GPIO-backed rails classify once from fused_volt_table[0] and
+	 * reuse that single classification for every operating modes.
 	 */
-	for (mode = 0; mode < num_fuses; mode++) {
+	for (mode = 0; mode < num_modes; mode++) {
 		if (gpio_np) {
 			rc = qcom_gpio_regulator_get_voltage(gpio_np,
 							     reg_data->regulator_name,
 							     mode,
-							     fused_volt_table[mode],
+							     fused_volt_table[0],
 							     fix_volt_max);
 			if (rc < 0) {
 				of_node_put(gpio_np);
@@ -1098,15 +1126,14 @@ static int process_open_loop_cpr_regulator(struct device *dev,
 						     "%s_%s: gpio voltage lookup failed\n",
 						     reg_data->regulator_name,
 						     get_mode_name(reg_info->mode_names,
-								   num_fuses, mode));
+								   num_modes, mode));
 			}
 			reg_info->voltage_table[mode] = rc;
 		} else {
 			reg_info->voltage_table[mode] = fused_volt_table[mode];
+			reg_info->floor_table[mode]   = fparams[mode].floor_volt;
+			reg_info->ceiling_table[mode] = fparams[mode].ceiling_volt;
 		}
-
-		reg_info->floor_table[mode]   = fparams[mode].floor_volt;
-		reg_info->ceiling_table[mode] = fparams[mode].ceiling_volt;
 	}
 
 	/*
@@ -1157,7 +1184,7 @@ static int process_open_loop_cpr_regulator(struct device *dev,
 	desc->ops = &open_loop_cpr_regulator_ops;
 	desc->owner = THIS_MODULE;
 	desc->min_uV = 1;
-	desc->n_voltages = num_fuses;
+	desc->n_voltages = num_modes;
 	desc->supply_name = reg_data->regulator_name;
 	config.dev = dev;
 	config.driver_data = reg_info;
@@ -1170,10 +1197,10 @@ static int process_open_loop_cpr_regulator(struct device *dev,
 
 	reg_info->base_rdev = rdev->supply->rdev;
 
-	for (mode = 0; mode < num_fuses; mode++)
+	for (mode = 0; mode < num_modes; mode++)
 		dev_info(dev, "%s voltage[%s] = %duV\n",
 			 reg_data->regulator_name,
-			get_mode_name(reg_info->mode_names, num_fuses, mode),
+			get_mode_name(reg_info->mode_names, num_modes, mode),
 			reg_info->voltage_table[mode]);
 
 	return 0;
