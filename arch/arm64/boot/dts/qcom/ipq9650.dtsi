@@ -615,11 +615,12 @@
 			reg = <0x4a9000 0x1000>,
 			      <0x4a8000 0x1000>;
 			nvmem-cells = <&tsens_mode>, <&tsens_base0>, <&tsens_base1>,
-				      <&s5>, <&s6>, <&s7>, <&s8>, <&s9>, <&s10>, <&s11>,
-				      <&s12>, <&s13>, <&s14>, <&s15>;
-			nvmem-cell-names = "mode", "base0", "base1", "s5", "s6",
-					   "s7", "s8", "s9", "s10", "s11",
-					   "s12", "s13", "s14", "s15";
+				      <&s5_low>, <&s5_high>, <&s6>, <&s7>, <&s8>,
+				      <&s9>, <&s10>, <&s11>, <&s12_low>, <&s12_high>,
+				      <&s13>, <&s14>, <&s15>;
+			nvmem-cell-names = "mode", "base0", "base1", "s5_low", "s5_high",
+					   "s6", "s7", "s8", "s9", "s10", "s11",
+					   "s12_low", "s12_high", "s13", "s14", "s15";
 			interrupts = <GIC_SPI 105 IRQ_TYPE_EDGE_RISING 0>;
 			interrupt-names = "combined";
 			#thermal-sensor-cells = <1>;
@@ -723,59 +724,69 @@
 				bits = <0 2>;
 			};
 
-			s5: s5@426 {
+			s5_low: s5_low@426 {
 				reg = <0x426 0x1>;
-				bits = <4 4>;
+				bits = <6 2>;
+			};
+
+			s5_high: s5_high@428 {
+				reg = <0x428 0x1>;
+				bits = <0 3>;
 			};
 
 			s6: s6@428 {
 				reg = <0x428 0x1>;
-				bits = <0 4>;
+				bits = <3 5>;
 			};
 
-			s7: s7@428 {
-				reg = <0x428 0x1>;
-				bits = <4 4>;
+			s7: s7@429 {
+				reg = <0x429 0x1>;
+				bits = <1 5>;
 			};
 
 			s8: s8@3e4 {
 				reg = <0x3e4 0x1>;
-				bits = <0 4>;
+				bits = <0 5>;
 			};
 
 			s9: s9@3e4 {
-				reg = <0x3e4 0x1>;
-				bits = <4 4>;
+				reg = <0x3e4 0x2>;
+				bits = <5 5>;
 			};
 
 			s10: s10@3e5 {
 				reg = <0x3e5 0x1>;
-				bits = <0 4>;
+				bits = <2 5>;
 			};
 
 			s11: s11@3e5 {
-				reg = <0x3e5 0x1>;
+				reg = <0x3e5 0x2>;
+				bits = <7 5>;
+			};
+
+			s12_low: s12_low@3e6 {
+				reg = <0x3e6 0x1>;
 				bits = <4 4>;
 			};
 
-			s12: s12@3e6 {
-				reg = <0x3e6 0x1>;
-				bits = <0 4>;
+			s12_high: s12_high@3e8 {
+				reg = <0x3e8 0x1>;
+				bits = <0 1>;
 			};
 
-			s13: s13@3e6 {
-				reg = <0x3e6 0x1>;
-				bits = <4 4>;
+			s13: s13@3e8 {
+				reg = <0x3e8 0x1>;
+				bits = <1 5>;
 			};
 
 			s14: s14@3ed {
 				reg = <0x3ed 0x2>;
-				bits = <7 4>;
+				bits = <6 5>;
 			};
 
 			s15: s15@3ee {
 				reg = <0x3ee 0x1>;
-				bits = <3 4>;
+				bits = <3 5>;
 			};
 
 			tsens_mode: mode@421 {
