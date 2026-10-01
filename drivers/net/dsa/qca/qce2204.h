@@ -320,10 +320,5 @@ int qce2204_mdio_write(struct mii_bus *bus, int addr, u32 reg, u32 val);
 
 /* Port management functions */
 void qce2204_port_set_status(struct qce2204_priv *priv, int port, int enable);
-int qce2204_port_mac_init(struct qce2204_priv *priv);
-
-/* PCS functions */
-struct phylink_pcs *pcs_qce2204_create(struct device *dev, void __iomem *base, int port);
-void pcs_qce2204_destroy(struct phylink_pcs *pcs);
 
 #endif /* __QCE2204_H */

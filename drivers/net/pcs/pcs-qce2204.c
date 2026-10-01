@@ -152,6 +152,10 @@ struct qce2204_pcs {
 	struct reset_control *xpcs_rstc;
 	struct qce2204_raw_clk raw_clk[QCE2204_PCS_TX_CLK + 1];
 	phy_interface_t curr_mode;
+	/* Parsed from DT at probe, applied later by the DSA switch so that the
+	 * hardware is not touched before the DSA conduit netdev is ready.
+	 */
+	phy_interface_t initial_mode;
 	bool overspeed;  /* true for 12.5G overspeed */
 };
 
@@ -1025,9 +1029,9 @@ static const struct phylink_pcs_ops qce2204_pcs_phylink_ops = {
  * qce2204_pcs_create_fwnode - Create PCS instance based on MDIO fwnode
  * @node: The fwnode of MDIO device
  *
- * The PCS device is registered as MDIO device, this function registers
- * the raw clock provider that supplies clocks to the PCS TX and RX
- * functions. The system clock of PCS is always configured as enabled.
+ * The PCS device is registered as MDIO device, this function only looks up the
+ * already probed instance. The PCS hardware is brought up separately by
+ * qce2204_pcs_hw_init().
  */
 struct phylink_pcs *qce2204_pcs_create_fwnode(struct fwnode_handle *node)
 {
@@ -1055,8 +1059,8 @@ EXPORT_SYMBOL_GPL(qce2204_pcs_create_fwnode);
  * qce2204_pcs_destroy - Destroy PCS instance
  * @pcs: The PCS instance to be destroyed
  *
- * The clock rate of PCS RX and TX clocks are restored to the crystal
- * clock rate so that the raw clock provider can be unregistered.
+ * Drops the reference taken by qce2204_pcs_create_fwnode(). Must be preceded
+ * by qce2204_pcs_hw_deinit() when the PCS was brought up via hw_init().
  */
 void qce2204_pcs_destroy(struct phylink_pcs *pcs)
 {
@@ -1066,6 +1070,83 @@ void qce2204_pcs_destroy(struct phylink_pcs *pcs)
 }
 EXPORT_SYMBOL_GPL(qce2204_pcs_destroy);
 
+/**
+ * qce2204_pcs_hw_init - Bring up the PCS hardware
+ * @pcs: The PCS instance
+ *
+ * Enables the PCS system clock, resets the PCS system and applies the initial
+ * mode parsed from DT. Deferred out of probe and called by the DSA switch so
+ * that the PCS hardware is not touched before the ethernet driver is ready.
+ *
+ * Paired with qce2204_pcs_hw_deinit(), so the PCS survives repeated DSA
+ * setup/teardown cycles without leaking clock refcounts.
+ */
+int qce2204_pcs_hw_init(struct phylink_pcs *pcs)
+{
+	struct qce2204_pcs *qce2204 = phylink_pcs_to_qce2204(pcs);
+	struct device *dev = &qce2204->mdiodev->dev;
+	int ret;
+
+	ret = clk_prepare_enable(qce2204->clks[PCS_FUNC_SYS]);
+	if (ret) {
+		dev_err(dev, "Failed to enable PCS system clock: %d\n", ret);
+		return ret;
+	}
+
+	ret = reset_control_assert(qce2204->rstcs[PCS_FUNC_SYS]);
+	if (ret) {
+		dev_err(dev, "Failed to assert PCS system reset: %d\n", ret);
+		goto err_disable_clk;
+	}
+
+	usleep_range(20000, 21000);
+
+	ret = reset_control_deassert(qce2204->rstcs[PCS_FUNC_SYS]);
+	if (ret) {
+		dev_err(dev, "Failed to deassert PCS system reset: %d\n", ret);
+		goto err_disable_clk;
+	}
+
+	if (qce2204->initial_mode == PHY_INTERFACE_MODE_NA)
+		return 0;
+
+	ret = qce2204_pcs_config(pcs, PHYLINK_PCS_NEG_NONE,
+				 qce2204->initial_mode, NULL, false);
+	if (ret) {
+		dev_err(dev, "Failed to initialize PCS with mode %s: %d\n",
+			phy_modes(qce2204->initial_mode), ret);
+		goto err_disable_clk;
+	}
+
+	dev_dbg(dev, "PCS initialized with mode: %s\n",
+		phy_modes(qce2204->initial_mode));
+
+	return 0;
+
+err_disable_clk:
+	clk_disable_unprepare(qce2204->clks[PCS_FUNC_SYS]);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(qce2204_pcs_hw_init);
+
+/**
+ * qce2204_pcs_hw_deinit - Tear down the PCS hardware
+ * @pcs: The PCS instance
+ *
+ * Reverses qce2204_pcs_hw_init(): clears the cached mode so a subsequent
+ * hw_init reconfigures the hardware, then disables the PCS system clock.
+ * Called by the DSA switch on teardown to keep setup/teardown balanced.
+ */
+void qce2204_pcs_hw_deinit(struct phylink_pcs *pcs)
+{
+	struct qce2204_pcs *qce2204 = phylink_pcs_to_qce2204(pcs);
+
+	qce2204->curr_mode = PHY_INTERFACE_MODE_NA;
+	clk_disable_unprepare(qce2204->clks[PCS_FUNC_SYS]);
+}
+EXPORT_SYMBOL_GPL(qce2204_pcs_hw_deinit);
+
 static int qce2204_pcs_probe(struct mdio_device *mdio_dev)
 {
 	struct device *dev = &mdio_dev->dev;
@@ -1073,15 +1154,15 @@ static int qce2204_pcs_probe(struct mdio_device *mdio_dev)
 	struct qce2204_pcs *qce2204;
 	struct clk *clk;
 	const char *initial_mode_str;
-	phy_interface_t initial_mode = PHY_INTERFACE_MODE_NA;
 	int i, ret;
 
 	qce2204 = devm_kzalloc(dev, sizeof(*qce2204), GFP_KERNEL);
 	if (!qce2204)
 		return -ENOMEM;
 
-	/* Initialize curr_mode to NA */
+	/* Initialize modes to NA */
 	qce2204->curr_mode = PHY_INTERFACE_MODE_NA;
+	qce2204->initial_mode = PHY_INTERFACE_MODE_NA;
 
 	/* Check if overspeed (12.5G) is enabled via device tree */
 	qce2204->overspeed = device_property_read_bool(dev, "qcom,overspeed");
@@ -1116,29 +1197,6 @@ static int qce2204_pcs_probe(struct mdio_device *mdio_dev)
 		return PTR_ERR(qce2204->xpcs_rstc);
 	}
 
-	/* PCS system clock is always kept as enabled, then do reset
-	 * on the PCS system.
-	 */
-	ret = clk_prepare_enable(qce2204->clks[PCS_FUNC_SYS]);
-	if (ret) {
-		dev_err(dev, "Failed to enable PCS system clock: %d\n", ret);
-		return ret;
-	}
-
-	ret = reset_control_assert(qce2204->rstcs[PCS_FUNC_SYS]);
-	if (ret) {
-		dev_err(dev, "Failed to assert PCS system reset: %d\n", ret);
-		return ret;
-	}
-
-	usleep_range(20000, 21000);
-
-	ret = reset_control_deassert(qce2204->rstcs[PCS_FUNC_SYS]);
-	if (ret) {
-		dev_err(dev, "Failed to deassert PCS system reset: %d\n", ret);
-		return ret;
-	}
-
 	mdiodev_set_drvdata(mdio_dev, qce2204);
 
 	qce2204->mdiodev = mdio_dev;
@@ -1146,38 +1204,23 @@ static int qce2204_pcs_probe(struct mdio_device *mdio_dev)
 	qce2204->pcs.neg_mode = true;
 	qce2204->pcs.poll = true;
 
-	/* Parse and apply initial_mode property if present */
+	/* Parse initial_mode property if present, it is applied later by
+	 * qce2204_pcs_hw_init() instead of here.
+	 */
 	ret = device_property_read_string(dev, "initial_mode", &initial_mode_str);
 	if (ret == 0) {
 		/* Convert string to phy_interface_t using case-insensitive comparison */
-		if (!strcasecmp(initial_mode_str, phy_modes(PHY_INTERFACE_MODE_SGMII))) {
-			initial_mode = PHY_INTERFACE_MODE_SGMII;
-		} else if (!strcasecmp(initial_mode_str, phy_modes(PHY_INTERFACE_MODE_2500BASEX))) {
-			initial_mode = PHY_INTERFACE_MODE_2500BASEX;
-		} else if (!strcasecmp(initial_mode_str, phy_modes(PHY_INTERFACE_MODE_10GBASER))) {
-			initial_mode = PHY_INTERFACE_MODE_10GBASER;
-		} else if (!strcasecmp(initial_mode_str, phy_modes(PHY_INTERFACE_MODE_USXGMII))) {
-			initial_mode = PHY_INTERFACE_MODE_USXGMII;
-		} else {
+		if (!strcasecmp(initial_mode_str, phy_modes(PHY_INTERFACE_MODE_SGMII)))
+			qce2204->initial_mode = PHY_INTERFACE_MODE_SGMII;
+		else if (!strcasecmp(initial_mode_str, phy_modes(PHY_INTERFACE_MODE_2500BASEX)))
+			qce2204->initial_mode = PHY_INTERFACE_MODE_2500BASEX;
+		else if (!strcasecmp(initial_mode_str, phy_modes(PHY_INTERFACE_MODE_10GBASER)))
+			qce2204->initial_mode = PHY_INTERFACE_MODE_10GBASER;
+		else if (!strcasecmp(initial_mode_str, phy_modes(PHY_INTERFACE_MODE_USXGMII)))
+			qce2204->initial_mode = PHY_INTERFACE_MODE_USXGMII;
+		else
 			dev_warn(dev, "Unknown initial_mode '%s', skipping initialization\n",
 				 initial_mode_str);
-			initial_mode = PHY_INTERFACE_MODE_NA;
-		}
-
-		/* Initialize PCS with the specified mode */
-		if (initial_mode != PHY_INTERFACE_MODE_NA) {
-			ret = qce2204_pcs_config(&qce2204->pcs,
-						 PHYLINK_PCS_NEG_NONE,
-						 initial_mode,
-						 NULL,
-						 false);
-			if (ret) {
-				dev_err(dev, "Failed to initialize PCS with mode %s: %d\n",
-					phy_modes(initial_mode), ret);
-				return ret;
-			}
-			dev_info(dev, "PCS initialized with mode: %s\n", phy_modes(initial_mode));
-		}
 	}
 
 	/* Register PCS raw clocks */
