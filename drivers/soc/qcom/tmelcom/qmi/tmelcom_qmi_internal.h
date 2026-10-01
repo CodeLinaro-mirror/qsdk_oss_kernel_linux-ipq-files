@@ -107,7 +107,7 @@
 #define QMI_TME_FUSE_BLOW_REQ_MSG_V01_MAX_MSG_LEN 32780
 #define QMI_TME_FUSE_BLOW_RESP_MSG_V01_MAX_MSG_LEN 21
 #define QMI_GET_CHIP_PARAMS_REQ_MSG_V01_MAX_MSG_LEN 7
-#define QMI_GET_CHIP_PARAMS_RESP_MSG_V01_MAX_MSG_LEN 47
+#define QMI_GET_CHIP_PARAMS_RESP_MSG_V01_MAX_MSG_LEN 54
 #define QMI_TME_MAX_MULTI_FUSES_V01 30
 #define QMI_TME_READ_MULTI_FUSES_REQ_MSG_V01_MAX_MSG_LEN 131
 #define QMI_TME_READ_MULTI_FUSES_RESP_MSG_V01_MAX_MSG_LEN 392
@@ -384,6 +384,8 @@ struct qmi_get_chip_params_resp_msg_v01 {
 	u8 chip_id_verified;
 	u8 serial_verified_valid;
 	u8 serial_verified;
+	u8 chip_version_valid;
+	u32 chip_version;
 };
 
 /* Element info array declarations */
@@ -429,9 +431,15 @@ extern struct qmi_elem_info qmi_tme_read_multi_fuses_resp_msg_v01_ei[];
 #define TME_QMI_MAX_MSG_LEN 4122  /* Largest message size */
 
 #define DPR_QCN9625_FIRMWARE_DIR "qcn9625"
+#define DPR_QCN9625_V2_FIRMWARE_DIR "qcn9625_v2"
 #define CHIP_ID_QCN9625 0x111317cb
 #define DPR_QCN9589_FIRMWARE_DIR "qcn9589"
+#define DPR_QCN9589_V2_FIRMWARE_DIR "qcn9589_v2"
 #define CHIP_ID_QCN9589	0x111417cb
+
+/* QMI server reports SOC_HW_VERSION; major version is bits [15:8] */
+#define SOC_HW_VERSION_MAJOR_VER_BMSK GENMASK(15, 8)
+#define CHIP_VERSION_V2 2
 
 /* Domain to attach number mapping node */
 struct domain_attach_node {
@@ -472,6 +480,7 @@ struct tmelcom_qmi_client {
 	struct kobject *sysfs_kobj;  /* For sysfs */
 	u32 chip_id;
 	u64 serial_number;
+	u32 chip_version;
 };
 
 /* Internal functions */
