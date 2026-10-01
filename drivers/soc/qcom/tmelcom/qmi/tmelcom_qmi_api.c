@@ -6,6 +6,7 @@
  * Provides wrapper functions for TME-L QMI services
  */
 
+#include <linux/bitfield.h>
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/tmelcom_qmi.h>
@@ -1584,22 +1585,26 @@ out_unlock:
 EXPORT_SYMBOL_GPL(tmelcom_qmi_fuse_blow);
 
 /**
- * tmelcom_qmi_get_chip_params() - Get chip parameters (chip ID and serial number)
+ * tmelcom_qmi_get_chip_params() - Get chip parameters (chip ID, serial number
+ *                                 and chip version)
  * @client: Pointer to QMI client
  * @chip_id: Pointer to store chip ID
  * @serial_number: Pointer to store serial number
+ * @chip_version: Pointer to store chip major version, extracted from
+ *		  SOC_HW_VERSION (0 if not reported by server)
  *
  * Return: 0 on success, negative error code on failure
  */
 int tmelcom_qmi_get_chip_params(struct tmelcom_qmi_client *client,
-				u32 *chip_id, u64 *serial_number)
+				u32 *chip_id, u64 *serial_number,
+				u32 *chip_version)
 {
 	struct qmi_get_chip_params_req_msg_v01 req = {0};
 	struct qmi_get_chip_params_resp_msg_v01 *resp;
 	struct qmi_txn txn;
 	int ret;
 
-	if (!client || !chip_id || !serial_number)
+	if (!client || !chip_id || !serial_number || !chip_version)
 		return -EINVAL;
 
 	resp = kzalloc(sizeof(*resp), GFP_KERNEL);
@@ -1662,6 +1667,16 @@ int tmelcom_qmi_get_chip_params(struct tmelcom_qmi_client *client,
 		*serial_number = resp->serial_number;
 	else
 		*serial_number = 0;
+
+	if (resp->chip_version_valid) {
+		*chip_version = FIELD_GET(SOC_HW_VERSION_MAJOR_VER_BMSK,
+					  resp->chip_version);
+		tmelcom_qmi_dbg(client, "soc_hw_version=0x%x, chip_version=%u\n",
+				resp->chip_version, *chip_version);
+	} else {
+		*chip_version = 0;
+		tmelcom_qmi_dbg(client, "chip_version not provided by QMI server\n");
+	}
 
 	ret = 0;
 
