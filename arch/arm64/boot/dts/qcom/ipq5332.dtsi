@@ -297,6 +297,22 @@
 		};
 	};
 
+	sysregister {
+		compatible = "qcom,sysregister";
+		reg-names = "cpr_fuse", "cpu_speed_bin",
+			    "feat_prov_out0", "feat_prov_out1",
+			    "feat_prov_out2", "feat_prov_out3";
+		reg-access-type = "fuse", "fuse", "fuse",
+				  "fuse", "fuse", "fuse";
+		reg-phandle = <&qfprom>, <&qfprom>, <&feature_prov>,
+			      <&feature_prov>, <&feature_prov>, <&feature_prov>;
+		reg-offset = <0x3BC>, <0x1C>, <0x0>, <0x4>,
+			     <0x8>, <0xC>;
+		reg-bit-position = <1>, <15>, <0xffffffff>, <0xffffffff>,
+				   <0xffffffff>, <0xffffffff>;
+		reg-bit-width = <6>, <2>, <0>, <0>, <0>, <0>;
+	};
+
 	soc: soc@0 {
 		compatible = "simple-bus";
 		#address-cells = <1>;
@@ -313,8 +329,13 @@
 			reg = <0xA6044 0x4>;
 		};
 
+		feature_prov: syscon@a20a0 {
+			compatible = "syscon";
+			reg = <0xA20A0 0x10>;
+		};
+
 		qfprom: efuse@a4000 {
-			compatible = "qcom,qfprom";
+			compatible = "qcom,qfprom", "syscon";
 			reg = <0xa4000 0x721>;
 			#address-cells = <1>;
 			#size-cells = <1>;
