@@ -18,6 +18,9 @@
 #define AES_128_XTS_KEY_SIZE			32
 #define AES_256_XTS_KEY_SIZE			64
 
+/* CQHCI always places the XTS salt at the midpoint of its 64-byte key buffer */
+#define CQHCI_CRYPTO_KEY_MAX_SIZE		64
+
 struct qcom_ice_tee_private {
 	struct device *dev;
 	struct tee_context *ctx;
@@ -199,7 +202,22 @@ static int qcom_ice_tee_program_key(struct device *dev, u8 algorithm_id,
 		goto free_shm;
 	}
 
-	memcpy(key_buf, crypto_key, key_len);
+	/*
+	 * CQHCI stores XTS key and salt non-contiguously in its 64-byte buffer:
+	 *   key:  [0 .. half-1], salt: [32 .. 32+half-1]
+	 * XTS-256: half=32, so key and salt are adjacent — plain copy works.
+	 * XTS-128: half=16, so there is a 16-byte zero gap at [16..31] that
+	 * must be skipped; copy key and salt separately.
+	 */
+	if (algorithm_id == QCOM_ICE_CRYPTO_ALG_AES_XTS) {
+		u32 half = key_len / 2;
+
+		memcpy(key_buf, crypto_key, half);
+		memcpy((u8 *)key_buf + half,
+		       crypto_key + CQHCI_CRYPTO_KEY_MAX_SIZE / 2, half);
+	} else {
+		memcpy(key_buf, crypto_key, key_len);
+	}
 	memset(&inv_arg, 0, sizeof(inv_arg));
 	memset(param, 0, sizeof(param));
 
