@@ -44,6 +44,7 @@ static DEFINE_PER_CPU(int, skb_recycle_glbl_cache_alloc);
 static DEFINE_PER_CPU(int, skb_recycle_cpu_cache_alloc);
 static DEFINE_PER_CPU(int, skb_recycler_overflow_no_consume_cnt);
 #endif
+static DEFINE_PER_CPU(int, skb_recycle_missed_count);
 
 static int skb_recycling_enable = 1;
 
@@ -110,13 +111,7 @@ inline struct sk_buff *skb_recycler_alloc(struct net_device *dev,
 	struct sk_buff_head *h;
 	struct sk_buff *skb = NULL;
 	struct sk_buff *ln = NULL;
-#ifdef CONFIG_SKB_RECYCLER_ENABLE_COUNTER
 	int *missed_cnt = NULL;
-#ifdef CONFIG_SKB_RECYCLER_MULTI_CPU
-	int *global_cnt = NULL;
-#endif
-	int *recycle_cnt = NULL;
-#endif
 
 	/* Allocate the recycled skbs if the skb_recycling_enable */
 	if (unlikely(!skb_recycling_enable)) {
@@ -236,11 +231,9 @@ inline struct sk_buff *skb_recycler_alloc(struct net_device *dev,
 		}
 		mem_debug_update_skb(skb);
 	} else {
-#ifdef CONFIG_SKB_RECYCLER_ENABLE_COUNTER
-		missed_cnt = &get_cpu_var(skb_recycle_alloc_fail);
+		missed_cnt = &get_cpu_var(skb_recycle_missed_count);
 		(*missed_cnt)++;
-		put_cpu_var(skb_recycle_alloc_fail);
-#endif
+		put_cpu_var(skb_recycle_missed_count);
 	}
 
 	return skb;
@@ -599,6 +592,7 @@ static int proc_skb_count_show(struct seq_file *seq, void *v)
 	int cpu;
 	int len;
 	int total;
+	int missed_total;
 #ifdef CONFIG_SKB_RECYCLER_MULTI_CPU
 	unsigned int i;
 	unsigned long flags;
@@ -629,6 +623,15 @@ static int proc_skb_count_show(struct seq_file *seq, void *v)
 #endif
 
 	seq_printf(seq, "total: %d\n", total);
+
+	missed_total = 0;
+	for_each_online_cpu(cpu) {
+		len = per_cpu(skb_recycle_missed_count, cpu);
+		seq_printf(seq, "skb_recycle_missed_count[%d]: %d\n", cpu, len);
+		missed_total += len;
+	}
+	seq_printf(seq, "total_missed: %d\n", missed_total);
+
 	return 0;
 }
 
@@ -1117,6 +1120,28 @@ static const struct proc_ops proc_skb_max_skbs_per_cpu_fops = {
 	.proc_release = single_release,
 };
 
+/* proc_missed_skb_recycler_alloc_write()
+ *	Reset missed recycler alloc count
+ */
+static ssize_t proc_missed_skb_recycler_alloc_write(struct file *file,
+						    const char __user *buf,
+						    size_t count,
+						    loff_t *ppos)
+{
+	int cpu;
+
+	for_each_possible_cpu(cpu)
+		per_cpu(skb_recycle_missed_count, cpu) = 0;
+
+	return count;
+}
+
+static const struct proc_ops proc_missed_skb_recycler_alloc_fops = {
+	.proc_write   = proc_missed_skb_recycler_alloc_write,
+	.proc_open    = simple_open,
+	.proc_lseek   = noop_llseek,
+};
+
 static void skb_recycler_init_procfs(void)
 {
 	int cpu;
@@ -1179,6 +1204,12 @@ static void skb_recycler_init_procfs(void)
 			 &proc_replenish_enqueue_fail_recycler_skbs_fops))
 		pr_err("cannot create proc net replenish_enqueue_fail_skb_recycler_alloc\n");
 #endif
+
+	if (!proc_create("reset_skb_recycle_missed_count",
+			 0666,
+			 proc_net_skbrecycler,
+			 &proc_missed_skb_recycler_alloc_fops))
+		pr_err("cannot create proc net reset_skb_recycle_missed_count\n");
 
 	if (!proc_create("skb_recycler_enable",
                          S_IRUGO | S_IWUGO,
