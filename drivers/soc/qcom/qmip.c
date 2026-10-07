@@ -13,6 +13,7 @@
 #include <linux/of_platform.h>
 #include "qmip.h"
 #include <linux/sysfs.h>
+#include <linux/clk.h>
 
 /* Danger register offsets (per-client base) */
 #define DANGER_CTRL_OFFSET		0x00
@@ -737,36 +738,85 @@ static int qmip_probe(struct platform_device *pdev) {
 	platform_set_drvdata(pdev, drvdata);
 	drvdata->dev = &pdev->dev;
 
+	drvdata->core_clk = devm_clk_get(&pdev->dev, "core");
+	if (IS_ERR(drvdata->core_clk)) {
+		return PTR_ERR(drvdata->core_clk);
+	}
+	drvdata->xo_clk = devm_clk_get(&pdev->dev, "xo");
+	if (IS_ERR(drvdata->xo_clk)) {
+		return PTR_ERR(drvdata->xo_clk);
+	}
+	ret = clk_prepare_enable(drvdata->core_clk);
+	if (ret) {
+		dev_err(dev, "Failed_to_enable_core_clk %d\n", ret);
+		return ret;
+	}
+	ret = clk_prepare_enable(drvdata->xo_clk);
+	if (ret) {
+		dev_err(dev, "Failed_to_enable_xo_clk %d\n", ret);
+		goto disable_core;
+	}
+
+	/* Enable ANOC PCIE clocks */
+	{
+		static const char * const pcie_clks[] = {
+			"anoc_pcie0_m", "anoc_pcie0_s",
+			"anoc_pcie1_m", "anoc_pcie1_s",
+			"anoc_pcie2_m", "anoc_pcie2_s",
+			"anoc_pcie3_m", "anoc_pcie3_s",
+			"anoc_pcie4_m", "anoc_pcie4_s",
+		};
+		int j;
+		for (j = 0; j < ARRAY_SIZE(pcie_clks); j++) {
+			struct clk *clk = devm_clk_get(dev, pcie_clks[j]);
+			if (IS_ERR(clk)) {
+				dev_warn(dev, "failed to get %s\n", pcie_clks[j]);
+				continue;
+			}
+			ret = clk_prepare_enable(clk);
+			if (ret)
+				dev_warn(dev, "failed to enable %s\n", pcie_clks[j]);
+		}
+	}
+
 	for (int i = 0; i < NUM_DANGER_CLIENTS; i++) {
 		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, danger_names[i]);
 		if (!res) {
 			dev_err(dev, "failed to get resource %s\n", danger_names[i]);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto disable_xo;
 		}
 		drvdata->danger_base[i] = devm_ioremap(dev, res->start, resource_size(res));
-		if (!drvdata->danger_base[i])
-			return -ENOMEM;
+		if (!drvdata->danger_base[i]) {
+			ret = -ENOMEM;
+			goto disable_xo;
+		}
 	}
 
 	for (int i = 0; i < NUM_THROTTLE_CLIENTS; i++) {
 		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, throttle_names[i]);
 		if (!res) {
 			dev_err(dev, "failed to get resource %s\n", throttle_names[i]);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto disable_xo;
 		}
 		drvdata->throttle_base[i] = devm_ioremap(dev, res->start, resource_size(res));
-		if (!drvdata->throttle_base[i])
-			return -ENOMEM;
+		if (!drvdata->throttle_base[i]) {
+			ret = -ENOMEM;
+			goto disable_xo;
+		}
 	}
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "qm-base");
 	if (!res) {
 		dev_err(dev, "failed to get resource qm \n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto disable_xo;
 	}
 	drvdata->qm_base = devm_ioremap(dev, res->start, resource_size(res));
-	if (!drvdata->qm_base)
-		return -ENOMEM;
-
+	if (!drvdata->qm_base) {
+		ret = -ENOMEM;
+		goto disable_xo;
+	}
 	/* Initialize default QM values — can be overridden via sysfs */
 	for (int i = 0; i < NUM_THROTTLE_CLIENTS; i++) {
 		drvdata->qm_cfg.aggr_mask[i]    = QM_AGGR_CNTRL_VAL;
@@ -776,11 +826,18 @@ static int qmip_probe(struct platform_device *pdev) {
 	ret = sysfs_create_group(&pdev->dev.kobj, &qmip_attr_group);
 	if (ret) {
 		dev_err(dev, "failed to create sysfs group\n");
-		return ret;
+		goto disable_xo;
 	}
 
 	dev_info(dev, "QMIP driver probed successfully\n");
 	return 0;
+
+disable_xo:
+        clk_disable_unprepare(drvdata->xo_clk);
+
+disable_core:
+	clk_disable_unprepare(drvdata->core_clk);
+	return ret;
 }
 
 static const struct of_device_id qcom_qmip_of_match[] = {
