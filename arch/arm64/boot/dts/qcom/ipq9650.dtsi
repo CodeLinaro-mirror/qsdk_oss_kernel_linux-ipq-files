@@ -4168,3 +4168,4 @@
 };
 
 #include "ipq9650-noc.dtsi"
+#include "ipq9650-qmip.dtsi"
