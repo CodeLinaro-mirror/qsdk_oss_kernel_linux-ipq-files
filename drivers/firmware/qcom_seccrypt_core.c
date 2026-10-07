@@ -43,12 +43,18 @@ EXPORT_SYMBOL_GPL(qcom_seccrypt_ops_register);
  * qcom_seccrypt_set_key() - Set encryption key in secure world
  * @conf_buf: Configuration buffer containing key parameters
  * @conf_size: Size of configuration buffer
+ * @ctx1_buf: Optional SW context 1 buffer (data key context)
+ * @ctx1_size: Size of ctx1_buf, or 0 if unused
+ * @ctx2_buf: Optional SW context 2 buffer (salt/tweak key context)
+ * @ctx2_size: Size of ctx2_buf, or 0 if unused
  *
  * This function forwards the key setting request to the registered backend.
  *
  * Returns: 0 on success, negative error code on failure
  */
-int qcom_seccrypt_set_key(void *conf_buf, u32 conf_size)
+int qcom_seccrypt_set_key(void *conf_buf, u32 conf_size,
+			  void *ctx1_buf, u32 ctx1_size,
+			  void *ctx2_buf, u32 ctx2_size)
 {
 	if (!ops_ptr) {
 		pr_err("SecCrypt: No backend registered\n");
@@ -60,7 +66,8 @@ int qcom_seccrypt_set_key(void *conf_buf, u32 conf_size)
 		return -EOPNOTSUPP;
 	}
 
-	return ops_ptr->set_key(ops_ptr->dev, conf_buf, conf_size);
+	return ops_ptr->set_key(ops_ptr->dev, conf_buf, conf_size,
+				 ctx1_buf, ctx1_size, ctx2_buf, ctx2_size);
 }
 EXPORT_SYMBOL_GPL(qcom_seccrypt_set_key);
 

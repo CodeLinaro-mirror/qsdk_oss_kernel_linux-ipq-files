@@ -35,29 +35,97 @@ static bool qcom_seccrypt_tee_available(struct device *dev)
 	return true;
 }
 
+/*
+ * PTA SET_KEY contract: key_size is per key (16/32); CRBK takes no SW
+ * context; OEM_PRODSEED needs ctx1, plus ctx2 only (and always) for XTS.
+ */
+static int qcom_seccrypt_tee_check_key_req(struct device *dev,
+					   const struct aes_set_key_req *cfg,
+					   u32 ctx1_size, u32 ctx2_size)
+{
+	if (cfg->key_size != 16 && cfg->key_size != 32) {
+		dev_err(dev, "Invalid key_size %u (expected 16 or 32)\n",
+			cfg->key_size);
+		return -EINVAL;
+	}
+
+	if (cfg->algo_mode >= AES_MODE_MAX) {
+		dev_err(dev, "Invalid algo_mode %u\n", cfg->algo_mode);
+		return -EINVAL;
+	}
+
+	switch (cfg->seed_type) {
+	case AES_CRBK:
+		if (ctx1_size || ctx2_size) {
+			dev_err(dev, "CRBK seed does not accept SW context\n");
+			return -EINVAL;
+		}
+		break;
+	case AES_OEM_PRODSEED:
+		if (!ctx1_size) {
+			dev_err(dev, "OEM_PRODSEED requires SW context 1\n");
+			return -EINVAL;
+		}
+		if (cfg->algo_mode == AES_MODE_XTS && !ctx2_size) {
+			dev_err(dev, "OEM_PRODSEED XTS requires SW context 2\n");
+			return -EINVAL;
+		}
+		if (cfg->algo_mode != AES_MODE_XTS && ctx2_size) {
+			dev_err(dev, "SW context 2 is only valid for XTS\n");
+			return -EINVAL;
+		}
+		break;
+	default:
+		dev_err(dev, "Invalid seed_type %u\n", cfg->seed_type);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 /**
  * qcom_seccrypt_tee_set_key() - Set encryption key via OP-TEE
  * @dev: Device pointer
  * @conf_buf: Configuration buffer containing key parameters
  * @conf_size: Size of configuration buffer
+ * @ctx1_buf: Optional SW context 1 buffer (data key context)
+ * @ctx1_size: Size of ctx1_buf, or 0 if unused
+ * @ctx2_buf: Optional SW context 2 buffer (salt/tweak key context, AES-XTS only)
+ * @ctx2_size: Size of ctx2_buf, or 0 if unused
  *
  * This function calls the OP-TEE TA to set the encryption key
  * in the secure world.
  *
  * Returns: 0 on success, negative error code on failure
  */
-static int qcom_seccrypt_tee_set_key(struct device *dev, void *conf_buf, u32 conf_size)
+static int qcom_seccrypt_tee_set_key(struct device *dev, void *conf_buf, u32 conf_size,
+				     void *ctx1_buf, u32 ctx1_size,
+				     void *ctx2_buf, u32 ctx2_size)
 {
 	struct qcom_seccrypt_tee_private *priv = dev_get_drvdata(dev);
 	struct tee_ioctl_invoke_arg inv_arg;
 	struct tee_param param[4];
-	struct tee_shm *config_shm;
-	void *config_buf;
+	struct tee_shm *config_shm, *ctx1_shm = NULL, *ctx2_shm = NULL;
+	void *config_buf, *ctx_buf;
 	int ret;
-	if (!conf_buf || conf_size == 0) {
-		dev_err(dev, "Invalid parameters\n");
+	if (!conf_buf || conf_size != sizeof(struct aes_set_key_req)) {
+		dev_err(dev, "Invalid key configuration size: %u (expected %zu)\n",
+			conf_size, sizeof(struct aes_set_key_req));
 		return -EINVAL;
 	}
+	if ((ctx1_buf && !ctx1_size) || (!ctx1_buf && ctx1_size) ||
+	    (ctx2_buf && !ctx2_size) || (!ctx2_buf && ctx2_size)) {
+		dev_err(dev, "Inconsistent SW context pointer/length pair\n");
+		return -EINVAL;
+	}
+	if (ctx1_size > AES_SW_CONTEXT_MAX_LEN || ctx2_size > AES_SW_CONTEXT_MAX_LEN) {
+		dev_err(dev, "SW context size exceeds maximum (%u)\n",
+			AES_SW_CONTEXT_MAX_LEN);
+		return -EINVAL;
+	}
+	ret = qcom_seccrypt_tee_check_key_req(dev, conf_buf, ctx1_size, ctx2_size);
+	if (ret)
+		return ret;
 	/* Allocate shared memory for configuration */
 	config_shm = tee_shm_alloc_kernel_buf(priv->ctx, conf_size);
 	if (IS_ERR(config_shm)) {
@@ -67,31 +135,92 @@ static int qcom_seccrypt_tee_set_key(struct device *dev, void *conf_buf, u32 con
 	config_buf = tee_shm_get_va(config_shm, 0);
 	if (IS_ERR(config_buf)) {
 		ret = PTR_ERR(config_buf);
-		goto free_shm;
+		goto free_config_shm;
 	}
 	/* Copy configuration to shared memory */
 	memcpy(config_buf, conf_buf, conf_size);
+
+	/* Allocate shared memory for SW context 1, if provided */
+	if (ctx1_buf && ctx1_size > 0) {
+		ctx1_shm = tee_shm_alloc_kernel_buf(priv->ctx, ctx1_size);
+		if (IS_ERR(ctx1_shm)) {
+			dev_err(dev, "Failed to allocate shared memory for SW context 1\n");
+			ret = PTR_ERR(ctx1_shm);
+			goto free_config_shm;
+		}
+		ctx_buf = tee_shm_get_va(ctx1_shm, 0);
+		if (IS_ERR(ctx_buf)) {
+			ret = PTR_ERR(ctx_buf);
+			goto free_ctx1_shm;
+		}
+		memcpy(ctx_buf, ctx1_buf, ctx1_size);
+	}
+
+	/* Allocate shared memory for SW context 2, if provided */
+	if (ctx2_buf && ctx2_size > 0) {
+		ctx2_shm = tee_shm_alloc_kernel_buf(priv->ctx, ctx2_size);
+		if (IS_ERR(ctx2_shm)) {
+			dev_err(dev, "Failed to allocate shared memory for SW context 2\n");
+			ret = PTR_ERR(ctx2_shm);
+			goto free_ctx1_shm;
+		}
+		ctx_buf = tee_shm_get_va(ctx2_shm, 0);
+		if (IS_ERR(ctx_buf)) {
+			ret = PTR_ERR(ctx_buf);
+			goto free_ctx2_shm;
+		}
+		memcpy(ctx_buf, ctx2_buf, ctx2_size);
+	}
+
 	/* Prepare invoke arguments */
 	memset(&inv_arg, 0, sizeof(inv_arg));
 	memset(param, 0, sizeof(param));
 	inv_arg.func = SECCRYPT_TA_CMD_SET_KEY;
 	inv_arg.session = priv->session_id;
-	inv_arg.num_params = 1;
+	inv_arg.num_params = 4;
+
 	param[0].attr = TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INPUT;
 	param[0].u.memref.shm = config_shm;
 	param[0].u.memref.size = conf_size;
 	param[0].u.memref.shm_offs = 0;
+
+	if (ctx1_shm) {
+		param[1].attr = TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INPUT;
+		param[1].u.memref.shm = ctx1_shm;
+		param[1].u.memref.size = ctx1_size;
+		param[1].u.memref.shm_offs = 0;
+	} else {
+		param[1].attr = TEE_IOCTL_PARAM_ATTR_TYPE_NONE;
+	}
+
+	if (ctx2_shm) {
+		param[2].attr = TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INPUT;
+		param[2].u.memref.shm = ctx2_shm;
+		param[2].u.memref.size = ctx2_size;
+		param[2].u.memref.shm_offs = 0;
+	} else {
+		param[2].attr = TEE_IOCTL_PARAM_ATTR_TYPE_NONE;
+	}
+
+	param[3].attr = TEE_IOCTL_PARAM_ATTR_TYPE_NONE;
+
 	/* Invoke TA command: Key derivation */
 	ret = tee_client_invoke_func(priv->ctx, &inv_arg, param);
 	if (ret < 0 || inv_arg.ret != TEEC_SUCCESS) {
 		dev_err(dev, "Key derivation failed: ret=%d, ta_ret=0x%x\n",
 			ret, inv_arg.ret);
 		ret = -EINVAL;
+	} else {
+		dev_dbg(dev, "Key derivation success.\n");
 	}
 
-	dev_info(dev, "Key derivation success.\n");
-
-free_shm:
+free_ctx2_shm:
+	if (ctx2_shm)
+		tee_shm_free(ctx2_shm);
+free_ctx1_shm:
+	if (ctx1_shm)
+		tee_shm_free(ctx1_shm);
+free_config_shm:
 	tee_shm_free(config_shm);
 
 	return ret;
@@ -115,15 +244,58 @@ static int qcom_seccrypt_tee_crypt(struct device *dev, void *cmd_buf, u32 cmd_si
 	struct tee_ioctl_invoke_arg inv_arg;
 	struct tee_param param[4];
 	struct tee_shm *iv_shm = NULL, *req_shm = NULL, *rsp_shm = NULL;
+	bool is_ecb, has_iv;
 	int ret;
 
-	if (!cmd_buf || cmd_size == 0) {
-		dev_err(dev, "Invalid parameters\n");
+	if (!cmd_buf || cmd_size != sizeof(struct secure_nand_aes_cmd_tee)) {
+		dev_err(dev, "Invalid command size: %u (expected %zu)\n",
+			cmd_size, sizeof(struct secure_nand_aes_cmd_tee));
+		return -EINVAL;
+	}
+
+	if (!cptr_tee->req_buf_virt || !cptr_tee->rsp_buf_virt) {
+		dev_err(dev, "Invalid request/response buffer\n");
+		return -EINVAL;
+	}
+
+	if (!cptr_tee->reqlen || cptr_tee->reqlen != cptr_tee->rsplen) {
+		dev_err(dev, "Invalid request/response length: reqlen=%llu rsplen=%llu\n",
+			cptr_tee->reqlen, cptr_tee->rsplen);
+		return -EINVAL;
+	}
+
+	if (cptr_tee->reqlen < AES_HUK_DATA_MIN_LEN ||
+	    cptr_tee->reqlen > AES_HUK_DATA_MAX_LEN ||
+	    cptr_tee->reqlen % AES_HUK_IV_SIZE) {
+		dev_err(dev, "Invalid data length %llu (16..4096, multiple of 16)\n",
+			cptr_tee->reqlen);
+		return -EINVAL;
+	}
+
+	if (cptr_tee->direction > 1 || cptr_tee->mode >= AES_MODE_MAX) {
+		dev_err(dev, "Invalid direction %llu / mode %llu\n",
+			cptr_tee->direction, cptr_tee->mode);
+		return -EINVAL;
+	}
+
+	if ((cptr_tee->iv_buf_virt && cptr_tee->iv_size != AES_HUK_IV_SIZE) ||
+	    (!cptr_tee->iv_buf_virt && cptr_tee->iv_size)) {
+		dev_err(dev, "Invalid IV buffer/length pair\n");
+		return -EINVAL;
+	}
+
+	/* ECB takes no IV; CBC/CTR/XTS need an explicit one (no zero-IV fallback) */
+	is_ecb = cptr_tee->mode == AES_MODE_ECB;
+	has_iv = cptr_tee->iv_buf_virt;
+	if (is_ecb == has_iv) {
+		dev_err(dev, "IV %s for mode %llu\n",
+			cptr_tee->iv_buf_virt ? "not allowed" : "required",
+			cptr_tee->mode);
 		return -EINVAL;
 	}
 
 	/* Register physical memory as shared memory for IV buffer */
-	if (cptr_tee->iv_buf && cptr_tee->iv_size > 0) {
+	if (cptr_tee->iv_buf_virt && cptr_tee->iv_size > 0) {
 		iv_shm = tee_shm_register_kernel_buf(priv->ctx, cptr_tee->iv_buf_virt, cptr_tee->iv_size);
 		if (IS_ERR(iv_shm)) {
 			dev_err(dev, "Failed to register IV buffer\n");
@@ -223,7 +395,8 @@ static int qcom_seccrypt_tee_clear_key(struct device *dev)
 	memset(param, 0, sizeof(param));
 	inv_arg.func = SECCRYPT_TA_CMD_CLEAR_KEY;
 	inv_arg.session = priv->session_id;
-	inv_arg.num_params = 0;
+	/* PTA expects 4 params, all NONE (memset above = TYPE_NONE) */
+	inv_arg.num_params = 4;
 	/* Invoke TA command */
 	ret = tee_client_invoke_func(priv->ctx, &inv_arg, param);
 	if (ret < 0 || inv_arg.ret != TEEC_SUCCESS) {
@@ -344,7 +517,16 @@ static void __exit qcom_seccrypt_tee_exit(void)
 	driver_unregister(&qcom_seccrypt_tee_driver.driver);
 }
 
-module_init(qcom_seccrypt_tee_init);
+/*
+ * Built-in: register via device_initcall_sync, after OP-TEE core's own
+ * device_initcall has enumerated the SecCrypt PTA on the TEE bus (so
+ * probe() fires deterministically), but before qcom_seccrypt_scm's
+ * late_initcall registration — the core layer only keeps the first
+ * backend to register, so TEE must win that race over SCM whenever
+ * OP-TEE is actually available. When built as a module this maps to
+ * module_init().
+ */
+device_initcall_sync(qcom_seccrypt_tee_init);
 module_exit(qcom_seccrypt_tee_exit);
 
 MODULE_DESCRIPTION("Qualcomm SecCrypt TEE Backend");
