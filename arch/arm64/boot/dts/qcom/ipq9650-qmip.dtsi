@@ -4,9 +4,29 @@
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
+#include <dt-bindings/clock/qcom,ipq9650-gcc.h>
+
 &soc {
 	qmip_juhu: qmip-juhu@69000 {
 			compatible = "qcom,qmip";
+			clocks = <&gcc GCC_QMIP_CORE_CLK>,
+				<&gcc GCC_THROTTLE_XO_CLK>,
+				<&gcc GCC_ANOC_PCIE0_1LANE_M_CLK>,
+				<&gcc GCC_ANOC_PCIE0_1LANE_S_CLK>,
+				<&gcc GCC_ANOC_PCIE1_2LANE_M_CLK>,
+				<&gcc GCC_ANOC_PCIE1_2LANE_S_CLK>,
+				<&gcc GCC_ANOC_PCIE2_2LANE_M_CLK>,
+				<&gcc GCC_ANOC_PCIE2_2LANE_S_CLK>,
+				<&gcc GCC_ANOC_PCIE3_2LANE_M_CLK>,
+				<&gcc GCC_ANOC_PCIE3_2LANE_S_CLK>,
+				<&gcc GCC_ANOC_PCIE4_1LANE_M_CLK>,
+				<&gcc GCC_ANOC_PCIE4_1LANE_S_CLK>;
+			clock-names = "core", "xo",
+				"anoc_pcie0_m", "anoc_pcie0_s",
+				"anoc_pcie1_m", "anoc_pcie1_s",
+				"anoc_pcie2_m", "anoc_pcie2_s",
+				"anoc_pcie3_m", "anoc_pcie3_s",
+				"anoc_pcie4_m", "anoc_pcie4_s";
 			reg = <0x042EA000 0x100>,	/* danger-apss */
 			      <0x042E9000 0x100>,	/* danger-nss */
 			      <0x00030000 0x100>,	/* danger-primess */
