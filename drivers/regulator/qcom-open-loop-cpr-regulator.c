@@ -331,16 +331,16 @@ static int open_loop_cpr_regulator_set_voltage(struct regulator_dev *rdev,
 	 */
 	if (reg_info->ceiling_table[mode]) {
 		if (voltage > reg_info->ceiling_table[mode]) {
-			dev_warn(dev, "%s: mode=%s requested %duV exceeds ceiling %duV, clamping\n",
-				 rdev_get_name(rdev),
-				 get_mode_name(reg_info->mode_names, reg_info->num_modes, mode),
-				 voltage, reg_info->ceiling_table[mode]);
+			dev_dbg(dev, "%s: mode=%s requested %duV exceeds ceiling %duV, clamping\n",
+				rdev_get_name(rdev),
+				get_mode_name(reg_info->mode_names, reg_info->num_modes, mode),
+				voltage, reg_info->ceiling_table[mode]);
 			voltage = reg_info->ceiling_table[mode];
 		} else if (voltage < reg_info->floor_table[mode]) {
-			dev_warn(dev, "%s: mode=%s requested %duV below floor %duV, clamping\n",
-				 rdev_get_name(rdev),
-				 get_mode_name(reg_info->mode_names, reg_info->num_modes, mode),
-				 voltage, reg_info->floor_table[mode]);
+			dev_dbg(dev, "%s: mode=%s requested %duV below floor %duV, clamping\n",
+				rdev_get_name(rdev),
+				get_mode_name(reg_info->mode_names, reg_info->num_modes, mode),
+				voltage, reg_info->floor_table[mode]);
 			voltage = reg_info->floor_table[mode];
 		}
 	}
