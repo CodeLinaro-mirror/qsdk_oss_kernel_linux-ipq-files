@@ -29,7 +29,7 @@
 	 * |         |              |                         |
 	 * +---------+--------------+-------------------------+
 	 * |         |              |                         |
-	 * | QCN9589 |    DYNAMIC   |          52MB           |
+	 * | QCN9589 |    DYNAMIC   |          60MB           |
 	 * | PCIe1   |              |                         |
 	 * |         |              |                         |
 	 * +---------+--------------+-------------------------+
@@ -76,7 +76,7 @@
 		qcn9589_pcie1_cma: qcn9589_pcie1_cma {
 			compatible = "shared-dma-pool";
 			reusable;
-			size = <0x0 0x03400000>;
+			size = <0x0 0x03C00000>;
 			status = "disabled";
 		};
 
