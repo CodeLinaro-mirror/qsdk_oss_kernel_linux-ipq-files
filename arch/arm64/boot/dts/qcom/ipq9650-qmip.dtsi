@@ -44,7 +44,8 @@
 			      <0x00632000 0x100>,	/* throttle-pcie1 */
 			      <0x00633000 0x100>,	/* throttle-pcie2 */
 			      <0x00634000 0x100>,	/* throttle-pcie3 */
-			      <0x042E4000 0x100>,	/* throttle-nsp */
+			      <0x042E4000 0x100>,	/* throttle-nsp0 */
+			      <0x042E4200 0x100>,	/* throttle-nsp1 */
 			      <0x00069000 0x800>;	/* qm-base */
 			reg-names = "danger-apss",
 				    "danger-nss",
@@ -63,7 +64,8 @@
 				    "throttle-pcie1",
 				    "throttle-pcie2",
 				    "throttle-pcie3",
-				    "throttle-nsp",
+				    "throttle-nsp0",
+				    "throttle-nsp1",
 				    "qm-base";
 			status = "disabled";
 	};
