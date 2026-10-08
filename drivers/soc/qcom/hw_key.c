@@ -458,9 +458,11 @@ module_param(algo_mode, int, 0);
 #endif
 
 /*
- * Runs after late_initcall so that whichever SecCrypt backend won
- * registration (OP-TEE at device_initcall_sync, SCM as fallback at
- * late_initcall) has already registered by the time this consumes it;
- * hw_key.c has no probe-deferral mechanism to retry.
+ * late_initcall so the key is in the keyring before dm-init (also
+ * late_initcall, drivers/md links after drivers/soc) sets up dm-mod.create
+ * targets. The OP-TEE SecCrypt backend registers earlier, at
+ * device_initcall_sync. The SCM SecCrypt backend registers after this, but
+ * the OP-TEE path cannot use it and the non-OP-TEE path calls qcom_scm
+ * directly.
  */
-late_initcall_sync(tmel_hw_key_init);
+late_initcall(tmel_hw_key_init);
