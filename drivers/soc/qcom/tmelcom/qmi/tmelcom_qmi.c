@@ -27,6 +27,23 @@
 
 #define DUMP_FUSE_MAX_ADDR	32
 
+/*
+ * SOC_LIFE_CYCLE_STATE [5:1] lives in SEC_CTRL_CORE_SOC_LCS_AND_PERSO
+ * (0x1F92020), a plain 32-bit register (not an LSB/MSB fuse-row pair), so
+ * fuse_val_lsb from tmelcom_qmi_read_fuse() holds the field directly.
+ */
+#define TME_SOC_LCS_AND_PERSO_ADDR	0x1F92020
+#define SOC_LIFE_CYCLE_STATE_MASK	0x3E
+#define SOC_LIFE_CYCLE_STATE_SHIFT	0x1
+
+#define TME_LCS_PERSO		0x01
+#define TME_LCS_OPT		0x02
+#define TME_LCS_OPT_EXT		0x0A
+#define TME_LCS_RMA		0x0E
+#define TME_LCS_OPT_INT		0x16
+#define TME_LCS_DEV		0x1C
+#define TME_LCS_TERMINATED	0x1E
+
 /* Global client list */
 LIST_HEAD(tmelcom_qmi_clients);
 /* Protects tmelcom_qmi_clients list */
@@ -2622,6 +2639,53 @@ static ssize_t list_fuse_show(struct kobject *kobj,
 	return 0;
 }
 
+static const char *lcs_state_to_str(u32 lcs)
+{
+	switch (lcs) {
+	case TME_LCS_PERSO:
+		return "PERSO";
+	case TME_LCS_DEV:
+		return "DEV";
+	case TME_LCS_OPT:
+		return "OPT";
+	case TME_LCS_RMA:
+		return "RMA";
+	case TME_LCS_TERMINATED:
+		return "TERMINATED";
+	case TME_LCS_OPT_INT:
+		return "OPT_INT";
+	case TME_LCS_OPT_EXT:
+		return "OPT_EXT";
+	default:
+		return "UNKNOWN";
+	}
+}
+
+static ssize_t lcs_state_show(struct kobject *kobj,
+			      struct kobj_attribute *attr, char *buf)
+{
+	struct tmelcom_qmi_client *client = kobj_to_client(kobj);
+	u32 fuse_val_lsb, fuse_val_msb, lcs;
+	int attach_num, ret;
+
+	if (!client)
+		return -ENODEV;
+
+	attach_num = domain_to_attach_num(client->domain_num);
+	if (attach_num < 0)
+		return -ENOENT;
+
+	ret = tmelcom_qmi_read_fuse(attach_num, TME_SOC_LCS_AND_PERSO_ADDR,
+				    &fuse_val_lsb, &fuse_val_msb);
+	if (ret)
+		return ret;
+
+	lcs = (fuse_val_lsb & SOC_LIFE_CYCLE_STATE_MASK) >> SOC_LIFE_CYCLE_STATE_SHIFT;
+
+	return sysfs_emit(buf, "%-25s%s=>0x%02X\n", "TME-L LCS:",
+			  lcs_state_to_str(lcs), lcs);
+}
+
 /* Fuse Blow - write file path, read file and pass contents to QMI */
 static ssize_t fuse_blow_store(struct kobject *kobj,
 			       struct kobj_attribute *attr,
@@ -2756,6 +2820,7 @@ static struct kobj_attribute chip_params_attr = __ATTR_RO(chip_params);
 static struct kobj_attribute sec_elf_attr =
 	__ATTR(sec_elf, 0200, NULL, fuse_blow_store);
 static struct kobj_attribute list_fuse_attr = __ATTR_RO(list_fuse);
+static struct kobj_attribute lcs_state_attr = __ATTR_RO(lcs_state);
 
 static struct attribute *qmi_client_attrs[] = {
 	&instance_id_attr.attr,
@@ -2768,6 +2833,7 @@ static struct attribute *qmi_client_attrs[] = {
 	&chip_params_attr.attr,
 	&sec_elf_attr.attr,
 	&list_fuse_attr.attr,
+	&lcs_state_attr.attr,
 	NULL,
 };
 
