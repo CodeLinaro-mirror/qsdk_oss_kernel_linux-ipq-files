@@ -1023,7 +1023,7 @@ static long lm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	dma_addr_t nonce_dma_addr, ecdsa_dma_addr;
 	struct lm_get_toBeDel_lic *toBeDel_lic;
 	void __user *argp = (void __user *)arg;
-	u32 ecdsa_consumed, ttime_buf_used_len;
+	u32 ecdsa_consumed = 0, ttime_buf_used_len = 0;
 	struct ttime_get_req_params ttime_rp;
 	struct lm_license_check_cbor lm_cbor;
 	struct sec_enforce_hw_featid *fid;
