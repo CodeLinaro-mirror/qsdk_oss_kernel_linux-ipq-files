@@ -20,6 +20,7 @@ enum sysreg_access_type {
 	SYSREG_ACCESS_NORMAL,
 	SYSREG_ACCESS_SYSCON,
 	SYSREG_ACCESS_SECURE,
+	SYSREG_ACCESS_FUSE,
 };
 
 struct sysreg_entry {
@@ -30,27 +31,34 @@ struct sysreg_entry {
 	u32 offset;
 	u32 size;
 	int bit_position;
+	int bit_width;
 	enum sysreg_access_type access_type;
 	struct class_attribute class_attr;
+	u32 value;
+	bool valid;
 };
 
 /* Global variables */
 static struct class *registers_class;
-static struct sysreg_entry *sysreg_entries;
-static int num_sysreg_entries;
 
-static ssize_t sysreg_show(const struct class *class,
-			   const struct class_attribute *attr, char *buf)
+/*
+ * Intentionally not static: sysreg_entries/num_sysreg_entries must remain
+ * visible in the kernel symbol table so a crashdump parser can locate them
+ * by name (e.g. via gdb/nm against vmlinux) and read back cached register
+ * values, including fuse registers which are read once at probe.
+ */
+struct sysreg_entry *sysreg_entries;
+int num_sysreg_entries;
+
+static int qcom_sysreg_read_value(struct sysreg_entry *entry, u32 *val)
 {
-	struct sysreg_entry *entry = container_of(attr, struct sysreg_entry,
-			class_attr);
-	u32 val;
 	int ret;
 
 	/* Read register value based on access type */
 	switch (entry->access_type) {
 	case SYSREG_ACCESS_SYSCON:
-		ret = regmap_read(entry->regmap, entry->offset, &val);
+	case SYSREG_ACCESS_FUSE:
+		ret = regmap_read(entry->regmap, entry->offset, val);
 		if (ret) {
 			pr_err("Regmap read failed for %s: %d\n",
 			       entry->name, ret);
@@ -59,7 +67,7 @@ static ssize_t sysreg_show(const struct class *class,
 		break;
 
 	case SYSREG_ACCESS_SECURE:
-		ret = qcom_scm_io_readl(entry->phys_addr, &val);
+		ret = qcom_scm_io_readl(entry->phys_addr, val);
 		if (ret) {
 			pr_err("Secure read failed for %s: %d\n",
 			       entry->name, ret);
@@ -71,13 +79,28 @@ static ssize_t sysreg_show(const struct class *class,
 	default:
 		if (!entry->base)
 			return -EINVAL;
-		val = readl(entry->base);
+		*val = readl(entry->base);
 		break;
 	}
 
-	/* Extract bit if bit-level access is configured */
+	return 0;
+}
+
+static ssize_t sysreg_show(const struct class *class,
+			   const struct class_attribute *attr, char *buf)
+{
+	struct sysreg_entry *entry = container_of(attr, struct sysreg_entry,
+			class_attr);
+	u32 val;
+	int ret;
+
+	ret = qcom_sysreg_read_value(entry, &val);
+	if (ret)
+		return ret;
+
+	/* Extract bit-field if bit-level access is configured */
 	if (entry->bit_position >= 0)
-		val = (val >> entry->bit_position) & 0x1;
+		val = (val >> entry->bit_position) & (BIT(entry->bit_width) - 1);
 
 	return sysfs_emit(buf, "0x%x\n", val);
 }
@@ -97,12 +120,15 @@ static ssize_t sysreg_store(const struct class *class,
 
 	/* Handle bit-level access with read-modify-write */
 	if (entry->bit_position >= 0) {
-		if (val > 1) {
-			pr_err("Invalid value %u for bit-level access\n", val);
+		u32 field_max = BIT(entry->bit_width) - 1;
+		u32 mask, new_val;
+
+		if (val > field_max) {
+			pr_err("Invalid value %u for bit-field access\n", val);
 			return -EINVAL;
 		}
-		u32 mask = BIT(entry->bit_position);
-		u32 new_val = val ? mask : 0;
+		mask = field_max << entry->bit_position;
+		new_val = (val << entry->bit_position) & mask;
 
 		switch (entry->access_type) {
 		case SYSREG_ACCESS_SYSCON:
@@ -180,6 +206,8 @@ static int qcom_sysreg_parse_config(struct device *dev, int index,
 			entry->access_type = SYSREG_ACCESS_SYSCON;
 		else if (strcmp(access_type_str, "secure") == 0)
 			entry->access_type = SYSREG_ACCESS_SECURE;
+		else if (strcmp(access_type_str, "fuse") == 0)
+			entry->access_type = SYSREG_ACCESS_FUSE;
 		else
 			entry->access_type = SYSREG_ACCESS_NORMAL;
 	} else {
@@ -197,6 +225,22 @@ static int qcom_sysreg_parse_config(struct device *dev, int index,
 	    (entry->bit_position < 0 || entry->bit_position > 31)) {
 		dev_err(dev, "Invalid bit position %d for %s (must be -1 or 0-31)\n",
 			entry->bit_position, entry->name);
+		return -EINVAL;
+	}
+
+	if (entry->bit_position == -1)
+		return 0;
+
+	/* Read bit width for this register (default: 1 bit) */
+	if (of_property_read_u32_index(np, "reg-bit-width", index, &bit_val) == 0)
+		entry->bit_width = (int)bit_val;
+	else
+		entry->bit_width = 1;
+
+	/* Validate bit width: field must fit within the 32-bit register */
+	if (entry->bit_width < 1 || entry->bit_position + entry->bit_width > 32) {
+		dev_err(dev, "Invalid bit width %d at position %d for %s\n",
+			entry->bit_width, entry->bit_position, entry->name);
 		return -EINVAL;
 	}
 
@@ -259,8 +303,9 @@ static int qcom_sysreg_probe(struct platform_device *pdev)
 			goto err_cleanup;
 
 		/* Setup access based on type */
-		if (sysreg_entries[i].access_type == SYSREG_ACCESS_SYSCON) {
-			/* IMEM/TCSR access via syscon/regmap */
+		if (sysreg_entries[i].access_type == SYSREG_ACCESS_SYSCON ||
+		    sysreg_entries[i].access_type == SYSREG_ACCESS_FUSE) {
+			/* IMEM/TCSR/QFPROM access via syscon/regmap */
 			struct device_node *phandle_np;
 			u32 offset;
 
@@ -292,6 +337,27 @@ static int qcom_sysreg_probe(struct platform_device *pdev)
 			dev_dbg(dev, "Registered %s at offset 0x%x\n",
 				name, offset);
 			syscon_index++;
+
+			/* Fuse registers are read once here so their value
+			 * is cached and available in a crashdump even if
+			 * the register can no longer be read live.
+			 */
+			if (sysreg_entries[i].access_type == SYSREG_ACCESS_FUSE) {
+				ret = qcom_sysreg_read_value(&sysreg_entries[i],
+							     &sysreg_entries[i].value);
+				sysreg_entries[i].valid = !ret;
+				if (ret)
+					dev_warn(dev, "Failed to cache fuse register %s: %d\n",
+						 name, ret);
+				if (sysreg_entries[i].bit_position >= 0)
+					sysreg_entries[i].value =
+						(sysreg_entries[i].value >>
+						 sysreg_entries[i].bit_position) &
+						(BIT(sysreg_entries[i].bit_width) - 1);
+
+				dev_dbg(dev, "Fuse register %s = 0x%x\n",
+					 name, sysreg_entries[i].value);
+			}
 
 		} else if (sysreg_entries[i].access_type == SYSREG_ACCESS_SECURE) {
 			/* Secure TCSR access via SCM */
@@ -343,10 +409,11 @@ static int qcom_sysreg_probe(struct platform_device *pdev)
 
 			sysreg_entries[i].size = resource_size(res);
 			sysreg_entries[i].phys_addr = res->start;
-			sysreg_entries[i].base = devm_ioremap_resource(dev, res);
-			if (IS_ERR(sysreg_entries[i].base)) {
-				dev_err(dev, "Failed to map register %s\n", name);
-				ret = PTR_ERR(sysreg_entries[i].base);
+			sysreg_entries[i].base = devm_ioremap(dev, res->start,
+							      resource_size(res));
+			if (!sysreg_entries[i].base) {
+				dev_err(dev, "Failed to ioremap register %s\n", name);
+				ret = -ENOMEM;
 				goto err_cleanup;
 			}
 
@@ -360,9 +427,15 @@ static int qcom_sysreg_probe(struct platform_device *pdev)
 		 */
 		sysfs_attr_init(&sysreg_entries[i].class_attr.attr);
 		sysreg_entries[i].class_attr.attr.name = sysreg_entries[i].name;
-		sysreg_entries[i].class_attr.attr.mode = 0644;
 		sysreg_entries[i].class_attr.show = sysreg_show;
-		sysreg_entries[i].class_attr.store = sysreg_store;
+
+		if (sysreg_entries[i].access_type == SYSREG_ACCESS_FUSE) {
+			/* Fuse registers are read-only */
+			sysreg_entries[i].class_attr.attr.mode = 0444;
+		} else {
+			sysreg_entries[i].class_attr.attr.mode = 0644;
+			sysreg_entries[i].class_attr.store = sysreg_store;
+		}
 
 		ret = class_create_file(registers_class, &sysreg_entries[i].class_attr);
 		if (ret) {

@@ -382,11 +382,22 @@
 
 	sysregister {
 		compatible = "qcom,sysregister";
-		reg-names = "bootcount", "force_inactive";
-		reg-access-type = "syscon", "secure";
-		reg-phandle = <&imem>, <&tcsr>;
-		reg-offset = <0xC8>, <0x6100>;
-		reg-bit-position = <0xffffffff>, <12>;
+		reg-names = "bootcount", "cpr_fuse", "cpu_speed_bin",
+			    "feat_prov_out0", "feat_prov_out1",
+			    "feat_prov_out2", "feat_prov_out3",
+			    "force_inactive";
+		reg-access-type = "syscon", "fuse", "fuse",
+				  "fuse", "fuse", "fuse", "fuse",
+				  "secure";
+		reg-phandle = <&imem>, <&qfprom_fuse>, <&qfprom_fuse>,
+			      <&feature_prov>, <&feature_prov>, <&feature_prov>,
+			      <&feature_prov>, <&tcsr>;
+		reg-offset = <0xC8>, <0x340>, <0x14>, <0x0>,
+			     <0x4>, <0x8>, <0xC>, <0x6100>;
+		reg-bit-position = <0xffffffff>, <6>, <15>, <0xffffffff>,
+				   <0xffffffff>, <0xffffffff>, <0xffffffff>,
+				   <12>;
+		reg-bit-width = <0>, <6>, <2>, <0>, <0>, <0>, <0>, <1>;
 	};
 
 	wcss: wcss-smp2p {
@@ -644,8 +655,13 @@
 			};
 		};
 
-		qfprom@a4000 {
-			compatible = "qcom,qfprom";
+		feature_prov: syscon@a20a0 {
+			compatible = "syscon";
+			reg = <0xA20A0 0x10>;
+		};
+
+		qfprom_fuse: qfprom@a4000 {
+			compatible = "qcom,qfprom", "syscon";
 			reg = <0xA4000 0x5a1>;
 			#address-cells = <1>;
 			#size-cells = <1>;
