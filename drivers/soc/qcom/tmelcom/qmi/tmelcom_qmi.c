@@ -443,7 +443,7 @@ struct qmi_elem_info qmi_tme_dev_provision_resp_msg_v01_ei[] = {
 	{
 		.data_type	= QMI_DATA_LEN,
 		.elem_len	= 1,
-		.elem_size	= sizeof(u8),
+		.elem_size	= sizeof(u16),
 		.array_type	= NO_ARRAY,
 		.tlv_type	= 0x10,
 		.offset		= offsetof(struct qmi_tme_dev_provision_resp_msg_v01,
