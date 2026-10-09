@@ -1997,6 +1997,26 @@ struct qmi_elem_info qmi_get_chip_params_resp_msg_v01_ei[] = {
 					   serial_verified),
 	},
 	{
+		.data_type      = QMI_OPT_FLAG,
+		.elem_len       = 1,
+		.elem_size      = sizeof(u8),
+		.array_type       = NO_ARRAY,
+		.tlv_type       = 0x14,
+		.offset         = offsetof(struct
+					   qmi_get_chip_params_resp_msg_v01,
+					   chip_version_valid),
+	},
+	{
+		.data_type      = QMI_UNSIGNED_4_BYTE,
+		.elem_len       = 1,
+		.elem_size      = sizeof(u32),
+		.array_type       = NO_ARRAY,
+		.tlv_type       = 0x14,
+		.offset         = offsetof(struct
+					   qmi_get_chip_params_resp_msg_v01,
+					   chip_version),
+	},
+	{
 		.data_type      = QMI_EOTI,
 		.array_type       = NO_ARRAY,
 		.tlv_type       = QMI_COMMON_TLV_TYPE,
@@ -2466,7 +2486,7 @@ static ssize_t tmel_version_show(struct kobject *kobj,
 	return sysfs_emit(buf, "%s\n", version_info);
 }
 
-/* Chip Parameters - read-only, returns chip ID and serial number */
+/* Chip Parameters - read-only, returns chip ID, serial number and version */
 static ssize_t chip_params_show(struct kobject *kobj,
 				struct kobj_attribute *attr, char *buf)
 {
@@ -2477,12 +2497,14 @@ static ssize_t chip_params_show(struct kobject *kobj,
 		return -ENODEV;
 
 	ret = tmelcom_qmi_get_chip_params(client, &client->chip_id,
-					  &client->serial_number);
+					  &client->serial_number,
+					  &client->chip_version);
 	if (ret)
 		return sysfs_emit(buf, "Error retrieving chip params: %d\n", ret);
 
-	return sysfs_emit(buf, "chip_id: 0x%x\nserial_number: 0x%llx\n",
-			  client->chip_id, client->serial_number);
+	return sysfs_emit(buf, "chip_id: 0x%x\nserial_number: 0x%llx\nchip_version: %u\n",
+			  client->chip_id, client->serial_number,
+			  client->chip_version);
 }
 
 /* Multi-Fuse Read - read-only, reads all Trestles fuses */
@@ -2915,18 +2937,25 @@ static int client_count_show(struct seq_file *s, void *unused)
 DEFINE_SHOW_ATTRIBUTE(client_count);
 
 /**
- * get_dpr_firmware_dir() - Get DPR firmware directory for chip ID
+ * get_dpr_firmware_dir() - Get DPR firmware directory for chip ID and version
  * @chip_id: Chip ID to check
+ * @chip_version: Chip major version
+ *
+ * V2 chips use the "<chip>_v2" directory, all others use "<chip>".
  *
  * Return: Firmware directory path, or NULL if chip ID not supported
  */
-static const char *get_dpr_firmware_dir(u32 chip_id)
+static const char *get_dpr_firmware_dir(u32 chip_id, u32 chip_version)
 {
+	bool is_v2 = chip_version == CHIP_VERSION_V2;
+
 	switch (chip_id) {
 	case CHIP_ID_QCN9625:
-		return DPR_QCN9625_FIRMWARE_DIR;
+		return is_v2 ? DPR_QCN9625_V2_FIRMWARE_DIR :
+			       DPR_QCN9625_FIRMWARE_DIR;
 	case CHIP_ID_QCN9589:
-		return DPR_QCN9589_FIRMWARE_DIR;
+		return is_v2 ? DPR_QCN9589_V2_FIRMWARE_DIR :
+			       DPR_QCN9589_FIRMWARE_DIR;
 	default:
 		return NULL;
 	}
@@ -2940,7 +2969,8 @@ static const char *get_dpr_firmware_dir(u32 chip_id)
  * 1. First tries: DPR_0x<serial_number>.elf
  * 2. Fallback: DPR_COMMON.elf
  *
- * Files should be placed in /lib/firmware/qcn9625/
+ * Files should be placed in /lib/firmware/<chip>/ (qcn9625, qcn9589), or
+ * /lib/firmware/<chip>_v2/ for V2 chips.
  *
  * This function is non-fatal - errors are logged but don't fail probe.
  *
@@ -2960,7 +2990,8 @@ static int load_dpr_image_for_client(struct tmelcom_qmi_client *client)
 		return -EINVAL;
 	}
 
-	firmware_dir = get_dpr_firmware_dir(client->chip_id);
+	firmware_dir = get_dpr_firmware_dir(client->chip_id,
+					    client->chip_version);
 	if (!firmware_dir) {
 		dev_info(&client->pdev->dev,
 			 "DPR loading not supported for chip_id=0x%x\n",
@@ -2973,8 +3004,9 @@ static int load_dpr_image_for_client(struct tmelcom_qmi_client *client)
 		return -ENOMEM;
 
 	dev_dbg(&client->pdev->dev,
-		"Searching for DPR image: chip_id=0x%x, serial=0x%llx\n",
-		client->chip_id, client->serial_number);
+		"Searching for DPR image in %s: chip_id=0x%x, chip_version=%u, serial=0x%llx\n",
+		firmware_dir, client->chip_id, client->chip_version,
+		client->serial_number);
 
 	/* Try 1: Load serial-specific file (DPR_0x<serial>.elf) */
 	len = snprintf(firmware_path, PATH_MAX,
@@ -3129,16 +3161,19 @@ static int tmelcom_qmi_probe(struct platform_device *pdev)
 	mutex_unlock(&tmelcom_qmi_clients_lock);
 
 	ret = tmelcom_qmi_get_chip_params(client, &client->chip_id,
-					  &client->serial_number);
+					  &client->serial_number,
+					  &client->chip_version);
 	if (ret == 0) {
 		dev_dbg(&pdev->dev,
-			"Chip params: chip_id=0x%x, serial_number=0x%llx\n",
-			client->chip_id, client->serial_number);
+			"Chip params: chip_id=0x%x, serial_number=0x%llx, chip_version=%u\n",
+			client->chip_id, client->serial_number,
+			client->chip_version);
 	} else {
 		dev_warn(&pdev->dev,
 			 "Failed to retrieve chip params: %d\n", ret);
 		client->chip_id = 0;
 		client->serial_number = 0;
+		client->chip_version = 0;
 	}
 
 	/* Create debugfs directory */
