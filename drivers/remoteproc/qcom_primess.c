@@ -62,6 +62,7 @@ static const struct file_operations prime_mem_fops;
 
 struct qcom_prime {
 	void __iomem *reg_ss_base;   /* HWIO base address for IUSS */
+	size_t reg_ss_size;          /* Size of PRIMESS MMIO region */
 
 	void __iomem *pdmem_base;       /* Virtual PDMEM base address */
 	phys_addr_t pdmem_base_phys;    /* Physical address of PDMEM base */
@@ -94,7 +95,7 @@ struct qcom_prime {
 	/* PRIME lifecycle and SWIF mapping protection */
 	/* True after successful prime_start(), false after prime_stop() */
 	bool prime_started;
-	atomic_t swif_mmap_count;        /* Count of active SWIF mappings */
+	atomic_t swif_refs; /* 0=stopped, 1=running/no maps, >1=running with active SWIF mappings */
 
 	phys_addr_t mem_phys;  /* Base address of PIL carveout */
 	phys_addr_t mem_reloc; /* Copy of mem_phys */
@@ -326,7 +327,7 @@ static irqreturn_t prime_irq_error(int irq, void *data)
 static irqreturn_t prime_irq_wdog(int irq, void *data)
 {
 	struct qcom_prime *prime = data;
-	int irq_id = PRIME_IRQ2L_ERROR; //TODO: fix this
+	int irq_id = PRIME_IRQ2L_WDOG;
 
 	dev_err(prime->dev, "PRIME Watchdog IRQ handler (%d) triggered!\n", irq);
 	/* Note: Watchdog interrupt cannot be cleared without additional action */
@@ -427,7 +428,7 @@ static ssize_t primess_rif_show(struct device *dev, struct device_attribute *att
  *  - Returns the last value read by the store function
  */
 static ssize_t primess_rif_store(struct device *dev, struct device_attribute *attr,
-					     const char *buf, size_t len)
+				 const char *buf, size_t len)
 {
 	struct qcom_prime *vp = dev_get_drvdata(dev);
 	u32 addr, val;
@@ -460,6 +461,10 @@ static ssize_t primess_rif_store(struct device *dev, struct device_attribute *at
 			return -EINVAL;
 		}
 
+		if (vp->reg_ss_size < sizeof(u32) ||
+		    addr > vp->reg_ss_size - sizeof(u32))
+			return -EINVAL;
+
 		/* Parse value after colon */
 		if (strscpy(val_str, colon_pos + 1, sizeof(val_str)) < 0)
 			return -EINVAL;
@@ -480,6 +485,10 @@ static ssize_t primess_rif_store(struct device *dev, struct device_attribute *at
 			dev_err(dev, "Address 0x%08x is not 4-byte aligned\n", addr);
 			return -EINVAL;
 		}
+
+		if (vp->reg_ss_size < sizeof(u32) ||
+		    addr > vp->reg_ss_size - sizeof(u32))
+			return -EINVAL;
 
 		/* Read from register */
 		val = readl_relaxed(FW_PRIMESS_REG_ADDR(vp->reg_ss_base, addr));
@@ -936,6 +945,18 @@ static int prime_load(struct rproc *rproc, const struct firmware *fw)
 	int ret;
 	struct qcom_prime *prime = (struct qcom_prime *)rproc->priv;
 
+	kfree(prime->metadata);
+	prime->metadata = NULL;
+	prime->metadata_len = 0;
+
+	prime->mem_region = devm_ioremap_wc(prime->dev, prime->mem_phys,
+					    prime->mem_size);
+	if (!prime->mem_region) {
+		dev_err(prime->dev, "unable to map firmware region: %pa+%zx\n",
+			&prime->mem_phys, prime->mem_size);
+		return -EBUSY;
+	}
+
 	/* Use tmelcom path for IPQ platforms, standard PIL/PAS path for others */
 	if (prime->tmelcom_support) {
 		dev_dbg(prime->dev, "Loading firmware via tmelcom (qcom_mdt_load_no_init)\n");
@@ -947,18 +968,36 @@ static int prime_load(struct rproc *rproc, const struct firmware *fw)
 			ret = PTR_ERR(prime->metadata);
 			dev_err(prime->dev, "error %d reading firmware %s metadata\n",
 				ret, rproc->firmware);
-			return ret;
+			prime->metadata = NULL;
+			goto unmap_firmware_region;
 		}
 #if IS_ENABLED(CONFIG_QCOM_TMELCOM)
-		ret = qcom_mdt_load_no_init(prime->dev, fw, rproc->firmware, prime->pas_id,
-			prime->mem_region, prime->mem_phys, prime->mem_size, &prime->mem_reloc);
+		ret = qcom_mdt_load_no_init(prime->dev, fw, rproc->firmware,
+					    prime->pas_id, prime->mem_region,
+					    prime->mem_phys, prime->mem_size,
+					    &prime->mem_reloc);
 #else
-		return -EINVAL;
+		ret = -EINVAL;
 #endif
 	} else {
 		dev_dbg(prime->dev, "Loading firmware via standard PIL/PAS (qcom_mdt_load)\n");
 		ret = qcom_mdt_load(prime->dev, fw, rproc->firmware, prime->pas_id,
 			prime->mem_region, prime->mem_phys, prime->mem_size, &prime->mem_reloc);
+	}
+
+unmap_firmware_region:
+	if (prime->mem_region) {
+		/* Ensure firmware load writes complete before revoking this mapping. */
+		dma_mb();
+		devm_iounmap(prime->dev, prime->mem_region);
+		prime->mem_region = NULL;
+		dev_dbg(prime->dev, "Unmapped PIL region\n");
+	}
+
+	if (ret && prime->tmelcom_support) {
+		kfree(prime->metadata);
+		prime->metadata = NULL;
+		prime->metadata_len = 0;
 	}
 
 	return ret;
@@ -969,19 +1008,30 @@ static int prime_stop(struct rproc *rproc)
 {
 	struct qcom_prime *prime = (struct qcom_prime *)rproc->priv;
 	int ret;
+	int refs;
 	int mmap_count;
 
-	/* Check if SWIF memory is still mapped */
-	mmap_count = atomic_read(&prime->swif_mmap_count);
-	if (mmap_count > 0) {
-		dev_err(prime->dev,
-			"Cannot stop PRIME: %d active SWIF mapping(s) exist. Userspace must munmap()\n",
-			mmap_count);
-		return -EBUSY;
+	/* Close SWIF mmap admission only when no active SWIF mappings exist */
+	refs = atomic_cmpxchg(&prime->swif_refs, 1, 0);
+	if (refs != 1) {
+		if (refs == 0) {
+			/*
+			 * Admission may already be force-closed during remove().
+			 * If PRIME is marked running, continue stop teardown.
+			 */
+			if (!READ_ONCE(prime->prime_started))
+				return -EINVAL;
+		} else {
+			mmap_count = refs - 1;
+			dev_err(prime->dev,
+				"Cannot stop PRIME: %d active SWIF mapping(s) exist. Userspace must munmap()\n",
+				mmap_count);
+			return -EBUSY;
+		}
 	}
 
 	/* Mark PRIME as stopped - prevent new SWIF mappings */
-	prime->prime_started = false;
+	WRITE_ONCE(prime->prime_started, false);
 
 	/* Decrement module reference to allow rmmod */
 	module_put(THIS_MODULE);
@@ -1020,6 +1070,9 @@ static int prime_stop(struct rproc *rproc)
 	reinit_completion(&prime->start_done);
 
 done:
+	kfree(prime->metadata);
+	prime->metadata = NULL;
+	prime->metadata_len = 0;
 	return ret;
 }
 
@@ -1037,22 +1090,32 @@ static void *prime_rproc_da_to_va(struct rproc *rproc, u64 da,
 				  size_t len, bool *is_iomem)
 {
 	struct qcom_prime *prime = rproc->priv;
+	u64 offset;
+	u64 end;
+
 	*is_iomem = false;
-	int offset;
 
 	//If less than 1MB, assume addresses are relative
-	#define PRIME_ELF_ABS_BASE (0x8C180000)
-	offset = (da < 0x100000) ? da : da - PRIME_ELF_ABS_BASE;
+	#define PRIME_ELF_ABS_BASE (0x8C180000ULL)
+	if (da < 0x100000ULL) {
+		offset = da;
+	} else {
+		if (da < PRIME_ELF_ABS_BASE)
+			return NULL;
+		offset = da - PRIME_ELF_ABS_BASE;
+	}
 
 	//Allow overflow of PDMEM into MLM region if using prime->mem_size
 	//(Carveout size vs pdmem_size)
-	if (offset < 0 || offset + len > prime->pdmem_size) {
+	if (check_add_overflow(offset, (u64)len, &end) || end > prime->pdmem_size) {
 		dev_err(prime->dev, "da[0x%llX] + len[0x%zX] > 0x%zX\n",
 			da, len, prime->pdmem_size);
 		return NULL;
 	}
+	if (!prime->mem_region)
+		return NULL;
 
-	return prime->mem_region + offset;
+	return (u8 *)prime->mem_region + offset;
 }
 
 static int prime_start(struct rproc *rproc)
@@ -1094,6 +1157,8 @@ static int prime_start(struct rproc *rproc)
 			rproc->name, ret);
 		if (prime->tmelcom_support)
 			(void)tmelcom_secboot_teardown(prime->pas_id, 0);
+		mask_irqs(prime);
+		prime_cleanup_clock_power(prime);
 		return ret;
 	}
 #endif
@@ -1102,19 +1167,23 @@ static int prime_start(struct rproc *rproc)
 	 * Treated more as a proof of life since auth_and_reset will be blocking until booted.
 	 */
 	if (!wait_for_completion_timeout(&prime->start_done, msecs_to_jiffies(10000))) {
-		dev_err(prime->dev, "Boot completion timeout after 5 seconds\n");
+		dev_err(prime->dev, "Boot completion timeout after 10 seconds\n");
+		mask_irqs(prime);
+#ifndef BUILDROOT
+		prime_cleanup_clock_power(prime);
+#endif
 		return -ETIMEDOUT;
 	}
-
-	/* Mark PRIME as started - SWIF mapping now allowed */
-	prime->prime_started = true;
 
 	/* Increment module reference to prevent rmmod while PRIME is running */
 	if (!try_module_get(THIS_MODULE)) {
 		dev_err(prime->dev, "Failed to increment module reference\n");
-		prime->prime_started = false;
 		return -ENODEV;
 	}
+
+	/* Mark PRIME as started and enable SWIF mmap admission */
+	atomic_set(&prime->swif_refs, 1);
+	WRITE_ONCE(prime->prime_started, true);
 
 	return ret;
 }
@@ -1126,7 +1195,8 @@ static int prime_start(struct rproc *rproc)
 static void prime_swif_vma_open(struct vm_area_struct *vma)
 {
 	struct qcom_prime *prime = vma->vm_private_data;
-	int count = atomic_inc_return(&prime->swif_mmap_count);
+	int refs = atomic_inc_return(&prime->swif_refs);
+	int count = refs > 0 ? refs - 1 : 0;
 
 	dev_dbg(prime->dev, "SWIF VMA opened (fork/dup), active mappings: %d\n", count);
 }
@@ -1138,7 +1208,8 @@ static void prime_swif_vma_open(struct vm_area_struct *vma)
 static void prime_swif_vma_close(struct vm_area_struct *vma)
 {
 	struct qcom_prime *prime = vma->vm_private_data;
-	int count = atomic_dec_return(&prime->swif_mmap_count);
+	int refs = atomic_dec_return(&prime->swif_refs);
+	int count = refs > 0 ? refs - 1 : 0;
 
 	dev_dbg(prime->dev, "SWIF VMA closed (munmap), active mappings: %d\n", count);
 }
@@ -1448,6 +1519,7 @@ static int prime_pil_release(struct qcom_prime *prime, struct prime_mem_pil_map 
 static int prime_pil_cleanup_owner(struct qcom_prime *prime, pid_t owner_tgid)
 {
 	struct prime_pil_mapping *mapping, *tmp;
+	LIST_HEAD(release_list);
 	int ret = 0;
 
 	mutex_lock(&prime->pil_map_lock);
@@ -1455,12 +1527,14 @@ static int prime_pil_cleanup_owner(struct qcom_prime *prime, pid_t owner_tgid)
 		if (owner_tgid >= 0 && mapping->owner_tgid != owner_tgid)
 			continue;
 
-		list_del(&mapping->node);
-		mutex_unlock(&prime->pil_map_lock);
-		ret = prime_pil_mapping_release(prime, mapping);
-		mutex_lock(&prime->pil_map_lock);
+		list_move_tail(&mapping->node, &release_list);
 	}
 	mutex_unlock(&prime->pil_map_lock);
+
+	list_for_each_entry_safe(mapping, tmp, &release_list, node) {
+		list_del(&mapping->node);
+		ret = prime_pil_mapping_release(prime, mapping);
+	}
 
 	return ret;
 }
@@ -1487,8 +1561,10 @@ static int prime_mem_mmap(struct file *file, struct vm_area_struct *vma)
 	switch (MINOR(file->f_inode->i_rdev)) {
 	case 0: /* MODEL Memory */
 		base_addr = prime->mem_model_base;
-		offset = PFN_UP(vma->vm_pgoff);
+		offset = (size_t)vma->vm_pgoff << PAGE_SHIFT;
 		dev_dbg(prime->dev, "MMAP Model Mem 0x%08X\n", (u32)(base_addr + offset));
+		if (offset >= prime->mem_model_size)
+			return -EINVAL;
 		pfn = PFN_DOWN(base_addr + offset);
 		vsize = prime->mem_model_size - offset;
 
@@ -1506,7 +1582,7 @@ static int prime_mem_mmap(struct file *file, struct vm_area_struct *vma)
 		break;
 	case 1: /* IUSS Interface exposed to kernel*/
 		/* Check if PRIME has been started */
-		if (!prime->prime_started) {
+		if (!READ_ONCE(prime->prime_started)) {
 			dev_err(prime->dev,
 				"Cannot map SWIF memory: PRIME not started.\n");
 			return -EAGAIN;
@@ -1516,9 +1592,11 @@ static int prime_mem_mmap(struct file *file, struct vm_area_struct *vma)
 		base_addr = prime->intf_table_phys;
 		dev_dbg(prime->dev, "MMAP SWIF Mem 0x%08X (prime_started=%d, active_maps=%d)\n",
 			(u32)base_addr, prime->prime_started,
-			atomic_read(&prime->swif_mmap_count));
+			max(atomic_read(&prime->swif_refs) - 1, 0));
 		pfn = PFN_DOWN(base_addr);
-		vsize = (phys_addr_t)prime->pdmem_base + prime->pdmem_size - base_addr;
+		if (base_addr >= prime->pdmem_base_phys + prime->pdmem_size)
+			return -EINVAL;
+		vsize = prime->pdmem_base_phys + prime->pdmem_size - base_addr;
 
 		/* base address and total buffer size must be page aligned */
 		if (!PAGE_ALIGNED(base_addr) || !PAGE_ALIGNED(size))
@@ -1527,6 +1605,10 @@ static int prime_mem_mmap(struct file *file, struct vm_area_struct *vma)
 		if (size > vsize)
 			return -EINVAL;
 
+		/* Reserve a SWIF reference; fails if stop already closed admission */
+		if (!atomic_inc_not_zero(&prime->swif_refs))
+			return -EAGAIN;
+
 		vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
 		ret = io_remap_pfn_range(vma, vma->vm_start, pfn, size, vma->vm_page_prot);
 
@@ -1534,13 +1616,12 @@ static int prime_mem_mmap(struct file *file, struct vm_area_struct *vma)
 		if (ret == 0) {
 			vma->vm_ops = &prime_swif_vm_ops;
 			vma->vm_private_data = prime;
-			/* Increment count for initial mapping */
-			atomic_inc(&prime->swif_mmap_count);
 			dev_dbg(prime->dev,
 				"SWIF mapped successfully: addr=0x%08llx, size=0x%zx, active_maps=%d\n",
 				(unsigned long long)base_addr, size,
-				atomic_read(&prime->swif_mmap_count));
+				max(atomic_read(&prime->swif_refs) - 1, 0));
 		} else {
+			atomic_dec(&prime->swif_refs);
 			dev_err(prime->dev, "SWIF mapping failed: %d\n", ret);
 		}
 		break;
@@ -1594,18 +1675,21 @@ static struct prime_dma_mapping *prime_dma_find_by_key_locked(struct qcom_prime 
 static int prime_dma_cleanup_owner(struct qcom_prime *prime, pid_t owner_tgid)
 {
 	struct prime_dma_mapping *mapping, *tmp;
+	LIST_HEAD(release_list);
 	int ret = 0;
 
 	mutex_lock(&prime->dma_map_lock);
 	list_for_each_entry_safe(mapping, tmp, &prime->dma_mappings, node) {
 		if (owner_tgid >= 0 && mapping->owner_tgid != owner_tgid)
 			continue;
-		list_del(&mapping->node);
-		mutex_unlock(&prime->dma_map_lock);
-		ret = prime_dma_mapping_release(prime, mapping);
-		mutex_lock(&prime->dma_map_lock);
+		list_move_tail(&mapping->node, &release_list);
 	}
 	mutex_unlock(&prime->dma_map_lock);
+
+	list_for_each_entry_safe(mapping, tmp, &release_list, node) {
+		list_del(&mapping->node);
+		ret = prime_dma_mapping_release(prime, mapping);
+	}
 
 	return ret;
 }
@@ -1982,7 +2066,8 @@ static int prime_mem_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static ssize_t prime_mem_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
+static ssize_t prime_irq_event_read(struct file *file, char __user *buf, size_t count,
+				    loff_t *ppos)
 {
 	struct qcom_prime *prime = file->private_data;
 	struct prime_irq_event evt = {0};
@@ -2022,7 +2107,7 @@ static ssize_t prime_mem_read(struct file *file, char __user *buf, size_t count,
 static const struct file_operations prime_mem_fops = {
 	.owner = THIS_MODULE,
 	.open = prime_mem_open,
-	.read = prime_mem_read,
+	.read = prime_irq_event_read,
 	.mmap = prime_mem_mmap,
 	.unlocked_ioctl = prime_mem_ioctl,
 	.release = prime_mem_release
@@ -2061,20 +2146,30 @@ static int prime_alloc_memory_region(struct qcom_prime *prime)
 	prime->mem_reloc = r.start;
 	prime->mem_model_base = prime->mem_phys + model_offset;
 	prime->mem_size = resource_size(&r);
+	if (prime->mem_size <= model_offset)
+		return -EINVAL;
 	prime->mem_model_size = prime->mem_size - model_offset;
+
+#ifdef BUILDROOT
 	prime->mem_region = devm_ioremap_wc(prime->dev, prime->mem_phys, prime->mem_size);
 	if (!prime->mem_region) {
 		dev_err(prime->dev, "unable to map memory region: %pa+%zx\n",
 			&r.start, prime->mem_size);
 		return -EBUSY;
 	}
+#else
+	prime->mem_region = NULL;
+#endif
 
 	return 0;
 }
 
 static void prime_cleanup_memory_region(struct qcom_prime *prime)
 {
-
+	if (prime->mem_region) {
+		devm_iounmap(prime->dev, prime->mem_region);
+		prime->mem_region = NULL;
+	}
 }
 
 static int prime_create_cdev(struct qcom_prime *prime)
@@ -2156,11 +2251,14 @@ static int prime_init_mmio(struct platform_device *pdev, struct qcom_prime *prim
 
 	/* get memory resource (just one MMAP for the entire PRIME aperture */
 	pss = platform_get_resource_byname(pdev, IORESOURCE_MEM, "primess");
+	if (!pss)
+		return -ENODEV;
 	prime->reg_ss_base = devm_ioremap_resource(dev, pss);
 	if (IS_ERR(prime->reg_ss_base)) {
 		dev_dbg(dev, "Get resource primess\n");
 		return PTR_ERR(prime->reg_ss_base);
 	}
+	prime->reg_ss_size = resource_size(pss);
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pdmem");
 	if (!res) {
@@ -2387,11 +2485,13 @@ static int qcom_prime_probe(struct platform_device *pdev)
 	prime->pas_id = desc->pas_id;
 	prime->config_mmu = desc->config_mmu;
 	prime->tmelcom_support = desc->tmelcom_support;
+	prime->metadata = NULL;
+	prime->metadata_len = 0;
 	init_completion(&prime->start_done);
 
 	/* Initialize PRIME lifecycle and SWIF mapping protection */
 	prime->prime_started = false;
-	atomic_set(&prime->swif_mmap_count, 0);
+	atomic_set(&prime->swif_refs, 0);
 	mutex_init(&prime->dma_map_lock);
 	INIT_LIST_HEAD(&prime->dma_mappings);
 	atomic64_set(&prime->dma_map_key_next, 0);
@@ -2494,8 +2594,8 @@ static void qcom_prime_remove(struct platform_device *pdev)
 	int mmap_count;
 
 	/* Safety check: if PRIME is still running during remove */
-	if (prime->prime_started) {
-		mmap_count = atomic_read(&prime->swif_mmap_count);
+	if (READ_ONCE(prime->prime_started)) {
+		mmap_count = max(atomic_read(&prime->swif_refs) - 1, 0);
 
 		if (mmap_count != 0) {
 			dev_err(prime->dev, "============================================\n");
@@ -2503,10 +2603,8 @@ static void qcom_prime_remove(struct platform_device *pdev)
 				"WARNING: FORCED MODULE REMOVAL WITH %d ACTIVE SWIF MAPPINGS!\n",
 				mmap_count);
 			dev_err(prime->dev, "============================================\n");
-
-			/* Force clear the mmap count to allow prime_stop to proceed */
-			prime->prime_started = false;
-			atomic_set(&prime->swif_mmap_count, 0);
+			/* Force-close SWIF admission; prime_stop() will complete teardown. */
+			atomic_set(&prime->swif_refs, 0);
 		}
 
 		/* Now stop PRIME subsystem */
@@ -2531,6 +2629,9 @@ static void qcom_prime_remove(struct platform_device *pdev)
 	ret = device_init_wakeup(prime->dev, false);
 	if (ret < 0)
 		dev_err(prime->dev, "Unable to de-init wakeup (error: %d)\n", ret);
+	kfree(prime->metadata);
+	prime->metadata = NULL;
+	prime->metadata_len = 0;
 	rproc_free(prime->rproc);
 
 }
