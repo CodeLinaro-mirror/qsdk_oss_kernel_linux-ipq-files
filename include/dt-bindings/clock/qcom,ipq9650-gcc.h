@@ -197,4 +197,7 @@
 #define GCC_LPASS_SWAY_CLK_SRC					187
 #define GCC_SNOC_LPASS_CLK					188
 #define GCC_CNOC_LPASS_CFG_CLK					189
+#define GCC_QMIP_CORE_CLK_SRC					190
+#define GCC_QMIP_CORE_CLK					191
+#define GCC_THROTTLE_XO_CLK					192
 #endif
