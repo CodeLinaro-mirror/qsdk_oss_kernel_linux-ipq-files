@@ -9,7 +9,7 @@
 #include <linux/device.h>
 
 #define NUM_DANGER_CLIENTS		10
-#define NUM_THROTTLE_CLIENTS		8
+#define NUM_THROTTLE_CLIENTS		12
 
 /* Danger client indices */
 #define DANGER_CLIENT_APSS		0
@@ -31,7 +31,9 @@
 #define THROTTLE_CLIENT_PCIE1		4
 #define THROTTLE_CLIENT_PCIE2		5
 #define THROTTLE_CLIENT_PCIE3		6
-#define THROTTLE_CLIENT_NSP		7
+/* indices 7, 8, 9 are unused — skip in configure */
+#define THROTTLE_CLIENT_NSP0		10
+#define THROTTLE_CLIENT_NSP1		11
 
 
 struct qmip_danger_cfg {
@@ -42,6 +44,7 @@ struct qmip_throttle_cfg{
 	u32 grant_period;
 	u32 grant_count;
 	u32 threshold_level[4];
+	u32 enable_val;
 };
 
 struct qmip_qm_cfg {

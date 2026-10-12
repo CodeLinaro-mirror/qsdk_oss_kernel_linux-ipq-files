@@ -82,14 +82,18 @@ static const char * const danger_names[NUM_DANGER_CLIENTS] = {
 };
 
 static const char * const throttle_names[NUM_THROTTLE_CLIENTS] = {
-	"throttle-primess",
-	"throttle-nss",
-	"throttle-pcie0",
-	"throttle-pcie4",
-	"throttle-pcie1",
-	"throttle-pcie2",
-	"throttle-pcie3",
-	"throttle-nsp",
+	"throttle-primess",	/* 0 */
+	"throttle-nss",		/* 1 */
+	"throttle-pcie0",	/* 2 */
+	"throttle-pcie4",	/* 3 */
+	"throttle-pcie1",	/* 4 */
+	"throttle-pcie2",	/* 5 */
+	"throttle-pcie3",	/* 6 */
+	NULL,			/* 7 — unused */
+	NULL,			/* 8 — unused */
+	NULL,			/* 9 — unused */
+	"throttle-nsp0",	/* 10 */
+	"throttle-nsp1",	/* 11 */
 };
 
 /* Forward declarations */
@@ -252,7 +256,7 @@ static ssize_t danger_ot_level5_show(struct device *dev,
 
 static DEVICE_ATTR_RW(danger_ot_level5);
 
-static ssize_t danger_ot_level6_store(struct device *dev,
+static ssize_t danger_dur_l1_r_store(struct device *dev,
 		struct device_attribute *attr,
 		const char *buf, size_t count)
 {
@@ -268,7 +272,7 @@ static ssize_t danger_ot_level6_store(struct device *dev,
 	return count;
 }
 
-static ssize_t danger_ot_level6_show(struct device *dev,
+static ssize_t danger_dur_l1_r_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct qmip_drvdata *drvdata = dev_get_drvdata(dev);
@@ -281,9 +285,9 @@ static ssize_t danger_ot_level6_show(struct device *dev,
 	return len;
 }
 
-static DEVICE_ATTR_RW(danger_ot_level6);
+static DEVICE_ATTR_RW(danger_dur_l1_r);
 
-static ssize_t danger_ot_level7_store(struct device *dev,
+static ssize_t danger_dur_l1_w_store(struct device *dev,
 		struct device_attribute *attr,
 		const char *buf, size_t count)
 {
@@ -299,7 +303,7 @@ static ssize_t danger_ot_level7_store(struct device *dev,
 	return count;
 }
 
-static ssize_t danger_ot_level7_show(struct device *dev,
+static ssize_t danger_dur_l1_w_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct qmip_drvdata *drvdata = dev_get_drvdata(dev);
@@ -312,7 +316,131 @@ static ssize_t danger_ot_level7_show(struct device *dev,
 	return len;
 }
 
-static DEVICE_ATTR_RW(danger_ot_level7);
+static DEVICE_ATTR_RW(danger_dur_l1_w);
+
+static ssize_t danger_dur_l1_total_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct qmip_drvdata *drvdata = dev_get_drvdata(dev);
+	unsigned int client, val;
+
+	if (sscanf(buf, "%u %x", &client, &val) != 2)
+		return -EINVAL;
+	if (client >= NUM_DANGER_CLIENTS)
+		return -EINVAL;
+
+	drvdata->danger_cfg[client].danger_var[7] = val;
+	return count;
+}
+
+static ssize_t danger_dur_l1_total_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct qmip_drvdata *drvdata = dev_get_drvdata(dev);
+	int i, len = 0;
+
+	for (i = 0; i < NUM_DANGER_CLIENTS; i++)
+		len += scnprintf(buf + len, PAGE_SIZE - len,
+				"client%d: 0x%x\n", i,
+				drvdata->danger_cfg[i].danger_var[7]);
+	return len;
+}
+
+static DEVICE_ATTR_RW(danger_dur_l1_total);
+
+static ssize_t danger_dur_l2_r_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct qmip_drvdata *drvdata = dev_get_drvdata(dev);
+	unsigned int client, val;
+
+	if (sscanf(buf, "%u %x", &client, &val) != 2)
+		return -EINVAL;
+	if (client >= NUM_DANGER_CLIENTS)
+		return -EINVAL;
+
+	drvdata->danger_cfg[client].danger_var[8] = val;
+	return count;
+}
+
+static ssize_t danger_dur_l2_r_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct qmip_drvdata *drvdata = dev_get_drvdata(dev);
+	int i, len = 0;
+
+	for (i = 0; i < NUM_DANGER_CLIENTS; i++)
+		len += scnprintf(buf + len, PAGE_SIZE - len,
+				"client%d: 0x%x\n", i,
+				drvdata->danger_cfg[i].danger_var[8]);
+	return len;
+}
+
+static DEVICE_ATTR_RW(danger_dur_l2_r);
+
+static ssize_t danger_dur_l2_w_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct qmip_drvdata *drvdata = dev_get_drvdata(dev);
+	unsigned int client, val;
+
+	if (sscanf(buf, "%u %x", &client, &val) != 2)
+		return -EINVAL;
+	if (client >= NUM_DANGER_CLIENTS)
+		return -EINVAL;
+
+	drvdata->danger_cfg[client].danger_var[9] = val;
+	return count;
+}
+
+static ssize_t danger_dur_l2_w_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct qmip_drvdata *drvdata = dev_get_drvdata(dev);
+	int i, len = 0;
+
+	for (i = 0; i < NUM_DANGER_CLIENTS; i++)
+		len += scnprintf(buf + len, PAGE_SIZE - len,
+				"client%d: 0x%x\n", i,
+				drvdata->danger_cfg[i].danger_var[9]);
+	return len;
+}
+
+static DEVICE_ATTR_RW(danger_dur_l2_w);
+
+static ssize_t danger_dur_l2_total_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct qmip_drvdata *drvdata = dev_get_drvdata(dev);
+	unsigned int client, val;
+
+	if (sscanf(buf, "%u %x", &client, &val) != 2)
+		return -EINVAL;
+	if (client >= NUM_DANGER_CLIENTS)
+		return -EINVAL;
+
+	drvdata->danger_cfg[client].danger_var[10] = val;
+	return count;
+}
+
+static ssize_t danger_dur_l2_total_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct qmip_drvdata *drvdata = dev_get_drvdata(dev);
+	int i, len = 0;
+
+	for (i = 0; i < NUM_DANGER_CLIENTS; i++)
+		len += scnprintf(buf + len, PAGE_SIZE - len,
+				"client%d: 0x%x\n", i,
+				drvdata->danger_cfg[i].danger_var[10]);
+	return len;
+}
+
+static DEVICE_ATTR_RW(danger_dur_l2_total);
 
 /* Throttle attributes */
 static ssize_t throttle_grant_period_store(struct device *dev,
@@ -595,6 +723,47 @@ static ssize_t qmip_enable_show(struct device *dev,
 
 static DEVICE_ATTR_RW(qmip_enable);
 
+static ssize_t throttle_enable_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct qmip_drvdata *drvdata = dev_get_drvdata(dev);
+	unsigned int client, val;
+	void __iomem *base;
+
+	if (sscanf(buf, "%u %x", &client, &val) != 2)
+		return -EINVAL;
+	if (client >= NUM_THROTTLE_CLIENTS)
+		return -EINVAL;
+	if (!drvdata->throttle_base[client])
+		return -EINVAL;
+
+	base = drvdata->throttle_base[client];
+	drvdata->throttle_cfg[client].enable_val = val;
+	writel(val, base + THROTTLE_CNTRL_OFFSET);
+
+	dev_info(dev, "throttle client %d %s\n", client, val ? "enabled" : "disabled");
+	return count;
+}
+
+static ssize_t throttle_enable_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct qmip_drvdata *drvdata = dev_get_drvdata(dev);
+	int i, len = 0;
+
+	for (i = 0; i < NUM_THROTTLE_CLIENTS; i++) {
+		if (!drvdata->throttle_base[i])
+			continue;
+		len += scnprintf(buf + len, PAGE_SIZE - len,
+				"client%d: 0x%x\n", i,
+				readl(drvdata->throttle_base[i] + THROTTLE_CNTRL_OFFSET));
+	}
+	return len;
+}
+
+static DEVICE_ATTR_RW(throttle_enable);
+
 /* Attribute group */
 static struct attribute *qmip_attrs[] = {
 	&dev_attr_danger_ot_level1.attr,
@@ -602,8 +771,12 @@ static struct attribute *qmip_attrs[] = {
 	&dev_attr_danger_ot_level3.attr,
 	&dev_attr_danger_ot_level4.attr,
 	&dev_attr_danger_ot_level5.attr,
-	&dev_attr_danger_ot_level6.attr,
-	&dev_attr_danger_ot_level7.attr,
+	&dev_attr_danger_dur_l1_r.attr,
+	&dev_attr_danger_dur_l1_w.attr,
+	&dev_attr_danger_dur_l1_total.attr,
+	&dev_attr_danger_dur_l2_r.attr,
+	&dev_attr_danger_dur_l2_w.attr,
+	&dev_attr_danger_dur_l2_total.attr,
 	&dev_attr_throttle_grant_period.attr,
 	&dev_attr_throttle_grant_count.attr,
 	&dev_attr_throttle_bw_threshold0.attr,
@@ -613,6 +786,7 @@ static struct attribute *qmip_attrs[] = {
 	&dev_attr_qm_aggr_mask.attr,
 	&dev_attr_qm_throttle_lut.attr,
 	&dev_attr_qmip_enable.attr,
+	&dev_attr_throttle_enable.attr,
 	NULL,
 };
 
@@ -627,9 +801,9 @@ static void qmip_configure_throttle(struct qmip_drvdata *drvdata)
 	struct qmip_throttle_cfg *cfg;
 
 	for (i = 0; i < NUM_THROTTLE_CLIENTS; i++) {
-		/* Skip PrimeSS (0), PCIE0-3 (2-6) and NSP/Turing (7) for now */
+		/* Skip PrimeSS (0) and unused indices 7, 8, 9 */
 		if (i == THROTTLE_CLIENT_PRIMESS ||
-		    i == THROTTLE_CLIENT_NSP) {
+		    (i >= 7 && i <= 9)) {
 			dev_info(drvdata->dev, "skipping throttle client %d\n", i);
 			continue;
 		}
@@ -652,8 +826,9 @@ static void qmip_configure_throttle(struct qmip_drvdata *drvdata)
 		writel(cfg->threshold_level[3], base + THROTTLE_THRESHOLD_03_OFFSET);
 		writel(THROTTLE_PEAK_CREDIT_VAL, base + THROTTLE_PEAK_CREDIT_OFFSET);
 
-		writel(THROTTLE_CTRL_ENABLE,    base + THROTTLE_CNTRL_OFFSET);
-		dev_info(drvdata->dev, "throttle client %d done\n", i);
+		/* second write — apply enable value set via sysfs */
+		writel(cfg->enable_val, base + THROTTLE_CNTRL_OFFSET);
+		dev_info(drvdata->dev, "throttle client %d configured\n", i);
 	}
 }
 
@@ -664,10 +839,8 @@ static void qmip_configure_danger(struct qmip_drvdata *drvdata)
 	struct qmip_danger_cfg *cfg;
 
 	for (i = 0; i < NUM_DANGER_CLIENTS; i++) {
-		/* Skip PrimeSS (2), NSP0 (3), NSP1 (4) only */
-		if (i == DANGER_CLIENT_PRIMESS ||
-		    i == DANGER_CLIENT_NSP0    ||
-		    i == DANGER_CLIENT_NSP1) {
+		/* Skip PrimeSS (2) only */
+		if (i == DANGER_CLIENT_PRIMESS) {
 			dev_info(drvdata->dev, "skipping danger client %d\n", i);
 			continue;
 		}
@@ -749,6 +922,10 @@ static int qmip_probe(struct platform_device *pdev) {
 	}
 
 	for (int i = 0; i < NUM_THROTTLE_CLIENTS; i++) {
+		if (!throttle_names[i]) {
+			drvdata->throttle_base[i] = NULL;
+			continue;
+		}
 		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, throttle_names[i]);
 		if (!res) {
 			dev_err(dev, "failed to get resource %s\n", throttle_names[i]);
