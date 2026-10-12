@@ -295,6 +295,41 @@ struct dumpdev {
 extern void minidump_get_pgd_info(uint64_t *pt_start, uint64_t *pt_len);
 extern void minidump_get_linux_buf_info(uint64_t *plinux_buf, uint64_t *plinux_buf_len);
 extern void minidump_get_log_buf_info(uint64_t *plog_buf, uint64_t *plog_buf_len);
+
+#if IS_ENABLED(CONFIG_RPMSG_QCOM_GLINK)
+extern void minidump_get_glinkintr(uint64_t *glinkintr_base_addr,
+				   uint64_t *glinkintr_size,
+				   uint64_t *glinkintrindex_base_addr,
+				   uint64_t *glinkintrindex_size);
+
+extern void minidump_get_glinksend(uint64_t *glinksend_base_addr,
+				   uint64_t *glinksend_size,
+				   uint64_t *glinksendindex_base_addr,
+				   uint64_t *glinksendindex_size);
+
+extern void minidump_get_glink_work(uint64_t *glink_work_base_addr,
+				    uint64_t *glink_work_size,
+				    uint64_t *glinkworkindex_base_addr,
+				    uint64_t *glinkworkindex_size);
+
+extern void minidump_get_glinkwork_schedule(uint64_t *glinkwork_schedule_base_addr,
+					    uint64_t *glinkwork_schedule_size,
+					    uint64_t *glinkwork_sche_index_base_addr,
+					    uint64_t *glinkwork_sche_index_size);
+
+extern void minidump_get_glinkwork_cancel(uint64_t *glinkwork_cancel_base_addr,
+					  uint64_t *glinkwork_cancel_size,
+					  uint64_t *glinkwork_cancel_index_base_addr,
+					  uint64_t *glinkwork_cancel_index_size);
+#endif /* CONFIG_RPMSG_QCOM_GLINK */
+
+#if IS_ENABLED(CONFIG_QCOM_SMP2P)
+extern void minidump_get_smp2pintr(uint64_t *smp2pintr_base_addr,
+				   uint64_t *smp2pintr_size,
+				   uint64_t *smp2pintrindex_addr,
+				   uint64_t *smp2pintrindex_size);
+#endif /* CONFIG_QCOM_SMP2P */
+
 extern struct list_head *minidump_modules;
 char *minidump_module_list[MINIDUMP_MODULE_COUNT] = {0};
 extern int log_buf_len;
@@ -1746,6 +1781,156 @@ static int ctx_save_fill_vmstat_tlv(void)
 }
 #endif /* CONFIG_QCA_MINIDUMP */
 
+#ifdef CONFIG_QCA_MINIDUMP
+#if IS_ENABLED(CONFIG_RPMSG_QCOM_GLINK)
+static int minidump_fill_glink_segments(void)
+{
+	u64 glinkintr_base_addr = 0, glinkintr_size = 0;
+	u64 glinkintrindex_base_addr = 0, glinkintrindex_size = 0;
+	u64 glinksend_base_addr = 0, glinksend_size = 0;
+	u64 glinksendindex_base_addr = 0, glinksendindex_size = 0;
+	u64 glink_work_base_addr = 0, glink_work_size = 0;
+	u64 glinkworkindex_base_addr = 0, glinkworkindex_size = 0;
+	u64 glinkwork_schedule_base_addr = 0, glinkwork_schedule_size = 0;
+	u64 glinkwork_sche_index_base_addr = 0, glinkwork_sche_index_size = 0;
+	u64 glinkwork_cancel_base_addr = 0, glinkwork_cancel_size = 0;
+	u64 glinkwork_cancel_index_base_addr = 0, glinkwork_cancel_index_size = 0;
+	int ret_val = 0;
+
+	minidump_get_glinkintr(&glinkintr_base_addr, &glinkintr_size, &glinkintrindex_base_addr,
+			       &glinkintrindex_size);
+	ret_val = minidump_fill_segments_internal((uint64_t)(uintptr_t)glinkintr_base_addr, glinkintr_size,
+						  QCA_WDT_LOG_DUMP_TYPE_MOD, "glinkintr",
+						  MINIDUMP_CRASH_TYPE_DEFAULT);
+	if (ret_val) {
+		pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
+		return ret_val;
+	}
+
+	ret_val = minidump_fill_segments_internal((uint64_t)(uintptr_t)glinkintrindex_base_addr,
+						  glinkintrindex_size,
+						  QCA_WDT_LOG_DUMP_TYPE_MOD, "glinkintrindex",
+						  MINIDUMP_CRASH_TYPE_DEFAULT);
+	if (ret_val) {
+		pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
+		return ret_val;
+	}
+
+	minidump_get_glinksend(&glinksend_base_addr, &glinksend_size, &glinksendindex_base_addr,
+			       &glinksendindex_size);
+	ret_val = minidump_fill_segments_internal((uint64_t)(uintptr_t)glinksend_base_addr, glinksend_size,
+						  QCA_WDT_LOG_DUMP_TYPE_MOD, "glinksend",
+						  MINIDUMP_CRASH_TYPE_DEFAULT);
+	if (ret_val) {
+		pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
+		return ret_val;
+	}
+
+	ret_val = minidump_fill_segments_internal((uint64_t)(uintptr_t)glinksendindex_base_addr,
+						  glinksendindex_size,
+						  QCA_WDT_LOG_DUMP_TYPE_MOD, "glinksendindex",
+						  MINIDUMP_CRASH_TYPE_DEFAULT);
+	if (ret_val) {
+		pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
+		return ret_val;
+	}
+
+	minidump_get_glink_work(&glink_work_base_addr, &glink_work_size, &glinkworkindex_base_addr,
+				&glinkworkindex_size);
+	ret_val = minidump_fill_segments_internal((uint64_t)(uintptr_t)glink_work_base_addr, glink_work_size,
+						  QCA_WDT_LOG_DUMP_TYPE_MOD, "glink_work",
+						  MINIDUMP_CRASH_TYPE_DEFAULT);
+	if (ret_val) {
+		pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
+		return ret_val;
+	}
+
+	ret_val = minidump_fill_segments_internal((uint64_t)(uintptr_t)glinkworkindex_base_addr,
+						  glinkworkindex_size,
+						  QCA_WDT_LOG_DUMP_TYPE_MOD, "glinkworkindex",
+						  MINIDUMP_CRASH_TYPE_DEFAULT);
+	if (ret_val) {
+		pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
+		return ret_val;
+	}
+
+	minidump_get_glinkwork_schedule(&glinkwork_schedule_base_addr, &glinkwork_schedule_size,
+					&glinkwork_sche_index_base_addr, &glinkwork_sche_index_size);
+	ret_val = minidump_fill_segments_internal((uint64_t)(uintptr_t)glinkwork_schedule_base_addr,
+						  glinkwork_schedule_size,
+						  QCA_WDT_LOG_DUMP_TYPE_MOD, "glinkwork_schedule",
+						  MINIDUMP_CRASH_TYPE_DEFAULT);
+	if (ret_val) {
+		pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
+		return ret_val;
+	}
+
+	ret_val = minidump_fill_segments_internal((uint64_t)(uintptr_t)glinkwork_sche_index_base_addr,
+						  glinkwork_sche_index_size,
+						  QCA_WDT_LOG_DUMP_TYPE_MOD, "glinkwork_sche_index",
+						  MINIDUMP_CRASH_TYPE_DEFAULT);
+	if (ret_val) {
+		pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
+		return ret_val;
+	}
+
+
+	minidump_get_glinkwork_cancel(&glinkwork_cancel_base_addr, &glinkwork_cancel_size,
+				      &glinkwork_cancel_index_base_addr, &glinkwork_cancel_index_size);
+	ret_val = minidump_fill_segments_internal((uint64_t)(uintptr_t)glinkwork_cancel_base_addr,
+						  glinkwork_cancel_size,
+						  QCA_WDT_LOG_DUMP_TYPE_MOD, "glinkwork_cancel",
+						  MINIDUMP_CRASH_TYPE_DEFAULT);
+	if (ret_val) {
+		pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
+		return ret_val;
+	}
+
+	ret_val = minidump_fill_segments_internal((uint64_t)(uintptr_t)glinkwork_cancel_index_base_addr,
+						  glinkwork_cancel_index_size,
+						  QCA_WDT_LOG_DUMP_TYPE_MOD, "glinkwork_cancel_index",
+						  MINIDUMP_CRASH_TYPE_DEFAULT);
+	if (ret_val) {
+		pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
+		return ret_val;
+	}
+
+	return ret_val;
+}
+#endif /* CONFIG_RPMSG_QCOM_GLINK */
+
+#if IS_ENABLED(CONFIG_QCOM_SMP2P)
+static int minidump_fill_smp2p_segments(void)
+{
+	u64 smp2pintr_base_addr = 0, smp2pintr_size = 0;
+	u64 smp2pintrindex_addr = 0, smp2pintrindex_size = 0;
+	int ret_val = 0;
+
+	minidump_get_smp2pintr(&smp2pintr_base_addr, &smp2pintr_size,
+			       &smp2pintrindex_addr, &smp2pintrindex_size);
+	ret_val = minidump_fill_segments_internal((uint64_t)(uintptr_t)smp2pintr_base_addr,
+						  smp2pintr_size,
+						  QCA_WDT_LOG_DUMP_TYPE_MOD, "smp2pintr",
+						  MINIDUMP_CRASH_TYPE_DEFAULT);
+	if (ret_val) {
+		pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
+		return ret_val;
+	}
+
+	ret_val = minidump_fill_segments_internal((uint64_t)(uintptr_t)smp2pintrindex_addr,
+						  smp2pintrindex_size,
+						  QCA_WDT_LOG_DUMP_TYPE_MOD, "smp2pintrindex",
+						  MINIDUMP_CRASH_TYPE_DEFAULT);
+	if (ret_val) {
+		pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
+		return ret_val;
+	}
+
+	return ret_val;
+}
+#endif /* CONFIG_QCOM_SMP2P */
+
+#endif /* CONFIG_QCA_MINIDUMP */
 /*
 * Function: ctx_save_fill_log_dump_tlv
 * Description: Add 'static' dump segments - uname, demsg,
@@ -1888,6 +2073,22 @@ static int ctx_save_fill_log_dump_tlv(void)
 		pr_err("Minidump: Crashdump buffer is full %d\n", ret_val);
 		return ret_val;
 	}
+
+#if IS_ENABLED(CONFIG_RPMSG_QCOM_GLINK)
+	ret_val = minidump_fill_glink_segments();
+	if (ret_val) {
+		pr_err("Minidump: minidump_fill_glink_segments failed %d\n", ret_val);
+		return ret_val;
+	}
+#endif /* CONFIG_RPMSG_QCOM_GLINK */
+
+#if IS_ENABLED(CONFIG_QCOM_SMP2P)
+	ret_val = minidump_fill_smp2p_segments();
+	if (ret_val) {
+		pr_err("Minidump: minidump_fill_smp2p_segments failed %d\n", ret_val);
+		return ret_val;
+	}
+#endif /* CONFIG_QCOM_SMP2P */
 
 	/* Setup UIO reserved memory regions for minidump */
 	ret_val = ctx_save_setup_uio_regions();
