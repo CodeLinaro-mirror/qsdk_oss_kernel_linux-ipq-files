@@ -18,8 +18,8 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/mhi.h>
-#include <linux/sysrq.h>
 #include <linux/fs.h>
+#include <linux/debugfs.h>
 #include <linux/device.h>
 #include <linux/types.h>
 #include <linux/uaccess.h>
@@ -694,7 +694,7 @@ int do_dump_minidump(enum minidump_crash_type crashtype)
 	if (!tlv_msg.msg_buffer) {
 		pr_err("\n Minidump: Crashdump buffer is empty");
 		mutex_unlock(&g_minidump_lock);
-		return NOTIFY_OK;
+		return -ENODATA;
 	}
 
 	/* Add subset of kernel module list to minidump metadata list */
@@ -727,7 +727,7 @@ int do_dump_minidump(enum minidump_crash_type crashtype)
 	if (dump_class || dump_major) {
 		pr_err("Already minidump virtual class or device exists\n");
 		mutex_unlock(&g_minidump_lock);
-		return ret;
+		return -EBUSY;
 	}
 
 	dump_major = register_chrdev(UNNAMED_MAJOR, "minidump", &mini_dump_ops);
@@ -807,37 +807,43 @@ reg_failed:
 EXPORT_SYMBOL(do_dump_minidump);
 
 /*
-* Function: sysrq_minidump_handler
-*
-* Description: Handler function for sysrq key event which
-* is invoked on command line trigger 'echo y > /proc/sysrq-trigger'
-*
-* @param: key registered for sysrq event
-*
-* Return: 0
-*/
-static void sysrq_minidump_handler(u8 key)
+ * NOTE: This write() call blocks for up to
+ * MINIDUMP_OPEN_TIMEOUT_MSECS + MINIDUMP_COMPLETE_TIMEOUT_MSECS
+ * (currently up to 80 seconds) while userspace collects /dev/minidump.
+ * Callers must not treat this as a fast/non-blocking operation.
+ */
+static ssize_t ctx_save_debugfs_write(struct file *file, const char __user *ubuf,
+				      size_t count, loff_t *ppos)
 {
-	int ret = 0;
+	char buf[4];
+	int ret;
+
+	if (!capable(CAP_SYS_ADMIN))
+		return -EPERM;
+
+	if (*ppos != 0 || count >= sizeof(buf))
+		return -EINVAL;
+	if (copy_from_user(buf, ubuf, count))
+		return -EFAULT;
+	buf[count] = '\0';
+
+	if (!sysfs_streq(buf, "1"))
+		return -EINVAL;
 
 	ret = do_dump_minidump(MINIDUMP_CRASH_TYPE_LIVEDUMP);
-	if (ret)
-		pr_info("\n Minidump: unable to init minidump dev node");
+	if (ret) {
+		pr_info("Minidump: unable to init minidump dev node: %d\n", ret);
+		return ret;
+	}
 
+	return count;
 }
 
-/* sysrq_key_op struct for registering operation
- * for a particular key.
- *
- * @param:
- * .hander - the key handler function
- * .help_msg - help_msg string
- * .action_msg - action_msg string
- */
-static struct sysrq_key_op sysrq_minidump_op = {
-    .handler    = sysrq_minidump_handler,
-    .help_msg   = "minidump(y)",
-    .action_msg = "MINIDUMP",
+static const struct file_operations ctx_save_debugfs_fops = {
+	.owner	= THIS_MODULE,
+	.open	= simple_open,
+	.write	= ctx_save_debugfs_write,
+	.llseek	= noop_llseek,
 };
 #endif /* CONFIG_QCA_MINIDUMP */
 
@@ -2303,6 +2309,7 @@ static int ctx_save_probe(struct platform_device *pdev)
 	static u64 tz_diag_addr;
 	struct reserved_mem *rmem;
 	struct resource imem;
+	struct dentry *dbg_dir, *dbg_file;
 #endif /* CONFIG_QCA_MINIDUMP */
 	int ret;
 	void *tmel_buffer = NULL;
@@ -2451,7 +2458,19 @@ static int ctx_save_probe(struct platform_device *pdev)
 	if (ret)
 		dev_err(&pdev->dev,
 			"Failed to register panic notifier for WLAN module info\n");
-	register_sysrq_key('y', &sysrq_minidump_op);
+	dbg_dir = debugfs_create_dir("ctx-save", NULL);
+	if (IS_ERR_OR_NULL(dbg_dir)) {
+		dev_warn(&pdev->dev, "Failed to create ctx-save debugfs dir: %ld\n",
+			 PTR_ERR(dbg_dir));
+	} else {
+		dbg_file = debugfs_create_file("minidump", 0200, dbg_dir, NULL,
+					       &ctx_save_debugfs_fops);
+		if (IS_ERR_OR_NULL(dbg_file)) {
+			dev_warn(&pdev->dev, "Failed to create minidump debugfs entry: %ld\n",
+				 PTR_ERR(dbg_file));
+			debugfs_remove(dbg_dir);
+		}
+	}
 #endif /* CONFIG_QCA_MINIDUMP */
 	return 0;
 
@@ -2588,6 +2607,8 @@ static struct platform_driver ctx_save_driver = {
 	.driver = {
 		.name = "qti_ctx_save_driver",
 		.of_match_table = ctx_save_of_table,
+		/* Hide sysfs bind/unbind: no .remove, probe setup can't be undone */
+		.suppress_bind_attrs = true,
 	},
 };
 module_platform_driver(ctx_save_driver);
