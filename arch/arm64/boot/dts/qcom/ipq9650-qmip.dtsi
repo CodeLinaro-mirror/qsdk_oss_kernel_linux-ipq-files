@@ -45,6 +45,6 @@
 				    "throttle-pcie3",
 				    "throttle-nsp",
 				    "qm-base";
-			status = "okay";
+			status = "disabled";
 	};
 };
