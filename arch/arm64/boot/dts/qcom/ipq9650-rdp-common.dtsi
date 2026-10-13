@@ -539,12 +539,7 @@
 	cpu-supply = <&apc>;
 };
 
-&cdsp_power {
+&remoteproc_cdsp {
 	vdd-cx-supply = <&nsp_cx>;
 	vdd-mx-supply = <&nsp_mx>;
-};
-
-&remoteproc_cdsp {
-	cx-supply = <&cdsp_vdd_cx>;
-	mx-supply = <&cdsp_vdd_mx>;
 };
