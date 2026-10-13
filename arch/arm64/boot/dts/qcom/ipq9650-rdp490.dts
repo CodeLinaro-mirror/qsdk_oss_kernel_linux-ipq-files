@@ -133,8 +133,8 @@
 
 &mdio {
 	phy-reset-gpio = <&tlmm 18 GPIO_ACTIVE_LOW>, /* Reset for QCE1204. */
-			 <&tlmm 14 GPIO_ACTIVE_LOW>; /* Reset for two QCA81XXs. */
-
+			 <&tlmm 25 GPIO_ACTIVE_LOW>, /* Reset for the UNIPHY1 QCA81XX. */
+			 <&tlmm 26 GPIO_ACTIVE_LOW>; /* Reset for the UNIPHY2 QCA81XX. */
 	phy4: ethernet-phy@8 {
 		compatible = "ethernet-phy-ieee802.3-c45";
 		reg = <8>;
