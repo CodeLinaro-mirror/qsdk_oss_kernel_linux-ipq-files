@@ -7,6 +7,7 @@
 
 #include <linux/types.h>
 #include <linux/device.h>
+#include <linux/clk.h>
 
 #define NUM_DANGER_CLIENTS		10
 #define NUM_THROTTLE_CLIENTS		12
@@ -60,6 +61,8 @@ struct	qmip_drvdata {
 	void __iomem *qm_base;
 	struct qmip_qm_cfg qm_cfg;
 	struct device *dev;
+	struct clk *core_clk;
+	struct clk *xo_clk;
 	bool enabled;
 };
 
