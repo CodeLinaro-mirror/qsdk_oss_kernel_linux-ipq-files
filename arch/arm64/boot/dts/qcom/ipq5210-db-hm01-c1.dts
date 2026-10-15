@@ -421,6 +421,29 @@
 			bias-pull-down;
 		};
 	};
+
+	qup_i2c3_default: qup-i2c3-default-state {
+		qup_i2c3_sda {
+			pins = "gpio42";
+			function = "qup_se4_l0";
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+
+		qup_i2c3_scl {
+			pins = "gpio43";
+			function = "qup_se4_l1";
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+	};
+
+};
+
+&i2c3 {
+	pinctrl-0 = <&qup_i2c3_default>;
+	pinctrl-names = "default";
+	status = "okay";
 };
 
 &pcie0_phy {
