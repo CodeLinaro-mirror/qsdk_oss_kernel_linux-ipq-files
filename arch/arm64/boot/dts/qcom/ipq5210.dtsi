@@ -2071,7 +2071,7 @@
 					port@7 {
 						port_id = <7>;
 						ucast_queue = <160 169>;
-						mcast_queue = <296 299>;
+						mcast_queue = <296 297>;
 						l0sp = <42 43>;
 						l0cdrr = <160 169>;
 						l0edrr = <160 169>;
@@ -2275,7 +2275,7 @@
 								ucast_loop_pri = <10>;
 								ucast_max_pri = <8>;
 								mcast_queue = <296>;
-								mcast_loop_pri = <4>;
+								mcast_loop_pri = <2>;
 								cfg = <42 0 160 0 160>;
 							};
 						};
