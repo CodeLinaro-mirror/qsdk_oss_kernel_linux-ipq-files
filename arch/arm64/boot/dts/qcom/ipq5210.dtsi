@@ -735,6 +735,18 @@
 				status = "disabled";
 			};
 
+			i2c3: i2c@1a90000 {
+				compatible = "qcom,geni-i2c";
+				reg = <0x1a90000 0x4000>;
+				clocks = <&gcc GCC_QUPV3_WRAP_SE4_CLK>;
+				clock-names = "se";
+				clock-frequency = <400000>;
+				interrupts = <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH>;
+				assigned-clocks = <&gcc GCC_QUPV3_WRAP_SE4_CLK>;
+				assigned-clock-rates = <32000000>;
+				status = "disabled";
+			};
+
 			spi1: spi@1a90000 {
 				compatible = "qcom,geni-spi";
 				reg = <0x1a90000 0x4000>;
