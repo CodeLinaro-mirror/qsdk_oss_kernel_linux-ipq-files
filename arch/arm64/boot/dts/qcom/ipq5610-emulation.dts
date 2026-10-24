@@ -201,3 +201,6 @@
 	};
 };
 
+&cmn_pll {
+	status = "disabled";
+};
