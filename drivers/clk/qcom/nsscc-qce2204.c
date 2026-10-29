@@ -333,7 +333,7 @@ static struct clk_rcg2 nsscc_switch_core_clk_src = {
 		.name = "nsscc_switch_core_clk_src",
 		.parent_data = nsscc_switch_core_data,
 		.num_parents = ARRAY_SIZE(nsscc_switch_core_data),
-		.ops = &clk_rcg2_ops,
+		.ops = &clk_rcg2_prepare_ops,
 	},
 };
 
@@ -625,7 +625,7 @@ static struct clk_rcg2 nsscc_mac0_tx_clk_src = {
 		.name = "nsscc_mac0_tx_clk_src",
 		.parent_data = nsscc_port0_tx_data,
 		.num_parents = ARRAY_SIZE(nsscc_port0_tx_data),
-		.ops = &clk_rcg2_fm_ops,
+		.ops = &clk_rcg2_fm_prepare_ops,
 	},
 };
 
@@ -713,7 +713,7 @@ static struct clk_rcg2 nsscc_mac0_rx_clk_src = {
 		.name = "nsscc_mac0_rx_clk_src",
 		.parent_data = nsscc_port0_rx_data,
 		.num_parents = ARRAY_SIZE(nsscc_port0_rx_data),
-		.ops = &clk_rcg2_fm_ops,
+		.ops = &clk_rcg2_fm_prepare_ops,
 	},
 };
 
@@ -803,7 +803,7 @@ static struct clk_rcg2 nsscc_mac1_tx_clk_src = {
 		.name = "nsscc_mac1_tx_clk_src",
 		.parent_data = nsscc_port1_3_tx_data,
 		.num_parents = ARRAY_SIZE(nsscc_port1_3_tx_data),
-		.ops = &clk_rcg2_fm_ops,
+		.ops = &clk_rcg2_fm_prepare_ops,
 	},
 };
 
@@ -966,7 +966,7 @@ static struct clk_rcg2 nsscc_mac1_rx_clk_src = {
 		.name = "nsscc_mac1_rx_clk_src",
 		.parent_data = nsscc_port1_3_rx_data,
 		.num_parents = ARRAY_SIZE(nsscc_port1_3_rx_data),
-		.ops = &clk_rcg2_ops,
+		.ops = &clk_rcg2_prepare_ops,
 	},
 };
 
@@ -1122,7 +1122,7 @@ static struct clk_rcg2 nsscc_mac2_tx_clk_src = {
 		.name = "nsscc_mac2_tx_clk_src",
 		.parent_data = nsscc_port1_3_tx_data,
 		.num_parents = ARRAY_SIZE(nsscc_port1_3_tx_data),
-		.ops = &clk_rcg2_fm_ops,
+		.ops = &clk_rcg2_fm_prepare_ops,
 	},
 };
 
@@ -1241,7 +1241,7 @@ static struct clk_rcg2 nsscc_mac2_rx_clk_src = {
 		.name = "nsscc_mac2_rx_clk_src",
 		.parent_data = nsscc_port1_3_rx_data,
 		.num_parents = ARRAY_SIZE(nsscc_port1_3_rx_data),
-		.ops = &clk_rcg2_ops,
+		.ops = &clk_rcg2_prepare_ops,
 	},
 };
 
@@ -1360,7 +1360,7 @@ static struct clk_rcg2 nsscc_mac3_tx_clk_src = {
 		.name = "nsscc_mac3_tx_clk_src",
 		.parent_data = nsscc_port1_3_tx_data,
 		.num_parents = ARRAY_SIZE(nsscc_port1_3_tx_data),
-		.ops = &clk_rcg2_fm_ops,
+		.ops = &clk_rcg2_fm_prepare_ops,
 	},
 };
 
@@ -1479,7 +1479,7 @@ static struct clk_rcg2 nsscc_mac3_rx_clk_src = {
 		.name = "nsscc_mac3_rx_clk_src",
 		.parent_data = nsscc_port1_3_rx_data,
 		.num_parents = ARRAY_SIZE(nsscc_port1_3_rx_data),
-		.ops = &clk_rcg2_ops,
+		.ops = &clk_rcg2_prepare_ops,
 	},
 };
 
@@ -1625,7 +1625,7 @@ static struct clk_rcg2 nsscc_mac4_tx_clk_src = {
 		.name = "nsscc_mac4_tx_clk_src",
 		.parent_data = nsscc_port4_tx_data,
 		.num_parents = ARRAY_SIZE(nsscc_port4_tx_data),
-		.ops = &clk_rcg2_fm_ops,
+		.ops = &clk_rcg2_fm_prepare_ops,
 	},
 };
 
@@ -1768,7 +1768,7 @@ static struct clk_rcg2 nsscc_mac4_rx_clk_src = {
 		.name = "nsscc_mac4_rx_clk_src",
 		.parent_data = nsscc_port4_rx_data,
 		.num_parents = ARRAY_SIZE(nsscc_port4_rx_data),
-		.ops = &clk_rcg2_fm_ops,
+		.ops = &clk_rcg2_fm_prepare_ops,
 	},
 };
 
@@ -1908,7 +1908,7 @@ static struct clk_rcg2 nsscc_mac5_tx_clk_src = {
 		.name = "nsscc_mac5_tx_clk_src",
 		.parent_data = nsscc_port5_tx_data,
 		.num_parents = ARRAY_SIZE(nsscc_port5_tx_data),
-		.ops = &clk_rcg2_fm_ops,
+		.ops = &clk_rcg2_fm_prepare_ops,
 	},
 };
 
@@ -2051,7 +2051,7 @@ static struct clk_rcg2 nsscc_mac5_rx_clk_src = {
 		.name = "nsscc_mac5_rx_clk_src",
 		.parent_data = nsscc_port5_rx_data,
 		.num_parents = ARRAY_SIZE(nsscc_port5_rx_data),
-		.ops = &clk_rcg2_fm_ops,
+		.ops = &clk_rcg2_fm_prepare_ops,
 	},
 };
 
@@ -2178,7 +2178,7 @@ static struct clk_rcg2 nsscc_ahb_clk_src = {
 		.name = "nsscc_ahb_clk_src",
 		.parent_data = nsscc_ahb_sys_data,
 		.num_parents = ARRAY_SIZE(nsscc_ahb_sys_data),
-		.ops = &clk_rcg2_ops,
+		.ops = &clk_rcg2_prepare_ops,
 	},
 };
 
@@ -2342,7 +2342,7 @@ static struct clk_rcg2 nsscc_sys_clk_src = {
 		.name = "nsscc_sys_clk_src",
 		.parent_data = nsscc_xo_data,
 		.num_parents = ARRAY_SIZE(nsscc_xo_data),
-		.ops = &clk_rcg2_ops,
+		.ops = &clk_rcg2_prepare_ops,
 	},
 };
 
@@ -2508,7 +2508,7 @@ static struct clk_rcg2 nsscc_sec_ctrl_clk_src = {
 		.name = "nsscc_sec_ctrl_clk_src",
 		.parent_data = nsscc_xo_data,
 		.num_parents = ARRAY_SIZE(nsscc_xo_data),
-		.ops = &clk_rcg2_ops,
+		.ops = &clk_rcg2_prepare_ops,
 	},
 };
 
@@ -2557,7 +2557,7 @@ static struct clk_rcg2 nsscc_sleep_clk_src = {
 		.name = "nsscc_sleep_clk_src",
 		.parent_data = nsscc_xo_data,
 		.num_parents = ARRAY_SIZE(nsscc_xo_data),
-		.ops = &clk_rcg2_ops,
+		.ops = &clk_rcg2_prepare_ops,
 	},
 };
 

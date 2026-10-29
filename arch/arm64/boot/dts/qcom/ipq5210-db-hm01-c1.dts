@@ -262,11 +262,13 @@
 			num_devices = <0x1>;
 
 			ess_switch: ess-switch@3a000000 {
+				pinctrl-0 = <&sfp_pins>;
+				pinctrl-names = "default";
 				switch_lan_bmp = <0x3e>; /* lan port bitmap */
 				switch_wan_bmp = <0x40>; /* wan port bitmap */
 				switch_mac_mode = <0x15>; /* UQXGMII for qce1204 PHY */
 				switch_mac_mode1 = <0xd>; /* USXGMII for Laguna PHY */
-				switch_mac_mode2 = <0xff>;
+				switch_mac_mode2 = <0xe>; /* 10gbaser for SFP */
 
 				qcom,port_phyinfo {
 					port@0 {
@@ -306,12 +308,34 @@
 					};
 					port@5 {
 						port_id = <6>;
-						forced-speed = <10000>;
-						forced-duplex = <1>;
-						fixed-link {
-							speed = <10000>;
-							full-duplex;
-							pause;
+						phy_address = <30>;
+						media-type = "sfp"; /* fiber mode */
+						sfp_rx_los_pin = <&tlmm 10 GPIO_ACTIVE_HIGH>;
+						sfp_tx_dis_pin = <&tlmm 14 GPIO_ACTIVE_HIGH>;
+					};
+				};
+				port_scheduler_config {
+					/delete-node/ port@6;
+					port@6 {
+						port_id = <6>;
+						l1scheduler {
+							group@0 {
+								sp = <10>;
+								sp_loop_pri = <15>;
+								sp_max_pri = <1>;
+								cfg = <0 10 0 10>;
+							};
+						};
+
+						l0scheduler {
+							group@0 {
+								ucast_queue = <40>;
+								ucast_loop_pri = <120>;
+								ucast_max_pri = <8>;
+								mcast_queue = <292>;
+								mcast_loop_pri = <4>;
+								cfg = <10 0 40 0 40>;
+							};
 						};
 					};
 				};
@@ -377,7 +401,9 @@
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
 			qcom,ppe-offload-disabled = <0>;
-			qcom,gem_port = <1>;
+			qcom,link-poll = <1>;
+			qcom,phy-mdio-addr = <30>;
+			phy-mode = "sgmii";
 		};
 	};
 };
@@ -421,6 +447,44 @@
 			bias-pull-down;
 		};
 	};
+
+	qup_i2c3_default: qup-i2c3-default-state {
+		qup_i2c3_sda {
+			pins = "gpio42";
+			function = "qup_se4_l0";
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+
+		qup_i2c3_scl {
+			pins = "gpio43";
+			function = "qup_se4_l1";
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+	};
+
+	sfp_pins: sfp-state {
+		sfp_rx {
+			pins = "gpio10";
+			function = "rx1";
+			bias-disable;
+		};
+
+		sfp_tx {
+			pins = "gpio14";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-down;
+			output-low;
+		};
+	};
+};
+
+&i2c3 {
+	pinctrl-0 = <&qup_i2c3_default>;
+	pinctrl-names = "default";
+	status = "okay";
 };
 
 &pcie0_phy {
@@ -520,6 +584,15 @@
 	status = "okay";
 };
 
+&ess_uniphy {
+	assigned-clocks = <&nsscc NSS_CC_PORT4_RX_CLK_SRC>,
+			  <&nsscc NSS_CC_PORT4_TX_CLK_SRC>,
+			  <&cmn_pll IPQ5210_PON_REFCLK>;
+	assigned-clock-parents = <&cmn_pll IPQ5210_EPHY_RAW_CLK>,
+				 <&cmn_pll IPQ5210_EPHY_RAW_CLK>;
+	assigned-clock-rates = <0>, <0>, <31250000>;
+};
+
 &pon {
-	status = "okay";
+	status = "disabled";
 };
